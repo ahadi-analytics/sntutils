@@ -6,9 +6,8 @@
 `snt` is an R package developed by 'AHADI-Anlaytics'. It provides a suite of 
 analytical tools to support the subnational tailoring (SNT) of malaria 
 interventions, enabling evidence-based decision-making at the district level. 
-It includes functions for data management and cleaning, malaria risk 
-stratification, intervention targeting, geospatial analysis, and predictive 
-modeling.
+It provides functions for data management, cleaning, and analysis, including 
+malaria risk stratification and intervention targeting.
 
 ## :wrench: Installation
 The package is yet to be available on Cran, but can be installed using `devtools` in R. The steps are as follows:
@@ -30,7 +29,7 @@ devtools::install_github("ahadi-analytics/snt")
 Inspired by `rio`, the read function allows you to read data from a wide range of file formats. Additional reading options specific to each format can be passed through the ellipsis (...) argument. Similarly, the save function provides a simple way to export data into various formats.
 
 ``` r
-# Load the poliprep package
+# Load the snt package
 library(snt)
 
 # Reading a CSV file with a specific seperator
@@ -60,9 +59,9 @@ write(
 
 ### Geolocation Handling
 
-#### `prep_geonames` for Interactive Admin Name Cleaning and Matching
+#### `harmonize_admin_names` for Interactive Admin Name Cleaning and Matching
 
-The `prep_geonames` function combines algorithmic matching with user interactivity to clean and standardize administrative names. It uses string distance calculations for initial matching and allows users to make final corrections interactively, with all decisions saved for future use. The function supports a user-provided lookup dataset as a reference or defaults to internal WHO geonames data if no lookup is provided. Additionally, it supports hierarchical stratification across up to six administrative levels. Cached user decisions enhance consistency and efficiency in subsequent sessions. For users who prefer to run the code without interactivity, the function can be executed with `interactive = FALSE`.
+The `harmonize_admin_names` function combines algorithmic matching with user interactivity to clean and standardize administrative names. It uses string distance calculations for initial matching and allows users to make final corrections interactively, with all decisions saved for future use. The function supports a user-provided lookup dataset as a reference or defaults to internal WHO geonames data if no lookup is provided. Additionally, it supports hierarchical stratification across up to six administrative levels. Cached user decisions enhance consistency and efficiency in subsequent sessions. For users who prefer to run the code without interactivity, the function can be executed with `interactive = FALSE`.
  
 ```r
 target_df <- data.frame(
@@ -79,9 +78,6 @@ cleaned_df <- harmonize_admin_names(
   interactive = TRUE
 )
 ```
-Here is a short video to demonstrate the full interactivity of `harmonize_admin_names` which was formally known as `prep_geonames`:
-
-https://github.com/user-attachments/assets/ffa69a93-a982-43c4-9673-1165f997fd96
 
 ### Date Handling
 
