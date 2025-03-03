@@ -119,9 +119,3 @@ parsed_df$mixed_formats
 parsed_df$iso8601
 #> [1] "2021-03-20" "2022-11-05" "2023-06-15" "2020-01-01"
 ```
-
-## :incoming_envelope: Contacting us
-
-For any issues or questions about `snt`, please contact Mo at [moyusuf\@who.int](mailto:moyusuf@who.int).
- 
-
