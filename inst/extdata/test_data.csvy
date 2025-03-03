@@ -1,0 +1,19 @@
+#---
+#profile: tabular-data-package
+#name: fake_data
+#fields:
+#- name: ID
+#  type: integer
+#- name: Name
+#  type: string
+#- name: Age
+#  type: number
+#- name: Score
+#  type: number
+#--- 
+ID,Name,Age,Score
+1,Alice,25,85
+2,Bob,30,90
+3,Charlie,28,78
+4,David,22,95
+5,Eva,27,88

@@ -1,0 +1,46 @@
+Package: snt
+Type: Package
+Title: The Official R Package for Subnational Tailoring of Malaria 
+  Interventions (SNT)
+Version: 1.4.0
+Authors@R: c(
+  person("Mohamed A.", "Yusuf",
+         role = c("aut", "cre"),
+         email = "moyusuf@who.who",
+         comment = c(ORCID = "0000-0002-9339-4613",
+         second_email = "mohamedayusuf87@gmail.com")))
+Description: This package provides a suite of analytical tools to support the 
+        subnational tailoring (SNT) of malaria interventions, enabling 
+        evidence-based decision-making at the district level. It includes 
+        functions for data management and cleaning, malaria risk stratification,
+        intervention targeting, geospatial analysis, and predictive modeling.
+License: CC BY 4.0
+URL: https://github.com/ahadi-analytics/snt
+BugReports: https://github.com/ahadi-analytics/snt/issues
+Depends:
+  R (>= 3.5.0)
+Imports:
+  cli, 
+  foreach, 
+  rio, 
+  rlang, 
+  sf,
+  archive,
+  crayon,
+  dplyr,
+  filelock,
+  glue,
+  lubridate,
+  purrr,
+  stringdist,
+  stringr,
+  tidyr
+Suggests:
+  withr,
+  testthat
+Config/testthat/edition: 3
+Encoding: UTF-8
+LazyData: true
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2
+LazyDataCompression: xz
