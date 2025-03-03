@@ -11,9 +11,9 @@ Authors@R: c(
          second_email = "mohamedayusuf87@gmail.com")))
 Description: This package provides a suite of analytical tools to support the 
         subnational tailoring (SNT) of malaria interventions, enabling 
-        evidence-based decision-making at the district level. It includes 
-        functions for data management and cleaning, malaria risk stratification,
-        intervention targeting, geospatial analysis, and predictive modeling.
+        evidence-based decision-making at the district level. It provides 
+        functions for data management, cleaning, and analysis, including 
+        malaria risk stratification and intervention targeting.
 License: CC BY 4.0
 URL: https://github.com/ahadi-analytics/snt
 BugReports: https://github.com/ahadi-analytics/snt/issues
