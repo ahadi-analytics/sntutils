@@ -64,6 +64,7 @@ handle_file_save <- function(data_to_save, default_save_path = NULL) {
       lock_path <- paste0(cache_path, ".lock")
       lock <- filelock::lock(lock_path, timeout = 10000)
       on.exit(filelock::unlock(lock))
+      file.remove(cache_path)
 
       # Load existing cache if available
       existing_cache <-
