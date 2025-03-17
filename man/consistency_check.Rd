@@ -9,7 +9,7 @@ consistency_check(
   tests,
   cases,
   save_plot = FALSE,
-  plots_path = NULL,
+  plot_path = NULL,
   filename = "consistency_check.png"
 )
 }
@@ -26,7 +26,7 @@ in 'tests' corresponds to an element in 'cases'.}
 \item{save_plot}{Logical. If TRUE, the plot will be saved to disk. Default
 is FALSE.}
 
-\item{plots_path}{Character. Directory path where the plot should be saved.
+\item{plot_path}{Character. Directory path where the plot should be saved.
 Required if save_plot is TRUE. Default is NULL.}
 
 \item{filename}{Character. Name of the file to save the plot. Default is
@@ -69,7 +69,7 @@ consistency_check(
   tests = c("malaria_tests", "cholera_tests"),
   cases = c("malaria_cases", "cholera_cases"),
   save_plot = TRUE,
-  plots_path = tempdir()
+  plot_path = tempdir()
 )
 
 }

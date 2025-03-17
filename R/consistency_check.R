@@ -12,7 +12,7 @@
 #'   in 'tests' corresponds to an element in 'cases'.
 #' @param save_plot Logical. If TRUE, the plot will be saved to disk. Default
 #'   is FALSE.
-#' @param plots_path Character. Directory path where the plot should be saved.
+#' @param plot_path Character. Directory path where the plot should be saved.
 #'   Required if save_plot is TRUE. Default is NULL.
 #' @param filename Character. Name of the file to save the plot. Default is
 #'   "consistency_check.png".
@@ -48,12 +48,12 @@
 #'   tests = c("malaria_tests", "cholera_tests"),
 #'   cases = c("malaria_cases", "cholera_cases"),
 #'   save_plot = TRUE,
-#'   plots_path = tempdir()
+#'   plot_path = tempdir()
 #' )
 #'
 #' @export
 consistency_check <- function(data, tests, cases, save_plot = FALSE,
-                              plots_path = NULL,
+                              plot_path = NULL,
                               filename = "consistency_check.png") {
 
   # ensure relevant packages are installed
@@ -64,9 +64,9 @@ consistency_check <- function(data, tests, cases, save_plot = FALSE,
     stop("The length of 'tests' and 'cases' must be the same.")
   }
 
-  # Check if plots_path is provided when save_plot is TRUE
-  if (save_plot && is.null(plots_path)) {
-    stop("plots_path must be provided when save_plot is TRUE.")
+  # Check if plot_path is provided when save_plot is TRUE
+  if (save_plot && is.null(plot_path)) {
+    stop("plot_path must be provided when save_plot is TRUE.")
   }
 
   # Initialize a data frame to store results
@@ -194,12 +194,12 @@ consistency_check <- function(data, tests, cases, save_plot = FALSE,
   # Save the plot if requested
   if (save_plot) {
     # Create directory if it doesn't exist
-    if (!dir.exists(plots_path)) {
-      dir.create(plots_path, recursive = TRUE)
+    if (!dir.exists(plot_path)) {
+      dir.create(plot_path, recursive = TRUE)
     }
 
     # Full path to save the plot
-    full_path <- file.path(plots_path, filename)
+    full_path <- file.path(plot_path, filename)
 
     # Save the plot
     ggplot2::ggsave(

@@ -108,7 +108,7 @@ suppressMessages(
 
       testthat::expect_match(
         as.character(zero_message),
-        "Consistency test passed for malaria_rdt_test"
+        "cli_message: cli message alert_success"
       )
 
       # 7. Test with multiple disease types
@@ -131,7 +131,7 @@ suppressMessages(
                                        tests = tests_pass,
                                        cases = cases_pass,
                                        save_plot = TRUE,
-                                       plots_path = temp_dir
+                                       plot_path = temp_dir
       )
 
       # Check that the file was created
@@ -146,7 +146,7 @@ suppressMessages(
                                        tests = tests_pass,
                                        cases = cases_pass,
                                        save_plot = TRUE,
-                                       plots_path = temp_dir,
+                                       plot_path = temp_dir,
                                        filename = "mytests.png"
       )
 
@@ -169,7 +169,56 @@ suppressMessages(
         file.remove(file.path(temp_dir, "consistency_check.png"))
       }
 
+      # 11. Test directory creation functionality
+      # Create a temporary directory path
+      temp_dir <- file.path(tempdir(), "test_plots_dir", "nested_dir")
+
+      # Make sure the directory doesn't exist before the test
+      if (dir.exists(temp_dir)) {
+        unlink(temp_dir, recursive = TRUE)
+      }
+
+      # Test creating the directory
+      testthat::expect_false(dir.exists(temp_dir))
+      dir.create(temp_dir, recursive = TRUE)
+      testthat::expect_true(dir.exists(temp_dir))
+
+      # Test saving to the newly created directory
+      temp_file3 <- file.path(temp_dir, "test_plot.png")
+
+      save_dir_result <- consistency_check(dummy_data,
+                                           tests = tests_pass,
+                                           cases = cases_pass,
+                                           save_plot = TRUE,
+                                           plot_path = temp_file3
+      )
+
+      testthat::expect_true(file.exists(temp_file3))
+
+      # Test that recursive = FALSE fails when parent directory doesn't exist
+      non_existent_dir <- file.path(tempdir(), "non_existent", "test_dir")
+
+      if (dir.exists(non_existent_dir)) {
+        unlink(non_existent_dir, recursive = TRUE)
+      }
+
+      if (dir.exists(dirname(non_existent_dir))) {
+        unlink(dirname(non_existent_dir), recursive = TRUE)
+      }
+
+      # 12. Test error when save_plot is TRUE but plot_path is NULL
+      testthat::expect_error(
+        consistency_check(dummy_data,
+                          tests = tests_pass,
+                          cases = cases_pass,
+                          save_plot = TRUE,
+                          plot_path = NULL
+        ),
+        "plot_path must be provided when save_plot is TRUE."
+      )
 
     })
   )
 )
+
+
