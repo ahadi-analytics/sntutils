@@ -8,15 +8,16 @@ ensure_packages(pkgs)
 }
 \arguments{
 \item{pkgs}{A character vector of package names to check and
-load.}
+potentially install.}
 }
 \value{
-Invisibly returns the result of loading the packages.
+Invisibly returns NULL.
 }
 \description{
 This function checks if the specified packages are installed,
 prompts the user to install missing packages, and loads all
-packages into the current session.
+packages into the current session. In non-interactive sessions,
+installation is skipped with a warning.
 }
 \examples{
 \dontrun{

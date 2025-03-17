@@ -29,12 +29,13 @@ big_mark <- function(x, decimals = NULL, big_mark = ",") {
 #'
 #' This function checks if the specified packages are installed,
 #' prompts the user to install missing packages, and loads all
-#' packages into the current session.
+#' packages into the current session. In non-interactive sessions,
+#' installation is skipped with a warning.
 #'
 #' @param pkgs A character vector of package names to check and
-#'    load.
+#'    potentially install.
 #'
-#' @return Invisibly returns the result of loading the packages.
+#' @return Invisibly returns NULL.
 #'
 #' @examples
 #' \dontrun{
@@ -42,24 +43,61 @@ big_mark <- function(x, decimals = NULL, big_mark = ",") {
 #' }
 #' @importFrom utils install.packages
 ensure_packages <- function(pkgs) {
-  for (pkg in pkgs) {
-    if (!requireNamespace(pkg, quietly = TRUE)) {
-      response <- readline(
-        paste0(
-          'Package "',
-          pkg,
-          '" is required but not installed. Install it now? [y/n]: '
-        )
+  missing_pkgs <- pkgs[!sapply(
+    pkgs, requireNamespace,
+    quietly = TRUE
+  )]
+
+  if (length(missing_pkgs) > 0) {
+    cli::cli_h2("Package Installation Required")
+    cli::cli_text("The following packages are missing:")
+    cli::cli_ol(paste0("{.pkg ", missing_pkgs, "}"))
+
+    # Handle non-interactive sessions
+    if (!interactive()) {
+      cli::cli_alert_warning(
+        "Non-interactive session detected. Skipping package installation."
       )
-      if (tolower(response) %in% c("y", "yes")) {
-        install.packages(pkg)
-      } else {
-        stop(paste0(
-          'Please install package "', pkg, '" to continue.'
-        ), call. = FALSE)
-      }
+      return(invisible(NULL))
     }
+
+    # Prompt user for installation
+    user_choice <- readline(
+      prompt = cli::col_blue(
+        "Do you want to install all missing packages? (y/n): "
+      )
+    )
+
+    if (tolower(user_choice) == "y") {
+      cli::cli_alert_success("Installing missing packages...")
+
+      # Install CRAN packages
+      for (pkg in missing_pkgs) {
+        tryCatch(
+          {
+            utils::install.packages(pkg, quiet = TRUE)
+          },
+          error = function(e) {
+            cli::cli_alert_danger(paste0(
+              "Failed to install package: ", pkg,
+              ". Error: ", e$message
+            ))
+          }
+        )
+      }
+
+      cli::cli_alert_success("Installation of all packages complete.")
+    } else {
+      cli::cli_alert_warning(paste0(
+        "Skipping installation of packages. ",
+        "Some functionality might be limited."
+      ))
+    }
+  } else {
+    cli::cli_alert_success(
+      "All suggested packages are already installed."
+    )
   }
 
-  invisible(lapply(pkgs, library, character.only = TRUE))
+  invisible(NULL)
 }
