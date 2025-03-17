@@ -1,0 +1,175 @@
+# Skip all tests on CRAN
+if (!identical(Sys.getenv("NOT_CRAN"), "true")) {
+  return()
+}
+
+suppressMessages(
+  suppressWarnings(
+    testthat::test_that("consistency_check function works correctly", {
+      # Create a dummy dataset
+      dummy_data <- data.frame(
+        malaria_rdt_test = rnorm(1000, mean = 0, sd = 50),
+        malaria_micro_test = rnorm(1000, mean = 0, sd = 10),
+        malaria_rdt_cases = rnorm(1000, mean = 0, sd = 50),
+        malaria_micro_cases = rnorm(1000, mean = 1, sd = 10),
+        dengue_test = rnorm(1000, mean = 5, sd = 20),
+        dengue_cases = rnorm(1000, mean = 2, sd = 15)
+      )
+
+      # 1. Test when the length of tests and cases is not the same
+      testthat::expect_error(
+        consistency_check(dummy_data,
+                          tests = c("malaria_rdt_test"),
+                          cases = c(
+                            "malaria_rdt_cases",
+                            "malaria_micro_cases"
+                          )
+        ),
+        "The length of 'tests' and 'cases' must be the same."
+      )
+
+      # 2. Test when all the tests values are greater than the cases values
+      tests_pass <- c("malaria_rdt_test", "malaria_micro_test")
+      cases_pass <- c("malaria_rdt_cases", "malaria_micro_cases")
+
+      dummy_data2 <- dummy_data |>
+        dplyr::mutate(
+          malaria_rdt_test = abs(malaria_rdt_test) * 10000,
+          malaria_micro_test = abs(malaria_micro_test) * 10000
+        )
+
+      actual <- as.character(
+        testthat::capture_message(
+          consistency_check(dummy_data2,
+                            tests = tests_pass,
+                            cases = cases_pass
+          )
+        )[1]
+      )
+
+      expected <- paste(
+        "Consistency test passed for malaria_rdt_test",
+        "vs malaria_rdt_cases: There are more tests than there are cases!"
+      )
+
+      testthat::expect_equal(writeLines(actual), writeLines(expected))
+
+      # 3. Test when some tests values are less than the cases values
+      dummy_data_with_inconsistency <- dummy_data
+      dummy_data_with_inconsistency$malaria_micro_test[1] <- 1000
+
+      actual_inconsistency <- as.character(
+        testthat::capture_message(
+          consistency_check(dummy_data_with_inconsistency,
+                            tests = tests_pass, cases = cases_pass
+          )
+        )[1]
+      )
+
+      expected <- paste(
+        "Consistency test failed for malaria_micro_test",
+        "vs malaria_micro_cases: There are 513 (51.3%) rows where tests",
+        "are less than cases."
+      )
+
+      testthat::expect_equal(writeLines(actual_inconsistency),
+                             writeLines(expected))
+
+      # 4. Test the return type of the function
+      plot_result <- consistency_check(dummy_data,
+                                       tests = tests_pass,
+                                       cases = cases_pass
+      )
+      testthat::expect_equal(class(plot_result)[2], "ggplot")
+
+      # 5. Test with NA values
+      dummy_data_na <- dummy_data
+      dummy_data_na$malaria_rdt_test[1:10] <- NA
+      dummy_data_na$malaria_rdt_cases[11:20] <- NA
+
+      na_result <- consistency_check(dummy_data_na,
+                                     tests = tests_pass[1],
+                                     cases = cases_pass[1]
+      )
+
+      testthat::expect_s3_class(na_result, "ggplot")
+
+      # 6. Test with zero values
+      dummy_data_zero <- dummy_data
+      dummy_data_zero$malaria_rdt_test <- 0
+      dummy_data_zero$malaria_rdt_cases <- 0
+
+      zero_message <- testthat::capture_message(
+        consistency_check(dummy_data_zero,
+                          tests = tests_pass[1],
+                          cases = cases_pass[1]
+        )
+      )
+
+      testthat::expect_match(
+        as.character(zero_message),
+        "Consistency test passed for malaria_rdt_test"
+      )
+
+      # 7. Test with multiple disease types
+      multi_tests <- c("malaria_rdt_test", "dengue_test")
+      multi_cases <- c("malaria_rdt_cases", "dengue_cases")
+
+      multi_result <- consistency_check(dummy_data,
+                                        tests = multi_tests,
+                                        cases = multi_cases
+      )
+
+      testthat::expect_s3_class(multi_result, "ggplot")
+
+      # 8. Test saving functionality
+      # Create a temporary file path
+      temp_dir <- tempdir()
+
+      # Test saving the plot
+      save_result <- consistency_check(dummy_data,
+                                       tests = tests_pass,
+                                       cases = cases_pass,
+                                       save_plot = TRUE,
+                                       plots_path = temp_dir
+      )
+
+      # Check that the file was created
+      testthat::expect_true(file.exists(temp_dir))
+
+      # Check file size is greater than 0 (valid image)
+      testthat::expect_gt(file.size(temp_dir), 0)
+
+      # 10. Test saving with custom width and height
+      # Test saving the plot
+      save_result <- consistency_check(dummy_data,
+                                       tests = tests_pass,
+                                       cases = cases_pass,
+                                       save_plot = TRUE,
+                                       plots_path = temp_dir,
+                                       filename = "mytests.png"
+      )
+
+      # Check that the file was created
+      testthat::expect_true(file.exists(
+        file.path(temp_dir, "mytests.png")))
+
+      # Check file size is greater than 0 (valid image)
+      testthat::expect_gt(file.size(
+        file.path(temp_dir, "mytests.png")), 0)
+      testthat::expect_true(file.exists(
+        file.path(temp_dir, "mytests.png")))
+
+      # Clean up
+      if (file.exists(file.path(temp_dir, "mytests.png"))) {
+        file.remove(file.path(temp_dir, "mytests.png"))
+      }
+
+      if (file.exists(file.path(temp_dir, "consistency_check.png"))) {
+        file.remove(file.path(temp_dir, "consistency_check.png"))
+      }
+
+
+    })
+  )
+)

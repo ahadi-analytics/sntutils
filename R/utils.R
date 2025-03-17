@@ -24,3 +24,42 @@ big_mark <- function(x, decimals = NULL, big_mark = ",") {
                nsmall = if (is.null(decimals)) 0 else decimals
   )
 }
+
+#' Ensure Required Packages are Installed and Loaded
+#'
+#' This function checks if the specified packages are installed,
+#' prompts the user to install missing packages, and loads all
+#' packages into the current session.
+#'
+#' @param pkgs A character vector of package names to check and
+#'    load.
+#'
+#' @return Invisibly returns the result of loading the packages.
+#'
+#' @examples
+#' \dontrun{
+#' ensure_packages(c("dplyr", "ggplot2"))
+#' }
+#' @importFrom utils install.packages
+ensure_packages <- function(pkgs) {
+  for (pkg in pkgs) {
+    if (!requireNamespace(pkg, quietly = TRUE)) {
+      response <- readline(
+        paste0(
+          'Package "',
+          pkg,
+          '" is required but not installed. Install it now? [y/n]: '
+        )
+      )
+      if (tolower(response) %in% c("y", "yes")) {
+        install.packages(pkg)
+      } else {
+        stop(paste0(
+          'Please install package "', pkg, '" to continue.'
+        ), call. = FALSE)
+      }
+    }
+  }
+
+  invisible(lapply(pkgs, library, character.only = TRUE))
+}

@@ -34,10 +34,13 @@ Imports:
   purrr,
   stringdist,
   stringr,
-  tidyr
+  tidyr,
+  ggplot2
 Suggests:
-  withr,
-  testthat
+  ggtext,
+  scales,
+  testthat,
+  withr
 Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
