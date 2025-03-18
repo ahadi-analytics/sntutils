@@ -93,11 +93,8 @@ ensure_packages <- function(pkgs) {
         "Some functionality might be limited."
       ))
     }
-  } else {
-    cli::cli_alert_success(
-      "All suggested packages are already installed."
-    )
   }
 
   invisible(NULL)
 }
+

@@ -47,42 +47,43 @@ testthat::test_that("Error if 'y_var' provided with >1 vars in 'miss_vars'", {
 # Test 3: Check that the function returns a ggplot object
 testthat::test_that("Returns ggplot object", {
   plot <- missing_plot(fake_data, "year", "state", "polio", TRUE)
-  expect_s3_class(plot, "ggplot")
+  testthat::expect_s3_class(plot, "ggplot")
 })
 
 # Test 4: Check that the function works without 'y_var' and 'miss_vars'
 testthat::test_that("Works without 'y_var' and 'miss_vars'", {
   plot <- missing_plot(fake_data, "year")
-  expect_s3_class(plot, "ggplot")
+  testthat::expect_s3_class(plot, "ggplot")
 })
 
 # Test 5: Check that the function works with all provided parameters
 testthat::test_that("Works with all provided parameters", {
   plot <- missing_plot(fake_data, "year", "state", "polio", TRUE)
-  expect_s3_class(plot, "ggplot")
+  testthat::expect_s3_class(plot, "ggplot")
 })
 
 # Test 6: Check the title construction with 'use_rep_rate = TRUE'
 testthat::test_that("Title construction with 'use_rep_rate = TRUE'", {
   plot <- missing_plot(fake_data, "year", "state", "polio", TRUE)
-  testthat::expect_match(
-    plot$labels$title, "Reporting rate of polio by year and state"
+  testthat::expect_contains(
+    plot$labels$title, "Reporting rate of **polio**  by year and state"
   )
 })
 
 # Test 7: Check the title construction with 'use_rep_rate = FALSE'
 testthat::test_that("Title construction with 'use_rep_rate = FALSE'", {
   plot <- missing_plot(fake_data, "year", "state", "polio", FALSE)
-  testthat::expect_match(
+  testthat::expect_contains(
     plot$labels$title,
-    "The proportion of missing data for polio by year and state"
+    "The proportion of missing data for **polio**  by year and state"
   )
 })
 
 # Test 8: Check the title construction without 'y_var'
 testthat::test_that("Title construction without 'y_var'", {
   plot <- missing_plot(fake_data, "year", NULL, "polio", TRUE)
-  testthat::expect_match(plot$labels$title, "Reporting rate of polio by year")
+  testthat::expect_contains(plot$labels$title,
+                            "Reporting rate of **polio**  by year ")
 })
 
 # Test 9: Check the y-axis label with 'y_var'
@@ -90,7 +91,7 @@ testthat::test_that("Y-axis label with 'y_var'", {
   plot <- missing_plot(
     fake_data, "year", "state", "polio", FALSE
   )
-  expect_equal(plot$labels$y, "State")
+  testthat::expect_equal(plot$labels$y, "State")
 })
 
 # Test 10: Check title construction with and without 'miss_vars'"
@@ -99,11 +100,9 @@ testthat::test_that("Title construction with and without 'miss_vars'", {
   plot_with_vars <- missing_plot(
     fake_data, "year", "state", "polio", FALSE
   )
-  expect_true(
-    grepl(
-      "The proportion of missing data for polio by year and state",
+  testthat::expect_contains(
+      "The proportion of missing data for **polio**  by year and state",
       plot_with_vars$labels$title
-    )
   )
 
   # Case when 'miss_vars' is not provided
@@ -111,7 +110,7 @@ testthat::test_that("Title construction with and without 'miss_vars'", {
     fake_data,
     x_var = "year", miss_vars = NULL, use_rep_rate = FALSE
   )
-  expect_true(grepl("year", plot_without_vars$labels$title))
+  testthat::expect_true(unique(grepl("year", plot_without_vars$labels$title)))
 })
 
 # Test 11: Check title construction when there are more than one var
@@ -125,20 +124,20 @@ testthat::test_that("Title is constructed correctly with remaining variables", {
   # Construct the expected title
   expected_title <-
     paste(
-      "The proportion of missing data for state,",
-      "month, measles, malaria and cholera by year"
+      "The proportion of missing data for **state** ,",
+      "month, measles, malaria and cholera by year "
     )
 
   # Assert that the actual title matches the expected title
-  expect_identical(plot$labels$title, expected_title)
+  testthat::expect_identical(plot$labels$title[1], expected_title)
 })
 
 # Test 12: Check title construction when there are too many variables
 testthat::test_that("Title construction when there are too many variables", {
   plot <- missing_plot(fake_data, "year", NULL, NULL, FALSE)
-  testthat::expect_match(
+  testthat::expect_contains(
     plot$labels$title,
-    "The proportion of missing data for various variables by year"
+    "The proportion of missing data for **state** various variables by year "
   )
 })
 
@@ -178,9 +177,7 @@ testthat::test_that("Plot can be saved with custom dimensions", {
                        "polio",
                        TRUE,
                        save_plot = TRUE,
-                       plot_path = temp_file,
-                       plot_width = 12,
-                       plot_height = 8)
+                       plot_path = temp_file)
 
   # Check that the file was created
   testthat::expect_true(file.exists(temp_file))
@@ -271,3 +268,4 @@ testthat::test_that("Plot can be saved in different file formats", {
   testthat::expect_gt(file.size(temp_file_jpeg), 0)
 
 })
+

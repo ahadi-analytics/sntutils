@@ -78,6 +78,7 @@ consistency_check <- function(data, tests, cases, save_plot = FALSE,
 
   # Compute statistics and find rows where tests are less than cases
   inconsistent_rows <- list()
+  consistency_stats <- list()
 
   for (i in seq_along(tests)) {
     test_column <- tests[i]
@@ -94,7 +95,11 @@ consistency_check <- function(data, tests, cases, save_plot = FALSE,
     inconsistent_count <- nrow(inconsistency)
     inconsistent_prop <- inconsistent_count / nrow(data) * 100
     inconsistent_rows[[i]] <- inconsistency
-    disease_name <- paste(test_column, case_column, sep = " vs ")
+    disease_name <- paste(
+      test_column, case_column,
+      sprintf("(n=%d, %.1f%%)", inconsistent_count, inconsistent_prop),
+      sep = " vs "
+    )
 
     results <- rbind(
       results,
@@ -201,12 +206,17 @@ consistency_check <- function(data, tests, cases, save_plot = FALSE,
     # Full path to save the plot
     full_path <- file.path(plot_path, filename)
 
+    # Calculate dimensions based on number of test variables
+    n_vars <- length(tests)
+    width <- min(10, max(6, n_vars * 3))
+    height <- min(8, max(4, n_vars * 2))
+
     # Save the plot
     ggplot2::ggsave(
       filename = full_path,
       plot = plot,
-      width = 10,
-      height = 8,
+      width = width,
+      height = height,
       dpi = 300
     )
 

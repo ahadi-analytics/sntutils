@@ -12,10 +12,7 @@ missing_plot(
   use_rep_rate = FALSE,
   save_plot = FALSE,
   plot_path = NULL,
-  plot_name = "missing_plot.png",
-  plot_width = 10,
-  plot_height = 8,
-  plot_dpi = 300
+  plot_name = "missing_plot.png"
 )
 }
 \arguments{
@@ -45,15 +42,6 @@ be saved. Required if save_plot is TRUE.}
 
 \item{plot_name}{A character string specifying the name of the plot file.
 Defaults to "missing_plot.png".}
-
-\item{plot_width}{Numeric value for the width of the saved plot in inches.
-Defaults to 10.}
-
-\item{plot_height}{Numeric value for the height of the saved plot in inches.
-Defaults to 8.}
-
-\item{plot_dpi}{Numeric value for the resolution of the saved plot.
-Defaults to 300.}
 }
 \value{
 A ggplot2 object representing the tile plot.

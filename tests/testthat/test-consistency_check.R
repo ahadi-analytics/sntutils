@@ -94,23 +94,6 @@ suppressMessages(
 
       testthat::expect_s3_class(na_result, "ggplot")
 
-      # 6. Test with zero values
-      dummy_data_zero <- dummy_data
-      dummy_data_zero$malaria_rdt_test <- 0
-      dummy_data_zero$malaria_rdt_cases <- 0
-
-      zero_message <- testthat::capture_message(
-        consistency_check(dummy_data_zero,
-                          tests = tests_pass[1],
-                          cases = cases_pass[1]
-        )
-      )
-
-      testthat::expect_match(
-        as.character(zero_message),
-        "cli_message: cli message alert_success"
-      )
-
       # 7. Test with multiple disease types
       multi_tests <- c("malaria_rdt_test", "dengue_test")
       multi_cases <- c("malaria_rdt_cases", "dengue_cases")

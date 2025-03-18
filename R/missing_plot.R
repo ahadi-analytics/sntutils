@@ -25,12 +25,6 @@
 #' be saved. Required if save_plot is TRUE.
 #' @param plot_name A character string specifying the name of the plot file.
 #' Defaults to "missing_plot.png".
-#' @param plot_width Numeric value for the width of the saved plot in inches.
-#' Defaults to 10.
-#' @param plot_height Numeric value for the height of the saved plot in inches.
-#' Defaults to 8.
-#' @param plot_dpi Numeric value for the resolution of the saved plot.
-#' Defaults to 300.
 #' @return A ggplot2 object representing the tile plot.
 #'
 #' @export
@@ -60,9 +54,7 @@
 missing_plot <- function(data, x_var, y_var = NULL,
                          miss_vars = NULL, use_rep_rate = FALSE,
                          save_plot = FALSE, plot_path = NULL,
-                         plot_name = "missing_plot.png",
-                         plot_width = 10, plot_height = 8,
-                         plot_dpi = 300) {
+                         plot_name = "missing_plot.png") {
 
   # ensure relevant packages are installed
   ensure_packages(c("wesanderson"))
@@ -186,7 +178,7 @@ missing_plot <- function(data, x_var, y_var = NULL,
     color_pal <- wesanderson::wes_palette("Zissou1", 100, type = "continuous")
   }
 
-  # Plot the data using ggplot2
+  # Plot the data using ggplot2  -----------------------------------------------
   plot <- ggplot2::ggplot(
     plot_data,
     ggplot2::aes(
@@ -199,7 +191,12 @@ missing_plot <- function(data, x_var, y_var = NULL,
       colours = color_pal
     ) +
     ggplot2::labs(
-      title = trimws(paste(title_prefix, title_vars, title_suffix)),
+      title = paste0(
+        title_prefix,
+        " **", miss_vars, "** ",
+        stringr::str_remove(title_vars, miss_vars), " ",
+        title_suffix
+      ),
       x = "", y = y_axis_label, fill = fill_label
     ) +
     ggplot2::theme_bw() +
@@ -221,7 +218,7 @@ missing_plot <- function(data, x_var, y_var = NULL,
       axis.text.x = ggplot2::element_text(angle = 75, hjust = 1),
       legend.margin = ggplot2::margin(t = 0, unit = "cm"),
       legend.text = ggplot2::element_text(size = 8, family = "Arial"),
-      plot.title = ggplot2::element_text(
+      plot.title = ggtext::element_markdown(
         size = 12,
         family = "Arial",
         margin = ggplot2::margin(b = 10)
@@ -243,7 +240,33 @@ missing_plot <- function(data, x_var, y_var = NULL,
       key.width = ggplot2::unit(1, "lines")
     ))
 
-  # Save the plot if requested
+
+  # Dynamic plot dimensions ----------------------------------------------------
+
+  n_x <- length(unique(plot_data[[x_var]]))
+  n_y <- length(unique(plot_data[[y_axis_var]]))
+
+  # Base dimensions (minimum size)
+  base_width <- 6
+  base_height <- 4
+
+  # Scale factors
+  width_factor <- 0.2
+  height_factor <- 0.15
+
+  # Calculate dynamic dimensions
+  plot_width <- base_width + (n_x * width_factor)
+  plot_height <- base_height + (n_y * height_factor)
+
+  # Ensure minimum dimensions
+  plot_width <- max(plot_width, 6)
+  plot_height <- max(plot_height, 4)
+
+  # Cap maximum dimensions
+  plot_width <- min(plot_width, 20)
+  plot_height <- min(plot_height, 16)
+
+  # Save the plot if requested  ------------------------------------------------
   if (save_plot) {
     full_path <- file.path(plot_path, plot_name)
     dir.create(plot_path, showWarnings = FALSE, recursive = TRUE)
@@ -253,10 +276,12 @@ missing_plot <- function(data, x_var, y_var = NULL,
       plot = plot,
       width = plot_width,
       height = plot_height,
-      dpi = plot_dpi
+      dpi = 300
     )
-    message(paste("Plot saved to:", full_path))
+    cli::cli_alert_success(
+      paste("Plot saved to:", full_path))
   }
 
   return(plot)
 }
+
