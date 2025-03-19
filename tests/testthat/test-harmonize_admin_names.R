@@ -1409,3 +1409,64 @@ testthat::test_that("harmonize_admin_names can be run non-interactively", {
   testthat::expect_equal(nrow(result), 2)
 })
 
+
+testthat::test_that("impute_higher_admin works correctly", {
+  # Test case 1: Basic functionality
+  lookup <- data.frame(
+    district = c("Boffa", "Boke", "Fria"),
+    region = c("Boké", "Boké", "Boké"),
+    stringsAsFactors = FALSE
+  )
+
+  test_data <- data.frame(
+    location = c("Boffa", "Fria", "Unknown"),
+    stringsAsFactors = FALSE
+  )
+
+  result <- impute_higher_admin(
+    target_df = test_data,
+    target_lower_col = "location",
+    target_higher_col = "region",
+    lookup_df = lookup,
+    lookup_lower_col = "district",
+    lookup_higher_col = "region"
+  )
+
+  testthat::expect_equal(result$region, c("Boké", "Boké", "Unknown"))
+  testthat::expect_equal(ncol(result), 2)
+
+  # Test case 2: Empty dataframe
+  empty_data <- data.frame(location = character(0))
+
+  result_empty <- impute_higher_admin(
+    target_df = empty_data,
+    target_lower_col = "location",
+    target_higher_col = "region",
+    lookup_df = lookup,
+    lookup_lower_col = "district",
+    lookup_higher_col = "region"
+  )
+
+  testthat::expect_equal(nrow(result_empty), 0)
+  testthat::expect_equal(ncol(result_empty), 2)
+
+
+  # Test case 4: Different column names in lookup table
+  complex_lookup <- data.frame(
+    adm2_name = c("Boffa", "Boke", "Fria"),
+    adm1_code = c("BK", "BK", "BK"),
+    stringsAsFactors = FALSE
+  )
+
+  result_complex <- impute_higher_admin(
+    target_df = test_data,
+    target_lower_col = "location",
+    target_higher_col = "region_code",
+    lookup_df = complex_lookup,
+    lookup_lower_col = "adm2_name",
+    lookup_higher_col = "adm1_code"
+  )
+
+  testthat::expect_equal(result_complex$region_code, c("BK", "BK", "Unknown"))
+
+})

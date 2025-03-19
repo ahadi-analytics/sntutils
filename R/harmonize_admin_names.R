@@ -1527,3 +1527,67 @@ harmonize_admin_names <- function(target_df, lookup_df = NULL,
   # return the final data frame
   return(finalised_df)
 }
+
+#' Impute higher administrative level using a lookup table
+#'
+#' This function imputes a higher-level administrative unit (e.g., adm1) based
+#' on a lower-level administrative unit (e.g., adm2) using a lookup table.
+#' It allows for dynamic column names and lookup table structures.
+#'
+#' @param target_df A dataframe containing the lower-level administrative unit
+#'    column.
+#' @param target_lower_col A string specifying the name of the lower-level admin
+#'    column (e.g., adm2).
+#' @param target_higher_col A string specifying the name of the higher-level
+#'    admin column to be created.
+#' @param lookup_df A dataframe containing the mapping of lower to higher-level
+#'    administrative units.
+#' @param lookup_lower_col A string specifying the name of the lower-level
+#'    column in the lookup table.
+#' @param lookup_higher_col A string specifying the name of the higher-level
+#'    column in the lookup table.
+#'
+#' @return A dataframe with an additional higher-level column assigned based on
+#'    the lookup.
+#'
+#' @examples
+#' # Example lookup table
+#' adm1_lookup <- dplyr::tribble(
+#'   ~adm2, ~adm1,
+#'   "Boffa", "Boké",
+#'   "Boke", "Boké",
+#'   "Fria", "Boké"
+#' )
+#'
+#' # Example dataset
+#' data <- dplyr::tibble(
+#'   district = c("Boffa", "Fria", "Unknown")
+#' )
+#'
+#' # Impute higher-level administrative unit
+#' cleaned_data <- impute_higher_admin(
+#'   target_df = data,
+#'   target_lower_col = "district",
+#'   target_higher_col = "region",
+#'   lookup_df = adm1_lookup,
+#'   lookup_lower_col = "adm2",
+#'   lookup_higher_col = "adm1"
+#' )
+#'
+#' @export
+impute_higher_admin <- function(target_df,
+                                target_lower_col,
+                                target_higher_col,
+                                lookup_df,
+                                lookup_lower_col,
+                                lookup_higher_col) {
+  target_df <- target_df |>
+    dplyr::mutate(
+      !!target_higher_col := dplyr::recode(
+        .data[[target_lower_col]],
+        !!!stats::setNames(lookup_df[[lookup_higher_col]],
+                    lookup_df[[lookup_lower_col]])
+      )
+    )
+  return(target_df)
+}
