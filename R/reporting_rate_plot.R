@@ -773,6 +773,7 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
 
   return(plot)
 }
+
 #' Save a single plot to a file
 #'
 #' @param plot The ggplot2 object to save
@@ -802,11 +803,19 @@ save_single_plot <- function(plot, plot_data, plot_path,
   }
 
   # Get common translated terms for filenames
-  translated_terms <- get_translated_terms(language, x_var, vars_of_interest, data)
+  translated_terms <- get_translated_terms(
+    language, x_var,
+    vars_of_interest, data
+  )
 
   # Add y_var to filename if provided
   y_var_part <- if (!is.null(y_var)) {
-    paste0("_&_", tolower(gsub(" ", "_", y_axis_label)))
+    paste0("_&_", tolower(
+      gsub(
+        " ", "_",
+        translate_text(y_var, language)
+      )
+    ))
   } else {
     ""
   }
