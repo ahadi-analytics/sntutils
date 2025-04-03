@@ -1,3 +1,5 @@
+.datatable.aware <- TRUE
+
 testthat::test_that(
   "calculate_reporting_metrics works correctly",
   {
@@ -35,6 +37,7 @@ testthat::test_that(
         result1$rep_rate >= 0 & result1$rep_rate <= 100
       )
     )
+
 
     # Test 2: Missing rate calculation
     result2 <- calculate_reporting_metrics(
@@ -96,6 +99,7 @@ testthat::test_that(
     )
   }
 )
+
 
 testthat::test_that(
   "prepare_plot_data works correctly for all scenarios",
@@ -541,6 +545,9 @@ testthat::test_that("reporting_rate_plot validates inputs correctly", {
 testthat::test_that("reporting_rate_plot saves plots correctly", {
   # Skip if not interactive or in CI environment
   testthat::skip_if(!interactive() && !identical(Sys.getenv("CI"), "true"))
+  # Skip if gtranslate not available
+  testthat::skip_if_not_installed("gtranslate")
+  testthat::skip_if_offline()
 
   # Create dummy data
   hf_data <- data.frame(
@@ -573,8 +580,6 @@ testthat::test_that("reporting_rate_plot saves plots correctly", {
   # Check that a file was created
   testthat::expect_gte(length(list.files(temp_dir, pattern = "\\.png$")), 1)
 })
-
-
 
 testthat::test_that("reporting_rate_plot handles language parameter", {
   # Skip if gtranslate not available
@@ -623,13 +628,9 @@ testthat::test_that("reporting_rate_plot handles language parameter", {
   fr_y_label <- p2$labels$y
   fr_fill_label <- p2$labels$fill
 
-  expected_title <- "Taux de déclaration du paludisme par mois et district"
-  expected_y_label <- "Niveau administratif"
-  expected_label <- "Taux de rapport (%)"
-
   testthat::expect_equal(
     p2$labels$title,
-    "Taux de déclaration du paludisme par mois et district"
+    "Taux De Déclaration Du Paludisme Par Mois et District"
   )
 
   testthat::expect_equal(

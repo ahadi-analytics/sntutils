@@ -66,9 +66,18 @@
 #' )
 #' # Result shows proportion of facilities that reported
 #' # any data by district and month
+#' @importFrom data.table .N
+#' @importFrom data.table setnames
 #' @export
 calculate_reporting_metrics <- function(data, vars_of_interest,
                                         x_var, y_var = NULL, hf_col = NULL) {
+  # # Add this line at the top of the function
+  # local_dt_aware <- TRUE
+  # # Make sure the environment is data.table aware within this function
+  # assign(".datatable.aware", TRUE, envir = parent.frame())
+
+  ensure_packages("dtplyr")
+
   # Input validation
   if (!is.data.frame(data)) {
     cli::cli_abort(c(
@@ -115,10 +124,13 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
 
   # Convert 0s to NA for all variables of interest
   data <- data |>
-    dplyr::mutate(dplyr::across(
-      dplyr::all_of(vars_of_interest),
-      ~ dplyr::if_else(.x == 0, NA_real_, .x)
-    ))
+    as.data.frame() |>
+    dplyr::mutate(
+      dplyr::across(
+        dplyr::all_of(vars_of_interest),
+        ~ dplyr::if_else(.x == 0, NA_real_, .x)
+      )
+    )
 
   # Helper function for rate calculations
   calculate_rates <- function(df) {
@@ -130,57 +142,52 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
   }
 
   if (!is.null(hf_col) && !is.null(y_var)) {
-    # Scenario 3: Facility-based reporting rate
-    hf_counts <- data |>
-      dplyr::distinct(
-        dplyr::across(
-          dplyr::all_of(c(x_var, y_var, hf_col))
-        )
-      ) |>
-      dplyr::group_by(
-        dplyr::across(dplyr::all_of(c(x_var, y_var)))
-      ) |>
-      dplyr::summarise(num = dplyr::n(), .groups = "drop")
+    .datatable.aware <- TRUE
+    data <- data.table::as.data.table(data)
 
-    var_present <- data |>
-      dplyr::group_by(
-        dplyr::across(dplyr::all_of(c(x_var, y_var, hf_col)))
-      ) |>
-      dplyr::summarise(
-        var_pres = as.integer(
-          any(
-            dplyr::if_any(
-              dplyr::all_of(vars_of_interest), ~ !is.na(.x)
-            )
-          )
-        ),
-        .groups = "drop"
-      ) |>
-      dplyr::group_by(
-        dplyr::across(dplyr::all_of(c(x_var, y_var)))
-      ) |>
-      dplyr::summarise(
-        n_reported = sum(var_pres), .groups = "drop"
-      )
+    # Rename selected columns to x, y, hf
+    selected_cols <- c(x_var, y_var, hf_col)
+    names(selected_cols) <- c("x", "y", "hf")
 
-    result <- hf_counts |>
-      dplyr::left_join(
-        var_present,
-        by = c(x_var, y_var)
-      ) |>
-      dplyr::mutate(
-        n_reported = tidyr::replace_na(n_reported, 0L)
-      ) |>
-      calculate_rates() |>
-      dplyr::select(
-        dplyr::all_of(
-          c(
-            x_var, y_var,
-            "num", "n_reported", "rep_rate",
-            "miss_rate"
-          )
-        )
-      )
+    tmp_dt <- data.table::as.data.table(
+      stats::setNames(data[, mget(selected_cols)], names(selected_cols))
+    )
+    unique_dt <- unique(tmp_dt)
+    hf_counts <- unique_dt[, .(num = .N), by = .(x, y)]
+
+    # Create renamed columns in original data
+    data[, x := get(x_var)]
+    data[, y := get(y_var)]
+    data[, hf := get(hf_col)]
+
+    # Extract vars_of_interest first to avoid nested call
+    sub_dt <- data[, mget(vars_of_interest)]
+    data[, var_pres := as.integer(rowSums(!is.na(sub_dt)) > 0)]
+
+    # Get presence by facility
+    var_present <- unique(data[, .(x, y, hf, var_pres)])[
+      , .(n_reported = sum(var_pres)),
+      by = .(x, y)
+    ]
+
+    # Merge counts with presence
+    merged_result <- merge(
+      hf_counts, var_present,
+      by = c("x", "y"), all.x = TRUE
+    )
+    merged_result[, n_reported := data.table::fifelse(
+      is.na(n_reported), 0L, n_reported
+    )]
+
+    # Calculate reporting rates
+    merged_result[, rep_rate := (n_reported / num) * 100]
+    merged_result[, miss_rate := ((num - n_reported) / num) * 100]
+
+    # Rename x and y back to original column names
+    data.table::setnames(merged_result, "x", x_var)
+    data.table::setnames(merged_result, "y", y_var)
+
+    result <- merged_result |> dplyr::as_tibble()
   } else if (!is.null(y_var)) {
     # Scenario 1: Basic reporting rate by (x_var, y_var)
     long_data <- data |>
@@ -316,6 +323,8 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
 prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
                               by_facility = FALSE, hf_col = NULL,
                               use_rep_rate = TRUE) {
+  ensure_packages(c("dtplyr"))
+
   # Input validation
   if (!is.data.frame(data)) {
     cli::cli_abort(c(
@@ -578,7 +587,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     y_var = y_var,
     vars_of_interest = vars_of_interest,
     by_facility = scenario == "facility",
-    hf_col = hf_col
+    hf_col = hf_col,
+    use_rep_rate = use_rep_rate
   )
 
   # Extract prepared data components
@@ -708,7 +718,7 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
     ggplot2::labs(
       title = paste0(
         title_prefix,
-        " selected variables by ", x_var
+        " selected variables by ", tolower(x_var)
       ),
       x = "",
       y = "Variable",
@@ -758,8 +768,8 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
     ggplot2::labs(
       title = paste0(
         title_prefix,
-        " ", vars_of_interest, " by ",
-        x_var, " and ", y_var
+        " ", tolower(vars_of_interest), " by ",
+        tolower(x_var), " and ", tolower(y_var)
       ),
       x = "",
       y = y_axis_label,
@@ -833,7 +843,7 @@ save_single_plot <- function(plot, plot_data, plot_path,
   save_path <- glue::glue(
     "{translated_terms$prefix}_{translated_terms$for_word}_",
     "{vars_of_interest_str}_{translated_terms$by_word}_",
-    "{translated_terms$x_title}{y_var_part}_",
+    "{tolower(translated_terms$x_title)}{y_var_part}_",
     "{translated_terms$year_range}_{format(Sys.Date(), '%Y-%m-%d')}.png"
   )
 
@@ -1001,6 +1011,9 @@ translate_plot_labels <- function(plot, language) {
       if (lab_name == "title") {
         orig_title <- translate_text(plot_labs[[lab_name]], language)
 
+        # Convert title to sentence case
+        orig_title <- tools::toTitleCase(tolower(orig_title))
+
         plot_labs[[lab_name]] <- gsub(
           "\\*\\*\\s+(.*?)\\s+\\*\\*", "**\\1**",
           orig_title
@@ -1034,7 +1047,7 @@ translate_plot_labels <- function(plot, language) {
 #' @export
 translate_text <- function(text, target_language = "en") {
   # get gtranslate and curl if missing
-  ensure_packages(c("gtranslate", "curl"))
+  # ensure_packages(c("gtranslate", "curl"))
 
   if (requireNamespace("curl", quietly = TRUE)) {
     # Use curl if available (more reliable)

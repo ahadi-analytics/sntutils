@@ -1,1 +1,4 @@
-testthat::test_check("snt")
+library(testthat)
+library(snt)
+
+test_check("snt")
