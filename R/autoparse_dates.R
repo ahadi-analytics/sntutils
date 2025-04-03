@@ -8,9 +8,8 @@
 #'   format specifications)
 #' @return A POSIXct vector of parsed dates
 try_parsing <- function(x, formats) {
-
   parsed <- lubridate::parse_date_time(x,
-                                       orders = formats, quiet = TRUE
+    orders = formats, quiet = TRUE
   )
 
   # Handle special cases
@@ -162,12 +161,16 @@ available_date_formats <- c(
 #'     "25-12-2021 23:59", "15-08-2020 00:00"
 #'   ),
 #'   `d.m.Y` = c("03.10.2023", "11.09.2022", "25.12.2021", "15.08.2020"),
-#'   `iso8601` = c("2021-03-20T00:01:00.513+01:00",
-#'                 "2022-11-05T23:15:59.123+01:00",
-#'                 "2023-06-15T12:30:45.789Z",
-#'                 "2020-01-01T00:00:00.000-05:00"),
-#'   `mixed_formats` = c("2023-10-03", "11.09.2022",
-#'                      "25-12-21 23:59", "2020-08-15T00:00:00Z"),
+#'   `iso8601` = c(
+#'     "2021-03-20T00:01:00.513+01:00",
+#'     "2022-11-05T23:15:59.123+01:00",
+#'     "2023-06-15T12:30:45.789Z",
+#'     "2020-01-01T00:00:00.000-05:00"
+#'   ),
+#'   `mixed_formats` = c(
+#'     "2023-10-03", "11.09.2022",
+#'     "25-12-21 23:59", "2020-08-15T00:00:00Z"
+#'   ),
 #'   stringsAsFactors = FALSE
 #' )
 #'
@@ -197,8 +200,12 @@ autoparse_dates <- function(data, date_cols,
         parse_results[[dplyr::cur_column()]] <<- sum(is.na(parsed))
 
         if (output_format %in% "%Y-%m-%d") {
-          as.Date(parsed)  } else { as.Date(parsed) |> format(output_format) }
-      })) -> data
+          as.Date(parsed)
+        } else {
+          as.Date(parsed) |> format(output_format)
+        }
+      })
+    ) -> data
 
   if (verbose) {
     purrr::iwalk(
@@ -208,10 +215,12 @@ autoparse_dates <- function(data, date_cols,
             "Warning: {result} dates could not be parsed in column '{col}'"
           )
         }
-      })
+      }
+    )
 
     if (all(
-      purrr::map_lgl(parse_results, \(x) x == 0))) {
+      purrr::map_lgl(parse_results, \(x) x == 0)
+    )) {
       cli::cli_alert_success(
         "All columns have been successfully parsed to the given format"
       )
