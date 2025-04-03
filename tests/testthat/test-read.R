@@ -32,49 +32,49 @@ testthat::test_that("Function imports supported file formats correctly", {
     if (!is.null(imported_data)) {
       # Check if the imported data has the expected structure and values
       testthat::expect_true("ID" %in% colnames(imported_data),
-                            info = paste("ID column not found in", file)
+        info = paste("ID column not found in", file)
       )
 
       testthat::expect_true("Name" %in% colnames(imported_data),
-                            info = paste("Name column not found in", file)
+        info = paste("Name column not found in", file)
       )
 
       testthat::expect_true("Age" %in% colnames(imported_data),
-                            info = paste("Age column not found in", file)
+        info = paste("Age column not found in", file)
       )
 
       testthat::expect_true("Score" %in% colnames(imported_data),
-                            info = paste("Score column not found in", file)
+        info = paste("Score column not found in", file)
       )
 
       testthat::expect_equal(as.integer(imported_data$ID), 1:5,
-                             info = paste("ID values mismatch in", file)
+        info = paste("ID values mismatch in", file)
       )
       testthat::expect_equal(as.character(imported_data$Name),
-                             c("Alice", "Bob", "Charlie", "David", "Eva"),
-                             info = paste("Name values mismatch in", file)
+        c("Alice", "Bob", "Charlie", "David", "Eva"),
+        info = paste("Name values mismatch in", file)
       )
       testthat::expect_equal(as.integer(imported_data$Age),
-                             c(25, 30, 28, 22, 27),
-                             info = paste("Age values mismatch in", file)
+        c(25, 30, 28, 22, 27),
+        info = paste("Age values mismatch in", file)
       )
       testthat::expect_equal(as.integer(imported_data$Score),
-                             c(85, 90, 78, 95, 88),
-                             info = paste("Score values mismatch in", file)
+        c(85, 90, 78, 95, 88),
+        info = paste("Score values mismatch in", file)
       )
     }
   }
 })
 
 
-# # 2. Test for Unsupported Formats
+# 2. Test for Unsupported Formats
 testthat::test_that("Function throws error for unsupported file formats", {
   file_path <- "testdata/test_data.xyz"
   testthat::expect_error(
     snt::read(file_path),
     paste0(
-      "File format 'xyz' not supported by 'rio' and 'sf'. ",
-      "Please refer to the package documentation for a full list",
+      "File format 'xyz' not supported by 'rio', 'sf', or 'readxl'. ",
+      "Please refer to the package documentation for a full list ",
       "of supported formats."
     )
   )

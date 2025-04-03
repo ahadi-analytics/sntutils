@@ -1,9 +1,10 @@
 #' Read in Data and Shapefiles from Various File Formats
 #'
 #' This function provides a unified interface for reading data from various
-#' file formats supported by the \code{\link[=rio]{rio}} and
-#' \code{\link[=sf]{sf}} package. The format is automatically detected from the
-#' file extension to simplify the importing process.
+#' file formats supported by the \code{\link[rio]{import}},
+#' \code{\link[sf]{read_sf}}, and \code{\link[readxl]{read_excel}} packages. The
+#' format is automatically detected from the file extension to simplify the
+#' importing process.
 #'
 #' @param file_path Character string specifying the path to the input file or
 #'   a URL pointing to the dataset.
@@ -16,8 +17,9 @@
 #'
 #' @examples
 #' # Locate test data directory
-#' path <-  system.file("extdata",
-#'                      package = "snt")
+#' path <- system.file("extdata",
+#'   package = "snt"
+#' )
 #'
 #' # Import a CSV file
 #' data_csv <- read(file_path = file.path(path, "test_data.csv"))
@@ -39,47 +41,48 @@
 #' # Import an shapefiles file (GeoJSON/json)
 #' data_geojson <- read(file_path = file.path(path, "test_data.GeoJSON"))
 #'
-#' @seealso \code{\link[=rio]{rio::import()}} and
-#'         \code{\link[=sf]{sf::read_sf()}},  which this function is based on.
-#'
-#' @importFrom rio import
-#' @importFrom sf read_sf
-#' @importFrom tools file_ext
+#' @seealso \code{\link[rio]{import}},
+#'         \code{\link[sf]{read_sf}}, and
+#'         \code{\link[readxl]{read_excel}}, which this
+#'               function is based on.
 #'
 #' @export
 read <- function(file_path, ...) {
-
   # Check if the input file path is a URL and if so, read from URL directly
   if (grepl("^http[s]?://", file_path, ignore.case = TRUE)) {
     return(rio::import(file_path, ...))
   }
 
   # Extract the file extension from the input file path
-  file_ext <- tools::file_ext(file_path) |>  tolower()
+  file_ext <- tools::file_ext(file_path) |> tolower()
 
   # List of supported formats
   supported_formats_rio <- c(
     "csv", "tsv", "txt", "csvy", "sas7bdat", "sav",
-    "dta", "xpt", "rdata", "xlsx", "tsv"
+    "dta", "xpt", "rdata", "tsv"
   )
 
-  # If the file extension is unsupported
-  if (file_ext %in% supported_formats_rio) {  # for tabular data
+  # Excel formats
+  excel_formats <- c("xls", "xlsx")
+
+  # Handle different file formats
+  if (file_ext %in% excel_formats) {
+    readxl::read_excel(file_path, ...)
+  } else if (file_ext %in% supported_formats_rio) { # for tabular data
     rio::import(file_path, ...)
-  } else if (file_ext  == "rds") {
-
-      con <- archive::file_read(file_path)
-      res <- readRDS(con)
-      close(con)
-      res
-
-    } else if (file_ext %in% c("shp", "json", "geojson")) { # for shapefiles
+  } else if (file_ext == "rds") {
+    con <- archive::file_read(file_path)
+    res <- readRDS(con)
+    close(con)
+    res
+  } else if (file_ext %in% c("shp", "json", "geojson")) { # for shapefiles
     sf::read_sf(file_path, ...)
   } else {
     stop(
       paste0(
-        "File format '", file_ext, "' not supported by 'rio' and 'sf'. ",
-        "Please refer to the package documentation for a full list",
+        "File format '", file_ext,
+        "' not supported by 'rio', 'sf', or 'readxl'. ",
+        "Please refer to the package documentation for a full list ",
         "of supported formats."
       )
     )
