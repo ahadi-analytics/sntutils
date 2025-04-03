@@ -10,7 +10,11 @@ consistency_check(
   cases,
   save_plot = FALSE,
   plot_path = NULL,
-  filename = "consistency_check.png"
+  language = "en",
+  compress_image = TRUE,
+  image_overwrite = TRUE,
+  compression_speed = 1,
+  compression_verbose = TRUE
 )
 }
 \arguments{
@@ -29,10 +33,25 @@ is FALSE.}
 \item{plot_path}{Character. Directory path where the plot should be saved.
 Required if save_plot is TRUE. Default is NULL.}
 
-\item{filename}{Character. Name of the file to save the plot. Default is
-"consistency_check.png".}
+\item{language}{A character string specifying the language for plot labels.
+Defaults to "en" (English). Use ISO 639-1 language codes.}
+
+\item{compress_image}{Option to compress the plot}
+
+\item{image_overwrite}{Logical. If TRUE, will overwrite existing files.
+Default is TRUE}
+
+\item{compression_speed}{Integer. Speed/quality trade-off from 1
+(brute-force) to 10 (fastest). Default is 3. Speed 10 has 5\% lower
+quality but is 8 times
+faster.}
+
+\item{compression_verbose}{Logical. Controls the amount of information
+displayed. FALSE = minimal, TRUE = detailed. Default is TRUE.}
 }
 \value{
+A ggplot2 object representing the tile plot.
+
 A \code{\link[=ggplot2]{ggplot2::ggplot()}} object showing
 the consistency between the number of tests and cases. The x-axis
 represents the cases, and the y-axis represents the tests. Each facet
