@@ -297,7 +297,7 @@ display_custom_menu <- function(title, main_header, choices_input,
   num_columns <- if (num_choices > 50) 3 else if (num_choices > 25) 2 else 1
 
   formatted_choices <- format_choices(choices_input, num_columns,
-                                      column_width = 45
+    column_width = 45
   )
   cat("\n")
   cat(formatted_choices, sep = "\n")
@@ -806,21 +806,21 @@ construct_geo_names <- function(data, level0, level1, level2,
 #'        of user decisions.
 #'
 #' @examples
-#'\donttest{
+#' \donttest{
 #' # Dummy target data
 #' target_df <- data.frame(
-#' country = c("ANGOLA", "UGA", "ZAMBIA"),
-#' province = c("CABONDA", "TESO", "LUSAKA"),
-#' district = c("BALIZE", "BOKEDEA", "RAFUNSA"),
-#' subdistrict = c("AREA1", "AREA2", "AREA3")
+#'   country = c("ANGOLA", "UGA", "ZAMBIA"),
+#'   province = c("CABONDA", "TESO", "LUSAKA"),
+#'   district = c("BALIZE", "BOKEDEA", "RAFUNSA"),
+#'   subdistrict = c("AREA1", "AREA2", "AREA3")
 #' )
 #'
 #' # Interactively clean geonames
 #' harmonize_admin_names(
-#' target_df,
-#' level0 ="country", level1 = 'province',
-#' level2 = "district",
-#' interactive = FALSE # replace with TRUE for interactivty
+#'   target_df,
+#'   level0 = "country", level1 = "province",
+#'   level2 = "district",
+#'   interactive = FALSE # replace with TRUE for interactivty
 #' )
 #' }
 #'
@@ -828,17 +828,17 @@ construct_geo_names <- function(data, level0, level1, level2,
 #' @importFrom foreach %dopar%
 #' @export
 harmonize_admin_names <- function(target_df, lookup_df = NULL,
-                          level0 = NULL,
-                          level1 = NULL,
-                          level2 = NULL,
-                          level3 = NULL,
-                          level4 = NULL,
-                          who_region = NULL,
-                          cache_path = NULL,
-                          method = "jw",
-                          stratify = TRUE,
-                          interactive = TRUE,
-                          max_options = 200) {
+                                  level0 = NULL,
+                                  level1 = NULL,
+                                  level2 = NULL,
+                                  level3 = NULL,
+                                  level4 = NULL,
+                                  who_region = NULL,
+                                  cache_path = NULL,
+                                  method = "jw",
+                                  stratify = TRUE,
+                                  interactive = TRUE,
+                                  max_options = 200) {
   # Validation -----------------------------------------------------------------
 
   # Ensure higher levels cannot be used without corresponding lower levels
@@ -1231,7 +1231,7 @@ harmonize_admin_names <- function(target_df, lookup_df = NULL,
   target_done <- target_df |>
     dplyr::filter(
       (long_geo %in%
-         unique(lookup_df[["long_geo"]]))
+        unique(lookup_df[["long_geo"]]))
     )
 
   # reduce down to only unmatched rows
@@ -1475,18 +1475,18 @@ harmonize_admin_names <- function(target_df, lookup_df = NULL,
             paste(level0_prepped, name_to_match, sep = "_"),
           is.na(longname_to_match) & level == "level2" ~
             paste(level0_prepped, level1_prepped,
-                  name_to_match,
-                  sep = "_"
+              name_to_match,
+              sep = "_"
             ),
           is.na(longname_to_match) & level == "level3" ~
             paste(level0_prepped, level1_prepped, level2_prepped,
-                  name_to_match,
-                  sep = "_"
+              name_to_match,
+              sep = "_"
             ),
           is.na(longname_to_match) & level == "level4" ~
             paste(level0_prepped, level1_prepped, level2_prepped,
-                  level3_prepped, name_to_match,
-                  sep = "_"
+              level3_prepped, name_to_match,
+              sep = "_"
             )
         )
       ) |>
@@ -1500,12 +1500,12 @@ harmonize_admin_names <- function(target_df, lookup_df = NULL,
       ) |>
       dplyr::arrange(created_time) |>
       dplyr::distinct(longname_to_match,
-                      .keep_all = TRUE
+        .keep_all = TRUE
       ) |>
       dplyr::select(-longname_to_match)
 
     # file saving
-    handle_file_save(final_cache_dfs, default_save_path =  cache_path)
+    handle_file_save(final_cache_dfs, default_save_path = cache_path)
   } else {
     cli::cli_alert_warning(
       "No cleanings were made. Cache will not be updated."
@@ -1585,8 +1585,10 @@ impute_higher_admin <- function(target_df,
     dplyr::mutate(
       !!target_higher_col := dplyr::recode(
         .data[[target_lower_col]],
-        !!!stats::setNames(lookup_df[[lookup_higher_col]],
-                    lookup_df[[lookup_lower_col]])
+        !!!stats::setNames(
+          lookup_df[[lookup_higher_col]],
+          lookup_df[[lookup_lower_col]]
+        )
       )
     )
   return(target_df)

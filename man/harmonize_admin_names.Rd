@@ -105,18 +105,18 @@ user choices and algorithmic matching.
 \donttest{
 # Dummy target data
 target_df <- data.frame(
-country = c("ANGOLA", "UGA", "ZAMBIA"),
-province = c("CABONDA", "TESO", "LUSAKA"),
-district = c("BALIZE", "BOKEDEA", "RAFUNSA"),
-subdistrict = c("AREA1", "AREA2", "AREA3")
+  country = c("ANGOLA", "UGA", "ZAMBIA"),
+  province = c("CABONDA", "TESO", "LUSAKA"),
+  district = c("BALIZE", "BOKEDEA", "RAFUNSA"),
+  subdistrict = c("AREA1", "AREA2", "AREA3")
 )
 
 # Interactively clean geonames
 harmonize_admin_names(
-target_df,
-level0 ="country", level1 = 'province',
-level2 = "district",
-interactive = FALSE # replace with TRUE for interactivty
+  target_df,
+  level0 = "country", level1 = "province",
+  level2 = "district",
+  interactive = FALSE # replace with TRUE for interactivty
 )
 }
 

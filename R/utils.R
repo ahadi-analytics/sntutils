@@ -20,8 +20,8 @@ big_mark <- function(x, decimals = NULL, big_mark = ",") {
     x <- round(x, decimals)
   }
   base::format(x,
-               big.mark = big_mark, scientific = FALSE, trim = TRUE,
-               nsmall = if (is.null(decimals)) 0 else decimals
+    big.mark = big_mark, scientific = FALSE, trim = TRUE,
+    nsmall = if (is.null(decimals)) 0 else decimals
   )
 }
 
@@ -97,4 +97,3 @@ ensure_packages <- function(pkgs) {
 
   invisible(NULL)
 }
-

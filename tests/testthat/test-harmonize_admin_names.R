@@ -69,7 +69,7 @@ testthat::test_that("handle_file_save merges with existing cache", {
 
   # Check merged results
   merged_data <- readRDS(test_file)
-  testthat::expect_equal(nrow(merged_data), 2)  # Should deduplicate
+  testthat::expect_equal(nrow(merged_data), 2) # Should deduplicate
   testthat::expect_true("new1" %in% merged_data$name_to_match)
 
   # Cleanup
@@ -175,8 +175,10 @@ testthat::test_that("calculate_string_distance works correctly", {
   # Test if the output matches expected data frame
   testthat::expect_equal(
     result$matched_names,
-    c("Los Angeles", "New York", "Chicago", "New York",
-      "Chicago", "Los Angeles")
+    c(
+      "Los Angeles", "New York", "Chicago", "New York",
+      "Chicago", "Los Angeles"
+    )
   )
 })
 
@@ -188,8 +190,10 @@ testthat::test_that("Test administrative matching stats output", {
     district = c("City1", "City2", "City1", "City4")
   )
 
-  c("Los Angeles", "New York", "Chicago", "New York",
-    "Chicago", "Los Angeles")
+  c(
+    "Los Angeles", "New York", "Chicago", "New York",
+    "Chicago", "Los Angeles"
+  )
 
   lookup_data <- data.frame(
     country = c("Country1", "Country2", "Country1", "Country3"),
@@ -209,7 +213,6 @@ testthat::test_that("Test administrative matching stats output", {
 
 
 testthat::test_that("harmonize_admin_names correctly processes admin names", {
-
   # Create a sample target data frame
   target_df <- data.frame(
     country = c("ANGOLA", "UGA", "ZAMBIA"),
@@ -219,16 +222,16 @@ testthat::test_that("harmonize_admin_names correctly processes admin names", {
     stringsAsFactors = FALSE
   )
 
-suppressMessages(
-  # Run the function in non-interactive mode
-  cleaned_df <- harmonize_admin_names(
-    target_df,
-    level0 = "country",
-    level1 = "province",
-    level2 = "district",
-    interactive = FALSE
+  suppressMessages(
+    # Run the function in non-interactive mode
+    cleaned_df <- harmonize_admin_names(
+      target_df,
+      level0 = "country",
+      level1 = "province",
+      level2 = "district",
+      interactive = FALSE
+    )
   )
-)
 
   # Check that the function returns a data frame
   testthat::expect_s3_class(cleaned_df, "data.frame")
@@ -238,9 +241,11 @@ suppressMessages(
 
   # Check that the returned data frame contains the expected columns
   testthat::expect_true(
-    all(c("country", "province",
-          "district", "subdistrict") %in% colnames(cleaned_df)))
-
+    all(c(
+      "country", "province",
+      "district", "subdistrict"
+    ) %in% colnames(cleaned_df))
+  )
 })
 
 testthat::test_that("calculate_match_stats calculates correct matches for all levels", {
@@ -288,25 +293,31 @@ testthat::test_that("calculate_match_stats calculates correct matches for all le
 
   # Verify the mock was called with correct arguments
   testthat::expect_equal(
-    mockery::mock_args(info_mock)[[1]][[1]], "Match Summary:")
+    mockery::mock_args(info_mock)[[1]][[1]], "Match Summary:"
+  )
 
   # Verify the expected matches through calculation
   level0_matches <- sum(
-    unique(data$country) %in% unique(lookup_data$country))
+    unique(data$country) %in% unique(lookup_data$country)
+  )
   level1_matches <- sum(
-    unique(data$province) %in% unique(lookup_data$province))
+    unique(data$province) %in% unique(lookup_data$province)
+  )
   level2_matches <- sum(
-    unique(data$district) %in% unique(lookup_data$district))
+    unique(data$district) %in% unique(lookup_data$district)
+  )
   level3_matches <- sum(
-    unique(data$subdistrict) %in% unique(lookup_data$subdistrict))
+    unique(data$subdistrict) %in% unique(lookup_data$subdistrict)
+  )
   level4_matches <- sum(
-    unique(data$settlement) %in% unique(lookup_data$settlement))
+    unique(data$settlement) %in% unique(lookup_data$settlement)
+  )
 
-  testthat::expect_equal(level0_matches, 3)  # USA, Canada, Brazil
-  testthat::expect_equal(level1_matches, 2)  # California, Sao Paulo
-  testthat::expect_equal(level2_matches, 2)  # Los Angeles, Sao Paulo City
-  testthat::expect_equal(level3_matches, 2)  # Hollywood, Zona Sul
-  testthat::expect_equal(level4_matches, 2)  # West Hollywood, Ipanema
+  testthat::expect_equal(level0_matches, 3) # USA, Canada, Brazil
+  testthat::expect_equal(level1_matches, 2) # California, Sao Paulo
+  testthat::expect_equal(level2_matches, 2) # Los Angeles, Sao Paulo City
+  testthat::expect_equal(level3_matches, 2) # Hollywood, Zona Sul
+  testthat::expect_equal(level4_matches, 2) # West Hollywood, Ipanema
 
   # Check that li_mock was called 5 times (once for each level)
   # testthat::expect_equal(mockery::mock_call_count(li_mock), 5)
@@ -382,7 +393,8 @@ testthat::test_that("calculate_match_stats ignores case in matches", {
   extract_results_case_insensitive <- function() {
     results <- NULL
     mockery::stub(
-      calculate_match_stats, "cli::cli_alert_info", function(...) NULL)
+      calculate_match_stats, "cli::cli_alert_info", function(...) NULL
+    )
     mockery::stub(calculate_match_stats, "cli::cli_ul", function(...) NULL)
     mockery::stub(calculate_match_stats, "cli::cli_li", function(...) NULL)
     mockery::stub(calculate_match_stats, "cli::cli_end", function(...) NULL)
@@ -416,7 +428,8 @@ testthat::test_that("calculate_match_stats ignores case in matches", {
 
   # Verify expected case-insensitive match counts
   results_case_insensitive <- environment(
-    extract_results_case_insensitive)$results
+    extract_results_case_insensitive
+  )$results
 
   # Manual calculation for verification (case-insensitive)
   expected_matches <- sum(
@@ -494,14 +507,14 @@ testthat::test_that("format_choice formats choices correctly", {
 
   # Test width exactly matching content (no padding needed)
   exact_choice <- "ABC"
-  exact_width <- 8  # "  1: " (5) + "ABC" (3)
+  exact_width <- 8 # "  1: " (5) + "ABC" (3)
   testthat::expect_equal(
     format_choice(1, exact_choice, exact_width),
     "  1: ... "
   )
 
   # Test Unicode/emoji handling
-  if (l10n_info()$UTF-8) {  # Only run on systems with UTF-8 support
+  if (l10n_info()$UTF - 8) { # Only run on systems with UTF-8 support
     emoji_choice <- "🚀 Launch"
     # Note: nchar() with UTF-8 counts emoji as 1 char
     result_emoji <- format_choice(8, emoji_choice, 15)
@@ -513,7 +526,6 @@ testthat::test_that("format_choice formats choices correctly", {
 })
 
 testthat::test_that("format_choice handles edge cases", {
-
   # Test negative index
   testthat::expect_match(
     format_choice(-1, "Negative", 15),
@@ -536,11 +548,11 @@ testthat::test_that("format_choice handles edge cases", {
   testthat::expect_error(
     format_choice(1, NULL, 20)
   )
-
 })
 
 testthat::test_that(
-  "display_custom_menu returns correct choice for numeric input", {
+  "display_custom_menu returns correct choice for numeric input",
+  {
     # Mock readline to return user input
     mockery::stub(display_custom_menu, "readline", mockery::mock("2"))
 
@@ -551,8 +563,10 @@ testthat::test_that(
 
     # Mock format_choices
     formatted_mock <- "1: Option 1\n2: Option 2\n3: Option 3"
-    mockery::stub(display_custom_menu, "format_choices",
-                  mockery::mock(formatted_mock))
+    mockery::stub(
+      display_custom_menu, "format_choices",
+      mockery::mock(formatted_mock)
+    )
 
     result <- display_custom_menu(
       title = "Select an option:",
@@ -563,10 +577,12 @@ testthat::test_that(
     )
 
     testthat::expect_equal(result, "2")
-  })
+  }
+)
 
 testthat::test_that(
-  "display_custom_menu returns correct choice for special action", {
+  "display_custom_menu returns correct choice for special action",
+  {
     # Mock readline to return a special action key
     mockery::stub(display_custom_menu, "readline", mockery::mock("x"))
 
@@ -574,8 +590,10 @@ testthat::test_that(
     mockery::stub(display_custom_menu, "cli::cli_h1", function(...) NULL)
     mockery::stub(display_custom_menu, "cli::cli_h2", function(...) NULL)
     mockery::stub(display_custom_menu, "cat", function(...) NULL)
-    mockery::stub(display_custom_menu, "format_choices",
-                  mockery::mock("Formatted choices"))
+    mockery::stub(
+      display_custom_menu, "format_choices",
+      mockery::mock("Formatted choices")
+    )
 
     result <- display_custom_menu(
       title = "Select an option:",
@@ -586,10 +604,12 @@ testthat::test_that(
     )
 
     testthat::expect_equal(result, "x")
-  })
+  }
+)
 
 testthat::test_that(
-  "display_custom_menu handles upper/lowercase special actions", {
+  "display_custom_menu handles upper/lowercase special actions",
+  {
     # Mock readline to return uppercase special action key
     mockery::stub(display_custom_menu, "readline", mockery::mock("X"))
 
@@ -597,8 +617,10 @@ testthat::test_that(
     mockery::stub(display_custom_menu, "cli::cli_h1", function(...) NULL)
     mockery::stub(display_custom_menu, "cli::cli_h2", function(...) NULL)
     mockery::stub(display_custom_menu, "cat", function(...) NULL)
-    mockery::stub(display_custom_menu, "format_choices",
-                  mockery::mock("Formatted choices"))
+    mockery::stub(
+      display_custom_menu, "format_choices",
+      mockery::mock("Formatted choices")
+    )
 
     result <- display_custom_menu(
       title = "Select an option:",
@@ -608,8 +630,9 @@ testthat::test_that(
       prompt = "Your choice: "
     )
 
-    testthat::expect_equal(result, "x")  # Should be lowercase
-  })
+    testthat::expect_equal(result, "x") # Should be lowercase
+  }
+)
 
 testthat::test_that("display_custom_menu handles invalid then valid input", {
   # Mock readline to first return invalid input, then valid input
@@ -623,8 +646,10 @@ testthat::test_that("display_custom_menu handles invalid then valid input", {
   mockery::stub(display_custom_menu, "cli::cli_h1", function(...) NULL)
   mockery::stub(display_custom_menu, "cli::cli_h2", function(...) NULL)
   mockery::stub(display_custom_menu, "cat", function(...) NULL)
-  mockery::stub(display_custom_menu, "format_choices",
-                mockery::mock("Formatted choices"))
+  mockery::stub(
+    display_custom_menu, "format_choices",
+    mockery::mock("Formatted choices")
+  )
 
   result <- display_custom_menu(
     title = "Select an option:",
@@ -638,7 +663,8 @@ testthat::test_that("display_custom_menu handles invalid then valid input", {
 })
 
 testthat::test_that(
-  "display_custom_menu calculates correct number of columns", {
+  "display_custom_menu calculates correct number of columns",
+  {
     # Mock needed functions
     mockery::stub(display_custom_menu, "readline", mockery::mock("1"))
     mockery::stub(display_custom_menu, "cli::cli_h1", function(...) NULL)
@@ -659,8 +685,9 @@ testthat::test_that(
 
     # Verify 1 column was used
     args1 <- mockery::mock_args(format_choices_spy)[[1]]
-    testthat::expect_equal(args1[[2]], 1)  # num_columns should be 1
-  })
+    testthat::expect_equal(args1[[2]], 1) # num_columns should be 1
+  }
+)
 
 testthat::test_that("display_custom_menu handles empty choices", {
   # Mock readline
@@ -670,8 +697,10 @@ testthat::test_that("display_custom_menu handles empty choices", {
   mockery::stub(display_custom_menu, "cli::cli_h1", function(...) NULL)
   mockery::stub(display_custom_menu, "cli::cli_h2", function(...) NULL)
   mockery::stub(display_custom_menu, "cat", function(...) NULL)
-  mockery::stub(display_custom_menu, "format_choices",
-                mockery::mock("No options available"))
+  mockery::stub(
+    display_custom_menu, "format_choices",
+    mockery::mock("No options available")
+  )
 
   result <- display_custom_menu(
     title = "No options available:",
@@ -692,8 +721,10 @@ testthat::test_that("display_custom_menu handles empty special actions", {
   mockery::stub(display_custom_menu, "cli::cli_h1", function(...) NULL)
   mockery::stub(display_custom_menu, "cli::cli_h2", function(...) NULL)
   mockery::stub(display_custom_menu, "cat", function(...) NULL)
-  mockery::stub(display_custom_menu, "format_choices",
-                mockery::mock("Formatted choices"))
+  mockery::stub(
+    display_custom_menu, "format_choices",
+    mockery::mock("Formatted choices")
+  )
 
   result <- display_custom_menu(
     title = "Select an option:",
@@ -719,8 +750,10 @@ testthat::test_that("display_custom_menu displays special actions correctly", {
   mockery::stub(display_custom_menu, "cli::cli_h1", function(...) NULL)
   mockery::stub(display_custom_menu, "cli::cli_h2", function(...) NULL)
   mockery::stub(display_custom_menu, "cat", mock_cat)
-  mockery::stub(display_custom_menu, "format_choices",
-                mockery::mock("Formatted choices"))
+  mockery::stub(
+    display_custom_menu, "format_choices",
+    mockery::mock("Formatted choices")
+  )
 
   special_actions <- list(
     x = "Exit the program",
@@ -740,7 +773,9 @@ testthat::test_that("display_custom_menu displays special actions correctly", {
   special_action_calls <- cat_calls[
     vapply(cat_calls, function(x) {
       any(grepl("x: Exit the program|s: Save and continue|h: Display help",
-                x, perl = TRUE))
+        x,
+        perl = TRUE
+      ))
     }, logical(1))
   ]
 
@@ -754,7 +789,8 @@ testthat::test_that("display_custom_menu displays special actions correctly", {
 
 
 testthat::test_that(
-  "handle_user_interaction processes basic selection correctly", {
+  "handle_user_interaction processes basic selection correctly",
+  {
     # Create test data
     test_data <- data.frame(
       name_to_match = c("province1", "province1", "province2"),
@@ -765,12 +801,16 @@ testthat::test_that(
 
     # Mock functions - note: we need a mock return for each unique name_to_match
     # The loop will iterate once for "province1" and once for "province2"
-    mockery::stub(handle_user_interaction, "display_custom_menu",
-                  mockery::mock("1", "1", cycle = TRUE))
+    mockery::stub(
+      handle_user_interaction, "display_custom_menu",
+      mockery::mock("1", "1", cycle = TRUE)
+    )
     mockery::stub(handle_user_interaction, "cat", function(...) NULL)
     mockery::stub(handle_user_interaction, "sample", function(x) x[1])
-    mockery::stub(handle_user_interaction,
-                  "cli::cli_alert_success", function(...) NULL)
+    mockery::stub(
+      handle_user_interaction,
+      "cli::cli_alert_success", function(...) NULL
+    )
 
     # Execute function with level1
     result <- handle_user_interaction(
@@ -787,11 +827,12 @@ testthat::test_that(
     testthat::expect_equal(nrow(result), 2)
     # Should have one row per unique name_to_match
     testthat::expect_true(all(c("province1", "province2")
-                              %in% result$name_to_match))
+    %in% result$name_to_match))
     testthat::expect_true(all(c("PROVINCE ONE", "PROVINCE TWO")
-                              %in% result$replacement))
+    %in% result$replacement))
     testthat::expect_equal(result$level, rep("level1", 2))
-  })
+  }
+)
 
 
 testthat::test_that("handle_user_interaction handles manual entry", {
@@ -804,14 +845,20 @@ testthat::test_that("handle_user_interaction handles manual entry", {
   )
 
   # Mock functions
-  mockery::stub(handle_user_interaction,
-                "display_custom_menu", mockery::mock("m"))
-  mockery::stub(handle_user_interaction,
-                "readline", mockery::mock("Manual District"))
+  mockery::stub(
+    handle_user_interaction,
+    "display_custom_menu", mockery::mock("m")
+  )
+  mockery::stub(
+    handle_user_interaction,
+    "readline", mockery::mock("Manual District")
+  )
   mockery::stub(handle_user_interaction, "cat", function(...) NULL)
   mockery::stub(handle_user_interaction, "sample", function(x) x[1])
-  mockery::stub(handle_user_interaction,
-                "cli::cli_alert_success", function(...) NULL)
+  mockery::stub(
+    handle_user_interaction,
+    "cli::cli_alert_success", function(...) NULL
+  )
 
   # Execute function with level2
   result <- handle_user_interaction(
@@ -829,10 +876,14 @@ testthat::test_that("handle_user_interaction handles manual entry", {
   testthat::expect_equal(result$name_to_match, "district1")
   testthat::expect_equal(result$replacement, "MANUAL DISTRICT")
   testthat::expect_equal(result$level, "level2")
-  testthat::expect_equal(result$longname_to_match,
-                         "country1_province1_district1")
-  testthat::expect_equal(result$longname_corrected,
-                         "country1_province1_MANUAL DISTRICT")
+  testthat::expect_equal(
+    result$longname_to_match,
+    "country1_province1_district1"
+  )
+  testthat::expect_equal(
+    result$longname_corrected,
+    "country1_province1_MANUAL DISTRICT"
+  )
 })
 
 testthat::test_that("handle_user_interaction processes multiple selections", {
@@ -840,20 +891,28 @@ testthat::test_that("handle_user_interaction processes multiple selections", {
   test_data <- data.frame(
     name_to_match = c("district1", "district2", "district3"),
     matched_names = c("District One", "District Two", "District Three"),
-    long_geo = c("country1_province1",
-                 "country1_province1", "country1_province1"),
+    long_geo = c(
+      "country1_province1",
+      "country1_province1", "country1_province1"
+    ),
     stringsAsFactors = FALSE
   )
 
   # Mock display_custom_menu to return different choices for different items
-  mockery::stub(handle_user_interaction, "display_custom_menu",
-                mockery::mock("1", "2", "s"))
+  mockery::stub(
+    handle_user_interaction, "display_custom_menu",
+    mockery::mock("1", "2", "s")
+  )
   mockery::stub(handle_user_interaction, "cat", function(...) NULL)
   mockery::stub(handle_user_interaction, "sample", function(x) x[1])
-  mockery::stub(handle_user_interaction,
-                "cli::cli_alert_info", function(...) NULL)
-  mockery::stub(handle_user_interaction,
-                "cli::cli_alert_success", function(...) NULL)
+  mockery::stub(
+    handle_user_interaction,
+    "cli::cli_alert_info", function(...) NULL
+  )
+  mockery::stub(
+    handle_user_interaction,
+    "cli::cli_alert_success", function(...) NULL
+  )
 
   # Execute function
   result <- handle_user_interaction(
@@ -887,12 +946,16 @@ testthat::test_that("handle_user_interaction handles 'Save and exit' action", {
   )
 
   # Mock to select first item then exit
-  mockery::stub(handle_user_interaction, "display_custom_menu",
-                mockery::mock("1", "e"))
+  mockery::stub(
+    handle_user_interaction, "display_custom_menu",
+    mockery::mock("1", "e")
+  )
   mockery::stub(handle_user_interaction, "cat", function(...) NULL)
   mockery::stub(handle_user_interaction, "sample", function(x) x[1])
-  mockery::stub(handle_user_interaction,
-                "cli::cli_alert_success", function(...) NULL)
+  mockery::stub(
+    handle_user_interaction,
+    "cli::cli_alert_success", function(...) NULL
+  )
 
   # Execute function
   result <- handle_user_interaction(
@@ -911,7 +974,8 @@ testthat::test_that("handle_user_interaction handles 'Save and exit' action", {
 })
 
 testthat::test_that(
-  "handle_user_interaction handles 'Exit without saving' action", {
+  "handle_user_interaction handles 'Exit without saving' action",
+  {
     # Create test data
     test_data <- data.frame(
       name_to_match = c("country1", "country2"),
@@ -921,14 +985,20 @@ testthat::test_that(
     )
 
     # Mock to select first item then quit without saving
-    mockery::stub(handle_user_interaction,
-                  "display_custom_menu", mockery::mock("q"))
-    mockery::stub(handle_user_interaction,
-                  "readline", mockery::mock("y"))
+    mockery::stub(
+      handle_user_interaction,
+      "display_custom_menu", mockery::mock("q")
+    )
+    mockery::stub(
+      handle_user_interaction,
+      "readline", mockery::mock("y")
+    )
     mockery::stub(handle_user_interaction, "cat", function(...) NULL)
     mockery::stub(handle_user_interaction, "sample", function(x) x[1])
-    mockery::stub(handle_user_interaction,
-                  "cli::cli_alert_danger", function(...) NULL)
+    mockery::stub(
+      handle_user_interaction,
+      "cli::cli_alert_danger", function(...) NULL
+    )
 
     # Execute function
     result <- handle_user_interaction(
@@ -942,7 +1012,8 @@ testthat::test_that(
 
     # Verify result is NULL when exiting without saving
     testthat::expect_null(result)
-  })
+  }
+)
 
 
 
@@ -952,8 +1023,10 @@ testthat::test_that("handle_user_interaction handles 'Go Back' action", {
   test_data <- data.frame(
     name_to_match = c("subdistrict1", "subdistrict2"),
     matched_names = c("Subdistrict One", "Subdistrict Two"),
-    long_geo = c("country1_province1_district1",
-                 "country1_province1_district1"),
+    long_geo = c(
+      "country1_province1_district1",
+      "country1_province1_district1"
+    ),
     stringsAsFactors = FALSE
   )
 
@@ -963,15 +1036,21 @@ testthat::test_that("handle_user_interaction handles 'Go Back' action", {
   # 2. Then we go back "b" (which will show subdistrict1 again)
   # 3. Then we choose "2" for subdistrict1
   # 4. Then we need a response for subdistrict2
-  mockery::stub(handle_user_interaction, "display_custom_menu",
-                mockery::mock("1", "b", "2", "1", cycle = TRUE))
+  mockery::stub(
+    handle_user_interaction, "display_custom_menu",
+    mockery::mock("1", "b", "2", "1", cycle = TRUE)
+  )
 
   mockery::stub(handle_user_interaction, "cat", function(...) NULL)
   mockery::stub(handle_user_interaction, "sample", function(x) x[1])
-  mockery::stub(handle_user_interaction,
-                "cli::cli_alert_warning", function(...) NULL)
-  mockery::stub(handle_user_interaction,
-                "cli::cli_alert_success", function(...) NULL)
+  mockery::stub(
+    handle_user_interaction,
+    "cli::cli_alert_warning", function(...) NULL
+  )
+  mockery::stub(
+    handle_user_interaction,
+    "cli::cli_alert_success", function(...) NULL
+  )
 
   # Execute function
   result <- handle_user_interaction(
@@ -1005,15 +1084,23 @@ testthat::test_that("handle_user_interaction handles empty choices", {
   )
 
   # Mock to skip all items
-  mockery::stub(handle_user_interaction,
-                "display_custom_menu", mockery::mock("s"))
+  mockery::stub(
+    handle_user_interaction,
+    "display_custom_menu", mockery::mock("s")
+  )
   mockery::stub(handle_user_interaction, "cat", function(...) NULL)
-  mockery::stub(handle_user_interaction,
-                "sample", function(x) x[1])
-  mockery::stub(handle_user_interaction,
-                "cli::cli_alert_info", function(...) NULL)
-  mockery::stub(handle_user_interaction,
-                "cli::cli_alert_warning", function(...) NULL)
+  mockery::stub(
+    handle_user_interaction,
+    "sample", function(x) x[1]
+  )
+  mockery::stub(
+    handle_user_interaction,
+    "cli::cli_alert_info", function(...) NULL
+  )
+  mockery::stub(
+    handle_user_interaction,
+    "cli::cli_alert_warning", function(...) NULL
+  )
 
   # Execute function
   result <- handle_user_interaction(
@@ -1034,24 +1121,32 @@ testthat::test_that("format_choices correctly formats single column display", {
   choices <- c("Option A", "Option B", "Option C")
 
   # Mock format_choice to return predictable responses
-  mockery::stub(format_choices, "format_choice",
-                function(index, choice, width) {
-                  sprintf("%3d: %-39s", index, choice)
-                })
+  mockery::stub(
+    format_choices, "format_choice",
+    function(index, choice, width) {
+      sprintf("%3d: %-39s", index, choice)
+    }
+  )
 
   result <- format_choices(choices, num_columns = 1, column_width = 45)
 
   # Check result structure
   testthat::expect_type(result, "character")
-  testthat::expect_length(result, 3)  # One row per choice in single column layout
+  testthat::expect_length(result, 3) # One row per choice in single column layout
 
   # Check content formatting
-  testthat::expect_equal(result[1],
-                         "  1: Option A                               ")
-  testthat::expect_equal(result[2],
-                         "  2: Option B                               ")
-  testthat::expect_equal(result[3],
-                         "  3: Option C                               ")
+  testthat::expect_equal(
+    result[1],
+    "  1: Option A                               "
+  )
+  testthat::expect_equal(
+    result[2],
+    "  2: Option B                               "
+  )
+  testthat::expect_equal(
+    result[3],
+    "  3: Option C                               "
+  )
 })
 
 testthat::test_that("format_choices correctly formats multi-column display", {
@@ -1067,15 +1162,21 @@ testthat::test_that("format_choices correctly formats multi-column display", {
 
   # Check result structure
   testthat::expect_type(result, "character")
-  testthat::expect_length(result, 3)  # 6 items in 2 columns = 3 rows
+  testthat::expect_length(result, 3) # 6 items in 2 columns = 3 rows
 
   # Check content formatting (each row should contain 2 formatted options)
-  expected_row1 <- paste0("  1: Option 1                               ",
-                          "  4: Option 4                               ")
-  expected_row2 <- paste0("  2: Option 2                               ",
-                          "  5: Option 5                               ")
-  expected_row3 <- paste0("  3: Option 3                               ",
-                          "  6: Option 6                               ")
+  expected_row1 <- paste0(
+    "  1: Option 1                               ",
+    "  4: Option 4                               "
+  )
+  expected_row2 <- paste0(
+    "  2: Option 2                               ",
+    "  5: Option 5                               "
+  )
+  expected_row3 <- paste0(
+    "  3: Option 3                               ",
+    "  6: Option 6                               "
+  )
 
   testthat::expect_equal(result[1], expected_row1)
   testthat::expect_equal(result[2], expected_row2)
@@ -1087,10 +1188,12 @@ testthat::test_that("format_choices handles partial columns correctly", {
   choices <- paste("Option", 1:5)
 
   # Mock format_choice to return predictable responses
-  mockery::stub(format_choices, "format_choice",
-                function(index, choice, width) {
-                  sprintf("%3d: %-39s", index, choice)
-                })
+  mockery::stub(
+    format_choices, "format_choice",
+    function(index, choice, width) {
+      sprintf("%3d: %-39s", index, choice)
+    }
+  )
 
   result <- format_choices(choices, num_columns = 2, column_width = 45)
 
@@ -1100,8 +1203,10 @@ testthat::test_that("format_choices handles partial columns correctly", {
   testthat::expect_length(result, 3)
 
   # Check that the last position is filled with spaces
-  expected_row3 <- paste0("  3: Option 3                               ",
-                          paste(rep(" ", 45), collapse = ""))
+  expected_row3 <- paste0(
+    "  3: Option 3                               ",
+    paste(rep(" ", 45), collapse = "")
+  )
 
   testthat::expect_equal(result[3], expected_row3)
 })
@@ -1110,22 +1215,26 @@ testthat::test_that("format_choices handles three columns correctly", {
   choices <- paste("Option", 1:9)
 
   # Mock format_choice to return predictable responses
-  mockery::stub(format_choices, "format_choice",
-                function(index, choice, width) {
-                  sprintf("%3d: %-24s", index, choice)
-                  # Shorter width for readability in test
-                })
+  mockery::stub(
+    format_choices, "format_choice",
+    function(index, choice, width) {
+      sprintf("%3d: %-24s", index, choice)
+      # Shorter width for readability in test
+    }
+  )
 
   result <- format_choices(choices, num_columns = 3, column_width = 30)
 
   # Check result structure
   testthat::expect_type(result, "character")
-  testthat::expect_length(result, 3)  # 9 items in 3 columns = 3 rows
+  testthat::expect_length(result, 3) # 9 items in 3 columns = 3 rows
 
   # Check content formatting (each row should contain 3 formatted options)
-  expected_row1 <- paste0("  1: Option 1                ",
-                          "  4: Option 4                ",
-                          "  7: Option 7                ")
+  expected_row1 <- paste0(
+    "  1: Option 1                ",
+    "  4: Option 4                ",
+    "  7: Option 7                "
+  )
 
   testthat::expect_equal(result[1], expected_row1)
 })
@@ -1135,12 +1244,14 @@ testthat::test_that("format_choices uses custom column width", {
 
   # Mock format_choice to verify width parameter is passed correctly
   width_spy <- mockery::mock()
-  mockery::stub(format_choices, "format_choice",
-                function(index, choice, width) {
-                  width_spy(width)
-                  # Adjusted for format
-                  sprintf("%3d: %-*s", index, width - 5, choice)
-                })
+  mockery::stub(
+    format_choices, "format_choice",
+    function(index, choice, width) {
+      width_spy(width)
+      # Adjusted for format
+      sprintf("%3d: %-*s", index, width - 5, choice)
+    }
+  )
 
   custom_width <- 60
   format_choices(choices, num_columns = 1, column_width = custom_width)
@@ -1150,7 +1261,8 @@ testthat::test_that("format_choices uses custom column width", {
 })
 
 testthat::test_that(
-  "harmonize_admin_names handles basic case with no cleaning needed", {
+  "harmonize_admin_names handles basic case with no cleaning needed",
+  {
     # Setup test data where everything already matches
     target_df <- data.frame(
       country = c("ANGOLA", "UGANDA", "ZAMBIA"),
@@ -1184,19 +1296,20 @@ testthat::test_that(
     testthat::expect_equal(nrow(result), nrow(target_df))
     testthat::expect_equal(result$country, target_df$country)
     testthat::expect_equal(result$province, target_df$province)
-  })
+  }
+)
 
 testthat::test_that("harmonize_admin_names validates inputs correctly", {
   # Test missing required columns
   target_df <- data.frame(
     country = c("ANGOLA", "UGANDA"),
-    region = c("CABINDA", "TESO"),  # Not matching the level1 name
+    region = c("CABINDA", "TESO"), # Not matching the level1 name
     stringsAsFactors = FALSE
   )
 
   lookup_df <- data.frame(
     country = c("ANGOLA", "UGANDA"),
-    province = c("CABINDA", "TESO"),  # Uses province instead of region
+    province = c("CABINDA", "TESO"), # Uses province instead of region
     stringsAsFactors = FALSE
   )
 
@@ -1205,7 +1318,7 @@ testthat::test_that("harmonize_admin_names validates inputs correctly", {
       target_df = target_df,
       lookup_df = lookup_df,
       level0 = "country",
-      level1 = "province",  # This column doesn't exist in target_df
+      level1 = "province", # This column doesn't exist in target_df
       interactive = FALSE
     ),
     "The following columns are missing in target_df: province"
@@ -1221,12 +1334,11 @@ testthat::test_that("harmonize_admin_names validates inputs correctly", {
     ),
     "Unsupported method"
   )
-
-}
-)
+})
 
 testthat::test_that(
-  "harmonize_admin_names handles level hierarchies correctly", {
+  "harmonize_admin_names handles level hierarchies correctly",
+  {
     # Test error when specifying levels out of order
     target_df <- data.frame(
       country = c("ANGOLA"),
@@ -1239,7 +1351,7 @@ testthat::test_that(
     testthat::expect_error(
       harmonize_admin_names(
         target_df = target_df,
-        level2 = "district",  # Missing level0 and level1
+        level2 = "district", # Missing level0 and level1
         interactive = FALSE,
         stratify = TRUE
       ),
@@ -1250,13 +1362,14 @@ testthat::test_that(
     testthat::expect_error(
       harmonize_admin_names(
         target_df = target_df,
-        level1 = "province",  # Missing level0
+        level1 = "province", # Missing level0
         interactive = FALSE,
         stratify = TRUE
       ),
       "You cannot specify level1 without level0"
     )
-  })
+  }
+)
 
 testthat::test_that("harmonize_admin_names handles empty lookup_df properly", {
   target_df <- data.frame(
@@ -1289,12 +1402,18 @@ testthat::test_that("harmonize_admin_names handles case conversion correctly", {
   )
 
   # Mock cli functions
-  mockery::stub(harmonize_admin_names,
-                "cli::cli_alert_success", function(...) NULL)
-  mockery::stub(harmonize_admin_names,
-                "cli::cli_alert_info", function(...) NULL)
-  mockery::stub(harmonize_admin_names,
-                "calculate_match_stats", function(...) NULL)
+  mockery::stub(
+    harmonize_admin_names,
+    "cli::cli_alert_success", function(...) NULL
+  )
+  mockery::stub(
+    harmonize_admin_names,
+    "cli::cli_alert_info", function(...) NULL
+  )
+  mockery::stub(
+    harmonize_admin_names,
+    "calculate_match_stats", function(...) NULL
+  )
 
   result <- harmonize_admin_names(
     target_df = target_df,
@@ -1317,8 +1436,10 @@ testthat::test_that("harmonize_admin_names handles cache path correctly", {
 
   # Mock the readline function to simulate user input
   mockery::stub(harmonize_admin_names, "readline", mockery::mock("no"))
-  mockery::stub(harmonize_admin_names, "cli::cli_alert_info",
-                function(...) NULL)
+  mockery::stub(
+    harmonize_admin_names, "cli::cli_alert_info",
+    function(...) NULL
+  )
 
   # Non-existent directory should error
   testthat::expect_error(
@@ -1347,12 +1468,18 @@ testthat::test_that("harmonize_admin_names handles missing data correctly", {
   )
 
   # Mock functions
-  mockery::stub(harmonize_admin_names, "cli::cli_alert_success",
-                function(...) NULL)
-  mockery::stub(harmonize_admin_names, "cli::cli_alert_info",
-                function(...) NULL)
-  mockery::stub(harmonize_admin_names, "calculate_match_stats",
-                function(...) NULL)
+  mockery::stub(
+    harmonize_admin_names, "cli::cli_alert_success",
+    function(...) NULL
+  )
+  mockery::stub(
+    harmonize_admin_names, "cli::cli_alert_info",
+    function(...) NULL
+  )
+  mockery::stub(
+    harmonize_admin_names, "calculate_match_stats",
+    function(...) NULL
+  )
 
   result <- harmonize_admin_names(
     target_df = target_df,
@@ -1383,17 +1510,25 @@ testthat::test_that("harmonize_admin_names can be run non-interactively", {
   )
 
   # Mock construction and functions
-  mockery::stub(harmonize_admin_names, "cli::cli_alert_success",
-                function(...) NULL)
-  mockery::stub(harmonize_admin_names, "cli::cli_alert_info",
-                function(...) NULL)
-  mockery::stub(harmonize_admin_names, "calculate_match_stats",
-                function(...) NULL)
-  mockery::stub(harmonize_admin_names, "construct_geo_names",
-                function(df, ...) {
-                  df$long_geo <- paste(df$country, df$province, sep = "_")
-                  return(df)
-                })
+  mockery::stub(
+    harmonize_admin_names, "cli::cli_alert_success",
+    function(...) NULL
+  )
+  mockery::stub(
+    harmonize_admin_names, "cli::cli_alert_info",
+    function(...) NULL
+  )
+  mockery::stub(
+    harmonize_admin_names, "calculate_match_stats",
+    function(...) NULL
+  )
+  mockery::stub(
+    harmonize_admin_names, "construct_geo_names",
+    function(df, ...) {
+      df$long_geo <- paste(df$country, df$province, sep = "_")
+      return(df)
+    }
+  )
 
   # Run function with non-interactive mode
   result <- harmonize_admin_names(
@@ -1402,7 +1537,7 @@ testthat::test_that("harmonize_admin_names can be run non-interactively", {
     level0 = "country",
     level1 = "province",
     interactive = FALSE, cache_path =
-  )
+    )
 
   # Verify result
   testthat::expect_s3_class(result, "data.frame")
@@ -1468,5 +1603,4 @@ testthat::test_that("impute_higher_admin works correctly", {
   )
 
   testthat::expect_equal(result_complex$region_code, c("BK", "BK", "Unknown"))
-
 })
