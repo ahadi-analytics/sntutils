@@ -12,7 +12,9 @@ reporting_rate_plot(
   hf_col = NULL,
   use_rep_rate = TRUE,
   full_range = TRUE,
-  language = "en",
+  target_language = "en",
+  source_language = "en",
+  lang_cache_path = tempdir(),
   save_plot = FALSE,
   plot_path = NULL,
   compress_image = TRUE,
@@ -44,8 +46,14 @@ Defaults to TRUE}
 range from 0 to 100. If FALSE, the fill scale will use the range of values
 present in the data. Defaults to TRUE.}
 
-\item{language}{A character string specifying the language for plot labels.
-Defaults to "en" (English). Use ISO 639-1 language codes.}
+\item{target_language}{A character string specifying the language for plot
+labels. Defaults to "en" (English). Use ISO 639-1 language codes.}
+
+\item{source_language}{Source language code. If NULL, auto-detection is used.
+Defaults to NULL.}
+
+\item{lang_cache_path}{Path to directory for storing translation cache.
+Defaults to tempdir().}
 
 \item{save_plot}{A logical value. If TRUE, the plot will be saved to the
 specified path. Defaults to FALSE.}

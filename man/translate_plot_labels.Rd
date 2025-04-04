@@ -4,12 +4,21 @@
 \alias{translate_plot_labels}
 \title{Translate plot labels to specified language}
 \usage{
-translate_plot_labels(plot, language)
+translate_plot_labels(
+  plot,
+  target_language,
+  source_language = "en",
+  lang_cache_path = tempdir()
+)
 }
 \arguments{
 \item{plot}{A ggplot2 object}
 
-\item{language}{Target language code}
+\item{target_language}{Target language code}
+
+\item{source_language}{Source language code (default: NULL)}
+
+\item{lang_cache_path}{Path for translation cache (default: tempdir())}
 }
 \value{
 The plot with translated labels

@@ -4,10 +4,21 @@
 \alias{get_translated_terms}
 \title{Get translated terms for plot filenames}
 \usage{
-get_translated_terms(language, x_var, vars_of_interest, data)
+get_translated_terms(
+  target_language,
+  source_language,
+  lang_cache_path,
+  x_var,
+  vars_of_interest,
+  data
+)
 }
 \arguments{
-\item{language}{Language code}
+\item{target_language}{Target language code}
+
+\item{source_language}{Source language code}
+
+\item{lang_cache_path}{Path for translation cache}
 
 \item{x_var}{X-axis variable}
 

@@ -12,7 +12,9 @@ save_single_plot(
   y_var,
   y_axis_label,
   vars_of_interest,
-  language,
+  target_language = "en",
+  source_language = "en",
+  lang_cache_path = tempdir(),
   data,
   compression_options
 )
@@ -32,7 +34,12 @@ save_single_plot(
 
 \item{vars_of_interest}{Variables being visualized}
 
-\item{language}{Language code for translation}
+\item{target_language}{Language code for translation (default: "en")}
+
+\item{source_language}{Source language code (default: NULL for
+auto-detection)}
+
+\item{lang_cache_path}{Path for translation cache (default: tempdir())}
 
 \item{data}{Original data for extracting year range}
 

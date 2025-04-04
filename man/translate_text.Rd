@@ -2,22 +2,44 @@
 % Please edit documentation in R/reporting_rate_plot.R
 \name{translate_text}
 \alias{translate_text}
-\title{Translate text to target language}
+\title{Translate text to target language with persistent file cache}
 \usage{
-translate_text(text, target_language = "en")
+translate_text(
+  text,
+  target_language = "en",
+  source_language = "en",
+  cache_path = tempdir()
+)
 }
 \arguments{
 \item{text}{Character string to translate}
 
-\item{target_language}{Target language code in ISO 639-1 format
-(default: "en")}
+\item{target_language}{Target language code (default: "en")}
+
+\item{source_language}{Source language code (default: "en" for English)}
+
+\item{cache_path}{Path to directory for storing the cache file}
 }
 \value{
 Translated text or original text if translation fails
 }
 \description{
-This function translates text to a specified target language using the
-gtranslate package. If the target language is English, translation is not
-needed and the original text is returned. The function also handles cases
-where the translation package is not available or internet connection fails.
+Uses gtranslate, and caches successful translations in a file (RDS).
+The cache is implemented as a data frame with metadata for better tracking
+and management of translations.
+}
+\examples{
+\dontrun{
+# Translate from Spanish to English
+translate_text("Hola mundo", target_language = "en", source_language = "es")
+
+# Translate to French with English as source
+translate_text("Hello world", target_language = "fr")
+
+# Use custom cache location
+translate_text("Hello world",
+  target_language = "de",
+  cache_path = "~/translation_cache"
+)
+}
 }

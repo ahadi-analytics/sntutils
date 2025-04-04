@@ -14,7 +14,9 @@ group_plot(
   title_prefix,
   y_axis_label,
   common_elements,
-  language = "en"
+  target_language = "en",
+  source_language = "en",
+  lang_cache_path = tempdir()
 )
 }
 \arguments{
@@ -38,7 +40,11 @@ missing rates}
 
 \item{common_elements}{Common ggplot elements to apply to all plots}
 
-\item{language}{Language code for labels (ISO 639-1)}
+\item{target_language}{Language code for labels (ISO 639-1)}
+
+\item{source_language}{Source language code, defaults to NULL}
+
+\item{lang_cache_path}{Path for translation cache, defaults to tempdir()}
 }
 \value{
 A ggplot2 object

@@ -603,7 +603,7 @@ testthat::test_that("reporting_rate_plot handles language parameter", {
     x_var = "month",
     y_var = "district",
     vars_of_interest = "malaria",
-    language = "en"
+    target_language = "en"
   )
 
   # Store original labels
@@ -618,7 +618,7 @@ testthat::test_that("reporting_rate_plot handles language parameter", {
       x_var = "month",
       y_var = "district",
       vars_of_interest = "malaria",
-      language = "fr",
+      target_language = "fr",
       y_axis_label = "Administrative level"
     )
   )
@@ -642,4 +642,34 @@ testthat::test_that("reporting_rate_plot handles language parameter", {
     p2$labels$y,
     "Niveau administratif"
   )
+})
+
+testthat::test_that("translate_text() handles basic translations", {
+  tmp_cache <- tempfile()
+  dir.create(tmp_cache)
+
+  res <- translate_text("Hola",
+    target_language = "en",
+    source_language = "es", cache_path = tmp_cache
+  )
+  testthat::expect_type(res, "character")
+  testthat::expect_true(res %in% c("Hello", "hello"))
+
+  res2 <- translate_text("Hola",
+    target_language = "en",
+    source_language = "es", cache_path = tmp_cache
+  )
+  testthat::expect_identical(res, res2)
+})
+
+testthat::test_that("same source and target language returns input", {
+  testthat::expect_message(
+    out <- translate_text("Bonjour",
+      target_language = "fr",
+      source_language = "fr"
+    ),
+    "Source and target languages are the same. Returning original text."
+  )
+
+  testthat::expect_identical(out, "Bonjour")
 })

@@ -463,8 +463,12 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
 #' @param full_range A logical value. If TRUE, the fill scale will use the full
 #'   range from 0 to 100. If FALSE, the fill scale will use the range of values
 #'   present in the data. Defaults to TRUE.
-#' @param language A character string specifying the language for plot labels.
-#'   Defaults to "en" (English). Use ISO 639-1 language codes.
+#' @param target_language A character string specifying the language for plot
+#'   labels. Defaults to "en" (English). Use ISO 639-1 language codes.
+#' @param source_language Source language code. If NULL, auto-detection is used.
+#'   Defaults to NULL.
+#' @param lang_cache_path Path to directory for storing translation cache.
+#'   Defaults to tempdir().
 #' @param save_plot A logical value. If TRUE, the plot will be saved to the
 #'   specified path. Defaults to FALSE.
 #' @param plot_path A character string specifying the path where the plot should
@@ -528,7 +532,9 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 hf_col = NULL,
                                 use_rep_rate = TRUE,
                                 full_range = TRUE,
-                                language = "en",
+                                target_language = "en",
+                                source_language = "en",
+                                lang_cache_path = tempdir(),
                                 save_plot = FALSE,
                                 plot_path = NULL,
                                 compress_image = TRUE,
@@ -631,7 +637,9 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       fill_label = fill_label,
       title_prefix = title_prefix,
       common_elements = common_elements,
-      language = language
+      target_language = target_language,
+      source_language = source_language,
+      lang_cache_path = lang_cache_path
     ),
     "district" = group_plot(
       plot_data = plot_data,
@@ -643,7 +651,9 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       title_prefix = title_prefix,
       y_axis_label = y_axis_label,
       common_elements = common_elements,
-      language = language
+      target_language = target_language,
+      source_language = source_language,
+      lang_cache_path = lang_cache_path
     ),
     "facility" = group_plot(
       plot_data = plot_data,
@@ -655,7 +665,9 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       title_prefix = title_prefix,
       y_axis_label = y_axis_label,
       common_elements = common_elements,
-      language = language
+      target_language = target_language,
+      source_language = source_language,
+      lang_cache_path = lang_cache_path
     )
   )
 
@@ -676,7 +688,9 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       y_var = y_var,
       y_axis_label = y_axis_label,
       vars_of_interest = vars_of_interest,
-      language = language,
+      target_language = target_language,
+      source_language = source_language,
+      lang_cache_path = lang_cache_path,
       data = data,
       compression_options = compression_options
     )
@@ -699,12 +713,16 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
 #' @param title_prefix Title prefix based on whether showing reporting or
 #'    missing rates
 #' @param common_elements Common ggplot elements to apply to all plots
-#' @param language Language code for labels (ISO 639-1), defaults to "en"
+#' @param target_language Language code for labels (ISO 639-1), defaults to "en"
+#' @param source_language Source language code, defaults to NULL
+#' @param lang_cache_path Path for translation cache, defaults to tempdir()
 #'
 #' @return A ggplot2 object
 variables_plot <- function(plot_data, x_var, vars_of_interest,
                            fill_var, fill_label, title_prefix,
-                           common_elements, language = "en") {
+                           common_elements, target_language = "en",
+                           source_language = "en",
+                           lang_cache_path = tempdir()) {
   # Create plot with variables on y-axis
   plot <- ggplot2::ggplot(
     plot_data,
@@ -726,8 +744,13 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
     )
 
   # Translate labels if needed
-  if (language != "en") {
-    plot <- translate_plot_labels(plot, language)
+  if (target_language != "en") {
+    plot <- translate_plot_labels(
+      plot,
+      target_language = target_language,
+      source_language = source_language,
+      lang_cache_path = lang_cache_path
+    )
   }
 
   return(plot)
@@ -749,12 +772,16 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
 #'    missing rates
 #' @param y_axis_label Label for the y-axis
 #' @param common_elements Common ggplot elements to apply to all plots
-#' @param language Language code for labels (ISO 639-1)
+#' @param target_language Language code for labels (ISO 639-1)
+#' @param source_language Source language code, defaults to NULL
+#' @param lang_cache_path Path for translation cache, defaults to tempdir()
 #'
 #' @return A ggplot2 object
 group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
                        fill_var, fill_label, title_prefix,
-                       y_axis_label, common_elements, language = "en") {
+                       y_axis_label, common_elements, target_language = "en",
+                       source_language = "en",
+                       lang_cache_path = tempdir()) {
   # Create plot with grouping variable on y-axis
   plot <- ggplot2::ggplot(
     plot_data,
@@ -777,8 +804,13 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
     )
 
   # Translate labels if needed
-  if (language != "en") {
-    plot <- translate_plot_labels(plot, language)
+  if (target_language != "en") {
+    plot <- translate_plot_labels(
+      plot,
+      target_language = target_language,
+      source_language = source_language,
+      lang_cache_path = lang_cache_path
+    )
   }
 
   return(plot)
@@ -793,14 +825,20 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
 #' @param y_var The grouping variable name (if any)
 #' @param y_axis_label Label for the y-axis
 #' @param vars_of_interest Variables being visualized
-#' @param language Language code for translation
+#' @param target_language Language code for translation (default: "en")
+#' @param source_language Source language code (default: NULL for
+#'    auto-detection)
+#' @param lang_cache_path Path for translation cache (default: tempdir())
 #' @param data Original data for extracting year range
 #' @param compression_options List with compression settings
 #'
 #' @return Invisible path to the saved file
 save_single_plot <- function(plot, plot_data, plot_path,
                              x_var, y_var, y_axis_label, vars_of_interest,
-                             language, data, compression_options) {
+                             target_language = "en",
+                             source_language = "en",
+                             lang_cache_path = tempdir(),
+                             data, compression_options) {
   # Create directory if it doesn't exist
   if (!dir.exists(plot_path)) {
     dir_created <- dir.create(plot_path,
@@ -814,8 +852,12 @@ save_single_plot <- function(plot, plot_data, plot_path,
 
   # Get common translated terms for filenames
   translated_terms <- get_translated_terms(
-    language, x_var,
-    vars_of_interest, data
+    target_language = target_language,
+    source_language = source_language,
+    lang_cache_path = lang_cache_path,
+    x_var = x_var,
+    vars_of_interest = vars_of_interest,
+    data = data
   )
 
   # Add y_var to filename if provided
@@ -823,7 +865,12 @@ save_single_plot <- function(plot, plot_data, plot_path,
     paste0("_&_", tolower(
       gsub(
         " ", "_",
-        translate_text(y_var, language)
+        translate_text(
+          y_var,
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
       )
     ))
   } else {
@@ -832,7 +879,12 @@ save_single_plot <- function(plot, plot_data, plot_path,
 
   # Simplify vars_of_interest for filename if there are too many
   vars_of_interest_str <- if (length(vars_of_interest) > 3) {
-    translate_text("multiple variables", language) |>
+    translate_text(
+      "multiple variables",
+      target_language = target_language,
+      source_language = source_language,
+      cache_path = lang_cache_path
+    ) |>
       tolower() |>
       gsub(" ", "_", x = _)
   } else {
@@ -878,7 +930,12 @@ save_single_plot <- function(plot, plot_data, plot_path,
         )
       }
 
-      success_msg <- translate_text("Plot saved to:", language)
+      success_msg <- translate_text(
+        "Plot saved to:",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
       cli::cli_alert_success(paste(success_msg, full_path))
     },
     error = function(e) {
@@ -932,13 +989,17 @@ calculate_plot_dimensions <- function(plot_data, x_var, y_var = NULL) {
 
 #' Get translated terms for plot filenames
 #'
-#' @param language Language code
+#' @param target_language Target language code
+#' @param source_language Source language code
+#' @param lang_cache_path Path for translation cache
 #' @param x_var X-axis variable
 #' @param vars_of_interest Variables being visualized
 #' @param data Original data for year range
 #'
 #' @return List of translated terms
-get_translated_terms <- function(language, x_var, vars_of_interest, data) {
+get_translated_terms <- function(target_language, source_language,
+                                 lang_cache_path, x_var,
+                                 vars_of_interest, data) {
   # Determine prefix based on what we're showing
   if ("rep_rate" %in% names(data)) {
     save_title_prefix <- "reporting rate"
@@ -947,20 +1008,45 @@ get_translated_terms <- function(language, x_var, vars_of_interest, data) {
   }
 
   # Translate and format the prefix
-  save_title_prefix_tr <- translate_text(save_title_prefix, language) |>
+  save_title_prefix_tr <- translate_text(
+    save_title_prefix,
+    target_language = target_language,
+    source_language = source_language,
+    cache_path = lang_cache_path
+  ) |>
     tolower() |>
     gsub(" ", "_", x = _)
 
   # Format x_var for title
   x_title <- if (x_var == "yearmon") "year and month" else x_var
-  x_title <- translate_text(x_title, language) |>
+  x_title <- translate_text(
+    x_title,
+    target_language = target_language,
+    source_language = source_language,
+    cache_path = lang_cache_path
+  ) |>
     tolower() |>
     gsub(" ", "_", x = _)
 
   # Translate common words
-  for_word <- translate_text("for", language)
-  by_word <- translate_text("by", language)
-  in_word <- translate_text("in", language)
+  for_word <- translate_text(
+    "for",
+    target_language = target_language,
+    source_language = source_language,
+    cache_path = lang_cache_path
+  )
+  by_word <- translate_text(
+    "by",
+    target_language = target_language,
+    source_language = source_language,
+    cache_path = lang_cache_path
+  )
+  in_word <- translate_text(
+    "in",
+    target_language = target_language,
+    source_language = source_language,
+    cache_path = lang_cache_path
+  )
 
   # Format vars_of_interest for filename
   vars_of_interest_str <- if (length(vars_of_interest) > 1) {
@@ -994,10 +1080,14 @@ get_translated_terms <- function(language, x_var, vars_of_interest, data) {
 #' Translate plot labels to specified language
 #'
 #' @param plot A ggplot2 object
-#' @param language Target language code
+#' @param target_language Target language code
+#' @param source_language Source language code (default: NULL)
+#' @param lang_cache_path Path for translation cache (default: tempdir())
 #'
 #' @return The plot with translated labels
-translate_plot_labels <- function(plot, language) {
+translate_plot_labels <- function(plot, target_language,
+                                  source_language = "en",
+                                  lang_cache_path = tempdir()) {
   # get gtranslate if missing
   ensure_packages(c("gtranslate"))
 
@@ -1009,7 +1099,12 @@ translate_plot_labels <- function(plot, language) {
     if (!is.null(plot_labs[[lab_name]]) && plot_labs[[lab_name]] != "") {
       # Special handling for markdown-formatted title
       if (lab_name == "title") {
-        orig_title <- translate_text(plot_labs[[lab_name]], language)
+        orig_title <- translate_text(
+          plot_labs[[lab_name]],
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
 
         # Convert title to sentence case
         orig_title <- tools::toTitleCase(tolower(orig_title))
@@ -1022,7 +1117,9 @@ translate_plot_labels <- function(plot, language) {
         # Standard translation for other labels
         plot_labs[[lab_name]] <- translate_text(
           plot_labs[[lab_name]],
-          language
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
         )
       }
     }
@@ -1032,54 +1129,169 @@ translate_plot_labels <- function(plot, language) {
   plot + do.call(ggplot2::labs, plot_labs)
 }
 
-#' Translate text to target language
+#' Translate text to target language with persistent file cache
 #'
-#' This function translates text to a specified target language using the
-#' gtranslate package. If the target language is English, translation is not
-#' needed and the original text is returned. The function also handles cases
-#' where the translation package is not available or internet connection fails.
+#' Uses gtranslate, and caches successful translations in a file (RDS).
+#' The cache is implemented as a data frame with metadata for better tracking
+#' and management of translations.
 #'
 #' @param text Character string to translate
-#' @param target_language Target language code in ISO 639-1 format
-#'    (default: "en")
+#' @param target_language Target language code (default: "en")
+#' @param source_language Source language code (default: "en" for English)
+#' @param cache_path Path to directory for storing the cache file
 #'
 #' @return Translated text or original text if translation fails
 #' @export
-translate_text <- function(text, target_language = "en") {
-  # get gtranslate and curl if missing
-  # ensure_packages(c("gtranslate", "curl"))
-
-  if (requireNamespace("curl", quietly = TRUE)) {
-    # Use curl if available (more reliable)
-    has_connection <- curl::has_internet()
-  } else {
-    # Fall back to basic check
-    has_connection <- tryCatch(
-      {
-        con <- url("https://www.google.com", "r")
-        close(con)
-        TRUE
-      },
-      error = function(e) FALSE
+#'
+#' @examples
+#' \dontrun{
+#' # Translate from Spanish to English
+#' translate_text("Hola mundo", target_language = "en", source_language = "es")
+#'
+#' # Translate to French with English as source
+#' translate_text("Hello world", target_language = "fr")
+#'
+#' # Use custom cache location
+#' translate_text("Hello world",
+#'   target_language = "de",
+#'   cache_path = "~/translation_cache"
+#' )
+#' }
+translate_text <- function(text,
+                           target_language = "en",
+                           source_language = "en",
+                           cache_path = tempdir()) {
+  # Check if source and target languages are the same
+  if (source_language == target_language) {
+    cli::cli_inform(
+      c(
+        "i" = paste0(
+          "Source and target languages are the ",
+          "same. Returning original text."
+        )
+      )
     )
-  }
-
-  # Return original text if no internet connection
-  if (!has_connection) {
-    message("No internet connection available. Skipping translation.")
     return(text)
   }
 
-  # Try to translate, falling back to original text on error
-  tryCatch(
+  # Set up cache
+  if (!dir.exists(cache_path)) {
+    dir.create(cache_path, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  cache_file <- file.path(cache_path, "translation_cache.rds")
+
+  # Ensure digest is available
+  if (!requireNamespace("digest", quietly = TRUE)) {
+    stop("Package 'digest' is required for translation caching")
+  }
+
+  # Load or initialize cache as a data frame
+  if (file.exists(cache_file)) {
+    cache <- readRDS(cache_file)
+    # Convert legacy list cache to data frame if needed
+    if (is.list(cache) && !is.data.frame(cache)) {
+      cache <- data.frame(
+        key = names(cache),
+        text = unlist(cache, use.names = FALSE),
+        original_text = text,
+        to_lang = target_language,
+        from_lang = source_language,
+        usage_count = 1,
+        stringsAsFactors = FALSE
+      )
+    }
+  } else {
+    cache <- data.frame(
+      key = character(),
+      text = character(),
+      original_text = character(),
+      to_lang = character(),
+      from_lang = character(),
+      usage_count = integer(),
+      stringsAsFactors = TRUE
+    )
+  }
+
+  # Create a unique key for this text and language combination
+  source_suffix <- paste0("_from_", source_language)
+
+  # Normalize text by removing accents for more consistent caching
+  normalized_text <- text
+  if (requireNamespace("stringi", quietly = TRUE)) {
+    normalized_text <- stringi::stri_trans_general(text, "Latin-ASCII")
+  }
+
+  key <- digest::digest(paste0(
+    normalized_text, "_",
+    target_language, source_suffix
+  ))
+
+  # Return from cache if available
+  cache_match <- cache$key == key
+  if (any(cache_match)) {
+    match_idx <- which(cache_match)[1]
+    # Update usage count
+    cache$usage_count[match_idx] <- cache$usage_count[match_idx] + 1
+    saveRDS(cache, cache_file)
+    return(as.character(cache$text[match_idx]))
+  }
+
+  # Check for internet connection
+  has_internet <- function() {
+    if (requireNamespace("curl", quietly = TRUE)) {
+      curl::has_internet()
+    } else {
+      tryCatch(
+        {
+          con <- url("https://www.google.com", "r")
+          close(con)
+          TRUE
+        },
+        error = function(e) FALSE
+      )
+    }
+  }
+
+  if (!has_internet()) {
+    message("No internet connection. Skipping translation.")
+    return(text)
+  }
+
+  # Try to translate
+  result <- tryCatch(
     {
-      gtranslate::translate(text, to = target_language)
+      if (!requireNamespace("gtranslate", quietly = TRUE)) {
+        stop("Package 'gtranslate' is required for translation")
+      }
+      gtranslate::translate(
+        text,
+        to = target_language,
+        from = source_language
+      )
     },
     error = function(e) {
       message("Translation failed: ", e$message)
-      return(text)
+      text
     }
   )
+
+  # Cache if successful
+  if (!identical(result, text)) {
+    cache <- rbind(cache, data.frame(
+      key = key,
+      text = result,
+      original_text = text,
+      to_lang = target_language,
+      from_lang = source_language,
+      usage_count = 1,
+      stringsAsFactors = TRUE
+    ))
+    rownames(cache) <- NULL
+    saveRDS(cache, cache_file)
+  }
+
+  result
 }
 
 #' Create common ggplot elements
