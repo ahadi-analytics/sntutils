@@ -14,18 +14,18 @@
 #'   is FALSE.
 #' @param plot_path Character. Directory path where the plot should be saved.
 #'   Required if save_plot is TRUE. Default is NULL.
-#' @param language A character string specifying the language for plot labels.
-#'   Defaults to "en" (English). Use ISO 639-1 language codes.
-#' @return A ggplot2 object representing the tile plot.
-#' @param compress_image Option to compress the plot
-#' @param image_overwrite Logical. If TRUE, will overwrite existing files.
-#'    Default is TRUE
-#' @param compression_speed Integer. Speed/quality trade-off from 1
-#'    (brute-force) to 10 (fastest). Default is 3. Speed 10 has 5% lower
-#'    quality but is 8 times
-#'    faster.
-#' @param compression_verbose Logical. Controls the amount of information
-#'     displayed. FALSE = minimal, TRUE = detailed. Default is TRUE.
+#' @param target_language A character string specifying the language for plot
+#'   labels. Defaults to "en" (English). Use ISO 639-1 language codes.
+#' @param source_language Source language code, defaults to "en"
+#' @param lang_cache_path Path for translation cache, defaults to tempdir()
+#' @param compress_image Logical. If TRUE, the saved image will be compressed.
+#'   Default is TRUE.
+#' @param image_overwrite Logical. If TRUE, existing image will be overwritten.
+#'   Default is TRUE.
+#' @param compression_speed Integer from 1-10. Speed of compression
+#'   (1=slow/high compression). Default is 1.
+#' @param compression_verbose Logical. If TRUE, compression details will be
+#'   printed. Default is TRUE.
 #'
 #' @return A \code{\link[=ggplot2]{ggplot2::ggplot()}} object showing
 #'   the consistency between the number of tests and cases. The x-axis
@@ -65,22 +65,30 @@
 consistency_check <- function(data, tests, cases,
                               save_plot = FALSE,
                               plot_path = NULL,
-                              language = "en",
+                              target_language = "en",
+                              source_language = "en",
+                              lang_cache_path = tempdir(),
                               compress_image = TRUE,
                               image_overwrite = TRUE,
                               compression_speed = 1,
                               compression_verbose = TRUE) {
-  # ensure relevant packages are installed
-  # ensure_packages(c("ggtext", "scales"))
+  # Ensure relevant packages are installed
+  ensure_packages(c("ggtext", "scales"))
 
   # Check if the length of tests and cases are the same
   if (length(tests) != length(cases)) {
-    stop("The length of 'tests' and 'cases' must be the same.")
+    cli::cli_abort(c(
+      "!" = "The length of 'tests' and 'cases' must be the same.",
+      "i" = "Run `rlang::last_trace()` to see where the error occurred."
+    ))
   }
 
   # Check if plot_path is provided when save_plot is TRUE
   if (save_plot && is.null(plot_path)) {
-    stop("plot_path must be provided when save_plot is TRUE.")
+    cli::cli_abort(c(
+      "!" = "plot_path must be provided when save_plot is TRUE.",
+      "i" = "Run `rlang::last_trace()` to see where the error occurred."
+    ))
   }
 
   # Initialize a data frame to store results
@@ -111,10 +119,10 @@ consistency_check <- function(data, tests, cases,
     inconsistent_count <- nrow(inconsistency)
     inconsistent_prop <- inconsistent_count / nrow(data) * 100
     inconsistent_rows[[i]] <- inconsistency
-    disease_name <- paste(
-      test_column, case_column,
-      sprintf("(n=%d, %.1f%%)", inconsistent_count, inconsistent_prop),
-      sep = " vs "
+    disease_name <- paste0(
+      test_column, " vs ", case_column,
+      " (n=", inconsistent_count, ", ",
+      sprintf("%.1f%%", inconsistent_prop), ")"
     )
 
     results <- rbind(
@@ -128,25 +136,19 @@ consistency_check <- function(data, tests, cases,
 
     # Check if there are more tests than cases
     if (inconsistent_count == 0) {
-      message(
-        crayon::green(
-          glue::glue(
-            "Consistency test passed for {disease_name}: ",
-            "There are more tests than there are cases!"
-          )
+      cli::cli_alert_success(
+        glue::glue(
+          "Consistency test passed for {disease_name}: ",
+          "There are more tests than there are cases!"
         )
       )
     } else {
-      message(
-        crayon::red(
-          glue::glue(
-            "Consistency test failed for {disease_name}: ",
-            "There are {scales::comma(inconsistent_count)} ",
-            "({round(inconsistent_prop, 2)}%) ",
-            "rows where cases are greater than tests."
-          )
-        )
-      )
+      cli::cli_alert_warning(paste0(
+        "Consistency test failed for ", disease_name, ": There are ",
+        scales::comma(inconsistent_count), " (",
+        round(inconsistent_prop, 2),
+        "%) rows where cases are greater than tests."
+      ))
     }
   }
 
@@ -167,15 +169,13 @@ consistency_check <- function(data, tests, cases,
       slope = 1,
       color = "darkred"
     ) +
-    ggplot2::theme_bw() +
     ggplot2::facet_wrap(~disease, scales = "free") +
     ggplot2::labs(
       y = "Cases",
       x = "Tests",
-      title = paste(
-        "<span style = 'font-size:10pt'><b style='color",
-        ":#526A83'>Consistency Check</b>: Comparing",
-        "the number of tests and cases</span>"
+      title = paste0(
+        "<span style = 'font-size:10pt'><b style='color:#526A83'>",
+        "Consistency Check</b>: Comparing the number of tests and cases</span>"
       )
     ) +
     ggplot2::theme_minimal() +
@@ -212,47 +212,68 @@ consistency_check <- function(data, tests, cases,
       expand = c(0, 0)
     )
 
-
-
   # Translate labels if language is not English
-  if (language != "en") {
-    plot$labels$x <- translate_text(plot$labels$x, language)
-    plot$labels$y <- translate_text(plot$labels$y, language)
-    plot$labels$title <- translate_text(plot$labels$title, language)
-    # Remove any spaces between ** and the text, handling multiple spaces
-    plot$labels$title <- gsub(
-      "\\*\\*\\s+(.*?)\\s+\\*\\*", "**\\1**",
-      plot$labels$title
+  if (target_language != "en") {
+    plot <- translate_plot_labels(
+      plot,
+      target_language = target_language,
+      source_language = source_language,
+      lang_cache_path = lang_cache_path
     )
   }
 
   # Save the plot if requested
   if (save_plot) {
-    save_title <- gsub(
-      " ", "_",
-      translate_text(
-        paste0(
-          "consistency checks comparing malaria cases against tests"
-        ), language
-      )
-    ) |> tolower()
-
-    year_range <- if (
-      min(data$year, na.rm = T) != max(data$year, na.rm = T)) {
-      glue::glue("{min(data$year, na.rm = T)}-{max(data$year, na.rm = T)}")
-    } else {
-      min(date$year)
-    }
-
-    basename <- glue::glue(
-      "{save_title}",
-      "_{year_range}_{format(Sys.Date(), '%Y-%m-%d')}.png"
+    # Get common translated terms for filenames
+    translated_terms <- get_translated_terms(
+      target_language = target_language,
+      source_language = source_language,
+      lang_cache_path = lang_cache_path,
+      x_var = "tests",
+      vars_of_interest = paste(tests, collapse = "_"),
+      data = data
     )
 
     # Create directory if it doesn't exist
     if (!dir.exists(plot_path)) {
-      dir.create(plot_path, recursive = TRUE)
+      dir_created <- dir.create(plot_path,
+        recursive = TRUE, showWarnings = FALSE
+      )
+      if (!dir_created) {
+        cli::cli_warn("Could not create directory: {plot_path}")
+        return(invisible(NULL))
+      }
     }
+
+    # Construct filename
+    save_title <- translate_text(
+      "consistency_check",
+      target_language = target_language,
+      source_language = source_language,
+      cache_path = lang_cache_path
+    ) |>
+      tolower() |>
+      gsub(" ", "_", x = _)
+
+    # Get year range
+    year_range <- if ("year" %in% names(data) &&
+      min(data$year, na.rm = TRUE) !=
+        max(data$year, na.rm = TRUE)) {
+      paste0(
+        min(data$year, na.rm = TRUE), "-",
+        max(data$year, na.rm = TRUE)
+      )
+    } else if ("year" %in% names(data)) {
+      as.character(min(data$year, na.rm = TRUE))
+    } else {
+      format(Sys.Date(), "%Y")
+    }
+
+    basename <- paste0(
+      save_title, "_for_", paste(tests, collapse = "_"), "_vs_",
+      paste(cases, collapse = "_"), "_", year_range, "_",
+      format(Sys.Date(), "%Y-%m-%d"), ".png"
+    )
 
     full_path <- file.path(plot_path, basename)
 
@@ -261,27 +282,48 @@ consistency_check <- function(data, tests, cases,
     width <- min(10, max(6, n_vars * 3))
     height <- min(8, max(4, n_vars * 2))
 
-    # Save the plot
-    ggplot2::ggsave(
-      filename = full_path,
-      plot = plot,
-      width = width,
-      height = height,
-      dpi = 300
-    )
+    # Try to save the plot
+    tryCatch(
+      {
+        ggplot2::ggsave(
+          filename = full_path,
+          plot = plot,
+          width = width,
+          height = height,
+          dpi = 300
+        )
 
-    success_msg <- translate_text("Plot saved to:", language)
-    cli::cli_alert_success(
-      paste(success_msg, full_path)
-    )
+        # Close device to prevent warnings
+        if (grDevices::dev.cur() > 1) {
+          grDevices::dev.off()
+        }
 
-    if (compress_image) {
-      snt::compress_png(full_path,
-        verbosity = compression_verbose,
-        speed = compression_speed,
-        png_overwrite = image_overwrite
-      )
-    }
+        # Compress if requested
+        if (compress_image && file.exists(full_path)) {
+          compress_png(
+            full_path,
+            verbosity = compression_verbose,
+            speed = compression_speed,
+            png_overwrite = image_overwrite
+          )
+        }
+
+        success_msg <- translate_text(
+          "Plot saved to:",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        cli::cli_alert_success(paste(success_msg, full_path))
+      },
+      error = function(e) {
+        # Close device on error
+        if (grDevices::dev.cur() > 1) {
+          grDevices::dev.off()
+        }
+        cli::cli_warn("Failed to save plot to {full_path}: {e$message}")
+      }
+    )
   }
 
   return(plot)

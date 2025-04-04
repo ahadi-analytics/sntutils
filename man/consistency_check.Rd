@@ -10,7 +10,9 @@ consistency_check(
   cases,
   save_plot = FALSE,
   plot_path = NULL,
-  language = "en",
+  target_language = "en",
+  source_language = "en",
+  lang_cache_path = tempdir(),
   compress_image = TRUE,
   image_overwrite = TRUE,
   compression_speed = 1,
@@ -33,25 +35,26 @@ is FALSE.}
 \item{plot_path}{Character. Directory path where the plot should be saved.
 Required if save_plot is TRUE. Default is NULL.}
 
-\item{language}{A character string specifying the language for plot labels.
-Defaults to "en" (English). Use ISO 639-1 language codes.}
+\item{target_language}{A character string specifying the language for plot
+labels. Defaults to "en" (English). Use ISO 639-1 language codes.}
 
-\item{compress_image}{Option to compress the plot}
+\item{source_language}{Source language code, defaults to "en"}
 
-\item{image_overwrite}{Logical. If TRUE, will overwrite existing files.
-Default is TRUE}
+\item{lang_cache_path}{Path for translation cache, defaults to tempdir()}
 
-\item{compression_speed}{Integer. Speed/quality trade-off from 1
-(brute-force) to 10 (fastest). Default is 3. Speed 10 has 5\% lower
-quality but is 8 times
-faster.}
+\item{compress_image}{Logical. If TRUE, the saved image will be compressed.
+Default is TRUE.}
 
-\item{compression_verbose}{Logical. Controls the amount of information
-displayed. FALSE = minimal, TRUE = detailed. Default is TRUE.}
+\item{image_overwrite}{Logical. If TRUE, existing image will be overwritten.
+Default is TRUE.}
+
+\item{compression_speed}{Integer from 1-10. Speed of compression
+(1=slow/high compression). Default is 1.}
+
+\item{compression_verbose}{Logical. If TRUE, compression details will be
+printed. Default is TRUE.}
 }
 \value{
-A ggplot2 object representing the tile plot.
-
 A \code{\link[=ggplot2]{ggplot2::ggplot()}} object showing
 the consistency between the number of tests and cases. The x-axis
 represents the cases, and the y-axis represents the tests. Each facet
