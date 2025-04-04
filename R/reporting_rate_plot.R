@@ -692,7 +692,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       source_language = source_language,
       lang_cache_path = lang_cache_path,
       data = data,
-      compression_options = compression_options
+      compression_options = compression_options,
+      use_rep_rate = use_rep_rate
     )
   }
 
@@ -831,14 +832,17 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
 #' @param lang_cache_path Path for translation cache (default: tempdir())
 #' @param data Original data for extracting year range
 #' @param compression_options List with compression settings
-#'
+#' @param use_rep_rate A logical value. If TRUE, the reporting rate is
+#'   visualized; otherwise, the proportion of missing data is visualized.
+#'   Defaults to TRUE
 #' @return Invisible path to the saved file
 save_single_plot <- function(plot, plot_data, plot_path,
                              x_var, y_var, y_axis_label, vars_of_interest,
                              target_language = "en",
                              source_language = "en",
                              lang_cache_path = tempdir(),
-                             data, compression_options) {
+                             data, compression_options,
+                             use_rep_rate) {
   # Create directory if it doesn't exist
   if (!dir.exists(plot_path)) {
     dir_created <- dir.create(plot_path,
@@ -857,7 +861,8 @@ save_single_plot <- function(plot, plot_data, plot_path,
     lang_cache_path = lang_cache_path,
     x_var = x_var,
     vars_of_interest = vars_of_interest,
-    data = data
+    data = data,
+    use_rep_rate = use_rep_rate
   )
 
   # Add y_var to filename if provided
@@ -995,13 +1000,16 @@ calculate_plot_dimensions <- function(plot_data, x_var, y_var = NULL) {
 #' @param x_var X-axis variable
 #' @param vars_of_interest Variables being visualized
 #' @param data Original data for year range
+#' @param use_rep_rate A logical value. If TRUE, the reporting rate is
+#'   visualized; otherwise, the proportion of missing data is visualized.
+#'   Defaults to TRUE
 #'
 #' @return List of translated terms
 get_translated_terms <- function(target_language, source_language,
                                  lang_cache_path, x_var,
-                                 vars_of_interest, data) {
+                                 vars_of_interest, data, use_rep_rate) {
   # Determine prefix based on what we're showing
-  if ("rep_rate" %in% names(data)) {
+  if (use_rep_rate) {
     save_title_prefix <- "reporting rate"
   } else {
     save_title_prefix <- "missing rate"
