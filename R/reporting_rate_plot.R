@@ -1197,7 +1197,8 @@ translate_text <- function(text,
         original_text = text,
         to_lang = target_language,
         from_lang = source_language,
-        usage_count = 1,
+        translated_time = format(Sys.time(), tz = "UTC", usetz = TRUE),
+        name_of_creator = Sys.getenv("RSTUDIO_USER_IDENTITY"),
         stringsAsFactors = FALSE
       )
     }
@@ -1208,7 +1209,8 @@ translate_text <- function(text,
       original_text = character(),
       to_lang = character(),
       from_lang = character(),
-      usage_count = integer(),
+      translated_time = character(),
+      name_of_creator = character(),
       stringsAsFactors = TRUE
     )
   }
@@ -1231,8 +1233,6 @@ translate_text <- function(text,
   cache_match <- cache$key == key
   if (any(cache_match)) {
     match_idx <- which(cache_match)[1]
-    # Update usage count
-    cache$usage_count[match_idx] <- cache$usage_count[match_idx] + 1
     saveRDS(cache, cache_file)
     return(as.character(cache$text[match_idx]))
   }
@@ -1284,7 +1284,8 @@ translate_text <- function(text,
       original_text = text,
       to_lang = target_language,
       from_lang = source_language,
-      usage_count = 1,
+      translated_time = format(Sys.time(), tz = "UTC", usetz = TRUE),
+      name_of_creator = Sys.getenv("RSTUDIO_USER_IDENTITY"),
       stringsAsFactors = TRUE
     ))
     rownames(cache) <- NULL
@@ -1292,6 +1293,59 @@ translate_text <- function(text,
   }
 
   result
+}
+
+#' Vectorized version of translate_text function
+#'
+#' This function applies the translate_text function to each element of a
+#' character vector, allowing for batch translation of multiple text strings.
+#' It preserves the original text if translation fails or returns NA.
+#'
+#' @param text A character vector containing strings to translate
+#' @param ... Additional arguments passed to translate_text function, such as:
+#'   \itemize{
+#'     \item target_language: Target language code (default: "en")
+#'     \item source_language: Source language code (default: "en")
+#'     \item cache_path: Path to directory for storing the cache file
+#'   }
+#'
+#' @return A character vector of the same length as the input, containing
+#'   translated strings or the original strings if translation failed
+#'
+#' @seealso \code{\link{translate_text}} for translating individual strings
+#'
+#' @examples
+#' \dontrun{
+#' # Translate multiple strings from English to French
+#' translate_text_vec(
+#'   c("Hello world", "Good morning", "Thank you"),
+#'   target_language = "fr"
+#' )
+#'
+#' # Translate with custom cache location
+#' translate_text_vec(
+#'   c("Data analysis", "Statistical model"),
+#'   target_language = "es",
+#'   cache_path = "~/translation_cache"
+#' )
+#' }
+#'
+#' @export
+translate_text_vec <- function(text, ...) {
+  data.frame(original = text) |>
+    dplyr::mutate(
+      translated = purrr::map_chr(
+        original,
+        function(x) {
+          res <- translate_text(x, ...)
+          if (length(res) == 0 || is.na(res)) {
+            return(x)
+          }
+          res
+        }
+      )
+    ) |>
+    dplyr::pull(translated)
 }
 
 #' Create common ggplot elements
