@@ -9,6 +9,6 @@ globalVariables(
     "name_of_creator", "name_to_match", "replacement", "pngquant_path",
     "data", "num", "adm2_col", "value", "date_col", "y_var", "var_pres",
     "rep", "hf", "missrate", "reprate", "setNames", "x", "y", ".",
-    "translated", "original"
+    "translated", "original", ".getSerializeVersion"
   )
 )

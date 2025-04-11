@@ -26,7 +26,7 @@ testthat::test_that(
     testthat::expect_true(
       all(
         c(
-          "month", "district", "num",
+          "month", "district", "exp",
           "rep", "reprate", "missrate"
         ) %in% names(result1)
       )
@@ -53,7 +53,7 @@ testthat::test_that(
       all(
         c(
           "month", "district",
-          "num", "rep", "reprate", "missrate"
+          "exp", "rep", "reprate", "missrate"
         ) %in% names(result2)
       )
     )
@@ -75,7 +75,7 @@ testthat::test_that(
     testthat::expect_true(
       all(
         c(
-          "month", "district", "variable", "num",
+          "month", "district", "variable", "exp",
           "rep", "reprate", "missrate"
         ) %in% names(result3)
       )
@@ -93,7 +93,7 @@ testthat::test_that(
     testthat::expect_true(
       all(c(
         "month", "variable",
-        "num", "rep",
+        "exp", "rep",
         "reprate", "missrate"
       ) %in% names(result4))
     )
@@ -140,7 +140,7 @@ testthat::test_that(
     testthat::expect_true(
       all(
         c(
-          "month", "district", "num",
+          "month", "district", "exp",
           "rep", "reprate"
         ) %in% names(result1$plot_data)
       )
@@ -168,7 +168,7 @@ testthat::test_that(
     testthat::expect_true(
       all(c(
         "month", "variable",
-        "num", "rep", "reprate"
+        "exp", "rep", "reprate"
       ) %in% names(result2$plot_data))
     )
 
@@ -191,7 +191,7 @@ testthat::test_that(
     ) %in% names(result3)))
     testthat::expect_true(
       all(c(
-        "month", "district", "num",
+        "month", "district", "exp",
         "rep", "reprate"
       ) %in% names(result3$plot_data))
     )
@@ -215,7 +215,7 @@ testthat::test_that(
 
     testthat::expect_true(
       all(c(
-        "month", "district", "num", "rep",
+        "month", "district", "exp", "rep",
         "missrate"
       ) %in% names(result4$plot_data))
     )
@@ -247,7 +247,7 @@ testthat::test_that("prepare_plot_data handles edge cases correctly", {
   testthat::expect_type(result1, "list")
   testthat::expect_true(
     all(c(
-      "month", "district", "num",
+      "month", "district", "exp",
       "rep", "reprate"
     ) %in% names(result1$plot_data))
   )
@@ -268,7 +268,7 @@ testthat::test_that("prepare_plot_data handles edge cases correctly", {
   testthat::expect_true(
     all(c(
       "month", "district",
-      "num", "rep", "reprate"
+      "exp", "rep", "reprate"
     ) %in% names(result2$plot_data))
   )
 
@@ -287,7 +287,7 @@ testthat::test_that("prepare_plot_data handles edge cases correctly", {
   testthat::expect_type(result3, "list")
   testthat::expect_true(
     all(c(
-      "month", "district", "num",
+      "month", "district", "exp",
       "rep", "reprate"
     ) %in% names(result3$plot_data))
   )

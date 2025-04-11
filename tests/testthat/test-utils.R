@@ -66,3 +66,36 @@ testthat::test_that(
     testthat::expect_invisible(ensure_packages(invalid_pkgs))
   }
 )
+
+
+# Test for vdigest function
+testthat::test_that("vdigest works correctly", {
+  # Test with character vector
+  testthat::expect_equal(
+    length(vdigest(c("a", "b", "c"))),
+    3
+  )
+
+  # Test with iris Species
+  testthat::expect_equal(
+    length(vdigest(as.character(iris$Species))),
+    length(iris$Species)
+  )
+
+  # Test that output is character
+  testthat::expect_type(
+    vdigest(c("test")),
+    "character"
+  )
+
+  # Test that different inputs give different hashes
+  testthat::expect_false(
+    vdigest("a") == vdigest("b")
+  )
+
+  # Test that same inputs give same hashes
+  testthat::expect_equal(
+    vdigest("test"),
+    vdigest("test")
+  )
+})

@@ -97,3 +97,26 @@ ensure_packages <- function(pkgs) {
 
   invisible(NULL)
 }
+
+#' Vectorized version of digest::digest
+#'
+#' This function applies the digest::digest function to each element of a
+#' vector, returning a vector of hash values.
+#'
+#' @param object An R object to calculate a hash value for
+#' @param algo The hashing algorithm to be used. See digest::digest for options
+#' @param serialize Whether to serialize the object first. Default TRUE
+#' @param file A filename to read from. Default FALSE
+#' @param length The number of characters to read from file. Default NULL
+#' @param skip Number of bytes to skip before reading file. Default 0
+#' @param ascii If TRUE, return hash in ASCII format. Default FALSE
+#' @param raw If TRUE, return raw vector. Default FALSE
+#' @param seed Random seed for hash. Default 0
+#' @param errormode Error mode for file reading. Default "stop"
+#' @param serializeVersion Version used in serialization. Default NULL
+#' @return A character vector of hash values
+#' @examples
+#' vdigest(c("a", "b", "c"))
+#' vdigest(as.character(iris$Species))
+#' @export
+vdigest <- Vectorize(digest::digest)
