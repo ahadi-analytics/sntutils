@@ -24,7 +24,7 @@ variables_plot(
 
 \item{vars_of_interest}{Variables to analyze for reporting rates}
 
-\item{fill_var}{The column to use for fill values ("rep_rate" or "propmiss")}
+\item{fill_var}{The column to use for fill values ("reprate" or "missrate")}
 
 \item{fill_label}{Label for the fill scale}
 

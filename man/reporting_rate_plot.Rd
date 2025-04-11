@@ -10,7 +10,7 @@ reporting_rate_plot(
   y_var = NULL,
   vars_of_interest = NULL,
   hf_col = NULL,
-  use_rep_rate = TRUE,
+  use_reprate = TRUE,
   full_range = TRUE,
   target_language = "en",
   source_language = "en",
@@ -38,7 +38,7 @@ to be visualized in 'data'. If NULL, all variables except 'x_var' and
 
 \item{hf_col}{Facility variable name if needed}
 
-\item{use_rep_rate}{A logical value. If TRUE, the reporting rate is
+\item{use_reprate}{A logical value. If TRUE, the reporting rate is
 visualized; otherwise, the proportion of missing data is visualized.
 Defaults to TRUE}
 
@@ -121,7 +121,7 @@ reporting_rate_plot(
   data = hf_data,
   x_var = "month",
   vars_of_interest = c("malaria", "pneumonia"),
-  use_rep_rate = FALSE
+  use_reprate = FALSE
 )
 
 # Scenario 3: Facility-level analysis - reporting rate by facility

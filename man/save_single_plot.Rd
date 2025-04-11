@@ -16,7 +16,9 @@ save_single_plot(
   source_language = "en",
   lang_cache_path = tempdir(),
   data,
-  compression_options
+  compression_options,
+  use_reprate,
+  save_title_prefix
 )
 }
 \arguments{
@@ -44,6 +46,13 @@ auto-detection)}
 \item{data}{Original data for extracting year range}
 
 \item{compression_options}{List with compression settings}
+
+\item{use_reprate}{A logical value. If TRUE, the reporting rate is
+visualized; otherwise, the proportion of missing data is visualized.
+Defaults to TRUE}
+
+\item{save_title_prefix}{A string prefix for the plot title and filename.
+If NULL, a default prefix will be used based on the visualization type.}
 }
 \value{
 Invisible path to the saved file

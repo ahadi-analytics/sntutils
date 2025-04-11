@@ -10,6 +10,7 @@ get_translated_terms(
   lang_cache_path,
   x_var,
   vars_of_interest,
+  save_title_prefix,
   data
 )
 }
@@ -23,6 +24,9 @@ get_translated_terms(
 \item{x_var}{X-axis variable}
 
 \item{vars_of_interest}{Variables being visualized}
+
+\item{save_title_prefix}{A string prefix for the plot title and filename.
+If NULL, a default prefix will be used based on the visualization type.}
 
 \item{data}{Original data for year range}
 }

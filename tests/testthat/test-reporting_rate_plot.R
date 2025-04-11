@@ -27,14 +27,14 @@ testthat::test_that(
       all(
         c(
           "month", "district", "num",
-          "n_reported", "rep_rate", "miss_rate"
+          "rep", "reprate", "missrate"
         ) %in% names(result1)
       )
     )
 
     testthat::expect_true(
       all(
-        result1$rep_rate >= 0 & result1$rep_rate <= 100
+        result1$reprate >= 0 & result1$reprate <= 100
       )
     )
 
@@ -53,13 +53,13 @@ testthat::test_that(
       all(
         c(
           "month", "district",
-          "num", "n_reported", "rep_rate", "miss_rate"
+          "num", "rep", "reprate", "missrate"
         ) %in% names(result2)
       )
     )
 
     testthat::expect_true(
-      all(result2$miss_rate >= 0 & result2$miss_rate <= 100)
+      all(result2$missrate >= 0 & result2$missrate <= 100)
     )
 
     # Test 3: Multiple variables
@@ -76,7 +76,7 @@ testthat::test_that(
       all(
         c(
           "month", "district", "variable", "num",
-          "n_reported", "rep_rate", "miss_rate"
+          "rep", "reprate", "missrate"
         ) %in% names(result3)
       )
     )
@@ -93,8 +93,8 @@ testthat::test_that(
     testthat::expect_true(
       all(c(
         "month", "variable",
-        "num", "n_reported",
-        "rep_rate", "miss_rate"
+        "num", "rep",
+        "reprate", "missrate"
       ) %in% names(result4))
     )
   }
@@ -120,7 +120,7 @@ testthat::test_that(
       y_var = "district",
       vars_of_interest = "malaria",
       by_facility = FALSE,
-      use_rep_rate = TRUE
+      use_reprate = TRUE
     )
 
     testthat::expect_type(
@@ -141,7 +141,7 @@ testthat::test_that(
       all(
         c(
           "month", "district", "num",
-          "n_reported", "rep_rate"
+          "rep", "reprate"
         ) %in% names(result1$plot_data)
       )
     )
@@ -154,7 +154,7 @@ testthat::test_that(
       y_var = NULL,
       vars_of_interest = c("malaria", "pneumonia"),
       by_facility = FALSE,
-      use_rep_rate = TRUE
+      use_reprate = TRUE
     )
 
     testthat::expect_type(result2, "list")
@@ -168,7 +168,7 @@ testthat::test_that(
     testthat::expect_true(
       all(c(
         "month", "variable",
-        "num", "n_reported", "rep_rate"
+        "num", "rep", "reprate"
       ) %in% names(result2$plot_data))
     )
 
@@ -180,7 +180,7 @@ testthat::test_that(
       vars_of_interest = "malaria",
       by_facility = TRUE,
       hf_col = "facility_id",
-      use_rep_rate = TRUE
+      use_reprate = TRUE
     )
 
     testthat::expect_type(result3, "list")
@@ -192,7 +192,7 @@ testthat::test_that(
     testthat::expect_true(
       all(c(
         "month", "district", "num",
-        "n_reported", "rep_rate"
+        "rep", "reprate"
       ) %in% names(result3$plot_data))
     )
 
@@ -203,7 +203,7 @@ testthat::test_that(
       y_var = "district",
       vars_of_interest = "malaria",
       by_facility = FALSE,
-      use_rep_rate = FALSE
+      use_reprate = FALSE
     )
 
     testthat::expect_type(result4, "list")
@@ -215,8 +215,8 @@ testthat::test_that(
 
     testthat::expect_true(
       all(c(
-        "month", "district", "num", "n_reported",
-        "miss_rate"
+        "month", "district", "num", "rep",
+        "missrate"
       ) %in% names(result4$plot_data))
     )
   }
@@ -241,14 +241,14 @@ testthat::test_that("prepare_plot_data handles edge cases correctly", {
     vars_of_interest = "malaria",
     by_facility = TRUE,
     hf_col = "facility_id",
-    use_rep_rate = TRUE
+    use_reprate = TRUE
   )
 
   testthat::expect_type(result1, "list")
   testthat::expect_true(
     all(c(
       "month", "district", "num",
-      "n_reported", "rep_rate"
+      "rep", "reprate"
     ) %in% names(result1$plot_data))
   )
 
@@ -261,14 +261,14 @@ testthat::test_that("prepare_plot_data handles edge cases correctly", {
     y_var = "district",
     vars_of_interest = "malaria",
     by_facility = FALSE,
-    use_rep_rate = TRUE
+    use_reprate = TRUE
   )
 
   testthat::expect_type(result2, "list")
   testthat::expect_true(
     all(c(
       "month", "district",
-      "num", "n_reported", "rep_rate"
+      "num", "rep", "reprate"
     ) %in% names(result2$plot_data))
   )
 
@@ -281,14 +281,14 @@ testthat::test_that("prepare_plot_data handles edge cases correctly", {
     y_var = "district",
     vars_of_interest = "malaria",
     by_facility = FALSE,
-    use_rep_rate = TRUE
+    use_reprate = TRUE
   )
 
   testthat::expect_type(result3, "list")
   testthat::expect_true(
     all(c(
       "month", "district", "num",
-      "n_reported", "rep_rate"
+      "rep", "reprate"
     ) %in% names(result3$plot_data))
   )
 })
@@ -395,13 +395,13 @@ testthat::test_that("reporting_rate_plot handles basic variable scenario", {
   # Rather than checking exact limits (which depend on data values)
   testthat::expect_false(identical(p1, p2))
 
-  # Test with use_rep_rate=FALSE to show missing rate instead
+  # Test with use_reprate=FALSE to show missing rate instead
   testthat::expect_no_error(
     p3 <- reporting_rate_plot(
       data = hf_data,
       x_var = "month",
       vars_of_interest = c("malaria", "pneumonia"),
-      use_rep_rate = FALSE
+      use_reprate = FALSE
     )
   )
 })

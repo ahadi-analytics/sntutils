@@ -4,14 +4,14 @@
 \alias{create_common_elements}
 \title{Create common ggplot elements}
 \usage{
-create_common_elements(fill_var, fill_limits, use_rep_rate = TRUE)
+create_common_elements(fill_var, fill_limits, use_reprate = TRUE)
 }
 \arguments{
 \item{fill_var}{Fill variable name}
 
 \item{fill_limits}{Limits for the fill scale}
 
-\item{use_rep_rate}{Whether to use reporting rate colors}
+\item{use_reprate}{Whether to use reporting rate colors}
 }
 \value{
 List of ggplot elements to apply to plots

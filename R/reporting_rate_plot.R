@@ -136,8 +136,8 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
   calculate_rates <- function(df) {
     df |>
       dplyr::mutate(
-        rep_rate = (n_reported / num) * 100,
-        miss_rate = ((num - n_reported) / num) * 100
+        reprate = (rep / exp) * 100,
+        missrate = ((exp - rep) / exp) * 100
       )
   }
 
@@ -153,7 +153,7 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
       stats::setNames(data[, mget(selected_cols)], names(selected_cols))
     )
     unique_dt <- unique(tmp_dt)
-    hf_counts <- unique_dt[, .(num = .N), by = .(x, y)]
+    hf_counts <- unique_dt[, .(exp = .N), by = .(x, y)]
 
     # Create renamed columns in original data
     data[, x := get(x_var)]
@@ -166,7 +166,7 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
 
     # Get presence by facility
     var_present <- unique(data[, .(x, y, hf, var_pres)])[
-      , .(n_reported = sum(var_pres)),
+      , .(rep = sum(var_pres)),
       by = .(x, y)
     ]
 
@@ -175,13 +175,13 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
       hf_counts, var_present,
       by = c("x", "y"), all.x = TRUE
     )
-    merged_result[, n_reported := data.table::fifelse(
-      is.na(n_reported), 0L, n_reported
+    merged_result[, rep := data.table::fifelse(
+      is.na(rep), 0L, rep
     )]
 
     # Calculate reporting rates
-    merged_result[, rep_rate := (n_reported / num) * 100]
-    merged_result[, miss_rate := ((num - n_reported) / num) * 100]
+    merged_result[, reprate := (rep / exp) * 100]
+    merged_result[, missrate := ((exp - rep) / exp) * 100]
 
     # Rename x and y back to original column names
     data.table::setnames(merged_result, "x", x_var)
@@ -207,16 +207,16 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
         dplyr::across(dplyr::all_of(c(x_var, y_var, "variable")))
       ) |>
       dplyr::summarise(
-        num = dplyr::n(),
-        n_reported = sum(!is.na(value)),
+        exp = dplyr::n(),
+        rep = sum(!is.na(value)),
         .groups = "drop"
       ) |>
       calculate_rates() |>
       dplyr::select(
         dplyr::all_of(
           c(
-            x_var, y_var, "variable", "num", "n_reported",
-            "rep_rate", "miss_rate"
+            x_var, y_var, "variable", "exp", "rep",
+            "reprate", "missrate"
           )
         )
       )
@@ -233,16 +233,16 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
     result <- long_data |>
       dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, "variable")))) |>
       dplyr::summarise(
-        num = dplyr::n(),
-        n_reported = sum(!is.na(value)),
+        exp = dplyr::n(),
+        rep = sum(!is.na(value)),
         .groups = "drop"
       ) |>
       calculate_rates() |>
       dplyr::select(
         dplyr::all_of(
           c(
-            x_var, "variable", "num", "n_reported",
-            "rep_rate", "miss_rate"
+            x_var, "variable", "exp", "rep",
+            "reprate", "missrate"
           )
         )
       )
@@ -268,7 +268,7 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
 #' @param by_facility Logical. If TRUE, compute by facility
 #' @param hf_col Character. Name of health facility ID column (required
 #'    if by_facility)
-#' @param use_rep_rate Logical. If TRUE, return reporting rate. Else, missing
+#' @param use_reprate Logical. If TRUE, return reporting rate. Else, missing
 #'    rate
 #'
 #' @return A list with plot_data and plotting metadata
@@ -296,7 +296,7 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
 #'   x_var = "month",
 #'   y_var = "district",
 #'   vars_of_interest = c("malaria", "pneumonia"),
-#'   use_rep_rate = TRUE
+#'   use_reprate = TRUE
 #' )
 #' # Returns list with plot_data and metadata for district-level visualization
 #'
@@ -305,7 +305,7 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
 #'   data = hf_data,
 #'   x_var = "month",
 #'   vars_of_interest = c("malaria", "pneumonia"),
-#'   use_rep_rate = FALSE
+#'   use_reprate = FALSE
 #' )
 #' # Returns list with plot_data and metadata for variable-level visualization
 #'
@@ -322,7 +322,7 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
 #' @export
 prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
                               by_facility = FALSE, hf_col = NULL,
-                              use_rep_rate = TRUE) {
+                              use_reprate = TRUE) {
   ensure_packages(c("dtplyr"))
 
   # Input validation
@@ -386,13 +386,13 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
   # Determine fill variable and labels based on
   # reporting/missing rate choice
   fill_var <- if (
-    use_rep_rate) {
-    "rep_rate"
+    use_reprate) {
+    "reprate"
   } else {
-    "miss_rate"
+    "missrate"
   }
   fill_label <- if (
-    use_rep_rate) {
+    use_reprate) {
     "Reporting rate (%)"
   } else {
     "Missing rate (%)"
@@ -403,8 +403,19 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
   } else {
     "Variable"
   }
-  title_prefix <- if (
-    use_rep_rate) {
+
+  # Determine prefix based on what we're showing
+  save_title_prefix <- if (by_facility) {
+    "Health facility reporting rate"
+  } else if (use_reprate) {
+    "reporting rate"
+  } else {
+    "missing rate"
+  }
+
+  title_prefix <- if (by_facility) {
+    "Health facility reporting rate of "
+  } else if (use_reprate) {
     "Reporting rate of "
   } else {
     "The proportion of missing data for "
@@ -435,7 +446,8 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
     y_axis_label = y_axis_label,
     title_prefix = title_prefix,
     title_vars = title_vars,
-    title_suffix = title_suffix
+    title_suffix = title_suffix,
+    save_title_prefix = save_title_prefix
   ))
 }
 
@@ -457,7 +469,7 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
 #'   to be visualized in 'data'. If NULL, all variables except 'x_var' and
 #'   'y_var' will be used.
 #' @param hf_col Facility variable name if needed
-#' @param use_rep_rate A logical value. If TRUE, the reporting rate is
+#' @param use_reprate A logical value. If TRUE, the reporting rate is
 #'   visualized; otherwise, the proportion of missing data is visualized.
 #'   Defaults to TRUE
 #' @param full_range A logical value. If TRUE, the fill scale will use the full
@@ -515,7 +527,7 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
 #'   data = hf_data,
 #'   x_var = "month",
 #'   vars_of_interest = c("malaria", "pneumonia"),
-#'   use_rep_rate = FALSE
+#'   use_reprate = FALSE
 #' )
 #'
 #' # Scenario 3: Facility-level analysis - reporting rate by facility
@@ -530,7 +542,7 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
 reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 vars_of_interest = NULL,
                                 hf_col = NULL,
-                                use_rep_rate = TRUE,
+                                use_reprate = TRUE,
                                 full_range = TRUE,
                                 target_language = "en",
                                 source_language = "en",
@@ -594,7 +606,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     vars_of_interest = vars_of_interest,
     by_facility = scenario == "facility",
     hf_col = hf_col,
-    use_rep_rate = use_rep_rate
+    use_reprate = use_reprate
   )
 
   # Extract prepared data components
@@ -603,6 +615,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
   fill_var <- prepared_data$fill_var
   fill_label <- prepared_data$fill_label
   title_prefix <- prepared_data$title_prefix
+  save_title_prefix <- prepared_data$save_title_prefix
 
   # Set default y_axis_label if not provided
   if (is.null(y_axis_label)) {
@@ -624,7 +637,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
   common_elements <- create_common_elements(
     fill_var = fill_var,
     fill_limits = fill_limits,
-    use_rep_rate = use_rep_rate
+    use_reprate = use_reprate
   )
 
   # Create plot based on scenario
@@ -693,7 +706,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       lang_cache_path = lang_cache_path,
       data = data,
       compression_options = compression_options,
-      use_rep_rate = use_rep_rate
+      use_reprate = use_reprate,
+      save_title_prefix = save_title_prefix
     )
   }
 
@@ -709,7 +723,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
 #' @param plot_data The data frame containing summarized health facility data
 #' @param x_var The time variable for plotting (e.g., "year", "month")
 #' @param vars_of_interest Variables to analyze for reporting rates
-#' @param fill_var The column to use for fill values ("rep_rate" or "propmiss")
+#' @param fill_var The column to use for fill values ("reprate" or "missrate")
 #' @param fill_label Label for the fill scale
 #' @param title_prefix Title prefix based on whether showing reporting or
 #'    missing rates
@@ -767,7 +781,7 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
 #' @param x_var The time variable name (e.g., "year", "month")
 #' @param y_var The grouping variable name (e.g., "district", "state")
 #' @param vars_of_interest Variables being visualized for missing data
-#' @param fill_var The column to use for fill values ("rep_rate" or "propmiss")
+#' @param fill_var The column to use for fill values ("reprate" or "missrate")
 #' @param fill_label Label for the fill scale
 #' @param title_prefix Title prefix based on whether showing reporting or
 #'    missing rates
@@ -832,17 +846,21 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
 #' @param lang_cache_path Path for translation cache (default: tempdir())
 #' @param data Original data for extracting year range
 #' @param compression_options List with compression settings
-#' @param use_rep_rate A logical value. If TRUE, the reporting rate is
+#' @param use_reprate A logical value. If TRUE, the reporting rate is
 #'   visualized; otherwise, the proportion of missing data is visualized.
 #'   Defaults to TRUE
+#' @param save_title_prefix A string prefix for the plot title and filename.
+#'   If NULL, a default prefix will be used based on the visualization type.
+#'
 #' @return Invisible path to the saved file
 save_single_plot <- function(plot, plot_data, plot_path,
-                             x_var, y_var, y_axis_label, vars_of_interest,
+                             x_var, y_var, y_axis_label,
+                             vars_of_interest,
                              target_language = "en",
                              source_language = "en",
                              lang_cache_path = tempdir(),
                              data, compression_options,
-                             use_rep_rate) {
+                             use_reprate, save_title_prefix) {
   # Create directory if it doesn't exist
   if (!dir.exists(plot_path)) {
     dir_created <- dir.create(plot_path,
@@ -861,8 +879,8 @@ save_single_plot <- function(plot, plot_data, plot_path,
     lang_cache_path = lang_cache_path,
     x_var = x_var,
     vars_of_interest = vars_of_interest,
-    data = data,
-    use_rep_rate = use_rep_rate
+    save_title_prefix = save_title_prefix,
+    data = data
   )
 
   # Add y_var to filename if provided
@@ -991,7 +1009,6 @@ calculate_plot_dimensions <- function(plot_data, x_var, y_var = NULL) {
   # Return dimensions
   return(list(width = width, height = height))
 }
-
 #' Get translated terms for plot filenames
 #'
 #' @param target_language Target language code
@@ -999,22 +1016,14 @@ calculate_plot_dimensions <- function(plot_data, x_var, y_var = NULL) {
 #' @param lang_cache_path Path for translation cache
 #' @param x_var X-axis variable
 #' @param vars_of_interest Variables being visualized
+#' @param save_title_prefix A string prefix for the plot title and filename.
+#'   If NULL, a default prefix will be used based on the visualization type.
 #' @param data Original data for year range
-#' @param use_rep_rate A logical value. If TRUE, the reporting rate is
-#'   visualized; otherwise, the proportion of missing data is visualized.
-#'   Defaults to TRUE
 #'
 #' @return List of translated terms
 get_translated_terms <- function(target_language, source_language,
                                  lang_cache_path, x_var,
-                                 vars_of_interest, data, use_rep_rate) {
-  # Determine prefix based on what we're showing
-  if (use_rep_rate) {
-    save_title_prefix <- "reporting rate"
-  } else {
-    save_title_prefix <- "missing rate"
-  }
-
+                                 vars_of_interest, save_title_prefix, data) {
   # Translate and format the prefix
   save_title_prefix_tr <- translate_text(
     save_title_prefix,
@@ -1360,12 +1369,12 @@ translate_text_vec <- function(text, ...) {
 #'
 #' @param fill_var Fill variable name
 #' @param fill_limits Limits for the fill scale
-#' @param use_rep_rate Whether to use reporting rate colors
+#' @param use_reprate Whether to use reporting rate colors
 #'
 #' @return List of ggplot elements to apply to plots
-create_common_elements <- function(fill_var, fill_limits, use_rep_rate = TRUE) {
+create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
   # Set up plot aesthetics
-  color_pal <- if (use_rep_rate) {
+  color_pal <- if (use_reprate) {
     rev(wesanderson::wes_palette("Zissou1", 100, type = "continuous"))
   } else {
     wesanderson::wes_palette("Zissou1", 100, type = "continuous")

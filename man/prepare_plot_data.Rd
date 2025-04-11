@@ -11,7 +11,7 @@ prepare_plot_data(
   vars_of_interest,
   by_facility = FALSE,
   hf_col = NULL,
-  use_rep_rate = TRUE
+  use_reprate = TRUE
 )
 }
 \arguments{
@@ -28,7 +28,7 @@ prepare_plot_data(
 \item{hf_col}{Character. Name of health facility ID column (required
 if by_facility)}
 
-\item{use_rep_rate}{Logical. If TRUE, return reporting rate. Else, missing
+\item{use_reprate}{Logical. If TRUE, return reporting rate. Else, missing
 rate}
 }
 \value{
@@ -67,7 +67,7 @@ district_plot_data <- prepare_plot_data(
   x_var = "month",
   y_var = "district",
   vars_of_interest = c("malaria", "pneumonia"),
-  use_rep_rate = TRUE
+  use_reprate = TRUE
 )
 # Returns list with plot_data and metadata for district-level visualization
 
@@ -76,7 +76,7 @@ variable_plot_data <- prepare_plot_data(
   data = hf_data,
   x_var = "month",
   vars_of_interest = c("malaria", "pneumonia"),
-  use_rep_rate = FALSE
+  use_reprate = FALSE
 )
 # Returns list with plot_data and metadata for variable-level visualization
 

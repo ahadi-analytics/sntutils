@@ -231,7 +231,8 @@ consistency_check <- function(data, tests, cases,
       lang_cache_path = lang_cache_path,
       x_var = "tests",
       vars_of_interest = paste(tests, collapse = "_"),
-      data = data
+      data = data,
+      save_title_prefix = "consistency check"
     )
 
     # Create directory if it doesn't exist
@@ -245,35 +246,13 @@ consistency_check <- function(data, tests, cases,
       }
     }
 
-    # Construct filename
-    save_title <- translate_text(
-      "consistency_check",
-      target_language = target_language,
-      source_language = source_language,
-      cache_path = lang_cache_path
-    ) |>
-      tolower() |>
-      gsub(" ", "_", x = _)
-
-    # Get year range
-    year_range <- if ("year" %in% names(data) &&
-      min(data$year, na.rm = TRUE) !=
-        max(data$year, na.rm = TRUE)) {
-      paste0(
-        min(data$year, na.rm = TRUE), "-",
-        max(data$year, na.rm = TRUE)
-      )
-    } else if ("year" %in% names(data)) {
-      as.character(min(data$year, na.rm = TRUE))
-    } else {
-      format(Sys.Date(), "%Y")
-    }
-
-    basename <- paste0(
-      save_title, "_for_", paste(tests, collapse = "_"), "_vs_",
-      paste(cases, collapse = "_"), "_", year_range, "_",
-      format(Sys.Date(), "%Y-%m-%d"), ".png"
-    )
+    basename <- glue::glue(
+      "{translated_terms$prefix}_{translated_terms$for_word}_",
+      "{paste(tests[0:3], collapse = '_')}_vs_",
+      "{paste(cases[0:3], collapse = '_')}_",
+      "{translated_terms$year_range}_",
+      "{format(Sys.Date(), '%Y-%m-%d')}.png"
+    ) |> stringr::str_remove_all("_NA")
 
     full_path <- file.path(plot_path, basename)
 
