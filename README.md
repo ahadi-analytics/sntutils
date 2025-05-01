@@ -3,7 +3,7 @@
 
 ## What is snt?
 
-`snt` is an R package developed by 'AHADI-Anlaytics'. It provides a suite of 
+`snt` is an R package developed by AHADI. It provides a suite of 
 analytical tools to support the subnational tailoring (SNT) of malaria 
 interventions, enabling evidence-based decision-making at the district level. 
 It provides functions for data management, cleaning, and analysis, including 
