@@ -1,9 +1,9 @@
 # <img src="man/figures/logo.png" align="right" height="139" alt="" />
-# snt-utils
+# sntutils
 
-## What is snt-utils?
+## What is sntutils?
 
-`snt-utils` is an R package developed by AHADI to support the Subnational Tailoring (SNT) of malaria interventions. It provides utility functions that standardize and streamline data preparation, cleaning, management, visualization, and analysis, facilitating evidence-based decision-making at district level or below
+`sntutils` is an R package developed by AHADI to support the Subnational Tailoring (SNT) of malaria interventions. It provides utility functions that standardize and streamline data preparation, cleaning, management, visualization, and analysis, facilitating evidence-based decision-making at district level or below
 
 ## :wrench: Installation
 The package can be installed using `devtools` in R. The steps are as follows:
@@ -12,8 +12,8 @@ The package can be installed using `devtools` in R. The steps are as follows:
 # 1) Install devtools if you haven't already
 install.packages("devtools")
 
-# 2) Install the snt-utils package from GitHub
-devtools::install_github("ahadi-analytics/snt-utils")
+# 2) Install the sntutils package from GitHub
+devtools::install_github("ahadi-analytics/sntutils")
 ```
 
 ## Usage
@@ -25,8 +25,8 @@ devtools::install_github("ahadi-analytics/snt-utils")
 Inspired by `rio`, the read function allows you to read data from a wide range of file formats. Additional reading options specific to each format can be passed through the ellipsis (...) argument. Similarly, the save function provides a simple way to export data into various formats.
 
 ``` r
-# Load the snt-utils package
-library(snt-utils)
+# Load the sntutils package
+library(sntutils)
 
 # Reading a CSV file with a specific seperator
 data_csv <- read("path/to/your/file.csv", sep = "\n")
