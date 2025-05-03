@@ -1,4 +1,4 @@
 library(testthat)
-library(snt)
+library(snt-utils)
 
-test_check("snt")
+test_check("snt-utils")
