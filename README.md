@@ -185,7 +185,7 @@ variables of interest:
 ``` r
 # Example data with inconsistent admin names
 sl_dhis2 <- readRDS("inst/extdata/sl_exmaple_dhis2.rds") |> 
-  dplyr::filter(date >= "2018.01")
+  dplyr::filter(date >= "2020.01")
 
 # Calculate reporting rates by date and district
 calculate_reporting_metrics(
@@ -199,12 +199,12 @@ calculate_reporting_metrics(
     # A tibble: 6 × 7
       date    adm2                     variable   exp   rep reprate missrate
       <chr>   <chr>                    <chr>    <int> <int>   <dbl>    <dbl>
-    1 2019-01 Bo City Council          conf        39    25    64.1     35.9
-    2 2019-01 Bo City Council          pres        39     7    17.9     82.1
-    3 2019-01 Bo District Council      conf       129   108    83.7     16.3
-    4 2019-01 Bo District Council      pres       129    43    33.3     66.7
-    5 2019-01 Bombali District Council conf        81    72    88.9     11.1
-    6 2019-01 Bombali District Council pres        81    35    43.2     56.8
+    1 2021-01 Bo City Council          conf        39    28   71.8     28.2 
+    2 2021-01 Bo City Council          pres        39     5   12.8     87.2 
+    3 2021-01 Bo District Council      conf       129   113   87.6     12.4 
+    4 2021-01 Bo District Council      pres       129     7    5.43    94.6 
+    5 2021-01 Bombali District Council conf        81    73   90.1      9.88
+    6 2021-01 Bombali District Council pres        81    10   12.3     87.7 
 
 **Scenario 2: Reporting and Missing Rates Over Time**
 
@@ -223,12 +223,12 @@ calculate_reporting_metrics(
     # A tibble: 6 × 6
       date    variable   exp   rep reprate missrate
       <chr>   <chr>    <int> <int>   <dbl>    <dbl>
-    1 2019-01 conf       269   212    78.8     21.2
-    2 2019-01 pres       269    85    31.6     68.4
-    3 2019-01 test       269   212    78.8     21.2
-    4 2019-02 conf       269   210    78.1     21.9
-    5 2019-02 pres       269   121    45.0     55.0
-    6 2019-02 test       269   210    78.1     21.9
+    1 2021-01 conf       269   222   82.5      17.5
+    2 2021-01 pres       269    23    8.55     91.4
+    3 2021-01 test       269   222   82.5      17.5
+    4 2021-02 conf       269   218   81.0      19.0
+    5 2021-02 pres       269    26    9.67     90.3
+    6 2021-02 test       269   218   81.0      19.0
 
 **Scenario 3: Facility-Level Reporting Proportion**
 
@@ -249,12 +249,12 @@ calculate_reporting_metrics(
     # A tibble: 6 × 6
       date    adm2                       exp   rep reprate missrate
       <chr>   <chr>                    <int> <int>   <dbl>    <dbl>
-    1 2019-01 Bo City Council             39    25    64.1     35.9
-    2 2019-01 Bo District Council        129   108    83.7     16.3
-    3 2019-01 Bombali District Council    81    72    88.9     11.1
-    4 2019-01 Makeni City Council         20     7    35       65  
-    5 2019-02 Bo City Council             39    25    64.1     35.9
-    6 2019-02 Bo District Council        129   108    83.7     16.3
+    1 2021-01 Bo City Council             39    28    71.8    28.2 
+    2 2021-01 Bo District Council        129   113    87.6    12.4 
+    3 2021-01 Bombali District Council    81    73    90.1     9.88
+    4 2021-01 Makeni City Council         20     8    40      60   
+    5 2021-02 Bo City Council             39    28    71.8    28.2 
+    6 2021-02 Bo District Council        129   112    86.8    13.2 
 
 ### Consistency Check plots
 
@@ -442,6 +442,11 @@ translated_yearmon(dates, language = "es", format = "%B %Y")
 #> [1] "enero 2022" "febrero 2022" "marzo 2022"
 ```
 
+These translation functions are integrated throughout the package,
+allowing functions like `reporting_rate_plot()` and
+`consistency_check()` to generate outputs in the users preferred
+language through their `target_language` parameter.
+
 ### Numeric Formatting
 
 Several helper functions make working with numeric data easier:
@@ -491,11 +496,6 @@ sl_dhis2 |>
     4 Valunia Chiefdom df394518e6987ed686d76e83a409f090
     5 Bagbwe Chiefdom  3aa7a61247e34ab397ff813fe520c8b7
     6 Wonde Chiefdom   196dc9792e2038b41411ec2afae37e61
-
-These translation functions are integrated throughout the package,
-allowing functions like `reporting_rate_plot()` and
-`consistency_check()` to generate outputs in the users preferred
-language through their `target_language` parameter.
 
 ## :handshake: Contribution
 
