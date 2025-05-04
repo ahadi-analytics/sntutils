@@ -10,25 +10,25 @@ visualization, and analysis, facilitating evidence-based decision-making
 at district level or below. This is an overview of the available
 functions in this version of `sntutils`:
 
-| Category                      | Function                        | Description                                                               |
-|-------------------------------|---------------------------------|---------------------------------------------------------------------------|
-| **Data Import/Export**        | `read()`                        | Reads data from various file formats (CSV, Excel, Stata, RDS, shapefiles) |
-|                               | `write()`                       | Exports data to various file formats                                      |
-| **Date Handling**             | `autoparse_dates()`             | Automatically detects and standardizes various date formats               |
-|                               | `available_date_formats`        | List of supported date formats for parsing                                |
-| **Geolocation Name Cleaning** | `prep_geonames()`               | Standardizes administrative names across different levels                 |
-| **Data Aggregation**          | `calculate_reporting_metrics()` | Aggregates facility reporting/missing rates over time and space           |
-| **Data Visualization**        | `consistency_check()`           | Identifies inconsistencies between two variables in a data                |
-|                               | `reporting_rate_plot()`         | Visualizes reporting/missing rates by two variables                       |
-| **Translation**               | `translate_text()`              | Translates text with persistent file cache                                |
-|                               | `translate_text_vec()`          | Vectorized version of `translate_text` function                           |
-|                               | `translate_yearmon()`           | Converts date to yearmon format with month names in multiple languages    |
-| **Image Processing**          | `compress_png()`                | Reduces PNG file size while maintaining quality                           |
-| **Numeric Utilities**         | `big_mark()`                    | Formats numbers with thousand separators                                  |
-|                               | `sum2()`                        | Sum with automatic NA removal                                             |
-|                               | `mean2()`                       | Mean with automatic NA removal                                            |
-|                               | `median2()`                     | Median with automatic NA removal                                          |
-| **Hashing Utilities**         | `vdigest()`                     | Vectorized version of digest::digest function                             |
+| Category                      | Function                        | Description                                                        |
+|-------------------------------|---------------------------------|--------------------------------------------------------------------|
+| **Data Import/Export**        | `read()`                        | Reads data from various file formats (CSV, Excel, Stata, RDS, shp) |
+|                               | `write()`                       | Exports data to various file formats                               |
+| **Date Handling**             | `autoparse_dates()`             | Automatically detects and standardizes various date formats        |
+|                               | `available_date_formats`        | List of supported date formats for parsing                         |
+| **Geolocation Name Cleaning** | `prep_geonames()`               | Standardizes administrative names across different levels          |
+| **Data Aggregation**          | `calculate_reporting_metrics()` | Aggregates facility reporting/missing rates over time and space    |
+| **Data Visualization**        | `consistency_check()`           | Identifies inconsistencies between two variables in a data         |
+|                               | `reporting_rate_plot()`         | Visualizes reporting/missing rates by two variables                |
+| **Translation**               | `translate_text()`              | Translates text with persistent file cache                         |
+|                               | `translate_text_vec()`          | Vectorized version of `translate_text` function                    |
+|                               | `translate_yearmon()`           | Converts date to yearmon format with month names in multiple langs |
+| **Image Processing**          | `compress_png()`                | Reduces PNG file size while maintaining quality                    |
+| **Numeric Utilities**         | `big_mark()`                    | Formats numbers with thousand separators                           |
+|                               | `sum2()`                        | Sum with automatic NA removal                                      |
+|                               | `mean2()`                       | Mean with automatic NA removal                                     |
+|                               | `median2()`                     | Median with automatic NA removal                                   |
+| **Hashing Utilities**         | `vdigest()`                     | Vectorized version of digest::digest function                      |
 
 ## :wrench: Installation
 
@@ -164,7 +164,8 @@ cleaned_df <- prep_geonames(
 ```
 
 Here is a short video to demonstrate the full interactivity of
-`prep_geonames()`:
+`prep_geonames`:
+
 https://github.com/user-attachments/assets/ffa69a93-a982-43c4-9673-1165f997fd96
 
 ### Aggregatign Reporting Rate
