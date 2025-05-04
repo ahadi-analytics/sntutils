@@ -24,7 +24,7 @@ testthat::test_that("Function imports supported file formats correctly", {
     # Import the data using the 'read' function
     testthat::expect_no_warning(
       imported_data <- testthat::expect_no_error(
-        suppressWarnings(snt::read(file_path))
+        suppressWarnings(sntutils::read(file_path))
       )
     )
 
@@ -71,7 +71,7 @@ testthat::test_that("Function imports supported file formats correctly", {
 testthat::test_that("Function throws error for unsupported file formats", {
   file_path <- "testdata/test_data.xyz"
   testthat::expect_error(
-    snt::read(file_path),
+    sntutils::read(file_path),
     paste0(
       "File format 'xyz' not supported by 'rio', 'sf', or 'readxl'. ",
       "Please refer to the package documentation for a full list ",
@@ -89,11 +89,11 @@ testthat::test_that("Function imports data from URLs correctly", {
     "master/inst/extdata/test_data.csv"
   )
 
-  imprt_data <- snt::read(github_url)
+  imprt_data <- sntutils::read(github_url)
 
-  path <- system.file("extdata", package = "snt")
+  path <- system.file("extdata", package = "sntutils")
 
-  imprt_data_compare <- snt::read(
+  imprt_data_compare <- sntutils::read(
     file_path = file.path(path, "test_data.csv")
   )
 
