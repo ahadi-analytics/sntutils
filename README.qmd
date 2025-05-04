@@ -16,7 +16,7 @@ output-file: README.md
 
 | Category | Function | Description |
 |----------|----------|-------------|
-| **Data Import/Export** | `read()` | Reads data from various file formats (CSV, Excel, Stata, RDS, shapefiles) |
+| **Data Import/Export** | `read()` | Reads data from various file formats (CSV, Excel, Stata, RDS, shp) |
 | | `write()` | Exports data to various file formats |
 | **Date Handling** | `autoparse_dates()` | Automatically detects and standardizes various date formats |
 | | `available_date_formats` | List of supported date formats for parsing |
@@ -26,7 +26,7 @@ output-file: README.md
 | | `reporting_rate_plot()` | Visualizes reporting/missing rates by two variables |
 | **Translation** | `translate_text()` | Translates text with persistent file cache |
 | | `translate_text_vec()` | Vectorized version of `translate_text` function |
-| | `translate_yearmon()` |  Converts date to yearmon format with month names in multiple languages |
+| | `translate_yearmon()` |  Converts date to yearmon format with month names in multiple langs |
 | **Image Processing** | `compress_png()` | Reduces PNG file size while maintaining quality |
 | **Numeric Utilities** | `big_mark()` | Formats numbers with thousand separators |
 | | `sum2()` | Sum with automatic NA removal |
@@ -150,7 +150,8 @@ cleaned_df <- prep_geonames(
 )
 ```
 
-Here is a short video to demonstrate the full interactivity of `prep_geonames()`:
+Here is a short video to demonstrate the full interactivity of `prep_geonames`:
+
 https://github.com/user-attachments/assets/ffa69a93-a982-43c4-9673-1165f997fd96
 
 ### Aggregatign Reporting Rate
