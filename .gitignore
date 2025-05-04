@@ -2,3 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
+^README\.qmd$
+^README\.html$
+^README_files$

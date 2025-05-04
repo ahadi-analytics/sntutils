@@ -57,7 +57,7 @@ handle_file_save <- function(data_to_save, default_save_path = NULL) {
 
       # Ensure we are working with a file, not a directory
       if (dir.exists(cache_path)) {
-        stop("`cache_path` should be a file path, not a directory.")
+         cli::cli_abort("`cache_path` should be a file path, not a directory.")
       }
 
       # Set up file lock to prevent concurrent overwrites
@@ -754,7 +754,7 @@ construct_geo_names <- function(data, level0, level1, level2,
 #' @param target_df Data frame containing the admin names to clean.
 #' @param lookup_df Lookup data frame for verifying admin names. If this is not
 #'                  provided, an internal version of WHO geoname data
-#'                  attached to snt is used.
+#'                  attached to sntutils is used.
 #' @param level0 level0 col name (country) in both 'data' and 'lookup_data'.
 #' @param level1 level1 col name (province) in both 'data' and 'lookup_data'.
 #' @param level2 level2 col name (district) in both 'data' and 'lookup_data'.
@@ -816,7 +816,7 @@ construct_geo_names <- function(data, level0, level1, level2,
 #' )
 #'
 #' # Interactively clean geonames
-#' harmonize_admin_names(
+#' prep_geonames(
 #'   target_df,
 #'   level0 = "country", level1 = "province",
 #'   level2 = "district",
@@ -827,7 +827,7 @@ construct_geo_names <- function(data, level0, level1, level2,
 #' @importFrom rlang :=
 #' @importFrom foreach %dopar%
 #' @export
-harmonize_admin_names <- function(target_df, lookup_df = NULL,
+prep_geonames <- function(target_df, lookup_df = NULL,
                                   level0 = NULL,
                                   level1 = NULL,
                                   level2 = NULL,
@@ -843,15 +843,16 @@ harmonize_admin_names <- function(target_df, lookup_df = NULL,
 
   # Ensure higher levels cannot be used without corresponding lower levels
   if (stratify && !is.null(level1) && is.null(level0)) {
-    stop("You cannot specify level1 without level0.")
+    cli::cli_abort("You cannot specify level1 without level0.")
   }
   if (stratify && !is.null(level2) && (is.null(level0) || is.null(level1))) {
-    stop("You cannot specify level2 without both level0 and level1.")
+    cli::cli_abort("You cannot specify level2 without both level0 and level1.")
   }
   if (stratify && !is.null(level3) && (
     is.null(level0) || is.null(level1) || is.null(level2)
   )) {
-    stop("You cannot specify level3 without level0, level1, and level2.")
+    cli::cli_abort(
+      "You cannot specify level3 without level0, level1, and level2.")
   }
 
   # Prompt the user if using levels beyond level2 without a custom lookup_df
@@ -904,7 +905,7 @@ harmonize_admin_names <- function(target_df, lookup_df = NULL,
 
     missing_columns <- setdiff(required_columns, colnames(lookup_df))
     if (length(missing_columns) > 0) {
-      stop(
+      cli::cli_abort(
         paste(
           "The following columns are missing in lookup_df:",
           paste(missing_columns, collapse = ", ")
@@ -923,7 +924,7 @@ harmonize_admin_names <- function(target_df, lookup_df = NULL,
 
   missing_columns <- setdiff(required_columns, colnames(target_df))
   if (length(missing_columns) > 0) {
-    stop(
+    cli::cli_abort(
       paste(
         "The following columns are missing in target_df:",
         paste(missing_columns, collapse = ", ")
@@ -938,7 +939,7 @@ harmonize_admin_names <- function(target_df, lookup_df = NULL,
   )
   if (
     !(method %in% supported_methods)) {
-    stop(
+     cli::cli_abort(
       paste(
         "Unsupported method:", method, ".
         Supported methods are:", paste(supported_methods, collapse = ", ")
@@ -948,46 +949,46 @@ harmonize_admin_names <- function(target_df, lookup_df = NULL,
 
   # Ensure stratify is logical
   if (!is.logical(stratify)) {
-    stop("stratify must be a logical value (TRUE or FALSE).")
+    cli::cli_abort("stratify must be a logical value (TRUE or FALSE).")
   }
 
   # Ensure interactive is logical
   if (!is.logical(interactive)) {
-    stop("interactive must be a logical value (TRUE or FALSE).")
+    cli::cli_abort("interactive must be a logical value (TRUE or FALSE).")
   }
 
   # Ensure cache_path is a valid file path if provided
   if (!is.null(cache_path) && !dir.exists(dirname(cache_path))) {
-    stop("The directory for cache_path does not exist.")
+    cli::cli_abort("The directory for cache_path does not exist.")
   }
 
   # Validation: Ensure lookup_df is not empty if provided
   if (!is.null(lookup_df) && nrow(lookup_df) == 0) {
-    stop("The lookup_df is empty.")
+    cli::cli_abort("The lookup_df is empty.")
   }
 
   # Ensure level0, level1, level2, and level3 are valid column names
   if (!is.null(level0) && !(level0 %in% colnames(target_df))) {
-    stop(paste("The column", level0, "is not in target_df."))
+    cli::cli_abort(paste("The column", level0, "is not in target_df."))
   }
   if (!is.null(level1) && !(level1 %in% colnames(target_df))) {
-    stop(paste("The column", level1, "is not in target_df."))
+    cli::cli_abort(paste("The column", level1, "is not in target_df."))
   }
   if (!is.null(level2) && !(level2 %in% colnames(target_df))) {
-    stop(paste("The column", level2, "is not in target_df."))
+    cli::cli_abort(paste("The column", level2, "is not in target_df."))
   }
   if (!is.null(level3) && !(level3 %in% colnames(target_df))) {
-    stop(paste("The column", level3, "is not in target_df."))
+    cli::cli_abort(paste("The column", level3, "is not in target_df."))
   }
   if (!is.null(level4) && !(level4 %in% colnames(target_df))) {
-    stop(paste("The column", level4, "is not in target_df."))
+    cli::cli_abort(paste("The column", level4, "is not in target_df."))
   }
 
   # Step 0: Setup target and lookup datasets -----------------------------------
 
   # Get the internal shapefile if lookup data is not provided
   if (is.null(lookup_df)) {
-    lookup_df <- snt::shp_global
+    lookup_df <- sntutils::shp_global
 
     if (!is.null(who_region)) {
       lookup_df <- dplyr::filter(lookup_df, WHO_REGION == toupper(who_region))
