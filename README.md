@@ -28,7 +28,7 @@ functions in this version of `sntutils`:
 |                               | `sum2()`                        | Sum with automatic NA removal                                             |
 |                               | `mean2()`                       | Mean with automatic NA removal                                            |
 |                               | `median2()`                     | Median with automatic NA removal                                          |
-|                               | `vdigest()`                     | Vectorized version of digest::digest function                             |
+| **Hashing Utilities**         | `vdigest()`                     | Vectorized version of digest::digest function                             |
 
 ## :wrench: Installation
 
@@ -165,7 +165,6 @@ cleaned_df <- prep_geonames(
 
 Here is a short video to demonstrate the full interactivity of
 `prep_geonames()`:
-
 https://github.com/user-attachments/assets/ffa69a93-a982-43c4-9673-1165f997fd96
 
 ### Aggregatign Reporting Rate
@@ -356,21 +355,29 @@ fidelity.
 Both `reporting_rate_plot()` and `consistency_check()` include built-in
 support for image compression during saving. Additionally, users can
 manually compress individual PNGs or entire folders using
-c`ompress_png()`:
+`compress_png()`:
 
 ``` r
 # Compress a single PNG file
 compress_png(
   "path/to/large_image.png",
-  output_path = "path/to/compressed_image.png",
-  quality = 70
+  output_path = "path/to/consistency_plot.png"
 )
+
+#> ── Compression Summary ──
+#> 
+#> ✔ Successfully compressed: consistency_plot.png
+#> ℹ Total compression: 200.21 KB (71.54% saved)
+#> ℹ Excellent compression!
+#> 
+#> ── File Size 
+#> Before compression: 279.87 KB
+#> After compression: 79.66 KB
 
 # Compress all PNGs in a directory
 compress_png(
   "path/to/image_folder/",
-  output_path = "path/to/compressed_folder/",
-  quality = 80,
+  output_path = "path/to/compressed_folder/"
   verbose = TRUE
 )
 ```
@@ -410,17 +417,6 @@ df |>
   dplyr::mutate(label_es = translate_text_vec(label, target_language = "es"))
 ```
 
-
-    Attaching package: 'dplyr'
-
-    The following objects are masked from 'package:stats':
-
-        filter, lag
-
-    The following objects are masked from 'package:base':
-
-        intersect, setdiff, setequal, union
-
     # A tibble: 3 × 2
       label           label_es          
       <chr>           <chr>             
@@ -443,6 +439,29 @@ translated_yearmon(dates, language = "fr")
 # Full month names in Spanish
 translated_yearmon(dates, language = "es", format = "%B %Y")
 #> [1] "enero 2022" "febrero 2022" "marzo 2022"
+```
+
+### Numeric Formatting
+
+Several helper functions make working with numeric data easier:
+
+``` r
+# Format numbers with thousands separator
+big_mark(1234567.89)
+#> [1] "1,234,567.89"
+
+big_mark(c(1234.56, 7890123.45), decimals = 1, big_mark = " ")
+#> [1] "1 234.6" "7 890 123.5"
+
+# NA-safe numeric functions
+sum2(c(1, 2, NA, 4))  # Sum with automatic NA removal
+#> [1] 7
+
+mean2(c(1, 2, NA, 4))  # Mean with automatic NA removal
+#> [1] 2.333333
+
+median2(c(1, 2, NA, 4, 5))  # Median with automatic NA removal
+#> [1] 3
 ```
 
 ### Vectorized Digest for Efficient Data Hashing
@@ -477,30 +496,7 @@ allowing functions like `reporting_rate_plot()` and
 `consistency_check()` to generate outputs in the users preferred
 language through their `target_language` parameter.
 
-### Numeric Formatting
-
-Several helper functions make working with numeric data easier:
-
-``` r
-# Format numbers with thousands separator
-big_mark(1234567.89)
-#> [1] "1,234,567.89"
-
-big_mark(c(1234.56, 7890123.45), decimals = 1, big_mark = " ")
-#> [1] "1 234.6" "7 890 123.5"
-
-# NA-safe numeric functions
-sum2(c(1, 2, NA, 4))  # Sum with automatic NA removal
-#> [1] 7
-
-mean2(c(1, 2, NA, 4))  # Mean with automatic NA removal
-#> [1] 2.333333
-
-median2(c(1, 2, NA, 4, 5))  # Median with automatic NA removal
-#> [1] 3
-```
-
-## Contribution
+## :handshake: Contribution
 
 Contributions to `sntutils` are welcome! Please feel free to submit
 issues or pull requests on our [GitHub
