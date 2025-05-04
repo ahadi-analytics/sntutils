@@ -102,12 +102,13 @@ testthat::test_that("handle_file_save handles invalid input then accepts", {
     mockery::mock("x", "y", "")
   )
 
-  # Run function
-  testthat::expect_message(
-    handle_file_save(data.frame(), test_file),
-    "Invalid input"
+  suppressMessages(
+    # Run function
+    testthat::expect_message(
+      handle_file_save(data.frame(), test_file),
+      "Invalid input"
+    )
   )
-
   # Cleanup
   unlink(test_file)
 })
@@ -124,12 +125,13 @@ testthat::test_that("handle_file_save creates directory if needed", {
     mockery::mock("y")
   )
 
-  # Run function
-  testthat::expect_message(
-    handle_file_save(data.frame(), test_file),
-    "File saved successfully"
+  suppressMessages(
+    # Run function
+    testthat::expect_message(
+      handle_file_save(data.frame(), test_file),
+      "File saved successfully"
+    )
   )
-
   # Check if directory was created
   testthat::expect_true(dir.exists(temp_dir))
 
@@ -145,11 +147,14 @@ testthat::test_that("handle_file_save handles NULL path", {
     mockery::mock("y", file.path(tempdir(), "test_cache.rds"))
   )
 
-  testthat::expect_message(
-    handle_file_save(data.frame(), NULL),
-    "specified path is null"
+  suppressMessages(
+    testthat::expect_message(
+      handle_file_save(data.frame(), NULL),
+      "specified path is null"
+    )
   )
 })
+
 
 
 
@@ -212,7 +217,7 @@ testthat::test_that("Test administrative matching stats output", {
 })
 
 
-testthat::test_that("harmonize_admin_names correctly processes admin names", {
+testthat::test_that("prep_geonames correctly processes admin names", {
   # Create a sample target data frame
   target_df <- data.frame(
     country = c("ANGOLA", "UGA", "ZAMBIA"),
@@ -224,7 +229,7 @@ testthat::test_that("harmonize_admin_names correctly processes admin names", {
 
   suppressMessages(
     # Run the function in non-interactive mode
-    cleaned_df <- harmonize_admin_names(
+    cleaned_df <- prep_geonames(
       target_df,
       level0 = "country",
       level1 = "province",
@@ -773,8 +778,8 @@ testthat::test_that("display_custom_menu displays special actions correctly", {
   special_action_calls <- cat_calls[
     vapply(cat_calls, function(x) {
       any(grepl("x: Exit the program|s: Save and continue|h: Display help",
-        x,
-        perl = TRUE
+                x,
+                perl = TRUE
       ))
     }, logical(1))
   ]
@@ -827,9 +832,9 @@ testthat::test_that(
     testthat::expect_equal(nrow(result), 2)
     # Should have one row per unique name_to_match
     testthat::expect_true(all(c("province1", "province2")
-    %in% result$name_to_match))
+                              %in% result$name_to_match))
     testthat::expect_true(all(c("PROVINCE ONE", "PROVINCE TWO")
-    %in% result$replacement))
+                              %in% result$replacement))
     testthat::expect_equal(result$level, rep("level1", 2))
   }
 )
@@ -1261,7 +1266,7 @@ testthat::test_that("format_choices uses custom column width", {
 })
 
 testthat::test_that(
-  "harmonize_admin_names handles basic case with no cleaning needed",
+  "prep_geonames handles basic case with no cleaning needed",
   {
     # Setup test data where everything already matches
     target_df <- data.frame(
@@ -1277,12 +1282,12 @@ testthat::test_that(
     )
 
     # Mock cli functions to avoid output during tests
-    mockery::stub(harmonize_admin_names, "cli::cli_alert_success", function(...) NULL)
-    mockery::stub(harmonize_admin_names, "cli::cli_alert_info", function(...) NULL)
-    mockery::stub(harmonize_admin_names, "calculate_match_stats", function(...) NULL)
+    mockery::stub(prep_geonames, "cli::cli_alert_success", function(...) NULL)
+    mockery::stub(prep_geonames, "cli::cli_alert_info", function(...) NULL)
+    mockery::stub(prep_geonames, "calculate_match_stats", function(...) NULL)
 
     # Run function with non-interactive mode
-    result <- harmonize_admin_names(
+    result <- prep_geonames(
       target_df = target_df,
       lookup_df = lookup_df,
       level0 = "country",
@@ -1299,7 +1304,7 @@ testthat::test_that(
   }
 )
 
-testthat::test_that("harmonize_admin_names validates inputs correctly", {
+testthat::test_that("prep_geonames validates inputs correctly", {
   # Test missing required columns
   target_df <- data.frame(
     country = c("ANGOLA", "UGANDA"),
@@ -1314,7 +1319,7 @@ testthat::test_that("harmonize_admin_names validates inputs correctly", {
   )
 
   testthat::expect_error(
-    harmonize_admin_names(
+    prep_geonames(
       target_df = target_df,
       lookup_df = lookup_df,
       level0 = "country",
@@ -1326,7 +1331,7 @@ testthat::test_that("harmonize_admin_names validates inputs correctly", {
 
   # Test unsupported method
   testthat::expect_error(
-    harmonize_admin_names(
+    prep_geonames(
       target_df = data.frame(country = "ANGOLA"),
       level0 = "country",
       method = "invalid_method",
@@ -1337,7 +1342,7 @@ testthat::test_that("harmonize_admin_names validates inputs correctly", {
 })
 
 testthat::test_that(
-  "harmonize_admin_names handles level hierarchies correctly",
+  "prep_geonames handles level hierarchies correctly",
   {
     # Test error when specifying levels out of order
     target_df <- data.frame(
@@ -1349,7 +1354,7 @@ testthat::test_that(
 
     # Should error if specifying level2 without level0 and level1
     testthat::expect_error(
-      harmonize_admin_names(
+      prep_geonames(
         target_df = target_df,
         level2 = "district", # Missing level0 and level1
         interactive = FALSE,
@@ -1360,7 +1365,7 @@ testthat::test_that(
 
     # Should error if specifying level1 without level0
     testthat::expect_error(
-      harmonize_admin_names(
+      prep_geonames(
         target_df = target_df,
         level1 = "province", # Missing level0
         interactive = FALSE,
@@ -1371,7 +1376,7 @@ testthat::test_that(
   }
 )
 
-testthat::test_that("harmonize_admin_names handles empty lookup_df properly", {
+testthat::test_that("prep_geonames handles empty lookup_df properly", {
   target_df <- data.frame(
     country = c("ANGOLA"),
     stringsAsFactors = FALSE
@@ -1379,7 +1384,7 @@ testthat::test_that("harmonize_admin_names handles empty lookup_df properly", {
 
   # Empty lookup_df should error
   testthat::expect_error(
-    harmonize_admin_names(
+    prep_geonames(
       target_df = target_df,
       lookup_df = data.frame(),
       level0 = "country",
@@ -1389,7 +1394,7 @@ testthat::test_that("harmonize_admin_names handles empty lookup_df properly", {
   )
 })
 
-testthat::test_that("harmonize_admin_names handles case conversion correctly", {
+testthat::test_that("prep_geonames handles case conversion correctly", {
   # Test that function converts admin names to uppercase
   target_df <- data.frame(
     country = c("angola", "Uganda"),
@@ -1403,19 +1408,19 @@ testthat::test_that("harmonize_admin_names handles case conversion correctly", {
 
   # Mock cli functions
   mockery::stub(
-    harmonize_admin_names,
+    prep_geonames,
     "cli::cli_alert_success", function(...) NULL
   )
   mockery::stub(
-    harmonize_admin_names,
+    prep_geonames,
     "cli::cli_alert_info", function(...) NULL
   )
   mockery::stub(
-    harmonize_admin_names,
+    prep_geonames,
     "calculate_match_stats", function(...) NULL
   )
 
-  result <- harmonize_admin_names(
+  result <- prep_geonames(
     target_df = target_df,
     lookup_df = lookup_df,
     level0 = "country",
@@ -1427,7 +1432,7 @@ testthat::test_that("harmonize_admin_names handles case conversion correctly", {
 })
 
 
-testthat::test_that("harmonize_admin_names handles cache path correctly", {
+testthat::test_that("prep_geonames handles cache path correctly", {
   # Test with non-existent cache path
   target_df <- data.frame(
     country = c("ANGOLA"),
@@ -1435,15 +1440,15 @@ testthat::test_that("harmonize_admin_names handles cache path correctly", {
   )
 
   # Mock the readline function to simulate user input
-  mockery::stub(harmonize_admin_names, "readline", mockery::mock("no"))
+  mockery::stub(prep_geonames, "readline", mockery::mock("no"))
   mockery::stub(
-    harmonize_admin_names, "cli::cli_alert_info",
+    prep_geonames, "cli::cli_alert_info",
     function(...) NULL
   )
 
   # Non-existent directory should error
   testthat::expect_error(
-    harmonize_admin_names(
+    prep_geonames(
       target_df = target_df,
       level0 = "country",
       cache_path = "/path/that/doesnt/exist/cache.rds",
@@ -1453,7 +1458,7 @@ testthat::test_that("harmonize_admin_names handles cache path correctly", {
   )
 })
 
-testthat::test_that("harmonize_admin_names handles missing data correctly", {
+testthat::test_that("prep_geonames handles missing data correctly", {
   # Test with NA values in administrative levels
   target_df <- data.frame(
     country = c("ANGOLA", "UGANDA", NA),
@@ -1469,19 +1474,19 @@ testthat::test_that("harmonize_admin_names handles missing data correctly", {
 
   # Mock functions
   mockery::stub(
-    harmonize_admin_names, "cli::cli_alert_success",
+    prep_geonames, "cli::cli_alert_success",
     function(...) NULL
   )
   mockery::stub(
-    harmonize_admin_names, "cli::cli_alert_info",
+    prep_geonames, "cli::cli_alert_info",
     function(...) NULL
   )
   mockery::stub(
-    harmonize_admin_names, "calculate_match_stats",
+    prep_geonames, "calculate_match_stats",
     function(...) NULL
   )
 
-  result <- harmonize_admin_names(
+  result <- prep_geonames(
     target_df = target_df,
     lookup_df = lookup_df,
     level0 = "country",
@@ -1495,7 +1500,7 @@ testthat::test_that("harmonize_admin_names handles missing data correctly", {
   testthat::expect_true(is.na(result$province[3]))
 })
 
-testthat::test_that("harmonize_admin_names can be run non-interactively", {
+testthat::test_that("prep_geonames can be run non-interactively", {
   # Test that non-interactive mode returns after matching with cache
   target_df <- data.frame(
     country = c("ANGOLA", "UGA"),
@@ -1511,19 +1516,19 @@ testthat::test_that("harmonize_admin_names can be run non-interactively", {
 
   # Mock construction and functions
   mockery::stub(
-    harmonize_admin_names, "cli::cli_alert_success",
+    prep_geonames, "cli::cli_alert_success",
     function(...) NULL
   )
   mockery::stub(
-    harmonize_admin_names, "cli::cli_alert_info",
+    prep_geonames, "cli::cli_alert_info",
     function(...) NULL
   )
   mockery::stub(
-    harmonize_admin_names, "calculate_match_stats",
+    prep_geonames, "calculate_match_stats",
     function(...) NULL
   )
   mockery::stub(
-    harmonize_admin_names, "construct_geo_names",
+    prep_geonames, "construct_geo_names",
     function(df, ...) {
       df$long_geo <- paste(df$country, df$province, sep = "_")
       return(df)
@@ -1531,13 +1536,13 @@ testthat::test_that("harmonize_admin_names can be run non-interactively", {
   )
 
   # Run function with non-interactive mode
-  result <- harmonize_admin_names(
+  result <- prep_geonames(
     target_df = target_df,
     lookup_df = lookup_df,
     level0 = "country",
     level1 = "province",
     interactive = FALSE, cache_path =
-    )
+  )
 
   # Verify result
   testthat::expect_s3_class(result, "data.frame")

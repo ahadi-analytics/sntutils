@@ -185,7 +185,13 @@ autoparse_dates <- function(data, date_cols,
                             output_format = "%Y-%m-%d",
                             additional_format = NULL,
                             verbose = TRUE) {
-  if (!is.character(date_cols)) date_cols <- as.character(date_cols)
+
+
+  if (is.numeric(date_cols)) {
+    date_cols <- names(data)[date_cols]
+  } else if (!is.character(date_cols)) {
+    date_cols <- as.character(date_cols)
+  }
 
   parse_results <- vector("list", length(date_cols))
   names(parse_results) <- date_cols

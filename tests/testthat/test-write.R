@@ -57,7 +57,7 @@ testthat::test_that("export function works correctly", {
       testthat::expect_error(write(dummy_shp, file_path), NA)
 
       # Read the shapefile back
-      imported_df <- snt::read(file_path)
+      imported_df <- sntutils::read(file_path)
       attributes(imported_df$a) <- NULL
       attributes(imported_df$b) <- NULL
 

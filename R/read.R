@@ -18,7 +18,7 @@
 #' @examples
 #' # Locate test data directory
 #' path <- system.file("extdata",
-#'   package = "snt"
+#'   package = "sntutils"
 #' )
 #'
 #' # Import a CSV file
