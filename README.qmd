@@ -165,7 +165,7 @@ Calculates the frequency of valid (non-missing, non-zero) reports across two gro
 ```{r eval=FALSE, include=TRUE}
 # Example data with inconsistent admin names
 sl_dhis2 <- readRDS("inst/extdata/sl_exmaple_dhis2.rds") |> 
-  dplyr::filter(date >= "2018.01")
+  dplyr::filter(date >= "2020.01")
 
 # Calculate reporting rates by date and district
 calculate_reporting_metrics(
@@ -185,7 +185,7 @@ library(sntutils)
 
 # Example data with inconsistent admin names
 sl_dhis2 <- readRDS("inst/extdata/sl_exmaple_dhis2.rds")  |> 
-  dplyr::filter(date >= "2018.01")
+  dplyr::filter(date >= "2020.01")
 
 # Calculate reporting rates by date and district
 calculate_reporting_metrics(
@@ -481,6 +481,9 @@ translated_yearmon(dates, language = "es", format = "%B %Y")
 #> [1] "enero 2022" "febrero 2022" "marzo 2022"
 ```
 
+These translation functions are integrated throughout the package, allowing functions like `reporting_rate_plot()` and `consistency_check()` to generate outputs in the users preferred language through their `target_language` parameter.
+
+
 ### Numeric Formatting
 
 Several helper functions make working with numeric data easier:
@@ -516,9 +519,6 @@ sl_dhis2 |>
     adm3_hash = vdigest(adm3)
   ) |> head()
 ```
-
-These translation functions are integrated throughout the package, allowing functions like `reporting_rate_plot()` and `consistency_check()` to generate outputs in the users preferred language through their `target_language` parameter.
-
 
 ## :handshake: Contribution
 
