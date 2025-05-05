@@ -380,7 +380,7 @@ calculate_string_distance <- function(
       matched_names, distance, match_rank
     )
 
-  return(results)
+  results
 }
 
 #' Interact with Users for Data Cleaning Choices
@@ -672,7 +672,7 @@ handle_user_interaction <- function(input_data, levels, level,
       "Your selections have been successfully saved. Exiting..."
     )
     # return results
-    return(user_choices_df)
+    user_choices_df
   } else {
     cli::cli_alert_warning(
       "No selections were made to save. Exiting..."
@@ -1526,7 +1526,7 @@ prep_geonames <- function(target_df, lookup_df = NULL,
   gc() # clean up memory
 
   # return the final data frame
-  return(finalised_df)
+  finalised_df
 }
 
 #' Impute higher administrative level using a lookup table
@@ -1592,5 +1592,5 @@ impute_higher_admin <- function(target_df,
         )
       )
     )
-  return(target_df)
+  target_df
 }
