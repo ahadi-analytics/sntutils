@@ -1,4 +1,8 @@
-# sntutils
+[![R-CMD-check](https://github.com/ahadi-analytics/sntutils/actions/workflows/R-CMD-check.yaml/badge.svg)](https://github.com/ahadi-analytics/sntutils/actions/workflows/R-CMD-check.yaml)
+[![Codecov](https://codecov.io/gh/ahadi-analytics/sntutils/branch/main/graph/badge.svg)](https://app.codecov.io/gh/ahadi-analytics/sntutils)
+[![CodeFactor](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils/badge)](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils)
+
+# `sntutils`
 
 
 ## What is sntutils?
