@@ -4,7 +4,7 @@ testthat::test_that("find_pngquant works correctly", {
     if (cmd == "pngquant") {
       return("/usr/bin/pngquant")
     }
-    return("")
+    ""
   })
 
   mockery::stub(find_pngquant, "file.exists", function(path) TRUE)
@@ -49,9 +49,9 @@ testthat::test_that("pngquant_compress_single_file compresses files", {
   # Mock functions
   mockery::stub(pngquant_compress_single_file, "file.info", function(file) {
     if (grepl("before", file)) {
-      return(data.frame(size = 100000))
+      data.frame(size = 100000)
     } else {
-      return(data.frame(size = 70000))
+      data.frame(size = 70000)
     }
   })
 
@@ -59,18 +59,18 @@ testthat::test_that("pngquant_compress_single_file compresses files", {
     # Return with NULL status to indicate success
     result <- "output"
     attr(result, "status") <- 0
-    return(result)
+    result
   })
 
   mockery::stub(
     pngquant_compress_single_file, "compression_stats",
     function(...) {
-      return(list(
+      list(
         initial_size = 100000,
         final_size = 70000,
         bytes_saved = 30000,
         percent_saved = 30
-      ))
+      )
     }
   )
 
@@ -85,7 +85,7 @@ testthat::test_that("pngquant_compress_single_file compresses files", {
 testthat::test_that("compress_png handles single file", {
   # Mock functions
   mockery::stub(compress_png, "find_pngquant", function() {
-    return("/usr/bin/pngquant")
+    "/usr/bin/pngquant"
   })
 
   mockery::stub(compress_png, "file.exists", function(path) TRUE)
@@ -95,7 +95,7 @@ testthat::test_that("compress_png handles single file", {
   mockery::stub(
     compress_png, "pngquant_compress_single_file",
     function(...) {
-      return(list(
+      list(
         success = TRUE,
         stats = list(
           initial_size = 100000,
@@ -103,7 +103,7 @@ testthat::test_that("compress_png handles single file", {
           bytes_saved = 30000,
           percent_saved = 30
         )
-      ))
+      )
     }
   )
 
@@ -115,13 +115,13 @@ testthat::test_that("compress_png handles single file", {
 testthat::test_that("compress_png handles directory", {
   # Mock functions
   mockery::stub(compress_png, "find_pngquant", function() {
-    return("/usr/bin/pngquant")
+    "/usr/bin/pngquant"
   })
 
   mockery::stub(compress_png, "file.exists", function(path) TRUE)
   mockery::stub(compress_png, "dir.exists", function(path) TRUE)
   mockery::stub(compress_png, "list.files", function(...) {
-    return(c("test1.png", "test2.png"))
+    c("test1.png", "test2.png")
   })
 
   # Create mock stats that will properly convert to data frame
@@ -145,10 +145,10 @@ testthat::test_that("compress_png handles directory", {
       # Return appropriate stats based on filename
       idx <- if (file == "test1.png") 1 else 2
       filename <- c("test1.png", "test2.png")[idx]
-      return(list(
+      list(
         success = TRUE,
         stats = test_stats[[filename]]
-      ))
+      )
     }
   )
 
@@ -177,23 +177,23 @@ testthat::test_that("ensure_packages handles missing packages", {
     if (length(pkg_to_install) > 0) {
       utils::install.packages(pkg_to_install)
     }
-    return(pkg_list)
+    pkg_list
   }
 
   mockery::stub(
     ensure_packages_test, "utils::installed.packages",
     function() {
-      return(matrix(c("mockery", "testthat"),
+      matrix(c("mockery", "testthat"),
         ncol = 1,
-        dimnames = list(c(), c("Package"))
-      ))
+        dimnames = list(c(), "Package")
+      )
     }
   )
 
   mockery::stub(
     ensure_packages_test, "utils::install.packages",
     function(pkgs) {
-      return(pkgs)
+      pkgs
     }
   )
 
