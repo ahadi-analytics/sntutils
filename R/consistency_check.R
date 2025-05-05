@@ -305,5 +305,5 @@ consistency_check <- function(data, tests, cases,
     )
   }
 
-  return(plot)
+  plot
 }

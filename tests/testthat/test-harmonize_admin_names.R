@@ -1082,9 +1082,9 @@ testthat::test_that("handle_user_interaction handles 'Go Back' action", {
 testthat::test_that("handle_user_interaction handles empty choices", {
   # Create test data
   test_data <- data.frame(
-    name_to_match = c("country1"),
-    matched_names = c("Country One"),
-    long_geo = c("country1"),
+    name_to_match = "country1",
+    matched_names = "Country One",
+    long_geo = "country1",
     stringsAsFactors = FALSE
   )
 

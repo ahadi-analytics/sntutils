@@ -20,7 +20,7 @@ testthat::test_that(
     mockery::stub(ensure_packages, "requireNamespace", function(pkg, ...) FALSE)
     mockery::stub(ensure_packages, "cli::cli_alert_success", function(...) NULL)
 
-    missing_pkgs <- c("crayon")
+    missing_pkgs <- "crayon"
     suppressMessages(
       testthat::expect_invisible(ensure_packages(missing_pkgs)))
   }
@@ -34,7 +34,7 @@ testthat::test_that(
     mockery::stub(ensure_packages, "requireNamespace", function(pkg, ...) FALSE)
     mockery::stub(ensure_packages, "cli::cli_alert_warning", function(...) NULL)
 
-    missing_pkgs <- c("pillar")
+    missing_pkgs <- "pillar"
     suppressMessages(
       testthat::expect_invisible(ensure_packages(missing_pkgs)
       )
