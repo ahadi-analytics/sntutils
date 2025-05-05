@@ -165,7 +165,7 @@ find_pngquant <- function() {
     return(invisible(NULL))
   }
 
-  return(invisible(pngquant_path))
+  invisible(pngquant_path)
 }
 
 
@@ -205,11 +205,11 @@ compression_stats <- function(filename, init_size, final_size,
   # Format sizes in appropriate units (MB, KB, bytes)
   format_size <- function(size) {
     if (size >= 1048576) { # 1MB in bytes
-      return(paste0(round(size / 1048576, 2), " MB"))
+      paste0(round(size / 1048576, 2), " MB")
     } else if (size >= 1024) {
-      return(paste0(round(size / 1024, 2), " KB"))
+      paste0(round(size / 1024, 2), " KB")
     } else {
-      return(paste0(size, " bytes"))
+      paste0(size, " bytes")
     }
   }
 
@@ -252,7 +252,7 @@ compression_stats <- function(filename, init_size, final_size,
     ))
   }
 
-  return(invisible(result))
+  invisible(result)
 }
 
 #' Compress a single PNG file using pngquant
@@ -352,9 +352,9 @@ pngquant_compress_single_file <- function(pngquant_path, file, speed, png_overwr
       bytes_saved = init_size - final_size,
       percent_saved = (init_size - final_size) / init_size * 100
     )
-    return(list(success = TRUE, stats = stats))
+    list(success = TRUE, stats = stats)
   } else {
-    return(list(success = FALSE, stats = NULL))
+    list(success = FALSE, stats = NULL)
   }
 }
 
@@ -393,7 +393,7 @@ pngquant_compress_single_file <- function(pngquant_path, file, speed, png_overwr
 #' @export
 compress_png <- function(path, png_overwrite = TRUE,
                          speed = 1, verbosity = TRUE) {
-  ensure_packages(c("progress"))
+  ensure_packages("progress")
 
   # Find pngquant executable
   pngquant_path <- find_pngquant()
@@ -436,10 +436,10 @@ compress_png <- function(path, png_overwrite = TRUE,
           "File is already compressed, skipping compression."
         )
       }
-      return(invisible(result$stats))
+      invisible(result$stats)
     } else {
       cli::cli_alert_warning("Error compressing file.")
-      return(invisible(NULL))
+      invisible(NULL)
     }
   } else {
     # Directory processing
@@ -501,9 +501,11 @@ compress_png <- function(path, png_overwrite = TRUE,
       cli::cli_alert_warning(
         paste(length(errors), "files could not be compressed:")
       )
-      for (err in errors[1:min(5, length(errors))]) {
-        cli::cli_alert_info(err)
+
+      for (i in seq_len(min(5, length(errors)))) {
+        cli::cli_alert_info(errors[i])
       }
+
       if (length(errors) > 5) {
         cli::cli_alert_info(
           sprintf("... and %d more", length(errors) - 5)
@@ -511,6 +513,6 @@ compress_png <- function(path, png_overwrite = TRUE,
       }
     }
 
-    return(invisible(stats_df))
+    invisible(stats_df)
   }
 }

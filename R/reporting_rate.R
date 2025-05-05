@@ -250,7 +250,7 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
     stop("At minimum, x_var must be provided")
   }
 
-  return(result)
+  result
 }
 
 #' Prepare data for reporting rate or missing data visualization
@@ -323,7 +323,7 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
 prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
                               by_facility = FALSE, hf_col = NULL,
                               use_reprate = TRUE) {
-  ensure_packages(c("dtplyr"))
+  ensure_packages("dtplyr")
 
   # Input validation
   if (!is.data.frame(data)) {
@@ -438,7 +438,7 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
     hf_col = if (by_facility) hf_col else NULL
   )
 
-  return(list(
+  list(
     plot_data = plot_data,
     vars_of_interest = vars_of_interest,
     fill_var = fill_var,
@@ -448,7 +448,7 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
     title_vars = title_vars,
     title_suffix = title_suffix,
     save_title_prefix = save_title_prefix
-  ))
+  )
 }
 
 #' Plot Missing data or Reporting Rate over time
@@ -711,7 +711,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     )
   }
 
-  return(plot)
+  plot
 }
 
 #' Calculate and visualize reporting rates
@@ -828,7 +828,7 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
     )
   }
 
-  return(plot)
+  plot
 }
 
 #' Save a single plot to a file
@@ -970,7 +970,7 @@ save_single_plot <- function(plot, plot_data, plot_path,
     }
   )
 
-  return(invisible(full_path))
+  invisible(full_path)
 }
 
 #' Calculate appropriate plot dimensions based on data
@@ -1007,7 +1007,7 @@ calculate_plot_dimensions <- function(plot_data, x_var, y_var = NULL) {
   }
 
   # Return dimensions
-  return(list(width = width, height = height))
+  list(width = width, height = height)
 }
 #' Get translated terms for plot filenames
 #'
@@ -1083,7 +1083,7 @@ get_translated_terms <- function(target_language, source_language,
     format(Sys.Date(), "%Y")
   }
 
-  return(list(
+  list(
     prefix = save_title_prefix_tr,
     for_word = for_word,
     by_word = by_word,
@@ -1091,7 +1091,7 @@ get_translated_terms <- function(target_language, source_language,
     vars_of_interest_str = vars_of_interest_str,
     x_title = x_title,
     year_range = year_range
-  ))
+  )
 }
 
 #' Translate plot labels to specified language
@@ -1106,7 +1106,7 @@ translate_plot_labels <- function(plot, target_language,
                                   source_language = "en",
                                   lang_cache_path = tempdir()) {
   # get gtranslate if missing
-  ensure_packages(c("gtranslate"))
+  ensure_packages("gtranslate")
 
   # Extract labels from the plot
   plot_labs <- plot$labels
@@ -1231,5 +1231,5 @@ create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
     )
   )
 
-  return(common_elements)
+  common_elements
 }
