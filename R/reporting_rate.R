@@ -768,7 +768,7 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
     )
   }
 
-  return(plot)
+  plot
 }
 
 #' Create plots with a grouping variable on the y-axis

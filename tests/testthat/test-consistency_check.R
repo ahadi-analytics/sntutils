@@ -18,7 +18,7 @@ suppressMessages(
       # 1. Test when the length of tests and cases is not the same
       testthat::expect_error(
         consistency_check(dummy_data,
-                          tests = c("malaria_rdt_test"),
+                          tests = "malaria_rdt_test",
                           cases = c(
                             "malaria_rdt_cases",
                             "malaria_micro_cases"
