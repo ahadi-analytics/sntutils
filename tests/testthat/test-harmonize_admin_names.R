@@ -428,7 +428,7 @@ testthat::test_that("calculate_match_stats ignores case in matches", {
     # Call modified function
     modified_fn(data, lookup_data, level0 = "country")
 
-    return(results)
+    results
   }
 
   # Verify expected case-insensitive match counts
@@ -1346,9 +1346,9 @@ testthat::test_that(
   {
     # Test error when specifying levels out of order
     target_df <- data.frame(
-      country = c("ANGOLA"),
-      province = c("CABINDA"),
-      district = c("BUCO-ZAU"),
+      country = "ANGOLA",
+      province = "CABINDA",
+      district = "BUCO-ZAU",
       stringsAsFactors = FALSE
     )
 
@@ -1378,7 +1378,7 @@ testthat::test_that(
 
 testthat::test_that("prep_geonames handles empty lookup_df properly", {
   target_df <- data.frame(
-    country = c("ANGOLA"),
+    country = "ANGOLA",
     stringsAsFactors = FALSE
   )
 
@@ -1435,7 +1435,7 @@ testthat::test_that("prep_geonames handles case conversion correctly", {
 testthat::test_that("prep_geonames handles cache path correctly", {
   # Test with non-existent cache path
   target_df <- data.frame(
-    country = c("ANGOLA"),
+    country = "ANGOLA",
     stringsAsFactors = FALSE
   )
 
@@ -1531,7 +1531,7 @@ testthat::test_that("prep_geonames can be run non-interactively", {
     prep_geonames, "construct_geo_names",
     function(df, ...) {
       df$long_geo <- paste(df$country, df$province, sep = "_")
-      return(df)
+      df
     }
   )
 
