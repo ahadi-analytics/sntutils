@@ -34,7 +34,8 @@ Imports:
     stringdist,
     stringr,
     tidyr,
-    ggplot2
+    ggplot2,
+    digest
 Suggests:
     ggtext,
     scales,
@@ -46,7 +47,6 @@ Suggests:
     progress,
     readxl,
     curl,
-    digest,
     stringi,
     zoo
 Config/testthat/edition: 3
