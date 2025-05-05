@@ -1,7 +1,8 @@
+
+
 [![CodeFactor](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils/badge)](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils)
 
-# `sntutils`
-
+# sntutils
 
 ## What is sntutils?
 
@@ -12,25 +13,26 @@ visualization, and analysis, facilitating evidence-based decision-making
 at district level or below. This is an overview of the available
 functions in this version of `sntutils`:
 
-| Category                      | Function                        | Description                                                        |
-|-------------------------------|---------------------------------|--------------------------------------------------------------------|
-| **Data Import/Export**        | `read()`                        | Reads data from various file formats (CSV, Excel, Stata, RDS, shp) |
-|                               | `write()`                       | Exports data to various file formats                               |
-| **Date Handling**             | `autoparse_dates()`             | Automatically detects and standardizes various date formats        |
-|                               | `available_date_formats`        | List of supported date formats for parsing                         |
-| **Geolocation Name Cleaning** | `prep_geonames()`               | Standardizes administrative names across different levels          |
-| **Data Aggregation**          | `calculate_reporting_metrics()` | Aggregates facility reporting/missing rates over time and space    |
-| **Data Visualization**        | `consistency_check()`           | Identifies inconsistencies between two variables in a data         |
-|                               | `reporting_rate_plot()`         | Visualizes reporting/missing rates by two variables                |
-| **Translation**               | `translate_text()`              | Translates text with persistent file cache                         |
-|                               | `translate_text_vec()`          | Vectorized version of `translate_text` function                    |
-|                               | `translate_yearmon()`           | Converts date to yearmon format with month names in multiple langs |
-| **Image Processing**          | `compress_png()`                | Reduces PNG file size while maintaining quality                    |
-| **Numeric Utilities**         | `big_mark()`                    | Formats numbers with thousand separators                           |
-|                               | `sum2()`                        | Sum with automatic NA removal                                      |
-|                               | `mean2()`                       | Mean with automatic NA removal                                     |
-|                               | `median2()`                     | Median with automatic NA removal                                   |
-| **Hashing Utilities**         | `vdigest()`                     | Vectorized version of digest::digest function                      |
+| Category                      | Function                        | Description                                                                 |
+|-------------------------------|---------------------------------|-----------------------------------------------------------------------------|
+| **Data Import/Export**        | `read()`                        | Reads data from various file formats (CSV, Excel, Stata, RDS, shp)          |
+|                               | `write()`                       | Exports data to various file formats                                        |
+| **Download Chirps Data**      | `download_chirps2.0()`          | Downloads monthly CHIRPS rainfall rasters for a given region and date range |
+| **Date Handling**             | `autoparse_dates()`             | Automatically detects and standardizes various date formats                 |
+|                               | `available_date_formats`        | List of supported date formats for parsing                                  |
+| **Geolocation Name Cleaning** | `prep_geonames()`               | Standardizes administrative names across different levels                   |
+| **Data Aggregation**          | `calculate_reporting_metrics()` | Aggregates facility reporting/missing rates over time and space             |
+| **Data Visualization**        | `consistency_check()`           | Identifies inconsistencies between two variables in a data                  |
+|                               | `reporting_rate_plot()`         | Visualizes reporting/missing rates by two variables                         |
+| **Translation**               | `translate_text()`              | Translates text with persistent file cache                                  |
+|                               | `translate_text_vec()`          | Vectorized version of `translate_text` function                             |
+|                               | `translate_yearmon()`           | Converts date to yearmon format with month names in multiple langs          |
+| **Image Processing**          | `compress_png()`                | Reduces PNG file size while maintaining quality                             |
+| **Numeric Utilities**         | `big_mark()`                    | Formats numbers with thousand separators                                    |
+|                               | `sum2()`                        | Sum with automatic NA removal                                               |
+|                               | `mean2()`                       | Mean with automatic NA removal                                              |
+|                               | `median2()`                     | Median with automatic NA removal                                            |
+| **Hashing Utilities**         | `vdigest()`                     | Vectorized version of digest::digest function                               |
 
 ## :wrench: Installation
 
@@ -86,6 +88,38 @@ write(
   "path/to/multi_sheet.xlsx"
 )
 ```
+
+### Downalod Climate Data (CHIRPS Rainfall)
+
+The `download_chirps2.0()` function allows you to fetch CHIRPS monthly
+rainfall raster data for any supported region and time period. It pulls
+data directly from the [UCSB Climate Hazards
+Group](https://www.chc.ucsb.edu/data/chirps) FTP archive and supports
+automatic unzipping. Only `.tif.gz` monthly rasters are supported, and
+the function avoids re-downloading existing files. To view all supported
+CHIRPS datasets, use `chirps_options()`.
+
+``` r
+# View available CHIRPS datasets
+chirps_options()
+
+# Download Africa monthly rainfall for Jan to Mar 2022
+download_chirps2.0(
+  dataset = "africa_monthly",
+  start = "2022-01",
+  end = "2022-03",
+  out_dir = "data/chirps"
+)
+```
+
+This will download the following files to the data/chirps/ folder (and
+unzip them if requested):
+
+- `chirps-v2.0.2022.01.tif`
+
+- `chirps-v2.0.2022.02.tif`
+
+- `chirps-v2.0.2022.03.tif`
 
 ### Automatic Date Parsing
 
@@ -290,7 +324,7 @@ consistency_check(
 )
 ```
 
-![](man/figures-readme/unnamed-chunk-12-1.png)
+![](man/figures-readme/unnamed-chunk-13-1.png)
 
 ### Reporting Rate Plots
 
@@ -312,7 +346,7 @@ reporting_rate_plot(
 )
 ```
 
-![](man/figures-readme/unnamed-chunk-14-1.png)
+![](man/figures-readme/unnamed-chunk-15-1.png)
 
 **Scenario 2: Missing rates over time**
 
@@ -330,7 +364,7 @@ reporting_rate_plot(
 )
 ```
 
-![](man/figures-readme/unnamed-chunk-16-1.png)
+![](man/figures-readme/unnamed-chunk-17-1.png)
 
 **Scenario 3: Facility-level reporting proportion**
 
@@ -345,7 +379,7 @@ reporting_rate_plot(
 )
 ```
 
-![](man/figures-readme/unnamed-chunk-18-1.png)
+![](man/figures-readme/unnamed-chunk-19-1.png)
 
 ### Image Compression
 
