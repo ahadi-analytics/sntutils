@@ -1,3 +1,6 @@
+
+[![CodeFactor](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils/badge)](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils)
+
 ---
 title: "sntutils"
 format:
@@ -9,34 +12,37 @@ format:
     fig-path: "pdf-figures/"
 output-file: README.md
 ---
+[![CodeFactor](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils/badge)](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils)
 
 ## What is sntutils?
 
 `sntutils` is an R package developed by AHADI to support the Subnational Tailoring (SNT) of malaria interventions. It provides utility functions that standardize and streamline data preparation, cleaning, management, visualization, and analysis, facilitating evidence-based decision-making at district level or below. This is an overview of the available functions in this version of `sntutils`:
 
 | Category | Function | Description |
-|----------|----------|-------------|
+|----------------------|----------------------|----------------------------|
 | **Data Import/Export** | `read()` | Reads data from various file formats (CSV, Excel, Stata, RDS, shp) |
-| | `write()` | Exports data to various file formats |
+|  | `write()` | Exports data to various file formats |
+| **Download Chirps Data** | `download_chirps2.0()` | Downloads monthly CHIRPS rainfall rasters for a given region and date range |
 | **Date Handling** | `autoparse_dates()` | Automatically detects and standardizes various date formats |
-| | `available_date_formats` | List of supported date formats for parsing |
+|  | `available_date_formats` | List of supported date formats for parsing |
 | **Geolocation Name Cleaning** | `prep_geonames()` | Standardizes administrative names across different levels |
 | **Data Aggregation** | `calculate_reporting_metrics()` | Aggregates facility reporting/missing rates over time and space |
 | **Data Visualization** | `consistency_check()` | Identifies inconsistencies between two variables in a data |
-| | `reporting_rate_plot()` | Visualizes reporting/missing rates by two variables |
+|  | `reporting_rate_plot()` | Visualizes reporting/missing rates by two variables |
 | **Translation** | `translate_text()` | Translates text with persistent file cache |
-| | `translate_text_vec()` | Vectorized version of `translate_text` function |
-| | `translate_yearmon()` |  Converts date to yearmon format with month names in multiple langs |
+|  | `translate_text_vec()` | Vectorized version of `translate_text` function |
+|  | `translate_yearmon()` | Converts date to yearmon format with month names in multiple langs |
 | **Image Processing** | `compress_png()` | Reduces PNG file size while maintaining quality |
 | **Numeric Utilities** | `big_mark()` | Formats numbers with thousand separators |
-| | `sum2()` | Sum with automatic NA removal |
-| | `mean2()` | Mean with automatic NA removal |
-| | `median2()` | Median with automatic NA removal |
+|  | `sum2()` | Sum with automatic NA removal |
+|  | `mean2()` | Mean with automatic NA removal |
+|  | `median2()` | Median with automatic NA removal |
 | **Hashing Utilities** | `vdigest()` | Vectorized version of digest::digest function |
 
 ## :wrench: Installation
+
 The package can be installed using `devtools` in R. The steps are as follows:
-  
+
 ```{r eval=FALSE, include=TRUE}
 # 1) Install devtools if you haven't already
 install.packages("devtools")
@@ -84,6 +90,31 @@ write(
   "path/to/multi_sheet.xlsx"
 )
 ```
+
+### Downalod Climate Data (CHIRPS Rainfall)
+
+The `download_chirps2.0()` function allows you to fetch CHIRPS monthly rainfall raster data for any supported region and time period. It pulls data directly from the [UCSB Climate Hazards Group](https://www.chc.ucsb.edu/data/chirps) FTP archive and supports automatic unzipping. Only `.tif.gz` monthly rasters are supported, and the function avoids re-downloading existing files. To view all supported CHIRPS datasets, use `chirps_options()`.
+
+```{r eval=FALSE, include=TRUE}
+# View available CHIRPS datasets
+chirps_options()
+
+# Download Africa monthly rainfall for Jan to Mar 2022
+download_chirps2.0(
+  dataset = "africa_monthly",
+  start = "2022-01",
+  end = "2022-03",
+  out_dir = "data/chirps"
+)
+```
+
+This will download the following files to the data/chirps/ folder (and unzip them if requested):
+
+-   `chirps-v2.0.2022.01.tif`
+
+-   `chirps-v2.0.2022.02.tif`
+
+-   `chirps-v2.0.2022.03.tif`
 
 ### Automatic Date Parsing
 
@@ -246,7 +277,6 @@ calculate_reporting_metrics(
 ) |> head()
 ```
 
-
 ### Consistency Check plots
 
 The `consistency_check()` function identifies and visualizes inconsistencies between two variables such as the test and confirmed cases, useful for data quality assessment.
@@ -293,7 +323,8 @@ consistency_check(
 )
 ```
 
-###  Reporting Rate Plots
+### Reporting Rate Plots
+
 The `reporting_rate_plot()` function plots the reporting rates for health facility data, making it easy to identify patterns, gaps, and trends in data completeness across time and geographic areas. This visualization function works with health facility data, using `calculate_reporting_metrics()` internally to support all three reporting scenarios.
 
 **Scenario 1: Reporting rates by date and district**
@@ -438,7 +469,6 @@ translate_text("Malaria cases",
 #> "Casos de malária"
 ```
 
-
 For bulk translation of multiple strings, the vectorized version `translate_text_vec()` offers better performance and works easily with data frames when used in a piped workflow:
 
 ```{r eval=FALSE, include=TRUE}
@@ -483,11 +513,10 @@ translated_yearmon(dates, language = "es", format = "%B %Y")
 
 These translation functions are integrated throughout the package, allowing functions like `reporting_rate_plot()` and `consistency_check()` to generate outputs in the users preferred language through their `target_language` parameter.
 
-
 ### Numeric Formatting
 
 Several helper functions make working with numeric data easier:
-  
+
 ```{r eval=FALSE, include=TRUE}
 # Format numbers with thousands separator
 big_mark(1234567.89)
