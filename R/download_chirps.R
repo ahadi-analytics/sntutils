@@ -24,6 +24,9 @@ chirps_options <- function() {
       "camer-carib_monthly",
       "EAC_monthly"
     ),
+    frequency = c(
+      "monthly"
+    ),
     label = c(
       "Global (Monthly)",
       "Africa (Monthly)",
@@ -77,8 +80,7 @@ chirps_options <- function() {
 #'
 #' @export
 download_chirps2.0 <- function(dataset, start, end = NULL,
-                            out_dir = ".", unzip = TRUE) {
-
+                               out_dir = ".", unzip = TRUE) {
   opts <- chirps_options()
   if (!dataset %in% opts$dataset) {
     cli::cli_abort(
@@ -91,7 +93,6 @@ download_chirps2.0 <- function(dataset, start, end = NULL,
   base_url <- glue::glue(
     "https://data.chc.ucsb.edu/products/CHIRPS-2.0/{subdir}")
 
-  # Build date range
   if (is.null(end)) {
     dates <- as.Date(paste0(start, "-01"))
   } else {
@@ -103,6 +104,7 @@ download_chirps2.0 <- function(dataset, start, end = NULL,
 
   cli::cli_h1(glue::glue("Downloading CHIRPS: {sel$label}"))
   cli::cli_progress_bar("Downloading", total = length(dates))
+  cli::cli_text("")
 
   for (i in seq_along(dates)) {
     d <- dates[i]
@@ -110,19 +112,20 @@ download_chirps2.0 <- function(dataset, start, end = NULL,
     month <- format(d, "%m")
 
     if (freq == "monthly") {
-      name <- glue::glue("chirps-v2.0.{year}.{month}.tif.gz")
-      url <- glue::glue("{base_url}/{name}")
-      dest <- file.path(out_dir, name)
+      orig_name <- glue::glue("chirps-v2.0.{year}.{month}.tif.gz")
+      custom_name <- glue::glue("{dataset}_chirps-v2.0.{year}.{month}.tif.gz")
+      url <- glue::glue("{base_url}/{orig_name}")
+      dest <- file.path(out_dir, custom_name)
       tif  <- sub(".gz$", "", dest)
 
       if (!file.exists(tif)) {
         tryCatch({
           curl::curl_download(url, dest, mode = "wb")
-          cli::cli_alert_success("Downloaded {name}")
-          if (unzip && file.exists(dest)) R.utils::gunzip(
-            dest, overwrite = FALSE)
+          cli::cli_alert_success("Downloaded {custom_name}")
+          if (unzip && file.exists(dest)) R.utils::gunzip(dest,
+                                                          overwrite = FALSE)
         }, error = function(e) {
-          cli::cli_alert_danger("Failed {name}: {e$message}")
+          cli::cli_alert_danger("Failed {custom_name}: {e$message}")
         })
       } else {
         cli::cli_alert_info("Skipping {basename(tif)}, already exists.")
@@ -130,19 +133,22 @@ download_chirps2.0 <- function(dataset, start, end = NULL,
 
     } else {
       for (subperiod in 1:6) {
-        name <- glue::glue("chirps-v2.0.{year}.{month}.{subperiod}.tif.gz")
-        url <- glue::glue("{base_url}/{name}")
-        dest <- file.path(out_dir, name)
+        orig_name <- glue::glue(
+          "chirps-v2.0.{year}.{month}.{subperiod}.tif.gz")
+        custom_name <- glue::glue(
+          "{dataset}_chirps-v2.0.{year}.{month}.{subperiod}.tif.gz")
+        url <- glue::glue("{base_url}/{orig_name}")
+        dest <- file.path(out_dir, custom_name)
         tif  <- sub(".gz$", "", dest)
 
         if (!file.exists(tif)) {
           tryCatch({
             curl::curl_download(url, dest, mode = "wb")
-            cli::cli_alert_success("Downloaded {name}")
-            if (unzip && file.exists(dest)) R.utils::gunzip(
-              dest, overwrite = FALSE)
+            cli::cli_alert_success("Downloaded {custom_name}")
+            if (unzip && file.exists(dest)) R.utils::gunzip(dest,
+                                                            overwrite = FALSE)
           }, error = function(e) {
-            cli::cli_alert_danger("Failed {name}: {e$message}")
+            cli::cli_alert_danger("Failed {custom_name}: {e$message}")
           })
         } else {
           cli::cli_alert_info("Skipping {basename(tif)}, already exists.")
@@ -154,5 +160,7 @@ download_chirps2.0 <- function(dataset, start, end = NULL,
   }
 
   cli::cli_progress_done()
-  cli::cli_alert_success("All CHIRPS files processed.")
+  cli::cli_text("")
+  cli::cli_alert_success("All CHIRPS files downloaded")
 }
+
