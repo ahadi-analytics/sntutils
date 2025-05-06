@@ -1,6 +1,4 @@
 
-[![CodeFactor](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils/badge)](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils)
-
 ---
 title: "sntutils"
 format:
@@ -12,7 +10,6 @@ format:
     fig-path: "pdf-figures/"
 output-file: README.md
 ---
-[![CodeFactor](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils/badge)](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils)
 
 ## What is sntutils?
 
@@ -26,6 +23,7 @@ output-file: README.md
 | **Date Handling** | `autoparse_dates()` | Automatically detects and standardizes various date formats |
 |  | `available_date_formats` | List of supported date formats for parsing |
 | **Geolocation Name Cleaning** | `prep_geonames()` | Standardizes administrative names across different levels |
+| **Data Extraction** | `process_raster_collection()` | Extract values from multiple rasters against ashapefile |
 | **Data Aggregation** | `calculate_reporting_metrics()` | Aggregates facility reporting/missing rates over time and space |
 | **Data Visualization** | `consistency_check()` | Identifies inconsistencies between two variables in a data |
 |  | `reporting_rate_plot()` | Visualizes reporting/missing rates by two variables |
@@ -184,6 +182,49 @@ cleaned_df <- prep_geonames(
 Here is a short video to demonstrate the full interactivity of `prep_geonames`:
 
 https://github.com/user-attachments/assets/ffa69a93-a982-43c4-9673-1165f997fd96
+
+### CHIRPS Raster Batch Processing
+
+The `process_raster_collection()` function automates zonal statistics extraction across multiple raster files (e.g., CHIRPS monthly rainfall `.tif` files). It detects dates from filenames, aligns CRS between rasters and shapefiles, and computes statistics like mean, sum, or median using exact geometry-aware extraction. It returns a tidy data frame indexed by administrative unit and time.
+
+This is especially useful for climate data workflows that require aggregating high-resolution rasters to subnational geographies over time.
+
+
+```{r eval=FALSE, include=TRUE}
+# Dummy example — replace with your shapefile and actual raster directory
+adm3_shp <- sf::st_read(system.file("extdata", "sle_adm3_example.geojson", 
+                                    package = "sntutils"))
+
+# Raster files must be named with detectable dates 
+# (e.g. africa_monthly_chirps-v2.0.2023.05.tif)
+# For test purposes, use sample files stored in test fixtures:
+raster_dir <- system.file("extdata", "chirps_test_rasters", 
+                          package = "sntutils")
+
+# Process rasters and extract mean rainfall
+rainfall_df <- sntutils::process_raster_collection(
+  directory = raster_dir,
+  shapefile = adm3_shp,
+  id_cols = c("adm0", "adm1", "adm2", "adm3"),
+  aggregations = c("mean"),
+  pattern = "\.tif$"
+)
+
+rainfall_df
+#>                                file_name       adm1      adm2          adm3 year month      mean
+#>1   africa_monthly_chirps-v2.0.2020.01.tif    EASTERN  KAILAHUN          DEA 2020     1 12.871692
+#>2   africa_monthly_chirps-v2.0.2020.01.tif    EASTERN  KAILAHUN         JAHN 2020     1  9.820749
+#>3   africa_monthly_chirps-v2.0.2020.01.tif    EASTERN  KAILAHUN        JAWIE 2020     1 12.042542
+#>4   africa_monthly_chirps-v2.0.2020.01.tif    EASTERN  KAILAHUN   KISSI KAMA 2020     1  8.951293
+#>5   africa_monthly_chirps-v2.0.2020.01.tif    EASTERN  KAILAHUN   KISSI TENG 2020     1  8.494733
+#>6   africa_monthly_chirps-v2.0.2020.01.tif    EASTERN  KAILAHUN  KISSI TONGI 2020     1  9.013873
+#>7   africa_monthly_chirps-v2.0.2020.01.tif    EASTERN  KAILAHUN KPEJE BONGRE 2020     1 10.587007
+#>8   africa_monthly_chirps-v2.0.2020.01.tif    EASTERN  KAILAHUN   KPEJE WEST 2020     1  9.824939
+#>9   africa_monthly_chirps-v2.0.2020.01.tif    EASTERN  KAILAHUN        LUAWA 2020     1 11.760721
+#>10  africa_monthly_chirps-v2.0.2020.01.tif    EASTERN  KAILAHUN       MALEMA 2020     1 13.839043
+
+```
+
 
 ### Aggregatign Reporting Rate
 
