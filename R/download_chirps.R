@@ -42,6 +42,82 @@ chirps_options <- function() {
   )
 }
 
+#' List Available CHIRPS Raster Files for a Dataset
+#'
+#' Scrapes the UCSB CHIRPS archive to list available `.tif.gz` raster files
+#' for a given dataset (e.g., `"africa_monthly"`). Extracts year and month
+#' from filenames where possible.
+#'
+#' @param dataset_code Character. One of the dataset codes from
+#'   `chirps_options()`, such as `"africa_monthly"`.
+#'
+#' @return A tibble with the following columns:
+#' \describe{
+#'   \item{file_name}{The filename of the `.tif.gz` raster.}
+#'   \item{year}{Extracted year (YYYY) from filename.}
+#'   \item{month}{Extracted month (MM) from filename, if available.}
+#'   \item{dataset}{The dataset code queried.}
+#' }
+#' Returns `NULL` if the dataset cannot be accessed.
+#'
+#' @examples
+#' \dontrun{
+#' # List available Africa monthly files
+#' check_chirps_available("africa_monthly")
+#' }
+#'
+#' @export
+check_chirps_available <- function(dataset_code = "africa_monthly") {
+  base_url <- paste0(
+    "https://data.chc.ucsb.edu/products/CHIRPS-2.0/",
+    dataset_code, "/tifs/"
+  )
+
+  tryCatch({
+    page <- xml2::read_html(base_url)
+    links <- rvest::html_elements(page, "a")
+    files <- rvest::html_text(links)
+    files <- files[grepl("\\.tif\\.gz$", files)]
+
+    df <- tibble::tibble(
+      file_name = files,
+      year = stringr::str_extract(files, "\\d{4}"),
+      month = stringr::str_extract(files, "\\d{4}\\.(\\d{2})") |>
+        stringr::str_remove("\\d{4}\\."),
+      dataset = dataset_code
+    ) |>
+      dplyr::filter(!is.na(year)) |>
+      dplyr::arrange(desc(year), month)
+
+    if (nrow(df) == 0) {
+      cli::cli_alert_info(glue::glue(
+        "No valid CHIRPS files found for {dataset_code}."
+      ))
+      return(NULL)
+    }
+
+    dates <- as.Date(paste(df$year, df$month, "01", sep = "-"))
+    start_date <- format(min(dates, na.rm = TRUE), "%b %Y")
+    end_date <- format(max(dates, na.rm = TRUE), "%b %Y")
+
+    if (all(!is.na(start_date))) {
+      cli::cli_alert_success(glue::glue(
+        "{dataset_code}: Data available from {start_date} to {end_date}."
+      ))
+    } else {
+      cli::cli_alert_success(glue::glue(
+        "{dataset_code}: Data available {yr_range[1]} - {yr_range[2]}."
+      ))
+    }
+
+    return(df)
+
+  }, error = function(e) {
+    cli::cli_alert_danger(glue::glue("Could not access {base_url}"))
+    return(NULL)
+  })
+}
+
 #' Download CHIRPS Raster Data from UCSB Archive
 #'
 #' Downloads `.tif.gz` CHIRPS rainfall data files from the UCSB Climate Hazards
