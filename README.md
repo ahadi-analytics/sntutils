@@ -1,4 +1,5 @@
 
+
 [![CodeFactor](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils/badge)](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils)
 
 # sntutils
@@ -13,27 +14,29 @@ visualization, and analysis, facilitating evidence-based decision-making
 at district level or below. This is an overview of the available
 functions in this version of `sntutils`:
 
-| Category                      | Function                        | Description                                                                 |
-|-------------------------------|---------------------------------|-----------------------------------------------------------------------------|
-| **Data Import/Export**        | `read()`                        | Reads data from various file formats (CSV, Excel, Stata, RDS, shp)          |
-|                               | `write()`                       | Exports data to various file formats                                        |
-| **Download Chirps Data**      | `download_chirps2.0()`          | Downloads monthly CHIRPS rainfall rasters for a given region and date range |
-| **Date Handling**             | `autoparse_dates()`             | Automatically detects and standardizes various date formats                 |
-|                               | `available_date_formats`        | List of supported date formats for parsing                                  |
-| **Geolocation Name Cleaning** | `prep_geonames()`               | Standardizes administrative names across different levels                   |
-| **Data Extraction**           | `process_raster_collection()`   | Extract values from multiple rasters against ashapefile                     |
-| **Data Aggregation**          | `calculate_reporting_metrics()` | Aggregates facility reporting/missing rates over time and space             |
-| **Data Visualization**        | `consistency_check()`           | Identifies inconsistencies between two variables in a data                  |
-|                               | `reporting_rate_plot()`         | Visualizes reporting/missing rates by two variables                         |
-| **Translation**               | `translate_text()`              | Translates text with persistent file cache                                  |
-|                               | `translate_text_vec()`          | Vectorized version of `translate_text` function                             |
-|                               | `translate_yearmon()`           | Converts date to yearmon format with month names in multiple langs          |
-| **Image Processing**          | `compress_png()`                | Reduces PNG file size while maintaining quality                             |
-| **Numeric Utilities**         | `big_mark()`                    | Formats numbers with thousand separators                                    |
-|                               | `sum2()`                        | Sum with automatic NA removal                                               |
-|                               | `mean2()`                       | Mean with automatic NA removal                                              |
-|                               | `median2()`                     | Median with automatic NA removal                                            |
-| **Hashing Utilities**         | `vdigest()`                     | Vectorized version of digest::digest function                               |
+| Category                      | Function                         | Description                                                                    |
+|-------------------------------|----------------------------------|--------------------------------------------------------------------------------|
+| **Data Import/Export**        | `read()`                         | Reads data from various file formats (CSV, Excel, Stata, RDS, shp)             |
+|                               | `write()`                        | Exports data to various file formats                                           |
+| **Download Chirps Data**      | `download_chirps2.0()`           | Downloads monthly CHIRPS rainfall rasters for a given region and date range    |
+| **Project Structure**         | `create_data_structure()`        | Creates AHADI-style hierarchical data folders under 01_data/                   |
+|                               | `initialize_project_structure()` | Sets up full project folder structure with data, scripts, outputs, and reports |
+| **Date Handling**             | `autoparse_dates()`              | Automatically detects and standardizes various date formats                    |
+|                               | `available_date_formats`         | List of supported date formats for parsing                                     |
+| **Geolocation Name Cleaning** | `prep_geonames()`                | Standardizes administrative names across different levels                      |
+| **Data Extraction**           | `process_raster_collection()`    | Extract values from multiple rasters against ashapefile                        |
+| **Data Aggregation**          | `calculate_reporting_metrics()`  | Aggregates facility reporting/missing rates over time and space                |
+| **Data Visualization**        | `consistency_check()`            | Identifies inconsistencies between two variables in a data                     |
+|                               | `reporting_rate_plot()`          | Visualizes reporting/missing rates by two variables                            |
+| **Translation**               | `translate_text()`               | Translates text with persistent file cache                                     |
+|                               | `translate_text_vec()`           | Vectorized version of `translate_text` function                                |
+|                               | `translate_yearmon()`            | Converts date to yearmon format with month names in multiple langs             |
+| **Image Processing**          | `compress_png()`                 | Reduces PNG file size while maintaining quality                                |
+| **Numeric Utilities**         | `big_mark()`                     | Formats numbers with thousand separators                                       |
+|                               | `sum2()`                         | Sum with automatic NA removal                                                  |
+|                               | `mean2()`                        | Mean with automatic NA removal                                                 |
+|                               | `median2()`                      | Median with automatic NA removal                                               |
+| **Hashing Utilities**         | `vdigest()`                      | Vectorized version of digest::digest function                                  |
 
 ## :wrench: Installation
 
@@ -98,11 +101,38 @@ data directly from the [UCSB Climate Hazards
 Group](https://www.chc.ucsb.edu/data/chirps) FTP archive and supports
 automatic unzipping. Only `.tif.gz` monthly rasters are supported, and
 the function avoids re-downloading existing files. To view all supported
-CHIRPS datasets, use `chirps_options()`.
+CHIRPS datasets, use `chirps_options()`. To check the available years
+and months for a specific CHIRPS dataset (e.g., africa_monthly), use the
+`check_chirps_available()` function.
 
 ``` r
 # View available CHIRPS datasets
 chirps_options()
+#># A tibble: 4 × 4
+#>  dataset             frequency label                                 subdir                  
+#>  <chr>               <chr>     <chr>                                 <chr>                   
+#>1 global_monthly      monthly   Global (Monthly)                      global_monthly/tifs     
+#>2 africa_monthly      monthly   Africa (Monthly)                      africa_monthly/tifs     
+#>3 camer-carib_monthly monthly   Caribbean & Central America (Monthly) camer-carib_monthly/tifs
+#>4 EAC_monthly         monthly   East African Community (Monthly)      EAC_monthly/tifs    
+
+# check available years and months for the africa_monthly 
+check_chirps_available(dataset_code = "africa_monthly")
+
+#> ✔ africa_monthly: Data available from Jan 1981 to Mar 2025.
+#># A tibble: 531 × 4
+#>   file_name                  year  month dataset       
+#>   <chr>                      <chr> <chr> <chr>         
+#> 1 chirps-v2.0.2025.01.tif.gz 2025  01    africa_monthly
+#> 2 chirps-v2.0.2025.02.tif.gz 2025  02    africa_monthly
+#> 3 chirps-v2.0.2025.03.tif.gz 2025  03    africa_monthly
+#> 4 chirps-v2.0.2024.01.tif.gz 2024  01    africa_monthly
+#> 5 chirps-v2.0.2024.02.tif.gz 2024  02    africa_monthly
+#> 6 chirps-v2.0.2024.03.tif.gz 2024  03    africa_monthly
+#> 7 chirps-v2.0.2024.04.tif.gz 2024  04    africa_monthly
+#> 8 chirps-v2.0.2024.05.tif.gz 2024  05    africa_monthly
+#> 9 chirps-v2.0.2024.06.tif.gz 2024  06    africa_monthly
+#>10 chirps-v2.0.2024.07.tif.gz 2024  07    africa_monthly
 
 # Download Africa monthly rainfall for Jan to Mar 2022
 download_chirps2.0(
@@ -121,6 +151,71 @@ unzip them if requested):
 - `chirps-v2.0.2022.02.tif`
 
 - `chirps-v2.0.2022.03.tif`
+
+### Project and Data Folder Structure Utilities
+
+Two functions are provided to help set up a consistent, hierarchical
+folder structure for SNT projects following AHADI’s recommended layout.
+Each key data domain in 01_data/ includes two subfolders: raw/ for
+storing the original, untouched data as received, and processed/ for
+storing cleaned or transformed versions ready for analysis. This
+structure is applied consistently across all domains.
+
+**create_data_structure()**
+
+``` r
+# Create only the data structure under 01_data/
+create_data_structure(base_path = ".")
+```
+
+``` plaintext
+01_data/
+├── 1.1_foundational/
+│   ├── 1.1a_admin_boundaries/
+│   ├── 1.1b_health_facilities/
+│   └── 1.1c_population/
+│       ├── 1.1ci_national/
+│       └── 1.1cii_worldpop_rasters/
+├── 1.2_epidemiology/
+│   ├── 1.2a_routine_surveillance/
+│   ├── 1.2b_pfpr_estimates/
+│   └── 1.2c_mortality_estimates/
+├── 1.3_interventions/
+├── 1.4_drug_efficacy_resistance/
+├── 1.5_environment/
+│   ├── 1.5a_climate/
+│   ├── 1.5b_accessibility/
+│   └── 1.5c_land_use/
+├── 1.6_health_systems/
+│   └── 1.6a_dhs/
+├── 1.7_entomology/
+├── 1.8_commodities/
+02_scripts/
+03_outputs/
+│   └── plots/
+04_reports/
+metadata_docs/
+```
+
+**initialize_project_structure()**
+
+Sets up the full AHADI project structure, including organized folders for data, scripts, outputs, reports, and metadata. This structure is purposefully designed to support the full analytical workflow by ensuring that every project component has a clear, dedicated place. This organization makes it straightforward to locate files, reduces confusion, and ensures the project remains traceable, reproducible, and easy to maintain from start to finish.
+
+``` r
+# Initialize full project structure at specified path
+initialize_project_structure(base_path = "my_snt_project")
+```
+
+``` plaintext
+my_snt_project/
+├── 01_data/
+│   └── [Hierarchical data folders as above]
+├── 02_scripts/
+├── 03_outputs/
+│   └── plots/
+├── 04_reports/
+└── metadata_docs/
+```
 
 ### Automatic Date Parsing
 
@@ -372,7 +467,7 @@ consistency_check(
 )
 ```
 
-![](man/figures-readme/unnamed-chunk-14-1.png)
+![](man/figures-readme/unnamed-chunk-18-1.png)
 
 ### Reporting Rate Plots
 
@@ -394,7 +489,7 @@ reporting_rate_plot(
 )
 ```
 
-![](man/figures-readme/unnamed-chunk-16-1.png)
+![](man/figures-readme/unnamed-chunk-20-1.png)
 
 **Scenario 2: Missing rates over time**
 
@@ -412,7 +507,7 @@ reporting_rate_plot(
 )
 ```
 
-![](man/figures-readme/unnamed-chunk-18-1.png)
+![](man/figures-readme/unnamed-chunk-22-1.png)
 
 **Scenario 3: Facility-level reporting proportion**
 
@@ -427,7 +522,7 @@ reporting_rate_plot(
 )
 ```
 
-![](man/figures-readme/unnamed-chunk-20-1.png)
+![](man/figures-readme/unnamed-chunk-24-1.png)
 
 ### Image Compression
 
