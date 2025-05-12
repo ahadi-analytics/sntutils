@@ -195,7 +195,7 @@ process_raster_with_boundaries <- function(raster_file,
   pattern_info <- detect_time_pattern(raster_file)
   components <- extract_time_components(raster_file, pattern_info)
 
-  rast <- terra::rast(raster_file)
+  rast <- terra::rast(raster_file)[[1]]
   rast[rast == -9999] <- NA
 
   rast_crs <- terra::crs(rast)
