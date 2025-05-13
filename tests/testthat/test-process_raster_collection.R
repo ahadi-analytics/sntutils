@@ -1,4 +1,137 @@
-# tests/testthat/test-detect_time_pattern.R
+testthat::test_that(
+  "clean_filenames function works correctly with specific example", {
+
+    # Create a vector of filenames with consistent number patterns and unique numbers
+    filenames <- c(
+      "image_1234_backup_2372_273626_19872.png",
+      "image_1234_backup_2372_273626_19873.png",
+      "image_1234_backup_2372_273626_19874.png",
+      "image_1234_backup_2372_273626_19876.png"
+    )
+
+    # Define the expected result after cleaning, retaining unique numbers
+    expected_filenames <- c(
+      "image_backup_19872.png",
+      "image_backup_19873.png",
+      "image_backup_19874.png",
+      "image_backup_19876.png"
+    )
+
+    # Run the cleaning function
+    cleaned_filenames <- clean_filenames(filenames)
+
+    # Test if the function output matches the expected output
+    testthat::expect_equal(
+      sort(cleaned_filenames),
+      sort(expected_filenames)
+    )
+  })
+
+testthat::test_that(
+  "clean_filenames handles leading and trailing common numbers", {
+    filenames <- c(
+      "123_image_456_sample_001.png",
+      "123_image_456_sample_002.png",
+      "123_image_456_sample_003.png"
+    )
+
+    expected_filenames <- c(
+      "image_sample_001.png",
+      "image_sample_002.png",
+      "image_sample_003.png"
+    )
+
+    cleaned_filenames <- clean_filenames(filenames)
+
+    testthat::expect_equal(sort(cleaned_filenames), sort(expected_filenames))
+  })
+
+testthat::test_that("clean_filenames removes scattered common numbers", {
+  filenames <- c(
+    "file_111_part_222_section_A.png",
+    "doc_111_part_222_section_B.png",
+    "report_111_part_222_section_C.pdf"
+  )
+
+  expected_filenames <- c(
+    "file_part_section_A.png",
+    "doc_part_section_B.png",
+    "report_part_section_C.pdf"
+  )
+
+  cleaned_filenames <- clean_filenames(filenames)
+
+  testthat::expect_equal(sort(cleaned_filenames), sort(expected_filenames))
+})
+
+
+testthat::test_that("clean_filenames deals with inconsistent naming patterns", {
+  filenames <- c(
+    "backup_2020_file_01.png",
+    "restore_2020_file_02.log",
+    "log_2020_report_03.pdf"
+  )
+
+  expected_filenames <- c(
+    "backup_file_01.png",
+    "restore_file_02.log",
+    "log_report_03.pdf"
+  )
+
+  cleaned_filenames <- clean_filenames(filenames)
+
+  testthat::expect_equal(sort(cleaned_filenames), sort(expected_filenames))
+})
+
+testthat::test_that("clean_filenames processes mixed content", {
+  filenames <- c(
+    "data_333_entry_h1_v1.txt",
+    "info_333_log_h2_v1.txt",
+    "notes_333_draft_h3_v1.txt"
+  )
+
+  expected_filenames <- c(
+    "data_entry_h1_v1.txt",
+    "info_log_h2_v1.txt",
+    "notes_draft_h3_v1.txt"
+  )
+
+  cleaned_filenames <- clean_filenames(filenames)
+
+  testthat::expect_equal(sort(cleaned_filenames), sort(expected_filenames))
+})
+
+testthat::test_that("clean_filenames handles directories correctly", {
+
+  files <- c(
+    paste0(
+      "/Users/mohamedyusuf/ahadi-analytics/GitHub/snt-code-library/english",
+      "/data_r/MAPs/Malaria_Global_Pf_Parasite_Rate.273782.2021.2773.tiff"),
+    paste0(
+      "/Users/mohamedyusuf/ahadi-analytics/GitHub/snt-code-library/english",
+      "/data_r/MAPs/Malaria_Global_Pf_Parasite_Rate.273782.2022.2773.tiff"),
+    paste0(
+      "/Users/mohamedyusuf/ahadi-analytics/GitHub/snt-code-library/english",
+      "/data_r/MAPs/Malaria_Global_Pf_Parasite_Rate.273782.2023.2773.tiff")
+  )
+
+  expected <- c(
+    paste0(
+      "/Users/mohamedyusuf/ahadi-analytics/GitHub/snt-code-library/english",
+      "/data_r/MAPs/Malaria_Global_Pf_Parasite_Rate.2021.tiff"),
+    paste0(
+      "/Users/mohamedyusuf/ahadi-analytics/GitHub/snt-code-library/english",
+      "/data_r/MAPs/Malaria_Global_Pf_Parasite_Rate.2022.tiff"),
+    paste0(
+      "/Users/mohamedyusuf/ahadi-analytics/GitHub/snt-code-library/english",
+      "/data_r/MAPs/Malaria_Global_Pf_Parasite_Rate.2023.tiff")
+  )
+
+  cleaned <- clean_filenames(files)
+
+  testthat::expect_equal(cleaned, expected)
+})
+
 
 testthat::test_that("detect_time_pattern correctly identifies monthly formats", {
   # Setup various monthly format test cases
