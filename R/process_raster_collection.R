@@ -1,3 +1,59 @@
+#' Clean Filenames
+#'
+#' This function cleans a vector of filenames by removing common standalone
+#' numbers, condensing multiple separators, and ensuring clean formats.
+#'
+#' @param filenames A character vector of full file paths or basenames.
+#'
+#' @return A character vector of cleaned filenames. If full paths are
+#' provided, the function returns the cleaned filenames with the full path
+#' intact.
+clean_filenames <- function(filenames) {
+
+  if (all(dirname(filenames) != ".")) {
+    full_path <- filenames
+    filenames <- basename(filenames)
+    is_full_path <- TRUE
+  } else {is_full_path <- FALSE}
+
+  all_numbers <- filenames |>
+    stringr::str_extract_all("(?<![A-Za-z])\\d+(?![A-Za-z])") |>
+    unlist()
+
+  common_numbers <- all_numbers |>
+    table() |>
+    as.data.frame() |>
+    dplyr::rename(Number = all_numbers) |>
+    dplyr::mutate(Number = as.character(Number)) |>
+    dplyr::arrange(dplyr::desc(Freq)) |>
+    dplyr::filter(Freq > length(filenames) / 2) |>
+    dplyr::pull(Number)
+
+  pattern_common_numbers <- if (length(common_numbers) > 0) {
+    paste0("(?<![A-Za-z\\d])(", paste(common_numbers, collapse = "|"),
+           ")(?![A-Za-z\\d])")
+  } else {
+    NULL
+  }
+
+  cleaned_filenames <- filenames |>
+    stringr::str_replace_all(pattern = pattern_common_numbers,
+                             replacement = "") |>
+    stringr::str_replace_all(pattern = "\\.{2,}", replacement = ".") |>
+    stringr::str_replace_all(pattern = "_{2,}", replacement = "_") |>
+    stringr::str_replace_all(pattern = "_+\\.|\\._", replacement = "") |>
+    stringr::str_replace_all(pattern = "-+", replacement = "-") |>
+    stringr::str_replace_all(pattern = "^[_\\.]+|[_\\.]+$", replacement = "")
+
+  if (is_full_path) {
+    cleaned_filenames <- file.path(dirname(full_path), cleaned_filenames)
+  }
+
+  return(cleaned_filenames)
+}
+
+
+
 #' Detect time pattern in filenames
 #'
 #' Supports daily (YYYY-MM-DD), monthly (YYYY-MM) and yearly (YYYY) formats,
@@ -297,6 +353,11 @@ process_raster_collection <- function(directory,
 
   # Get list of raster files in directory
   raster_files <- list.files(directory, pattern = pattern, full.names = TRUE)
+
+  # apply the cleaning function to basenames if a directory
+  if (length(raster_files) > 1) {
+    raster_files <- clean_filenames(raster_files)
+  }
 
   if (length(raster_files) == 0) {
     cli::cli_abort("No files matching pattern found in: {directory}")
