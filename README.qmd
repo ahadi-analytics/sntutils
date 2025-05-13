@@ -314,7 +314,7 @@ rainfall_df
 ```
 
 
-### Aggregatign Reporting Rate
+### Aggregation Reporting Rate
 
 The `calculate_reporting_metrics()` function evaluates data completeness in routine health information systems. It treats both missing (`NA`) and zero values as non-reported data to provide consistent metrics for reporting completeness. The function supports three main analytical scenarios:
 
