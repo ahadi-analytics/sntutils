@@ -10,6 +10,6 @@ globalVariables(
     "data", "num", "adm2_col", "value", "date_col", "y_var", "var_pres",
     "rep", "hf", "missrate", "reprate", "setNames", "x", "y", ".",
     "translated", "original", ".getSerializeVersion", "file_name",
-    "month", "year", "desc"
+    "month", "year", "desc", "Freq", "Number"
   )
 )
