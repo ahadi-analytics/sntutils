@@ -29,6 +29,11 @@ clean_filenames <- function(filenames) {
     dplyr::filter(Freq > length(filenames) / 2) |>
     dplyr::pull(Number)
 
+    # Return original filenames if no common numbers are found
+  if (is.null(common_numbers) || length(common_numbers) == 0) {
+    return(if (is_full_path) full_path else filenames)
+  }
+
   pattern_common_numbers <- if (length(common_numbers) > 0) {
     paste0("(?<![A-Za-z\\d])(", paste(common_numbers, collapse = "|"),
            ")(?![A-Za-z\\d])")
@@ -354,9 +359,20 @@ process_raster_collection <- function(directory,
   # Get list of raster files in directory
   raster_files <- list.files(directory, pattern = pattern, full.names = TRUE)
 
-  # apply the cleaning function to basenames if a directory
+  # Apply the cleaning function to filenames if there are multiple files
+  # then change the names accordingly
   if (length(raster_files) > 1) {
-    raster_files <- clean_filenames(raster_files)
+    cleaned_filenames <- clean_filenames(raster_files)
+
+    # Iterate over filenames and rename if necessary
+    for (i in seq_along(raster_files)) {
+        if (raster_files[i] != cleaned_filenames[i]) {
+       file.rename(raster_files[i], cleaned_filenames[i])
+      }
+    }
+
+    # Update raster_files with the cleaned filenames
+    raster_files <- cleaned_filenames
   }
 
   if (length(raster_files) == 0) {
