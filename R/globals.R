@@ -10,6 +10,9 @@ globalVariables(
     "data", "num", "adm2_col", "value", "date_col", "y_var", "var_pres",
     "rep", "hf", "missrate", "reprate", "setNames", "x", "y", ".",
     "translated", "original", ".getSerializeVersion", "file_name",
-    "month", "year", "desc", "Freq", "Number"
+    "month", "year", "desc", "Freq", "Number", "sd", "hampel_lower_bound",
+    "hampel_upper_bound", "iqr", "iqr_lower_bound", "iqr_upper_bound",
+    "median_absolute", "median", "moyenne", "moyenne_lower_bound",
+    "moyenne_upper_bound", "n_outlier", "n_total", "q1", "q3", "sd"
   )
 )
