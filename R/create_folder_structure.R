@@ -25,7 +25,8 @@ create_data_structure <- function(base_path = ".") {
       "1.1a_admin_boundaries",
       "1.1b_health_facilities",
       "1.1c_population/1.1ci_national",
-      "1.1c_population/1.1cii_worldpop_rasters"
+      "1.1c_population/1.1cii_worldpop_rasters",
+      "1.1d_cache_files"
     ),
     "1.2_epidemiology" = c(
       "1.2a_routine_surveillance",
@@ -92,7 +93,7 @@ initialize_project_structure <- function(base_path = ".") {
   }
 
   # Create 01_data structure
-  create_data_structure(fs::path(base_path, "01_data"))
+  create_data_structure(base_path)
 
   # Create other folders
   fs::dir_create(fs::path(base_path, "02_scripts"))
@@ -102,6 +103,3 @@ initialize_project_structure <- function(base_path = ".") {
 
   invisible(NULL)
 }
-
-
-
