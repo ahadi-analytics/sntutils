@@ -55,7 +55,9 @@ Suggests:
     terra,
     fs,
     rvest,
-    xml2
+    xml2,
+    here,
+    httr2
 Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
