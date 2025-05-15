@@ -1,8 +1,9 @@
 #' Download Population Density Rasters from WorldPop
 #'
-#' Downloads population density raster files from WorldPop for specified
-#' countries and years. The function handles downloading multiple files, skips
-#' existing files, and provides progress updates.
+#' Downloads population density raster files (persons per square kilometer)
+#' from WorldPop for specified countries and years. The function handles
+#' downloading multiple files, skips existing files, and provides progress
+#' updates.
 #'
 #' @param country_codes Character vector of ISO country codes (e.g., "GBR",
 #'   "USA")
@@ -20,23 +21,22 @@
 #'   }
 #'
 #' @details
-#' Downloads 1km resolution UN-adjusted population density rasters from
-#' WorldPop. Files are downloaded to the specified directory, with existing
-#' files skipped. Progress is shown during downloads and a summary is provided
-#' upon completion.
+#' Downloads 1km resolution UN-adjusted population density rasters (persons per
+#' square kilometer) from WorldPop. Files are downloaded to the specified
+#' directory, with existing files skipped. Progress is shown during downloads
+#' and a summary is provided upon completion.
 #'
 #' @examples
 #' \dontrun{
-#' # Download data for UK and France for 2019-2020
-#' download_pop_rasters(c("GBR", "FRA"), years = 2019:2020)
+#' # Download population density data for UK and France for 2019-2020
+#' download_worldpop_density(c("GBR", "FRA"), years = 2019:2020)
 #' }
 #' @export
-download_pop_rasters <- function(
-  country_codes,
-  years = 2000:2020,
-  dest_dir = here::here(),
-  quiet = FALSE
-) {
+download_worldpop_density <- function(
+    country_codes,
+    years = 2000:2020,
+    dest_dir = here::here(),
+    quiet = FALSE) {
   if (!dir.exists(dest_dir)) dir.create(dest_dir, recursive = TRUE)
 
   base_url <- paste0(
@@ -79,7 +79,7 @@ download_pop_rasters <- function(
   counts <- tapply(params$success, params$country, sum)
 
   cli::cli_alert_success(
-    "Download of Worldpop rasters is complete!"
+    "Download of Worldpop density rasters is complete!"
   )
 
   # report
