@@ -1,17 +1,19 @@
-#' Download Population Density Rasters from WorldPop
+#' Download Population Rasters from WorldPop
 #'
-#' Downloads population density raster files (persons per square kilometer)
-#' from WorldPop for specified countries and years. The function handles
-#' downloading multiple files, skips existing files, and provides progress
-#' updates.
+#' Downloads population raster files (either density in persons per square
+#' kilometer or total count) from WorldPop for specified countries and years.
+#' The function handles downloading multiple files, skips existing files, and
+#' provides progress updates.
 #'
 #' @param country_codes Character vector of ISO country codes (e.g., "GBR",
 #'   "USA")
 #' @param years Numeric vector of years to download data for
 #'   (default: 2000-2020)
+#' @param type Character; either "density" for persons per sq km or "count" for
+#'   total population count (default: "count")
 #' @param dest_dir Destination directory for downloaded files
 #'   (default: current dir)
-#' @param quiet Logical; if TRUE, suppresses progress messages \
+#' @param quiet Logical; if TRUE, suppresses progress messages
 #'   (default: FALSE)
 #'
 #' @return Invisible list containing:
@@ -21,28 +23,36 @@
 #'   }
 #'
 #' @details
-#' Downloads 1km resolution UN-adjusted population density rasters (persons per
-#' square kilometer) from WorldPop. Files are downloaded to the specified
-#' directory, with existing files skipped. Progress is shown during downloads
-#' and a summary is provided upon completion.
+#' Downloads 1km resolution UN-adjusted population rasters from WorldPop. For
+#' density type, values represent persons per square kilometer. For count type,
+#' values represent total population count per pixel. Files are downloaded to
+#' the specified directory, with existing files skipped. Progress is shown
+#' during downloads and a summary is provided upon completion.
 #'
 #' @examples
 #' \dontrun{
 #' # Download population density data for UK and France for 2019-2020
-#' download_worldpop_density(c("GBR", "FRA"), years = 2019:2020)
+#' download_worldpop(c("GBR", "FRA"), years = 2019:2020, type = "density")
+#'
+#' # Download population count data
+#' download_worldpop(c("GBR", "FRA"), years = 2019:2020, type = "count")
 #' }
 #' @export
-download_worldpop_density <- function(
+download_worldpop <- function(
     country_codes,
     years = 2000:2020,
+    type = "count",
     dest_dir = here::here(),
     quiet = FALSE) {
+
+  type <- match.arg(type)
   if (!dir.exists(dest_dir)) dir.create(dest_dir, recursive = TRUE)
 
-  base_url <- paste0(
-    "https://data.worldpop.org/GIS/Population_Density/",
-    "Global_2000_2020_1km_UNadj/"
-  )
+  base_url <- "https://data.worldpop.org/GIS/Population"
+  if (type == "density") {
+    base_url <- paste0(base_url, "_Density")
+  }
+  base_url <- paste0(base_url, "/Global_2000_2020_1km_UNadj/")
 
   params <- expand.grid(
     country = country_codes,
@@ -53,7 +63,17 @@ download_worldpop_density <- function(
   # download (or skip if exists) one file per row
   results <- mapply(
     function(cc, yr) {
-      fn <- sprintf("%s_pd_%s_1km_UNadj.tif", tolower(cc), yr)
+      suffix <- if (type == "density") "pd" else "ppp"
+      fn <- sprintf(
+        "%s_%s_%s_1km_UNadj.tif",
+        tolower(cc), suffix, yr
+      )
+      if (type == "count") {
+        fn <- sprintf(
+          "%s_ppp_%s_1km_Aggregated_UNadj.tif",
+          tolower(cc), yr
+        )
+      }
       dest <- file.path(dest_dir, fn)
       if (file.exists(dest)) {
         if (!quiet) cli::cli_alert_info("Exists: {fn}")
@@ -79,7 +99,7 @@ download_worldpop_density <- function(
   counts <- tapply(params$success, params$country, sum)
 
   cli::cli_alert_success(
-    "Download of Worldpop density rasters is complete!"
+    "Download of Worldpop {type} rasters is complete!"
   )
 
   # report
