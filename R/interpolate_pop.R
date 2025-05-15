@@ -5,7 +5,7 @@
 #' Supports applying the same multiplier to all years or custom multipliers per
 #' year.
 #'
-#' @param df A data frame containing population data with year, population,
+#' @param data A data frame containing population data with year, population,
 #'   and location columns.
 #' @param year_col The name of the year column (unquoted or character).
 #' @param pop_col The name of the population column (unquoted or character).
@@ -24,7 +24,7 @@
 #' @examples
 #'
 #' # Dummy data for 3 districts over 4 years
-#' df <- expand.grid(
+#' dummy_data <- expand.grid(
 #'  adm0 = "COUNTRYX",
 #'  adm1 = c("RegionA", "RegionB"),
 #'  adm2 = c("District1", "District2"),
@@ -37,8 +37,8 @@
 #'  dplyr::arrange(adm0, adm1, adm2, year)
 #'
 #' # Example with the same multiplier for all years
-#' interpolate_population(
-#'   df = df,
+#' interpolate_pop(
+#'   data = dummy_data,
 #'   year_col = "year",
 #'   pop_col = "total_pop",
 #'   group_cols = c("adm0", "adm1", "adm2", "adm3"),
@@ -47,8 +47,8 @@
 #' )
 #'
 #' # Example with different multipliers for each year
-#' interpolate_population(
-#'   df = df,
+#' interpolate_pop(
+#'   data = dummy_data,
 #'   year_col = "year",
 #'   pop_col = "total_pop",
 #'   group_cols = c("adm0", "adm1", "adm2", "adm3"),
@@ -56,8 +56,8 @@
 #' )
 #'
 #' @export
-interpolate_population <- function(
-    df,
+interpolate_pop <- function(
+    data,
     year_col,
     pop_col,
     group_cols,
@@ -68,7 +68,7 @@ interpolate_population <- function(
   pop_sym <- rlang::sym(pop_col)
   group_syms <- rlang::syms(group_cols)
 
-  df <- df |>
+  data <- data |>
     dplyr::group_by(!!!group_syms) |>
     dplyr::arrange(!!year_sym)
 
@@ -88,7 +88,7 @@ interpolate_population <- function(
   for (target_year in as.numeric(names(multipliers))) {
     mult <- multipliers[[as.character(target_year)]]
 
-    df <- df |>
+    data <- data |>
       dplyr::mutate(
         !!pop_sym := dplyr::case_when(
           !!year_sym == target_year ~ dplyr::lag(!!pop_sym) * mult,
@@ -97,6 +97,6 @@ interpolate_population <- function(
       )
   }
 
-  df <- df |> dplyr::ungroup()
-  return(df)
+  data <- data |> dplyr::ungroup()
+  return(data)
 }
