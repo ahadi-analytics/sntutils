@@ -29,7 +29,7 @@ clean_filenames <- function(filenames) {
     dplyr::filter(Freq > length(filenames) / 2) |>
     dplyr::pull(Number)
 
-    # Return original filenames if no common numbers are found
+  # Return original filenames if no common numbers are found
   if (is.null(common_numbers) || length(common_numbers) == 0) {
     return(if (is_full_path) full_path else filenames)
   }
@@ -211,6 +211,9 @@ extract_time_components <- function(filename, info) {
 #'   output. Default is c("adm0", "adm1") for country and first admin level
 #' @param aggregations Vector of aggregation methods to calculate. Supported
 #'   values are "mean", "sum", and "median". Default is c("mean")
+#' @param raster_is_density Logical indicating if raster values represent density.
+#'   If TRUE, values are converted from density to counts using cell area.
+#'   Default is FALSE.
 #'
 #' @return A data frame containing:
 #'   \itemize{
@@ -227,9 +230,10 @@ extract_time_components <- function(filename, info) {
 #' 1. Validates requested aggregation methods
 #' 2. Detects and extracts date information from filename
 #' 3. Loads raster data and handles no-data values (-9999)
-#' 4. Calculates zonal statistics using exactextractr
-#' 5. Combines results with shapefile attributes
-#' 6. Returns a clean data frame without geometry
+#' 4. If raster_is_density is TRUE, converts density to counts using cell area
+#' 5. Calculates zonal statistics using exactextractr
+#' 6. Combines results with shapefile attributes
+#' 7. Returns a clean data frame without geometry
 #'
 #' @examples
 #' \dontrun{
@@ -246,7 +250,8 @@ extract_time_components <- function(filename, info) {
 process_raster_with_boundaries <- function(raster_file,
                                            shapefile,
                                            id_cols = c("adm0", "adm1"),
-                                           aggregations = c("mean")) {
+                                           aggregations = c("mean"),
+                                           raster_is_density = FALSE) {
 
   valid_aggs <- c("mean", "sum", "median")
   if (!all(aggregations %in% valid_aggs)) {
@@ -259,6 +264,12 @@ process_raster_with_boundaries <- function(raster_file,
   rast <- terra::rast(raster_file)[[1]]
   rast[rast == -9999] <- NA
 
+  if (raster_is_density) {
+    # Convert density to counts using cell area in km²
+    cell_area_km2 <- terra::cellSize(rast, unit = "km")
+    rast <- rast * cell_area_km2
+  }
+
   rast_crs <- terra::crs(rast)
   shp_crs <- sf::st_crs(shapefile)
 
@@ -270,7 +281,7 @@ process_raster_with_boundaries <- function(raster_file,
     rast, shapefile,
     fun = aggregations,
     progress = FALSE
-  )
+  ) |> round()
 
   if (length(aggregations) == 1) {
     extracted <- unlist(zonal_stats)
@@ -324,6 +335,9 @@ process_raster_with_boundaries <- function(raster_file,
 #'   "\\.tif$" to match all .tif files
 #' @param aggregations Vector of aggregation methods to calculate. Supported
 #'   values are "mean", "sum", and "median". Default is c("mean")
+#' @param raster_is_density Logical indicating if raster values represent density.
+#'   If TRUE, values are converted from density to counts using cell area.
+#'   Default is FALSE.
 #'
 #' @return A combined data frame containing results from all processed files,
 #'   sorted by time unit if available. Has the same structure as output from
@@ -354,7 +368,8 @@ process_raster_collection <- function(directory,
                                       shapefile,
                                       id_cols = c("adm0", "adm1", "adm2"),
                                       pattern = "\\.tif$",
-                                      aggregations = c("mean")) {
+                                      aggregations = c("mean"),
+                                      raster_is_density = FALSE) {
 
   # Get list of raster files in directory
   raster_files <- list.files(directory, pattern = pattern, full.names = TRUE)
@@ -366,8 +381,8 @@ process_raster_collection <- function(directory,
 
     # Iterate over filenames and rename if necessary
     for (i in seq_along(raster_files)) {
-        if (raster_files[i] != cleaned_filenames[i]) {
-       file.rename(raster_files[i], cleaned_filenames[i])
+      if (raster_files[i] != cleaned_filenames[i]) {
+        file.rename(raster_files[i], cleaned_filenames[i])
       }
     }
 
@@ -391,7 +406,8 @@ process_raster_collection <- function(directory,
       x,
       shapefile = shapefile,
       id_cols = id_cols,
-      aggregations = aggregations
+      aggregations = aggregations,
+      raster_is_density = raster_is_density
     )
     pb$tick()
     result

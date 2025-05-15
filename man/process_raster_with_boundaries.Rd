@@ -8,7 +8,8 @@ process_raster_with_boundaries(
   raster_file,
   shapefile,
   id_cols = c("adm0", "adm1"),
-  aggregations = c("mean")
+  aggregations = c("mean"),
+  raster_is_density = FALSE
 )
 }
 \arguments{
@@ -22,6 +23,10 @@ output. Default is c("adm0", "adm1") for country and first admin level}
 
 \item{aggregations}{Vector of aggregation methods to calculate. Supported
 values are "mean", "sum", and "median". Default is c("mean")}
+
+\item{raster_is_density}{Logical indicating if raster values represent density.
+If TRUE, values are converted from density to counts using cell area.
+Default is FALSE.}
 }
 \value{
 A data frame containing:
@@ -45,6 +50,7 @@ The function performs the following steps:
 \item Validates requested aggregation methods
 \item Detects and extracts date information from filename
 \item Loads raster data and handles no-data values (-9999)
+\item If raster_is_density is TRUE, converts density to counts using cell area
 \item Calculates zonal statistics using exactextractr
 \item Combines results with shapefile attributes
 \item Returns a clean data frame without geometry
