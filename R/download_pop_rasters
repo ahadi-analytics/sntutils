@@ -30,6 +30,7 @@
 #' # Download data for UK and France for 2019-2020
 #' download_pop_rasters(c("GBR", "FRA"), years = 2019:2020)
 #' }
+#' @export
 download_pop_rasters <- function(
   country_codes,
   years = 2000:2020,
