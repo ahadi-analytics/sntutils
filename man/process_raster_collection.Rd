@@ -9,7 +9,8 @@ process_raster_collection(
   shapefile,
   id_cols = c("adm0", "adm1", "adm2"),
   pattern = "\\\\.tif$",
-  aggregations = c("mean")
+  aggregations = c("mean"),
+  raster_is_density = FALSE
 )
 }
 \arguments{
@@ -26,6 +27,10 @@ Default is c("adm0", "adm1", "adm2") for country and first admin level}
 
 \item{aggregations}{Vector of aggregation methods to calculate. Supported
 values are "mean", "sum", and "median". Default is c("mean")}
+
+\item{raster_is_density}{Logical indicating if raster values represent density.
+If TRUE, values are converted from density to counts using cell area.
+Default is FALSE.}
 }
 \value{
 A combined data frame containing results from all processed files,
