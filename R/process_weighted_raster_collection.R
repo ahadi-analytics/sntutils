@@ -38,15 +38,9 @@ batch_extract_weighted_mean <- function(value_raster_file,
   # Align population raster grid with value raster grid
   terra::origin(pop_rast_proj) <- terra::origin(value_rast)
 
-  # Resample population raster to value raster resolution
-  pop_rast_match <- terra::resample(pop_rast_proj,
-                                    value_rast,
-                                    method = "near"
-  )
-
   # Calculate population sum per polygon (for fallback detection)
   pop_sum <- exactextractr::exact_extract(
-    pop_rast_match,
+    pop_rast_proj,
     shapefile,
     fun = "sum"
   ) |> round()
@@ -56,7 +50,7 @@ batch_extract_weighted_mean <- function(value_raster_file,
     value_rast,
     shapefile,
     fun = "weighted_mean",
-    weights = pop_rast_match,
+    weights = pop_rast_proj,
     default_weight = if (weight_na_as_zero) 0 else NA
   )
 
@@ -67,11 +61,8 @@ batch_extract_weighted_mean <- function(value_raster_file,
     fun = "mean"
   )
 
-  # Fallback to unweighted mean if pop_sum is 0
-  final_mean <- ifelse(pop_sum == 0, unweighted_mean, weighted_mean)
-
   # Define aggregation columns
-  aggregations <- c("pop_sum", "weighted_mean", "unweighted_mean", "final_mean")
+  aggregations <- c("pop_sum", "weighted_mean", "unweighted_mean")
 
   # Create initial results dataframe
   result_df <- dplyr::bind_cols(
@@ -82,8 +73,7 @@ batch_extract_weighted_mean <- function(value_raster_file,
       year = components$year,
       pop_sum = pop_sum,
       weighted_mean = weighted_mean,
-      unweighted_mean = unweighted_mean,
-      final_mean = final_mean
+      unweighted_mean = unweighted_mean
     )
   )
 
@@ -107,6 +97,7 @@ batch_extract_weighted_mean <- function(value_raster_file,
       dplyr::any_of(aggregations)
     )
 }
+
 
 #' Process Weighted Raster Data in Batch
 #'
