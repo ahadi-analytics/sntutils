@@ -3,7 +3,7 @@
 #' Fills missing population values for specified future years by applying
 #' a multiplier to the previous year's population estimate, grouped by location.
 #' Supports applying the same multiplier to all years or custom multipliers per
-#' year.
+#' year. Automatically expands data to a full year range.
 #'
 #' @param data A data frame containing population data with year, population,
 #'   and location columns.
@@ -64,12 +64,26 @@ interpolate_pop <- function(
     years_to_interp,
     multiplier = NULL
 ) {
+
   year_sym <- rlang::sym(year_col)
   pop_sym <- rlang::sym(pop_col)
   group_syms <- rlang::syms(group_cols)
+  min_year <- min(dplyr::pull(data, !!year_sym), na.rm = TRUE)
+
+  # get the max year for named and unamed inputs
+  if (!is.null(names(years_to_interp)) && all(names(years_to_interp) != "")) {
+    # Named vector: extract from names
+    max_year <- max(as.numeric(names(years_to_interp)), na.rm = TRUE)
+  } else {
+    # Unnamed vector: extract from values
+    max_year <- max(as.numeric(years_to_interp), na.rm = TRUE)
+  }
+
+  year_range <- min_year:max_year
 
   data <- data |>
     dplyr::group_by(!!!group_syms) |>
+    tidyr::complete(!!year_sym := year_range) |>
     dplyr::arrange(!!year_sym)
 
   # Determine multipliers per year
@@ -93,7 +107,8 @@ interpolate_pop <- function(
         !!pop_sym := dplyr::case_when(
           !!year_sym == target_year ~ dplyr::lag(!!pop_sym) * mult,
           TRUE ~ !!pop_sym
-        )
+        ),
+        !!pop_sym := round(!!pop_sym)
       )
   }
 
