@@ -12,7 +12,7 @@ globalVariables(
     "translated", "original", ".getSerializeVersion", "file_name",
     "month", "year", "desc", "Freq", "Number", "sd", "hampel_lower_bound",
     "hampel_upper_bound", "iqr", "iqr_lower_bound", "iqr_upper_bound",
-    "median_absolute", "median", "moyenne", "moyenne_lower_bound",
+    "median_absolute", "median", "moyenne", "moyenne_lower_bound", "where",
     "moyenne_upper_bound", "n_outlier", "n_total", "q1", "q3", "sd"
   )
 )
