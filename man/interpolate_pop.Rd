@@ -40,7 +40,7 @@ years.
 Fills missing population values for specified future years by applying
 a multiplier to the previous year's population estimate, grouped by location.
 Supports applying the same multiplier to all years or custom multipliers per
-year.
+year. Automatically expands data to a full year range.
 }
 \examples{
 
