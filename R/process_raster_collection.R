@@ -281,7 +281,7 @@ process_raster_with_boundaries <- function(raster_file,
     rast, shapefile,
     fun = aggregations,
     progress = FALSE
-  ) |> round()
+  )
 
   if (length(aggregations) == 1) {
     extracted <- unlist(zonal_stats)
@@ -301,6 +301,12 @@ process_raster_with_boundaries <- function(raster_file,
       file_name = basename(raster_file),
       file_date = components$date,
       year = components$year
+    ) |>
+    dplyr::mutate(
+      dplyr::across(
+        .cols = where(is.numeric) & dplyr::matches("sum"),
+        .fns = ~ ifelse(.x > 1, round(.x), .x)
+      )
     )
 
   if (pattern_info$pattern == "monthly") {
