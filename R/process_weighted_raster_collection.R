@@ -42,8 +42,10 @@ batch_extract_weighted_mean <- function(value_raster_file,
   pop_sum <- exactextractr::exact_extract(
     pop_rast_proj,
     shapefile,
-    fun = "sum"
-  ) |> round()
+    fun = "sum",
+    progress = FALSE
+  ) |>
+    round()
 
   # Calculate population-weighted mean
   weighted_mean <- exactextractr::exact_extract(
@@ -51,14 +53,16 @@ batch_extract_weighted_mean <- function(value_raster_file,
     shapefile,
     fun = "weighted_mean",
     weights = pop_rast_proj,
-    default_weight = if (weight_na_as_zero) 0 else NA
+    default_weight = if (weight_na_as_zero) 0 else NA,
+    progress = FALSE
   )
 
   # Calculate unweighted mean for fallback
   unweighted_mean <- exactextractr::exact_extract(
     value_rast,
     shapefile,
-    fun = "mean"
+    fun = "mean",
+    progress = FALSE
   )
 
   # Define aggregation columns
