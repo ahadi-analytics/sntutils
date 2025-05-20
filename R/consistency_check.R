@@ -62,7 +62,7 @@
 #' )
 #'
 #' @export
-consistency_check <- function(data, tests, cases,
+cconsistency_check <- function(data, tests, cases,
                               save_plot = FALSE,
                               plot_path = NULL,
                               target_language = "en",
@@ -72,6 +72,7 @@ consistency_check <- function(data, tests, cases,
                               image_overwrite = TRUE,
                               compression_speed = 1,
                               compression_verbose = TRUE) {
+
   # Ensure relevant packages are installed
   ensure_packages(c("ggtext", "scales"))
 
@@ -121,7 +122,7 @@ consistency_check <- function(data, tests, cases,
     inconsistent_rows[[i]] <- inconsistency
     disease_name <- paste0(
       test_column, " vs ", case_column,
-      " (n=", inconsistent_count, ", ",
+      " (n = ", inconsistent_count, ", ",
       sprintf("%.1f%%", inconsistent_prop), ")"
     )
 
@@ -153,26 +154,38 @@ consistency_check <- function(data, tests, cases,
   }
 
   # Create the plot
-  plot <- ggplot2::ggplot(results, ggplot2::aes(y = cases, x = tests)) +
+  plot <- ggplot2::ggplot(results, ggplot2::aes(x = cases, y = tests)) +
     ggplot2::geom_point(
+      ggplot2::aes(color = cases > tests),
       shape = 16,
       size = 4,
       show.legend = FALSE,
       alpha = .5,
-      color = "#1e81b0",
       na.rm = TRUE
     ) +
-    ggplot2::geom_abline(
-      intercept = 0,
-      linewidth = 1,
-      alpha = .7,
-      slope = 1,
-      color = "darkred"
-    ) +
+    ggplot2::scale_color_manual(
+      values = c("TRUE" = "red", "FALSE" = "#1e81b0")) +
+    ggplot2::geom_line(
+    data = function(df) {
+      bounds <- df |>
+        dplyr::summarise(
+          min_val = min(c(cases, tests), na.rm = TRUE),
+          max_val = max(c(cases, tests), na.rm = TRUE)
+        )
+      data.frame(
+        cases = seq(bounds$min_val, bounds$max_val, length.out = 100),
+        tests = seq(bounds$min_val, bounds$max_val, length.out = 100)
+      )
+    },
+    ggplot2::aes(x = cases, y = tests),
+    color  = "grey10",
+    linetype = "dashed",
+    linewidth = 1
+  ) +
     ggplot2::facet_wrap(~disease, scales = "free") +
     ggplot2::labs(
-      y = "Cases",
-      x = "Tests",
+      x = "Cases",
+      y = "Tests",
       title = paste0(
         "<span style = 'font-size:10pt'><b style='color:#526A83'>",
         "Consistency Check</b>: Comparing the number of tests and cases</span>"
