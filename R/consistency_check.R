@@ -62,7 +62,7 @@
 #' )
 #'
 #' @export
-cconsistency_check <- function(data, tests, cases,
+consistency_check <- function(data, tests, cases,
                               save_plot = FALSE,
                               plot_path = NULL,
                               target_language = "en",
