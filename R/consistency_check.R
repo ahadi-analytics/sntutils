@@ -19,7 +19,7 @@
 #' @param source_language Source language code, defaults to "en"
 #' @param lang_cache_path Path for translation cache, defaults to tempdir()
 #' @param compress_image Logical. If TRUE, the saved image will be compressed.
-#'   Default is TRUE.
+#'   Default is FALSE
 #' @param image_overwrite Logical. If TRUE, existing image will be overwritten.
 #'   Default is TRUE.
 #' @param compression_speed Integer from 1-10. Speed of compression
@@ -68,7 +68,7 @@ consistency_check <- function(data, tests, cases,
                               target_language = "en",
                               source_language = "en",
                               lang_cache_path = tempdir(),
-                              compress_image = TRUE,
+                              compress_image = FALSE,
                               image_overwrite = TRUE,
                               compression_speed = 1,
                               compression_verbose = TRUE) {

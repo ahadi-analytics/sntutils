@@ -12,6 +12,25 @@ find_pngquant <- function() {
   os <- Sys.info()[["sysname"]]
   pngquant_path <- Sys.which("pngquant")
 
+    # Additional macOS-specific checks
+    if (pngquant_path == "" && os == "Darwin") {
+        # Common Homebrew paths for both Intel and Apple Silicon Macs
+        homebrew_paths <- c(
+            "/opt/homebrew/bin/pngquant",     # Apple Silicon
+            "/usr/local/bin/pngquant",        # Intel Mac
+            "/opt/local/bin/pngquant"         # MacPorts
+        )
+
+        for (path in homebrew_paths) {
+            if (file.exists(path)) {
+                pngquant_path <- path
+                cli::cli_alert_info
+                (paste("Found pngquant at:", pngquant_path))
+                break
+            }
+        }
+    }
+
   # More extensive search on Windows
   if (pngquant_path == "" && .Platform$OS.type == "windows") {
     path_sep <- ifelse(.Platform$OS.type == "windows", "\\", "/")
@@ -157,18 +176,40 @@ find_pngquant <- function() {
     }
   }
 
-  # Final verification
+  # Final checks
   if (!file.exists(pngquant_path)) {
     cli::cli_alert_danger(
-      paste("pngquant path exists but file not found at:", pngquant_path)
-    )
+      paste(
+        "pngquant path exists but file not found at:",
+                               pngquant_path))
     return(invisible(NULL))
   }
 
+  # Try system commands
+  system_checks <- c(
+    system("which pngquant 2>/dev/null", intern = TRUE),
+    system("command -v pngquant 2>/dev/null", intern = TRUE),
+    system("type -p pngquant 2>/dev/null", intern = TRUE)
+  )
+
+  for (check in system_checks) {
+    if (!is.null(check) && check != "" && file.exists(check)) {
+      cli::cli_alert_success(paste("Found pngquant at:", check))
+      return(invisible(check))
+    }
+  }
+
+  # Not found - show installation help
+  cli::cli_alert_warning(
+    c("Could not find pngquant. Common installation methods:",
+      "i" = "Homebrew (macOS): brew install pngquant",
+      "i" = "Apt (Linux): sudo apt-get install pngquant",
+      "i" = "Manual download: https://pngquant.org"
+    )
+  )
+
   invisible(pngquant_path)
 }
-
-
 
 #' Calculate Compression Statistics
 #'
