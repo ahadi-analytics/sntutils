@@ -348,10 +348,18 @@ outlier_plot <- function(
         scales = "free_y",
         labeller = ggplot2::labeller(!!adm2 := facet_labels)
       ) +
+      ggplot2::scale_x_discrete(
+        breaks = function(x) x[seq(1, length(x), by = 2)]
+      ) +
       ggplot2::theme_minimal() +
       ggplot2::theme(
         legend.position = "bottom",
         legend.key.width = ggplot2::unit(2, "cm"),
+        axis.text.x = ggplot2::element_text(
+          size = 8,
+          angle = 45,
+          hjust = 1
+        ),
         legend.text = ggplot2::element_text(size = 8),
         legend.title = ggplot2::element_text(size = 9, face = "bold"),
         plot.subtitle = ggtext::element_markdown()
