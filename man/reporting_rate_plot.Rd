@@ -10,6 +10,8 @@ reporting_rate_plot(
   y_var = NULL,
   vars_of_interest = NULL,
   hf_col = NULL,
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  na_to_zero = TRUE,
   use_reprate = TRUE,
   full_range = TRUE,
   target_language = "en",
@@ -17,7 +19,7 @@ reporting_rate_plot(
   lang_cache_path = tempdir(),
   save_plot = FALSE,
   plot_path = NULL,
-  compress_image = TRUE,
+  compress_image = FALSE,
   image_overwrite = TRUE,
   compression_speed = 1,
   compression_verbose = TRUE,
@@ -37,6 +39,13 @@ to be visualized in 'data'. If NULL, all variables except 'x_var' and
 'y_var' will be used.}
 
 \item{hf_col}{Facility variable name if needed}
+
+\item{key_indicators}{Optional. Character vector of indicators used to define
+facility activity in scenario 1. Defaults to
+\code{c("allout", "conf", "test", "treat", "pres")}.}
+
+\item{na_to_zero}{Logical. If TRUE (default), treat zero values as missing
+(\code{NA}) in both \code{vars_of_interest} and \code{key_indicators}.}
 
 \item{use_reprate}{A logical value. If TRUE, the reporting rate is
 visualized; otherwise, the proportion of missing data is visualized.
@@ -62,7 +71,7 @@ specified path. Defaults to FALSE.}
 be saved. Required if save_plot is TRUE.}
 
 \item{compress_image}{Logical. If TRUE, will compress the saved plot.
-Defaults to TRUE.}
+Defaults to FALSE}
 
 \item{image_overwrite}{Logical. If TRUE, will overwrite existing files.
 Defaults to TRUE.}

@@ -11,7 +11,9 @@ prepare_plot_data(
   vars_of_interest,
   by_facility = FALSE,
   hf_col = NULL,
-  use_reprate = TRUE
+  use_reprate = TRUE,
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  na_to_zero = TRUE
 )
 }
 \arguments{
@@ -30,6 +32,13 @@ if by_facility)}
 
 \item{use_reprate}{Logical. If TRUE, return reporting rate. Else, missing
 rate}
+
+\item{key_indicators}{Optional. Character vector of indicators used to define
+facility activity in scenario 1. Defaults to
+\code{c("allout", "conf", "test", "treat", "pres")}.}
+
+\item{na_to_zero}{Logical. If TRUE (default), treat zero values as missing
+(\code{NA}) in both \code{vars_of_interest} and \code{key_indicators}.}
 }
 \value{
 A list with plot_data and plotting metadata
