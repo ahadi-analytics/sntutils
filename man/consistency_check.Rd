@@ -13,7 +13,7 @@ consistency_check(
   target_language = "en",
   source_language = "en",
   lang_cache_path = tempdir(),
-  compress_image = TRUE,
+  compress_image = FALSE,
   image_overwrite = TRUE,
   compression_speed = 1,
   compression_verbose = TRUE
@@ -43,7 +43,7 @@ labels. Defaults to "en" (English). Use ISO 639-1 language codes.}
 \item{lang_cache_path}{Path for translation cache, defaults to tempdir()}
 
 \item{compress_image}{Logical. If TRUE, the saved image will be compressed.
-Default is TRUE.}
+Default is FALSE}
 
 \item{image_overwrite}{Logical. If TRUE, existing image will be overwritten.
 Default is TRUE.}

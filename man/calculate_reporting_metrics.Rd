@@ -9,84 +9,109 @@ calculate_reporting_metrics(
   vars_of_interest,
   x_var,
   y_var = NULL,
-  hf_col = NULL
+  hf_col = NULL,
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  na_to_zero = TRUE
 )
 }
 \arguments{
-\item{data}{A data frame containing health facility data}
+\item{data}{A data frame containing health facility data.}
 
 \item{vars_of_interest}{Character vector of variable names to assess
-reporting.}
+reporting (used for numerator).}
 
-\item{x_var}{Character. Name of first grouping variable (e.g. time period)}
+\item{x_var}{Character. Name of the primary grouping variable (e.g., time
+period).}
 
-\item{y_var}{Character. Name of second grouping variable (e.g. district);
-can be NULL}
+\item{y_var}{Character. Optional. Name of the second grouping variable
+(e.g., district). Required for scenarios 1 and 3.}
 
-\item{hf_col}{Character. Name of column containing unique health facility
-IDs; required only for facility-level}
+\item{hf_col}{Character. Name of the column containing unique health facility
+IDs. Required only for scenario 1.}
+
+\item{key_indicators}{Optional. Character vector of indicators used to define
+facility activity in scenario 1. Defaults to
+\code{c("allout", "conf", "test", "treat", "pres")}.}
+
+\item{na_to_zero}{Logical. If TRUE (default), treat zero values as missing
+(\code{NA}) in both \code{vars_of_interest} and \code{key_indicators}.}
 }
 \value{
-A tibble with calculated rates depending on Scenario
+A tibble with the number of reporting (\code{rep}) and expected (\code{exp})
+facilities or records, and the computed \code{reprate} and \code{missrate}.
 }
 \description{
-This function calculates reporting metrics for health facility data:
-\enumerate{
-\item Scenario 1: reporting rate by (x_var, y_var) — how often values appear in
-a group (all vars_of_interest)
-\item Scenario 2: reporting rate of variables over time (x_var only)
-\item Scenario 3: proportion of health facilities in y_var that reported any
-value
-}
+This function calculates reporting metrics for health facility data across
+three common scenarios:
 }
 \details{
-Note: All Scenarios treat 0 values as NA to ensure consistent reporting
-metrics
+\enumerate{
+\item \strong{Proportion of facilities reporting any data}
+\itemize{
+\item Calculates the proportion of active facilities (as defined by reporting
+on \code{key_indicators}) that reported at least one of the
+\code{vars_of_interest} in a given period and group.
+}
+\item \strong{Reporting rate by group (x_var, y_var)}
+\itemize{
+\item Computes reporting/missing rates for each variable in
+\code{vars_of_interest}, grouped by \code{x_var} and \code{y_var}.
+}
+\item \strong{Reporting trends over time (x_var only)}
+\itemize{
+\item Computes reporting/missing rates for each variable over time
+(x_var only).
+}
+}
+
+Note: By default, 0 values are treated as missing (\code{NA}) in both
+\code{vars_of_interest} and \code{key_indicators}, unless \code{na_to_zero = FALSE}.
 }
 \examples{
-# Sample data
 hf_data <- data.frame(
   month = rep(c("Jan", "Feb", "Mar"), each = 10),
   district = rep(c("North", "South"), each = 5, times = 3),
   facility_id = rep(1:5, times = 6),
-  malaria = c(
+  conf = c(
     10, 0, 15, NA, 8, 12, 0, NA, 7, 9,
     11, 0, 14, 6, NA, 13, 8, 10, 0, 12,
     9, 7, 0, 11, 14, 8, NA, 12, 10, 15
   ),
-  pneumonia = c(
+  pres = c(
+    5, 0, NA, 7, 3, 6, 0, 4, NA, 2,
+    8, 0, 6, NA, 4, 7, 3, 0, 5, 6,
+    4, 0, 7, 5, NA, 6, 0, 8, 4, 3
+  ),
+  allout = c(
     5, 0, NA, 7, 3, 6, 0, 4, NA, 2,
     8, 0, 6, NA, 4, 7, 3, 0, 5, 6,
     4, 0, 7, 5, NA, 6, 0, 8, 4, 3
   )
 )
 
-# Scenario 1: Reporting rate by district and month for each variable
+# Scenario 1: Proportion of active facilities reporting
+# any data
 calculate_reporting_metrics(
   data = hf_data,
-  vars_of_interest = c("malaria", "pneumonia"),
+  vars_of_interest = c("conf"),
+  x_var = "month",
+  y_var = "district",
+  hf_col = "facility_id",
+  key_indicators = c("allout", "conf", "pres")
+)
+
+# Scenario 2: Reporting rate by month and district
+calculate_reporting_metrics(
+  data = hf_data,
+  vars_of_interest = c("conf"),
   x_var = "month",
   y_var = "district"
 )
-# Result shows reporting rate for each variable by district and month
 
-# Scenario 2: Reporting rate of variables over time (months only)
+# Scenario 3: Reporting trends over time
 calculate_reporting_metrics(
   data = hf_data,
-  vars_of_interest = c("malaria", "pneumonia"),
+  vars_of_interest = c("conf"),
   x_var = "month"
 )
-# Result shows reporting/missing rates for each variable by month
-
-# Scenario 3: Proportion of facilities in each district reporting any data
-# by month
-calculate_reporting_metrics(
-  data = hf_data,
-  vars_of_interest = c("malaria", "pneumonia"),
-  x_var = "month",
-  y_var = "district",
-  hf_col = "facility_id"
-)
-# Result shows proportion of facilities that reported
-# any data by district and month
 }
