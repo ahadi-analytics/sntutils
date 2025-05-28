@@ -715,3 +715,111 @@ normalize_raster_by_polygon <- function(raster, shp, id_col) {
   normalized_collection <- terra::sprc(normalized_rasters)
   terra::mosaic(normalized_collection)
 }
+
+#' Extract Under-5 Mortality Values from IHME Raster Stack
+#'
+#' This function extracts under-5 mortality values from IHME (Institute for
+#' Health Metrics and Evaluation) raster data for specified geographic areas
+#' using exact extraction methods. The data source is the IHME's geospatial
+#' estimates for under-5 mortality rates in low and middle-income countries
+#' (LMICs) from 2000-2017.
+#'
+#' @param shape An sf object containing the geographic areas for extraction
+#' @param raster_stack A terra SpatRaster or raster stack containing IHME
+#'        mortality data
+#' @param id_col Character vector of column names in shape to use as identifiers
+#'        (default: c("adm1", "adm2"))
+#' @param rates Logical indicating whether values are rates (TRUE) or counts
+#'        (FALSE, default)
+#'
+#' @return A tibble containing extracted values for each area and year with
+#'         columns for area identifiers, year, and mortality values. For rates,
+#'         values represent deaths per 1,000 live births. For counts, values
+#'         represent total number of deaths.
+#'
+#' @details The function processes each layer in the IHME raster stack, which
+#'          represents annual estimates starting from 2000. For rates, mean
+#'          values are extracted; for counts, sums are used. The IHME data
+#'          provides high-resolution (5 x 5 km) estimates of under-5 mortality
+#'          across LMICs.
+#'
+#' @source \url{paste0("https://ghdx.healthdata.org/record/ihme-data/",
+#'         "lmic-under5-mortality-rate-geospatial-estimates-2000-2017")}
+#'
+#' @examples
+#' \dontrun{
+#' # Load required libraries and data
+#' library(sf)
+#' library(terra)
+#'
+#' # Example with rates (deaths per 1,000 live births)
+#' mortality_rates <- process_ihme_u5m_raster(
+#'   shape = admin_boundaries,
+#'   raster_stack = mortality_raster,
+#'   id_col = c("adm1", "adm2"),
+#'   rates = TRUE
+#' )
+#'
+#' # Example with counts (total deaths)
+#' mortality_counts <- process_ihme_u5m_raster(
+#'   shape = admin_boundaries,
+#'   raster_stack = mortality_raster,
+#'   id_col = c("adm1"),
+#'   rates = FALSE
+#' )
+#' }
+#'
+#' @seealso
+#' \code{\link[exactextractr]{exact_extract}} for the underlying extraction method
+#' \code{\link[terra]{rast}} for handling raster data
+#' \code{\link[sf]{st_transform}} for coordinate reference system transformations
+#'
+#' @note The IHME raster data represents model-based estimates and should be used
+#'       with consideration of the underlying methodology and uncertainties
+#'       described in the source documentation.
+#'
+#' @export
+process_ihme_u5m_raster <- function(shape,
+                                    raster_stack,
+                                    id_col = c("adm1", "adm2"),
+                                    rates = FALSE) {
+
+  type <- if (rates) "rate" else "count"
+  stat <- if (rates) "mean" else "sum"
+
+  cli::cli_h2("Starting U5 Mortality {type} extraction from raster stack")
+
+  stopifnot(inherits(shape, "sf"))
+  stopifnot(length(id_col) >= 1)
+  stopifnot(all(id_col %in% colnames(shape)))
+
+  shape <- sf::st_transform(shape, crs = terra::crs(raster_stack))
+  n_layers <- terra::nlyr(raster_stack)
+  years <- 2000 + seq_len(n_layers) - 1
+
+  results <- vector("list", length = n_layers)
+
+  for (i in seq_len(n_layers)) {
+    yr <- years[i]
+    layer <- raster::raster(raster_stack[[i]])
+
+    cli::cli_progress_step("Extracting year {yr} ({i}/{n_layers})")
+
+    u5_vals <- exactextractr::exact_extract(
+      layer, shape, stat, progress = FALSE
+    )
+
+    ids <- shape |>
+      sf::st_drop_geometry() |>
+      dplyr::select(dplyr::all_of(id_col))
+
+    results[[i]] <- dplyr::bind_cols(
+      ids,
+      tibble::tibble(year = yr, !!paste0("u5mr_", type) := u5_vals)
+    )
+  }
+
+  cli::cli_alert_success("Extraction complete for {n_layers} years.")
+
+  dplyr::bind_rows(results)
+}
