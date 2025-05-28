@@ -1,84 +1,100 @@
 #' Calculate reporting/missing rate and proportion of reporting facilities
 #'
-#' This function calculates reporting metrics for health facility data:
-#' 1) Scenario 1: reporting rate by (x_var, y_var) — how often values appear in
-#'    a group (all vars_of_interest)
-#' 2) Scenario 2: reporting rate of variables over time (x_var only)
-#' 3) Scenario 3: proportion of health facilities in y_var that reported any
-#'    value
+#' This function calculates reporting metrics for health facility data across
+#' three common scenarios:
 #'
-#' Note: All Scenarios treat 0 values as NA to ensure consistent reporting
-#'    metrics
+#' 1) **Proportion of facilities reporting any data**
+#'    - Calculates the proportion of active facilities (as defined by reporting
+#'      on `key_indicators`) that reported at least one of the
+#'      `vars_of_interest` in a given period and group.
 #'
-#' @param data A data frame containing health facility data
+#' 2) **Reporting rate by group (x_var, y_var)**
+#'    - Computes reporting/missing rates for each variable in
+#'      `vars_of_interest`, grouped by `x_var` and `y_var`.
+#'
+#' 3) **Reporting trends over time (x_var only)**
+#'    - Computes reporting/missing rates for each variable over time
+#'      (x_var only).
+#'
+#' Note: By default, 0 values are treated as missing (`NA`) in both
+#' `vars_of_interest` and `key_indicators`, unless `na_to_zero = FALSE`.
+#'
+#' @param data A data frame containing health facility data.
 #' @param vars_of_interest Character vector of variable names to assess
-#'    reporting.
-#' @param x_var Character. Name of first grouping variable (e.g. time period)
-#' @param y_var Character. Name of second grouping variable (e.g. district);
-#'    can be NULL
-#' @param hf_col Character. Name of column containing unique health facility
-#'    IDs; required only for facility-level
+#'   reporting (used for numerator).
+#' @param x_var Character. Name of the primary grouping variable (e.g., time
+#'    period).
+#' @param y_var Character. Optional. Name of the second grouping variable
+#'   (e.g., district). Required for scenarios 1 and 3.
+#' @param hf_col Character. Name of the column containing unique health facility
+#'   IDs. Required only for scenario 1.
+#' @param key_indicators Optional. Character vector of indicators used to define
+#'   facility activity in scenario 1. Defaults to
+#'   `c("allout", "conf", "test", "treat", "pres")`.
+#' @param na_to_zero Logical. If TRUE (default), treat zero values as missing
+#'   (`NA`) in both `vars_of_interest` and `key_indicators`.
 #'
-#' @return A tibble with calculated rates depending on Scenario
+#' @return A tibble with the number of reporting (`rep`) and expected (`exp`)
+#' facilities or records, and the computed `reprate` and `missrate`.
+#'
 #' @examples
-#' # Sample data
 #' hf_data <- data.frame(
 #'   month = rep(c("Jan", "Feb", "Mar"), each = 10),
 #'   district = rep(c("North", "South"), each = 5, times = 3),
 #'   facility_id = rep(1:5, times = 6),
-#'   malaria = c(
+#'   conf = c(
 #'     10, 0, 15, NA, 8, 12, 0, NA, 7, 9,
 #'     11, 0, 14, 6, NA, 13, 8, 10, 0, 12,
 #'     9, 7, 0, 11, 14, 8, NA, 12, 10, 15
 #'   ),
-#'   pneumonia = c(
+#'   pres = c(
+#'     5, 0, NA, 7, 3, 6, 0, 4, NA, 2,
+#'     8, 0, 6, NA, 4, 7, 3, 0, 5, 6,
+#'     4, 0, 7, 5, NA, 6, 0, 8, 4, 3
+#'   ),
+#'   allout = c(
 #'     5, 0, NA, 7, 3, 6, 0, 4, NA, 2,
 #'     8, 0, 6, NA, 4, 7, 3, 0, 5, 6,
 #'     4, 0, 7, 5, NA, 6, 0, 8, 4, 3
 #'   )
 #' )
 #'
-#' # Scenario 1: Reporting rate by district and month for each variable
+#' # Scenario 1: Proportion of active facilities reporting
+#' # any data
 #' calculate_reporting_metrics(
 #'   data = hf_data,
-#'   vars_of_interest = c("malaria", "pneumonia"),
+#'   vars_of_interest = c("conf"),
+#'   x_var = "month",
+#'   y_var = "district",
+#'   hf_col = "facility_id",
+#'   key_indicators = c("allout", "conf", "pres")
+#' )
+#'
+#' # Scenario 2: Reporting rate by month and district
+#' calculate_reporting_metrics(
+#'   data = hf_data,
+#'   vars_of_interest = c("conf"),
 #'   x_var = "month",
 #'   y_var = "district"
 #' )
-#' # Result shows reporting rate for each variable by district and month
 #'
-#' # Scenario 2: Reporting rate of variables over time (months only)
+#' # Scenario 3: Reporting trends over time
 #' calculate_reporting_metrics(
 #'   data = hf_data,
-#'   vars_of_interest = c("malaria", "pneumonia"),
+#'   vars_of_interest = c("conf"),
 #'   x_var = "month"
 #' )
-#' # Result shows reporting/missing rates for each variable by month
-#'
-#' # Scenario 3: Proportion of facilities in each district reporting any data
-#' # by month
-#' calculate_reporting_metrics(
-#'   data = hf_data,
-#'   vars_of_interest = c("malaria", "pneumonia"),
-#'   x_var = "month",
-#'   y_var = "district",
-#'   hf_col = "facility_id"
-#' )
-#' # Result shows proportion of facilities that reported
-#' # any data by district and month
-#' @importFrom data.table .N
-#' @importFrom data.table setnames
-#' @export
-calculate_reporting_metrics <- function(data, vars_of_interest,
-                                        x_var, y_var = NULL, hf_col = NULL) {
-  # # Add this line at the top of the function
-  # local_dt_aware <- TRUE
-  # # Make sure the environment is data.table aware within this function
-  # assign(".datatable.aware", TRUE, envir = parent.frame())
+calculate_reporting_metrics <- function(
+  data,
+  vars_of_interest,
+  x_var,
+  y_var = NULL,
+  hf_col = NULL,
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  na_to_zero = TRUE
+) {
+  # ensure_packages("dtplyr")
 
-  ensure_packages("dtplyr")
-
-  # Input validation
   if (!is.data.frame(data)) {
     cli::cli_abort(c(
       "!" = "'data' must be a data frame",
@@ -122,17 +138,27 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
     ))
   }
 
-  # Convert 0s to NA for all variables of interest
-  data <- data |>
-    as.data.frame() |>
-    dplyr::mutate(
+  # Treat 0s as NA
+  if (na_to_zero) {
+    if (!is.null(key_indicators)) {
+      data <- dplyr::mutate(
+        data,
+        dplyr::across(
+          dplyr::any_of(key_indicators),
+          ~ dplyr::if_else(.x == 0, NA, .x)
+        )
+      )
+    }
+
+    data <- dplyr::mutate(
+      data,
       dplyr::across(
-        dplyr::all_of(vars_of_interest),
+        dplyr::any_of(vars_of_interest),
         ~ dplyr::if_else(.x == 0, NA_real_, .x)
       )
     )
+  }
 
-  # Helper function for rate calculations
   calculate_rates <- function(df) {
     df |>
       dplyr::mutate(
@@ -141,63 +167,51 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
       )
   }
 
-  if (!is.null(hf_col) && !is.null(y_var)) {
-    .datatable.aware <- TRUE
-    data <- data.table::as.data.table(data)
+  if (!is.null(hf_col) && !is.null(key_indicators)) {
 
-    # Rename selected columns to x, y, hf
-    selected_cols <- c(x_var, y_var, hf_col)
-    names(selected_cols) <- c("x", "y", "hf")
+    # Reported any for key_indicators
+    data <- data |>
+      dplyr::mutate(
+        reported_any = dplyr::if_any(
+          dplyr::any_of(key_indicators),
+          ~ !is.na(.x)
+        )
+      )
 
-    tmp_dt <- data.table::as.data.table(
-      stats::setNames(data[, mget(selected_cols)], names(selected_cols))
-    )
-    unique_dt <- unique(tmp_dt)
-    hf_counts <- unique_dt[, .(exp = .N), by = .(x, y)]
+    # Get first reporting month per HF
+    first_reporting <- data |>
+      dplyr::filter(reported_any) |>
+      dplyr::group_by(dplyr::across(dplyr::any_of(hf_col))) |>
+      dplyr::summarise(
+        first_report_month = min(.data[[x_var]], na.rm = TRUE),
+        .groups = "drop"
+      )
 
-    # Create renamed columns in original data
-    data[, x := get(x_var)]
-    data[, y := get(y_var)]
-    data[, hf := get(hf_col)]
+    # Join and filter only those eligible for that month
+    data <- data |>
+      dplyr::left_join(first_reporting, by = hf_col) |>
+      dplyr::mutate(include_in_denom = first_report_month <= .data[[x_var]])
 
-    # Extract vars_of_interest first to avoid nested call
-    sub_dt <- data[, mget(vars_of_interest)]
-    data[, var_pres := as.integer(rowSums(!is.na(sub_dt)) > 0)]
-
-    # Get presence by facility
-    var_present <- unique(data[, .(x, y, hf, var_pres)])[
-      , .(rep = sum(var_pres)),
-      by = .(x, y)
-    ]
-
-    # Merge counts with presence
-    merged_result <- merge(
-      hf_counts, var_present,
-      by = c("x", "y"), all.x = TRUE
-    )
-    merged_result[, rep := data.table::fifelse(
-      is.na(rep), 0L, rep
-    )]
-
-    # Calculate reporting rates
-    merged_result[, reprate := (rep / exp) * 100]
-    merged_result[, missrate := ((exp - rep) / exp) * 100]
-
-    # Rename x and y back to original column names
-    data.table::setnames(merged_result, "x", x_var)
-    data.table::setnames(merged_result, "y", y_var)
-
-    result <- merged_result |> dplyr::as_tibble()
+    # Aggregate
+    result <- data |>
+      dplyr::filter(include_in_denom) |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var)))) |>
+      dplyr::summarise(
+        rep = sum(reported_any, na.rm = TRUE),
+        exp = dplyr::n_distinct(.data[[hf_col]]),
+        .groups = "drop"
+      ) |>
+      dplyr::mutate(
+        reprate = (rep / exp) * 100,
+        missrate = 100 - reprate
+      )
   } else if (!is.null(y_var)) {
-    # Scenario 1: Basic reporting rate by (x_var, y_var)
     long_data <- data |>
       dplyr::select(
         dplyr::all_of(c(x_var, y_var, vars_of_interest))
       ) |>
       tidyr::pivot_longer(
-        cols = dplyr::all_of(
-          vars_of_interest
-        ),
+        cols = dplyr::all_of(vars_of_interest),
         names_to = "variable",
         values_to = "value"
       )
@@ -215,13 +229,17 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
       dplyr::select(
         dplyr::all_of(
           c(
-            x_var, y_var, "variable", "exp", "rep",
-            "reprate", "missrate"
+            x_var,
+            y_var,
+            "variable",
+            "exp",
+            "rep",
+            "reprate",
+            "missrate"
           )
         )
       )
   } else if (!is.null(x_var)) {
-    # Scenario 2: Variable-level missing rates over time
     long_data <- data |>
       dplyr::select(dplyr::all_of(c(x_var, vars_of_interest))) |>
       tidyr::pivot_longer(
@@ -241,8 +259,12 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
       dplyr::select(
         dplyr::all_of(
           c(
-            x_var, "variable", "exp", "rep",
-            "reprate", "missrate"
+            x_var,
+            "variable",
+            "exp",
+            "rep",
+            "reprate",
+            "missrate"
           )
         )
       )
@@ -270,6 +292,11 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
 #'    if by_facility)
 #' @param use_reprate Logical. If TRUE, return reporting rate. Else, missing
 #'    rate
+#' @param key_indicators Optional. Character vector of indicators used to define
+#'   facility activity in scenario 1. Defaults to
+#'   `c("allout", "conf", "test", "treat", "pres")`.
+#' @param na_to_zero Logical. If TRUE (default), treat zero values as missing
+#'   (`NA`) in both `vars_of_interest` and `key_indicators`.
 #'
 #' @return A list with plot_data and plotting metadata
 #' @examples
@@ -320,10 +347,17 @@ calculate_reporting_metrics <- function(data, vars_of_interest,
 #' )
 #' # Returns list with plot_data and metadata for facility-level visualization
 #' @export
-prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
-                              by_facility = FALSE, hf_col = NULL,
-                              use_reprate = TRUE) {
-  ensure_packages("dtplyr")
+prepare_plot_data <- function(
+  data,
+  x_var,
+  y_var = NULL,
+  vars_of_interest,
+  by_facility = FALSE,
+  hf_col = NULL,
+  use_reprate = TRUE,
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  na_to_zero = TRUE
+) {
 
   # Input validation
   if (!is.data.frame(data)) {
@@ -350,8 +384,7 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
       "i" = "Run `rlang::last_trace()` to see where the error occurred."
     ))
   }
-  if (
-    !is.null(y_var) && (!is.character(y_var) || !(y_var %in% names(data)))) {
+  if (!is.null(y_var) && (!is.character(y_var) || !(y_var %in% names(data)))) {
     cli::cli_abort(c(
       "!" = "'y_var' must be a column name that exists in data",
       "i" = "Run `rlang::last_trace()` to see where the error occurred."
@@ -385,20 +418,17 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
 
   # Determine fill variable and labels based on
   # reporting/missing rate choice
-  fill_var <- if (
-    use_reprate) {
+  fill_var <- if (use_reprate) {
     "reprate"
   } else {
     "missrate"
   }
-  fill_label <- if (
-    use_reprate) {
+  fill_label <- if (use_reprate) {
     "Reporting rate (%)"
   } else {
     "Missing rate (%)"
   }
-  y_axis_label <- if (
-    !is.null(y_var)) {
+  y_axis_label <- if (!is.null(y_var)) {
     tools::toTitleCase(y_var)
   } else {
     "Variable"
@@ -435,7 +465,9 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
     vars_of_interest = vars_of_interest,
     x_var = x_var,
     y_var = y_var,
-    hf_col = if (by_facility) hf_col else NULL
+    hf_col = if (by_facility) hf_col else NULL,
+    key_indicators = key_indicators,
+    na_to_zero = na_to_zero
   )
 
   list(
@@ -469,6 +501,11 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
 #'   to be visualized in 'data'. If NULL, all variables except 'x_var' and
 #'   'y_var' will be used.
 #' @param hf_col Facility variable name if needed
+#' @param key_indicators Optional. Character vector of indicators used to define
+#'   facility activity in scenario 1. Defaults to
+#'   `c("allout", "conf", "test", "treat", "pres")`.
+#' @param na_to_zero Logical. If TRUE (default), treat zero values as missing
+#'   (`NA`) in both `vars_of_interest` and `key_indicators`.
 #' @param use_reprate A logical value. If TRUE, the reporting rate is
 #'   visualized; otherwise, the proportion of missing data is visualized.
 #'   Defaults to TRUE
@@ -486,7 +523,7 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
 #' @param plot_path A character string specifying the path where the plot should
 #'   be saved. Required if save_plot is TRUE.
 #' @param compress_image Logical. If TRUE, will compress the saved plot.
-#'   Defaults to TRUE.
+#'   Defaults to FALSE
 #' @param image_overwrite Logical. If TRUE, will overwrite existing files.
 #'   Defaults to TRUE.
 #' @param compression_speed Integer. Speed/quality trade-off from 1
@@ -542,6 +579,10 @@ prepare_plot_data <- function(data, x_var, y_var = NULL, vars_of_interest,
 reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 vars_of_interest = NULL,
                                 hf_col = NULL,
+                                key_indicators = c("allout", "conf",
+                                                  "test", "treat",
+                                                  "pres"),
+                                na_to_zero = TRUE,
                                 use_reprate = TRUE,
                                 full_range = TRUE,
                                 target_language = "en",
@@ -549,7 +590,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 lang_cache_path = tempdir(),
                                 save_plot = FALSE,
                                 plot_path = NULL,
-                                compress_image = TRUE,
+                                compress_image = FALSE,
                                 image_overwrite = TRUE,
                                 compression_speed = 1,
                                 compression_verbose = TRUE,
@@ -606,7 +647,9 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     vars_of_interest = vars_of_interest,
     by_facility = scenario == "facility",
     hf_col = hf_col,
-    use_reprate = use_reprate
+    use_reprate = use_reprate,
+    key_indicators = key_indicators,
+    na_to_zero = na_to_zero
   )
 
   # Extract prepared data components
