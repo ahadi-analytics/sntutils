@@ -730,7 +730,7 @@ normalize_raster_by_polygon <- function(raster, shp, id_col) {
 #' @param id_col Character vector of column names in shape to use as identifiers
 #'        (default: c("adm1", "adm2"))
 #' @param rates Logical indicating whether values are rates (TRUE) or counts
-#'        (FALSE, default)
+#'        (TRUE, default)
 #'
 #' @return A tibble containing extracted values for each area and year with
 #'         columns for area identifiers, year, and mortality values. For rates,
@@ -782,7 +782,7 @@ normalize_raster_by_polygon <- function(raster, shp, id_col) {
 process_ihme_u5m_raster <- function(shape,
                                     raster_stack,
                                     id_col = c("adm1", "adm2"),
-                                    rates = FALSE) {
+                                    rates = TRUE) {
 
   type <- if (rates) "rate" else "count"
   stat <- if (rates) "mean" else "sum"
@@ -815,7 +815,7 @@ process_ihme_u5m_raster <- function(shape,
 
     results[[i]] <- dplyr::bind_cols(
       ids,
-      tibble::tibble(year = yr, !!paste0("u5mr_", type) := u5_vals)
+      tibble::tibble(year = yr, !!paste0("u5m_", type) := u5_vals)
     )
   }
 
