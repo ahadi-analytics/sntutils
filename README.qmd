@@ -2,6 +2,7 @@
 title: "sntutils"
 format:
   gfm:
+    math: true
     output-file: README.md
     fig-path: "man/figures-readme/"
   html:
