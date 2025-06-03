@@ -84,6 +84,7 @@
 #'   vars_of_interest = c("conf"),
 #'   x_var = "month"
 #' )
+#' @export
 calculate_reporting_metrics <- function(
   data,
   vars_of_interest,
