@@ -64,141 +64,96 @@
 #' }
 #' @export
 detect_outliers <- function(
-    data,
-    column,
-    iqr_multiplier = 1.5,
-    record_id   = "record_id",
-    adm1        = "adm1",
-    adm2        = "adm2",
-    yearmon     = "yearmon",
-    year        = "year"
+  data,
+  column,
+  iqr_multiplier = 1.5,
+  record_id = "record_id",
+  adm1 = "adm1",
+  adm2 = "adm2",
+  yearmon = "yearmon",
+  year = "year"
 ) {
   required_cols <- c(column, record_id, adm1, adm2, yearmon, year)
   if (!all(required_cols %in% names(data))) {
     missing_cols <- required_cols[!required_cols %in% names(data)]
     cli::cli_abort("Missing columns: {.val {missing_cols}}")
   }
+
   if (!is.numeric(data[[column]])) {
     return(NULL)
   }
 
-  dt <- data.table::as.data.table(data)
-  data.table::setnames(
-    dt,
-    old = c(record_id, adm1, adm2, yearmon, year),
-    new = c(
-      "func_id", "func_region", "func_subregion",
-      "func_date", "func_year"
+  data |>
+    # Convert to tibble and filter NA values
+    dplyr::as_tibble() |>
+    dplyr::filter(!is.na(.data[[column]])) |>
+    # Group by administrative regions and year
+    dplyr::group_by(.data[[adm1]], .data[[adm2]], .data[[year]]) |>
+    # Calculate statistics
+    dplyr::mutate(
+      moyenne = ceiling(mean(.data[[column]], na.rm = TRUE)),
+      sd = ceiling(stats::sd(.data[[column]], na.rm = TRUE)),
+      median = ceiling(stats::median(.data[[column]], na.rm = TRUE)),
+      median_absolute = ceiling(stats::mad(
+        .data[[column]],
+        constant = 1,
+        na.rm = TRUE
+      )),
+      q1 = as.numeric(stats::quantile(.data[[column]], 0.25, na.rm = TRUE)),
+      q3 = as.numeric(stats::quantile(.data[[column]], 0.75, na.rm = TRUE)),
+      iqr = q3 - q1,
+      # Calculate bounds
+      moyenne_lower_bound = moyenne - 3 * sd,
+      moyenne_upper_bound = moyenne + 3 * sd,
+      hampel_lower_bound = median - 15 * median_absolute,
+      hampel_upper_bound = median + 15 * median_absolute,
+      iqr_lower_bound = q1 - iqr_multiplier * iqr,
+      iqr_upper_bound = q3 + iqr_multiplier * iqr,
+      # Classify outliers
+      outliers_moyenne = dplyr::if_else(
+        .data[[column]] < moyenne_lower_bound |
+          .data[[column]] > moyenne_upper_bound,
+        "outlier",
+        "normal value"
+      ),
+      outliers_halper = dplyr::if_else(
+        .data[[column]] < hampel_lower_bound |
+          .data[[column]] > hampel_upper_bound,
+        "outlier",
+        "normal value"
+      ),
+      outliers_iqr = dplyr::if_else(
+        .data[[column]] < iqr_lower_bound |
+          .data[[column]] > iqr_upper_bound,
+        "outlier",
+        "normal value"
+      ),
+      column_name = column,
+      value = .data[[column]]
+    ) |>
+    dplyr::ungroup() |>
+    # Select final columns in desired order
+    dplyr::select(
+      dplyr::all_of(c(
+        record_id,
+        adm1,
+        adm2,
+        yearmon,
+        year,
+        "column_name",
+        "value",
+        "outliers_moyenne",
+        "outliers_halper",
+        "outliers_iqr",
+        "moyenne_lower_bound",
+        "moyenne_upper_bound",
+        "hampel_lower_bound",
+        "hampel_upper_bound",
+        "iqr_lower_bound",
+        "iqr_upper_bound",
+        "iqr"
+      ))
     )
-  )
-
-  dt <- dt[!is.na(get(column))]
-  dt_stats <- dt[, .(
-    moyenne         = ceiling(mean(get(column), na.rm = TRUE)),
-    sd               = ceiling(stats::sd(get(column), na.rm = TRUE)),
-    median           = ceiling(stats::median(get(column), na.rm = TRUE)),
-    median_absolute = ceiling(
-      stats::mad(get(column), constant = 1, na.rm = TRUE)
-    ),
-    q1               = as.numeric(
-      stats::quantile(get(column), 0.25, na.rm = TRUE)
-    ),
-    q3               = as.numeric(
-      stats::quantile(get(column), 0.75, na.rm = TRUE)
-    )
-  ), by = c(
-    "func_region",
-    "func_subregion",
-    "func_year"
-  )]
-
-  data.table::set(
-    dt_stats, j = "iqr",
-    value = dt_stats$q3 - dt_stats$q1
-  )
-  data.table::set(
-    dt_stats, j = "moyenne_lower_bound",
-    value = dt_stats$moyenne - 3 * dt_stats$sd
-  )
-  data.table::set(
-    dt_stats, j = "moyenne_upper_bound",
-    value = dt_stats$moyenne + 3 * dt_stats$sd
-  )
-  data.table::set(
-    dt_stats, j = "hampel_lower_bound",
-    value = dt_stats$median - 15 * dt_stats$median_absolute
-  )
-  data.table::set(
-    dt_stats, j = "hampel_upper_bound",
-    value = dt_stats$median + 15 * dt_stats$median_absolute
-  )
-  data.table::set(
-    dt_stats, j = "iqr_lower_bound",
-    value = dt_stats$q1 - iqr_multiplier * dt_stats$iqr
-  )
-  data.table::set(
-    dt_stats, j = "iqr_upper_bound",
-    value = dt_stats$q3 + iqr_multiplier * dt_stats$iqr
-  )
-
-  result <- data.table::merge.data.table(
-    dt,
-    dt_stats,
-    by = c("func_region", "func_subregion", "func_year"),
-    all.x = TRUE
-  )
-
-  col_val <- result[[column]]
-  data.table::set(
-    result, j = "outliers_moyenne",
-    value = ifelse(
-      col_val < result$moyenne_lower_bound |
-        col_val > result$moyenne_upper_bound,
-      "outlier",
-      "normal value"
-    )
-  )
-  data.table::set(
-    result, j = "outliers_halper",
-    value = ifelse(
-      col_val < result$hampel_lower_bound |
-        col_val > result$hampel_upper_bound,
-      "outlier",
-      "normal value"
-    )
-  )
-  data.table::set(
-    result, j = "outliers_iqr",
-    value = ifelse(
-      col_val < result$iqr_lower_bound |
-        col_val > result$iqr_upper_bound,
-      "outlier",
-      "normal value"
-    )
-  )
-  data.table::set(result, j = "column_name", value = column)
-  data.table::set(result, j = "value", value = col_val)
-
-  data.table::setnames(
-    result,
-    old = c(
-      "func_id", "func_region", "func_subregion",
-      "func_date", "func_year"
-    ),
-    new = c(record_id, adm1, adm2, yearmon, year)
-  )
-
-  result <- result[, c(
-    record_id, adm1, adm2, "hf",
-    yearmon, year, "column_name", "value",
-    "outliers_moyenne", "outliers_halper",
-    "outliers_iqr", "moyenne_lower_bound",
-    "moyenne_upper_bound", "hampel_lower_bound",
-    "hampel_upper_bound", "iqr_lower_bound",
-    "iqr_upper_bound", "iqr"
-  ), with = FALSE]
-
-  dplyr::as_tibble(result)
 }
 
 #' Create Outlier Detection Plots
