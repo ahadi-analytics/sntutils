@@ -1,20 +1,35 @@
 #' Clean Filenames
 #'
 #' This function cleans a vector of filenames by removing common standalone
-#' numbers, condensing multiple separators, and ensuring clean formats.
+#' numbers that appear in more than half of the filenames, condensing multiple
+#' separators (dots, underscores, hyphens), and removing leading/trailing
+#' separators.
 #'
-#' @param filenames A character vector of full file paths or basenames.
+#' @param filenames A character vector of full file paths or basenames to clean.
+#' @param rename_files A bolean input to rename files using the new filenames.
+#'    Default is FALSE.
+#' @return A character vector of cleaned filenames with:
+#'   - Common standalone numbers removed
+#'   - Multiple dots/underscores/hyphens condensed to single instances
+#'   - Leading/trailing separators removed
+#'   - Original paths preserved if full paths were provided
+#'   - Files automatically renamed if full paths were provided
 #'
-#' @return A character vector of cleaned filenames. If full paths are
-#' provided, the function returns the cleaned filenames with the full path
-#' intact.
-clean_filenames <- function(filenames) {
-
+#' @examples
+#' # Basic usage
+#' clean_filenames(c("file_001.txt", "file_002.txt"))
+#'
+#' # With full paths
+#' clean_filenames(c("/path/to/file_001.txt", "/path/to/file_002.txt"))
+#' @export
+clean_filenames <- function(filenames, rename_files = FALSE) {
   if (all(dirname(filenames) != ".")) {
     full_path <- filenames
     filenames <- basename(filenames)
     is_full_path <- TRUE
-  } else {is_full_path <- FALSE}
+  } else {
+    is_full_path <- FALSE
+  }
 
   all_numbers <- filenames |>
     stringr::str_extract_all("(?<![A-Za-z])\\d+(?![A-Za-z])") |>
@@ -35,15 +50,20 @@ clean_filenames <- function(filenames) {
   }
 
   pattern_common_numbers <- if (length(common_numbers) > 0) {
-    paste0("(?<![A-Za-z\\d])(", paste(common_numbers, collapse = "|"),
-           ")(?![A-Za-z\\d])")
+    paste0(
+      "(?<![A-Za-z\\d])(",
+      paste(common_numbers, collapse = "|"),
+      ")(?![A-Za-z\\d])"
+    )
   } else {
     NULL
   }
 
   cleaned_filenames <- filenames |>
-    stringr::str_replace_all(pattern = pattern_common_numbers,
-                             replacement = "") |>
+    stringr::str_replace_all(
+      pattern = pattern_common_numbers,
+      replacement = ""
+    ) |>
     stringr::str_replace_all(pattern = "\\.{2,}", replacement = ".") |>
     stringr::str_replace_all(pattern = "_{2,}", replacement = "_") |>
     stringr::str_replace_all(pattern = "_+\\.|\\._", replacement = "") |>
@@ -52,11 +72,20 @@ clean_filenames <- function(filenames) {
 
   if (is_full_path) {
     cleaned_filenames <- file.path(dirname(full_path), cleaned_filenames)
+
+    if (rename_files) {
+      # Rename actual files if they differ from cleaned names
+      for (i in seq_along(full_path)) {
+        if (full_path[i] != cleaned_filenames[i] && file.exists(
+          full_path[i])) {
+          file.rename(full_path[i], cleaned_filenames[i])
+        }
+      }
+    }
   }
 
   return(cleaned_filenames)
 }
-
 
 
 #' Detect time pattern in filenames
@@ -383,14 +412,7 @@ process_raster_collection <- function(directory,
   # Apply the cleaning function to filenames if there are multiple files
   # then change the names accordingly
   if (length(raster_files) > 1) {
-    cleaned_filenames <- clean_filenames(raster_files)
-
-    # Iterate over filenames and rename if necessary
-    for (i in seq_along(raster_files)) {
-      if (raster_files[i] != cleaned_filenames[i]) {
-        file.rename(raster_files[i], cleaned_filenames[i])
-      }
-    }
+    cleaned_filenames <- clean_filenames(raster_files, rename_files = TRUE)
 
     # Update raster_files with the cleaned filenames
     raster_files <- cleaned_filenames
@@ -584,7 +606,7 @@ process_weighted_raster_collection <- function(
     pattern = value_pattern,
     full.names = TRUE
   ) |>
-    clean_filenames()
+    clean_filenames(rename_files = TRUE)
 
   if (length(value_raster_files) == 0) {
     cli::cli_abort("No value raster files found in '{value_raster_dir}'.")
@@ -596,7 +618,7 @@ process_weighted_raster_collection <- function(
     pattern = pop_pattern,
     full.names = TRUE
   ) |>
-    clean_filenames()
+    clean_filenames(rename_files = TRUE)
 
   if (length(pop_raster_files) == 0) {
     cli::cli_abort("No population raster files found in '{pop_raster_dir}'.")
@@ -743,8 +765,8 @@ normalize_raster_by_polygon <- function(raster, shp, id_col) {
 #'          provides high-resolution (5 x 5 km) estimates of under-5 mortality
 #'          across LMICs.
 #'
-#' @source \url{paste0("https://ghdx.healthdata.org/record/ihme-data/",
-#'         "lmic-under5-mortality-rate-geospatial-estimates-2000-2017")}
+#' @source \url{https://ghdx.healthdata.org/record/ihme-data/
+#'      lmic-under5-mortality-rate-geospatial-estimates-2000-2017}
 #'
 #' @examples
 #' \dontrun{
@@ -768,11 +790,6 @@ normalize_raster_by_polygon <- function(raster, shp, id_col) {
 #'   rates = FALSE
 #' )
 #' }
-#'
-#' @seealso
-#' \code{\link[exactextractr]{exact_extract}} for the underlying extraction method
-#' \code{\link[terra]{rast}} for handling raster data
-#' \code{\link[sf]{st_transform}} for coordinate reference system transformations
 #'
 #' @note The IHME raster data represents model-based estimates and should be used
 #'       with consideration of the underlying methodology and uncertainties
@@ -822,4 +839,65 @@ process_ihme_u5m_raster <- function(shape,
   cli::cli_alert_success("Extraction complete for {n_layers} years.")
 
   dplyr::bind_rows(results)
+}
+
+#' Process Weighted Raster Stacks
+#'
+#' This function processes raster stacks by calculating weighted means based on
+#' population data for each shape in the input shapefile across multiple years.
+#'
+#' @param value_raster A SpatRaster object containing the values to be weighted
+#' @param pop_raster A SpatRaster object containing population weights
+#' @param shape A sf/shapefile object containing geometries and shape_id column
+#' @param value_var Character string for naming the weighted value column
+#' @param start_year Numeric indicating the starting year for the time series
+#'
+#' @return A tibble with columns for shape_id, year, and the weighted values
+#' @export
+process_weighted_raster_stacks <- function(value_raster,
+                                       pop_raster,
+                                       shape,
+                                       value_var = "indicator_weighted",
+                                       start_year = 2000) {
+
+  # Input validation
+  if (!inherits(value_raster, "SpatRaster") || !inherits(pop_raster,
+  "SpatRaster")) {
+    stop("value_raster and pop_raster must be SpatRaster objects")
+  }
+  if (!inherits(shape, "sf")) {
+    stop("shape must be an sf object")
+  }
+  if (!("shape_id" %in% names(shape))) {
+    stop("shape must contain a 'shape_id' column")
+  }
+  if (terra::nlyr(value_raster) != terra::nlyr(pop_raster)) {
+    stop("value_raster and pop_raster must have the same number of layers")
+  }
+
+  # Step 1: Crop and resample value raster to match population raster
+  value_raster_cropped <- terra::crop(value_raster, pop_raster)
+  value_raster_resampled <- terra::resample(value_raster_cropped, pop_raster)
+
+  # Step 2: Extract weighted mean per year
+  results_list <- purrr::map(
+    seq_len(terra::nlyr(value_raster_resampled)),
+    ~ {
+      vals <- exactextractr::exact_extract(
+        x = value_raster_resampled[[.x]],
+        y = shape,
+        weights = pop_raster[[.x]],
+        default_weight = 0,
+        fun = "weighted_mean"
+      )
+
+      tibble::tibble(
+        shape_id = shape$shape_id,
+        year = start_year - 1 + .x,
+        !!value_var := vals
+      )
+    }
+  )
+
+  dplyr::bind_rows(results_list)
 }
