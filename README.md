@@ -388,8 +388,10 @@ For each administrative unit $a$ and time period $t$, the reporting rate
 is:
 
 $$
-\text{Reporting Rate}_{a,t} = \frac{o_{a,t}}{e_{a,t}} \times 100
-$$ Where:
+\text{Reporting Rate}_{a,t} \;=\; \frac{o_{a,t}}{e_{a,t}} \times 100
+$$
+
+Where:
 
 - $o_{a,t}$ (observed) = number of facilities in $a$ that reported *any*
   value in `vars_of_interest` during $t$
