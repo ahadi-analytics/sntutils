@@ -1,7 +1,7 @@
 #' Save Data and Shapefiles to Various File Formats
 #'
 #' This function provides a unified interface for saving data to various
-#' file formats supported by the \code{\link[=rio]{rio::export()}}
+#' file formats supported by the \code{rio::export}
 #' function. The format is automatically detected from the file extension to
 #' simplify the saving process.
 #'
@@ -13,9 +13,6 @@
 #'   information.
 #'
 #' @return No return value, called for side effects.
-#'
-#' @seealso \code{\link[=rio]{rio::import()}} and
-#'         \code{\link[=sf]{sf::read_sf()}},  which this function is based on.
 #'
 #' @examples
 #' # Create temporary account

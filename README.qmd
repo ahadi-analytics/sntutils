@@ -25,9 +25,11 @@ output-file: README.md
 |  | `available_date_formats` | List of supported date formats for parsing |
 | **Geolocation Name Cleaning** | `prep_geonames()` | Standardizes administrative names across different levels |
 | **Data Extraction** | `process_raster_collection()` | Extract values from multiple rasters against ashapefile |
-| **Data Aggregation** | `calculate_reporting_metrics()` | Aggregates facility reporting/missing rates over time and space |
-| **Data Visualization** | `consistency_check()` | Identifies inconsistencies between two variables in a data |
+| **Reporting Rate Checks** | `calculate_reporting_metrics()` | Aggregates facility reporting/missing rates over time and space |
 |  | `reporting_rate_plot()` | Visualizes reporting/missing rates by two variables |
+| **Outlier Detection** | `detect_outliers()` | Flags outliers in a numeric column using mean ± 3 SD, Hampel, and Tukey’s IQR methods |
+|  | `outlier_plot()` | Generates time‐series plots of flagged outliers (faceted by admin area, colored by method) |
+| **Consistency Checks** | `consistency_check()` | Identifies inconsistencies between two variables in a data vis plotting |
 | **Translation** | `translate_text()` | Translates text with persistent file cache |
 |  | `translate_text_vec()` | Vectorized version of `translate_text` function |
 |  | `translate_yearmon()` | Converts date to yearmon format with month names in multiple langs |
@@ -36,7 +38,8 @@ output-file: README.md
 |  | `sum2()` | Sum with automatic NA removal |
 |  | `mean2()` | Mean with automatic NA removal |
 |  | `median2()` | Median with automatic NA removal |
-| **Hashing Utilities** | `vdigest()` | Vectorized version of digest::digest function |
+| **Hashing Utilities** | `vdigest()` | Vectorized version of `digest::digest` function |
+
 
 ## :wrench: Installation
 
@@ -312,11 +315,11 @@ rainfall_df
 
 ```
 
-### Aggregation Reporting Rate
+### Aggregating Reporting Rate
 
 The `sntutils::calculate_reporting_metrics()` function calculates the completeness of routine health data reporting. It evaluates whether health facilities have submitted valid data for a defined set of indicators (`vars_of_interest`) over time. By default, it treats both NA and zero values as non-reporting (if `na_to_zero` = TRUE, which is the defaut).
 
-**Scenario 1: Facility-Level Reporting Rate**
+**Scenario 1: Facility-Level Reporting/Missing Rate**
 
 This scenario calculates the proportion of active facilities that reported any data (across a specified set of variables) for each time-unit and geographic group (e.g. year-month by district).
 
@@ -472,7 +475,7 @@ calculate_reporting_metrics(
 ) |> head()
 ```
 
-**Scenario 2: Reporting/Missing Rates Over Time**
+**Scenario 3: Reporting/Missing Rates Over Time**
 
 This scenario calculates reporting data rates along one key dimension—typically time, making it useful for identifying when different variables are reported and spotting gaps over time.
 
@@ -502,7 +505,7 @@ sntutils::calculate_reporting_metrics(
 
 The `reporting_rate_plot()` function plots the reporting rates for health facility data, making it easy to identify patterns, gaps, and trends in data completeness across time and geographic areas. This visualization function works with health facility data, using `calculate_reporting_metrics()` internally to support all three reporting scenarios discussed above.
 
-**Scenario 1: Facility-level Reporting Rate**
+**Scenario 1: Facility-Level Reporting/Missing Rate**
 
 ```{r eval=FALSE, include=TRUE}
 reporting_rate_plot(
@@ -543,7 +546,7 @@ reporting_rate_plot(
 )
 ```
 
-**Scenario 2: Reporting Rates Over Time**
+**Scenario 2: Reporting/Missing Rate by Two Dimensions**
 
 ```{r eval=FALSE, include=TRUE}
 reporting_rate_plot(
@@ -573,7 +576,7 @@ reporting_rate_plot(
 ```
 
 
-**Scenario 3: Reporting Rates Over Time**
+**Scenario 3: Reporting/Missing Rates Over Time**
 
 ```{r eval=FALSE, include=TRUE}
 

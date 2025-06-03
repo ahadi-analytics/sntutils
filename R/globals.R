@@ -14,6 +14,7 @@ globalVariables(
     "hampel_upper_bound", "iqr", "iqr_lower_bound", "iqr_upper_bound",
     "median_absolute", "median", "moyenne", "moyenne_lower_bound", "where",
     "moyenne_upper_bound", "n_outlier", "n_total", "q1", "q3", "sd",
-     "lower", "upper"
+     "lower", "upper", "first_report_month", "include_in_denom",
+     "reported_any", "%+%"
   )
 )
