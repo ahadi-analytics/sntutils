@@ -4,15 +4,15 @@
 \alias{process_ihme_u5m_raster}
 \title{Extract Under-5 Mortality Values from IHME Raster Stack}
 \source{
-\url{paste0("https://ghdx.healthdata.org/record/ihme-data/",
-        "lmic-under5-mortality-rate-geospatial-estimates-2000-2017")}
+\url{https://ghdx.healthdata.org/record/ihme-data/
+     lmic-under5-mortality-rate-geospatial-estimates-2000-2017}
 }
 \usage{
 process_ihme_u5m_raster(
   shape,
   raster_stack,
   id_col = c("adm1", "adm2"),
-  rates = FALSE
+  rates = TRUE
 )
 }
 \arguments{
@@ -25,7 +25,7 @@ mortality data}
 (default: c("adm1", "adm2"))}
 
 \item{rates}{Logical indicating whether values are rates (TRUE) or counts
-(FALSE, default)}
+(TRUE, default)}
 }
 \value{
 A tibble containing extracted values for each area and year with
@@ -75,9 +75,4 @@ mortality_counts <- process_ihme_u5m_raster(
 )
 }
 
-}
-\seealso{
-\code{\link[exactextractr]{exact_extract}} for the underlying extraction method
-\code{\link[terra]{rast}} for handling raster data
-\code{\link[sf]{st_transform}} for coordinate reference system transformations
 }
