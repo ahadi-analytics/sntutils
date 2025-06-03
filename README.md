@@ -1,6 +1,5 @@
 # sntutils
 
-
 ## What is sntutils?
 
 `sntutils` is an R package developed by AHADI to support the Subnational
@@ -10,38 +9,38 @@ visualization, and analysis, facilitating evidence-based decision-making
 at district level or below. This is an overview of the available
 functions in this version of `sntutils`:
 
-| Category | Function | Description |
-|----|----|----|
-| **Data Import/Export** | `read()` | Reads data from various file formats (CSV, Excel, Stata, RDS, shp) |
-|  | `write()` | Exports data to various file formats |
-| **Download Chirps Data** | `download_chirps2.0()` | Downloads monthly CHIRPS rainfall rasters for a given region and date range |
-| **Project Structure** | `create_data_structure()` | Creates AHADI-style hierarchical data folders under 01_data/ |
-|  | `initialize_project_structure()` | Sets up full project folder structure with data, scripts, outputs, and reports |
-| **Date Handling** | `autoparse_dates()` | Automatically detects and standardizes various date formats |
-|  | `available_date_formats` | List of supported date formats for parsing |
-| **Geolocation Name Cleaning** | `prep_geonames()` | Standardizes administrative names across different levels |
-| **Data Extraction** | `process_raster_collection()` | Extract values from multiple rasters against ashapefile |
-| **Reporting Rate Checks** | `calculate_reporting_metrics()` | Aggregates facility reporting/missing rates over time and space |
-|  | `reporting_rate_plot()` | Visualizes reporting/missing rates by two variables |
-| **Outlier Detection** | `detect_outliers()` | Flags outliers in a numeric column using mean ± 3 SD, Hampel, and Tukey’s IQR methods |
-|  | `outlier_plot()` | Generates time‐series plots of flagged outliers (faceted by admin area, colored by method) |
-| **Consistency Checks** | `consistency_check()` | Identifies inconsistencies between two variables in a data vis plotting |
-| **Translation** | `translate_text()` | Translates text with persistent file cache |
-|  | `translate_text_vec()` | Vectorized version of `translate_text` function |
-|  | `translate_yearmon()` | Converts date to yearmon format with month names in multiple langs |
-| **Image Processing** | `compress_png()` | Reduces PNG file size while maintaining quality |
-| **Numeric Utilities** | `big_mark()` | Formats numbers with thousand separators |
-|  | `sum2()` | Sum with automatic NA removal |
-|  | `mean2()` | Mean with automatic NA removal |
-|  | `median2()` | Median with automatic NA removal |
-| **Hashing Utilities** | `vdigest()` | Vectorized version of `digest::digest` function |
+| Category                      | Function                         | Description                                                                                |
+| ----------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------ |
+| **Data Import/Export**        | `read()`                         | Reads data from various file formats (CSV, Excel, Stata, RDS, shp)                         |
+|                               | `write()`                        | Exports data to various file formats                                                       |
+| **Download Chirps Data**      | `download_chirps2.0()`           | Downloads monthly CHIRPS rainfall rasters for a given region and date range                |
+| **Project Structure**         | `create_data_structure()`        | Creates AHADI-style hierarchical data folders under 01_data/                               |
+|                               | `initialize_project_structure()` | Sets up full project folder structure with data, scripts, outputs, and reports             |
+| **Date Handling**             | `autoparse_dates()`              | Automatically detects and standardizes various date formats                                |
+|                               | `available_date_formats`         | List of supported date formats for parsing                                                 |
+| **Geolocation Name Cleaning** | `prep_geonames()`                | Standardizes administrative names across different levels                                  |
+| **Data Extraction**           | `process_raster_collection()`    | Extract values from multiple rasters against ashapefile                                    |
+| **Reporting Rate Checks**     | `calculate_reporting_metrics()`  | Aggregates facility reporting/missing rates over time and space                            |
+|                               | `reporting_rate_plot()`          | Visualizes reporting/missing rates by two variables                                        |
+| **Outlier Detection**         | `detect_outliers()`              | Flags outliers in a numeric column using mean ± 3 SD, Hampel, and Tukey’s IQR methods      |
+|                               | `outlier_plot()`                 | Generates time‐series plots of flagged outliers (faceted by admin area, colored by method) |
+| **Consistency Checks**        | `consistency_check()`            | Identifies inconsistencies between two variables in a data vis plotting                    |
+| **Translation**               | `translate_text()`               | Translates text with persistent file cache                                                 |
+|                               | `translate_text_vec()`           | Vectorized version of `translate_text` function                                            |
+|                               | `translate_yearmon()`            | Converts date to yearmon format with month names in multiple langs                         |
+| **Image Processing**          | `compress_png()`                 | Reduces PNG file size while maintaining quality                                            |
+| **Numeric Utilities**         | `big_mark()`                     | Formats numbers with thousand separators                                                   |
+|                               | `sum2()`                         | Sum with automatic NA removal                                                              |
+|                               | `mean2()`                        | Mean with automatic NA removal                                                             |
+|                               | `median2()`                      | Median with automatic NA removal                                                           |
+| **Hashing Utilities**         | `vdigest()`                      | Vectorized version of `digest::digest` function                                            |
 
 ## :wrench: Installation
 
 The package can be installed using `devtools` in R. The steps are as
 follows:
 
-``` r
+```r
 # 1) Install devtools if you haven't already
 install.packages("devtools")
 
@@ -57,7 +56,7 @@ The `read()` and `write()` functions provide a simplified interface for
 importing and exporting data in various formats, inspired by the `rio`
 package.
 
-``` r
+```r
 # Load the sntutils package
 library(sntutils)
 
@@ -103,7 +102,7 @@ CHIRPS datasets, use `chirps_options()`. To check the available years
 and months for a specific CHIRPS dataset (e.g., africa_monthly), use the
 `check_chirps_available()` function.
 
-``` r
+```r
 # View available CHIRPS datasets
 chirps_options()
 #># A tibble: 4 × 4
@@ -161,12 +160,12 @@ structure is applied consistently across all domains.
 
 **create_data_structure()**
 
-``` r
+```r
 # Create only the data structure under 01_data/
 create_data_structure(base_path = ".")
 ```
 
-``` plaintext
+```plaintext
 01_data/
 ├── 1.1_foundational/
 │   ├── 1.1a_admin_boundaries/
@@ -205,12 +204,12 @@ organization makes it straightforward to locate files, reduces
 confusion, and ensures the project remains traceable, reproducible, and
 easy to maintain from start to finish.
 
-``` r
+```r
 # Initialize full project structure at specified path
 initialize_project_structure(base_path = "my_snt_project")
 ```
 
-``` plaintext
+```plaintext
 my_snt_project/
 ├── 01_data/
 │   └── [Hierarchical data folders as above]
@@ -228,7 +227,7 @@ a data frame, ensuring consistency in date formats. This is particularly
 useful when working with datasets containing multiple date formats or
 ambiguous date entries.
 
-``` r
+```r
 # Example with mixed date formats
 df <- data.frame(
   mixed_dates = c("2023-10-03", "11.09.2022", "25-12-21 23:59", "2020-08-15T00:00:00Z"),
@@ -273,7 +272,7 @@ improve consistency and efficiency in subsequent sessions. For users who
 prefer to run the code without interactivity, the function can be
 executed with `interactive = FALSE`.
 
-``` r
+```r
 # Example data with inconsistent admin names
 dhis2_dummy <- data.frame(
   country = c("ANGOLA", "UGA", "ZAMBIA", "KEN"),
@@ -317,7 +316,7 @@ This is especially useful for climate data workflows that require
 aggregating high-resolution rasters to subnational geographies over
 time.
 
-``` r
+```r
 # Dummy example — replace with your shapefile and actual raster directory
 adm3_shp <- sf::st_read(system.file("extdata", "sle_adm3_example.geojson",
                                     package = "sntutils"))
@@ -372,8 +371,6 @@ denominator ($e$) for a given year-month only if it had first reported
 on any of the key_indicators at or before that year-month. This ensures
 facilities are only expected to report after becoming active.
 
-<blockquote>
-
 **Formula**
 
 Let:
@@ -402,9 +399,8 @@ $$ Where:
 This filtering avoids overestimating non-reporting rates by excluding
 newly opened or late-starting facilities from the denominator in earlier
 periods.
-</blockquote>
 
-*Worked example*
+**Worked example**
 
 Suppose we are calculating the reporting rate for district $d$ in March.
 
@@ -420,9 +416,12 @@ Observed data:
   March
 - 4 of those 6 reported on variable $v = \text{conf}$ in March
 
+
 $$
-\text{Reporting Rate}_{d,\text{Mar}} =
+
+\text{Reporting Rate}\_{d,\text{Mar}} =
 \frac{4}{6} \times 100 = 66.7\%
+
 $$
 
 Now to implement this in code:
@@ -469,12 +468,12 @@ calculate_reporting_metrics(
     # A tibble: 6 × 6
       year_mon adm2                       rep   exp reprate missrate
       <chr>    <chr>                    <int> <int>   <dbl>    <dbl>
-    1 2023-11  Bombali District Council    74    74   100       0   
-    2 2023-11  Makeni City Council          8     9    88.9    11.1 
+    1 2023-11  Bombali District Council    74    74   100       0
+    2 2023-11  Makeni City Council          8     9    88.9    11.1
     3 2023-12  Bo City Council             29    32    90.6     9.38
     4 2023-12  Bo District Council        122   124    98.4     1.61
     5 2023-12  Bombali District Council    71    74    95.9     4.05
-    6 2023-12  Makeni City Council          8     9    88.9    11.1 
+    6 2023-12  Makeni City Council          8     9    88.9    11.1
 
 **Scenario 2: Reporting/Missing Rate by Two Dimensions**
 
@@ -495,12 +494,12 @@ calculate_reporting_metrics(
     # A tibble: 6 × 7
       year_mon adm2                     variable   exp   rep reprate missrate
       <chr>    <chr>                    <chr>    <int> <int>   <dbl>    <dbl>
-    1 2021-01  Bo City Council          conf        39    28   71.8     28.2 
-    2 2021-01  Bo City Council          pres        39     5   12.8     87.2 
-    3 2021-01  Bo District Council      conf       129   113   87.6     12.4 
-    4 2021-01  Bo District Council      pres       129     7    5.43    94.6 
+    1 2021-01  Bo City Council          conf        39    28   71.8     28.2
+    2 2021-01  Bo City Council          pres        39     5   12.8     87.2
+    3 2021-01  Bo District Council      conf       129   113   87.6     12.4
+    4 2021-01  Bo District Council      pres       129     7    5.43    94.6
     5 2021-01  Bombali District Council conf        81    73   90.1      9.88
-    6 2021-01  Bombali District Council pres        81    10   12.3     87.7 
+    6 2021-01  Bombali District Council pres        81    10   12.3     87.7
 
 **Scenario 3: Reporting/Missing Rates Over Time**
 
@@ -668,13 +667,13 @@ outlier_results |>
 
     # A tibble: 6 × 5
       record_id value outliers_iqr outliers_halper outliers_moyenne
-      <chr>     <dbl> <chr>        <chr>           <chr>           
-    1 2573978d    219 normal value normal value    normal value    
-    2 08df1617    103 normal value normal value    normal value    
-    3 6eb8f58e    109 normal value normal value    normal value    
-    4 cb1d87c7    108 normal value normal value    normal value    
-    5 7edb097b    172 normal value normal value    normal value    
-    6 0cc05afb    151 normal value normal value    normal value    
+      <chr>     <dbl> <chr>        <chr>           <chr>
+    1 2573978d    219 normal value normal value    normal value
+    2 08df1617    103 normal value normal value    normal value
+    3 6eb8f58e    109 normal value normal value    normal value
+    4 cb1d87c7    108 normal value normal value    normal value
+    5 7edb097b    172 normal value normal value    normal value
+    6 0cc05afb    151 normal value normal value    normal value
 
 ### Visualise Outliers
 
@@ -796,10 +795,10 @@ df |>
 ```
 
     # A tibble: 3 × 2
-      label           label_es          
-      <chr>           <chr>             
-    1 Confirmed cases Casos confirmados 
-    2 Presumed cases  Casos presuntos   
+      label           label_es
+      <chr>           <chr>
+    1 Confirmed cases Casos confirmados
+    2 Presumed cases  Casos presuntos
     3 Tests performed Pruebas realizadas
 
 When working with time series data, properly formatting dates in the
@@ -865,8 +864,8 @@ sl_dhis2 |>
 ```
 
     # A tibble: 6 × 2
-      adm3             adm3_hash                       
-      <chr>            <chr>                           
+      adm3             adm3_hash
+      <chr>            <chr>
     1 Bo City          c810b59ec12efb2ac8b5cc84f46857ce
     2 Kakua Chiefdom   27fd84f751fac150c2f8a8f42b71c3da
     3 Baoma Chiefdom   462ef3c87dc9b40b2ec2e0e0a54dd63e
@@ -883,3 +882,4 @@ repository](https://github.com/ahadi-analytics/sntutils).
 ## License
 
 This package is licensed under CC BY 4.0.
+$$
