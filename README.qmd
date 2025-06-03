@@ -2,12 +2,12 @@
 title: "sntutils"
 format:
   gfm:
+    output-file: README.md
     fig-path: "man/figures-readme/"
   html:
     fig-path: "docs/figures/"
   pdf:
     fig-path: "pdf-figures/"
-output-file: README.md
 ---
 
 ## What is sntutils?
