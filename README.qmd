@@ -325,7 +325,6 @@ This scenario calculates the proportion of active facilities that reported any d
 
 A facility is counted as reporting ($r$) in a given year-month if any of the selected vars_of_interest is non-missing. It is included in the denominator ($e$) for a given year-month only if it had first reported on any of the key_indicators at or before that year-month. This ensures facilities are only expected to report after becoming active.
 
-<blockquote>
 **Formula**
 
 Let:
@@ -348,9 +347,8 @@ Where:
 - $e_{a,t}$ (expected) = number of facilities in $a$ whose *first-eve*r report on any `key_indicators` occurred on or before $t$ (i.e. expected to report)
 
 This filtering avoids overestimating non-reporting rates by excluding newly opened or late-starting facilities from the denominator in earlier periods.
-</blockquote>
 
-*Worked example*
+**Worked example**
 
 Suppose we are calculating the reporting rate for district $d$ in March.
 
