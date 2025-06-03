@@ -2,7 +2,7 @@
 #'
 #' This function performs a consistency check to ensure that the number of tests
 #' is greater than the number of cases for given columns in a dataset. It
-#' returns a \code{\link[=ggplot2]{ggplot2}} object visualizing the results.
+#' returns a ggplot2 object visualizing the results.
 #'
 #' @param data A data frame containing the test and case data.
 #' @param tests A character vector specifying the column names for the test
@@ -27,11 +27,10 @@
 #' @param compression_verbose Logical. If TRUE, compression details will be
 #'   printed. Default is TRUE.
 #'
-#' @return A \code{\link[=ggplot2]{ggplot2::ggplot()}} object showing
-#'   the consistency between the number of tests and cases. The x-axis
-#'   represents the cases, and the y-axis represents the tests. Each facet
-#'   represents a disease, and the diagonal line shows where the number of
-#'   tests equals the number of cases.
+#' @return A ggplot2 object showing the consistency between the number of
+#'   tests and cases. The x-axis represents the cases, and the y-axis
+#'   represents the tests. Each facet represents a disease, and the diagonal
+#'   line shows where the number of tests equals the number of cases.
 #'
 #' @examples
 #' # check the consistency between malaria tests and cases

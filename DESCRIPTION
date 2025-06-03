@@ -1,6 +1,6 @@
 Package: sntutils
 Type: Package
-Title: Utility Functions for Data Preparation and Analysis in Subnational 
+Title: Utility Functions for Data Preparation and Analysis in Subnational
     Tailoring of Malaria Interventions (SNT)
 Version: 1.4.0
 Authors@R: c(
@@ -57,7 +57,8 @@ Suggests:
     rvest,
     xml2,
     here,
-    httr2
+    httr2,
+    raster
 Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
