@@ -5,10 +5,6 @@ format:
     math: true
     output-file: README.md
     fig-path: "man/figures-readme/"
-  html:
-    fig-path: "docs/figures/"
-  pdf:
-    fig-path: "pdf-figures/"
 ---
 
 ## What is sntutils?
@@ -340,8 +336,9 @@ e.g. "test", "treat", "conf", "pres", "allout"
 For each administrative unit $a$ and time period $t$, the reporting rate is:
 
 $$
-\text{Reporting Rate}_{a,t} = \frac{o_{a,t}}{e_{a,t}} \times 100
+\text{Reporting Rate}_{a,t} \;=\; \frac{o_{a,t}}{e_{a,t}} \times 100
 $$
+
 Where:
 
 - $o_{a,t}$ (observed) = number of facilities in $a$ that reported *any* value in `vars_of_interest` during $t$
