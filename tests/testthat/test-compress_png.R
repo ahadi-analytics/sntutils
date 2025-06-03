@@ -2,7 +2,7 @@ testthat::test_that("find_pngquant works correctly", {
   # Mock functions to avoid actual system calls
   mockery::stub(find_pngquant, "Sys.which", function(cmd) {
     if (cmd == "pngquant") {
-      return("/usr/bin/pngquant")
+      return("/opt/homebrew/bin/pngquant")
     }
     ""
   })
@@ -10,7 +10,7 @@ testthat::test_that("find_pngquant works correctly", {
   mockery::stub(find_pngquant, "file.exists", function(path) TRUE)
 
   path <- find_pngquant()
-  testthat::expect_equal(path, "/usr/bin/pngquant")
+  testthat::expect_equal(path, "/opt/homebrew/bin/pngquant")
 })
 
 testthat::test_that("find_pngquant handles missing executable", {
