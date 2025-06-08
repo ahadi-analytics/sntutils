@@ -314,13 +314,13 @@ rainfall_df
 
 ### Aggregating Reporting Rate
 
-The `sntutils::calculate_reporting_metrics()` function calculates the completeness of routine health data reporting. It evaluates whether health facilities have submitted valid data for a defined set of indicators (`vars_of_interest`) over time. By default, it treats both NA and zero values as non-reporting (if `na_to_zero` = TRUE, which is the defaut).
+The `sntutils::calculate_reporting_metrics()` function computes the completeness of routine health data reporting by assessing whether health facilities have submitted valid data for a specified set of indicators (`key_indicators`) over time. It then calculates reporting rates for one or more target indicators (`vars_of_interest`) based on this information.
 
 **Scenario 1: Facility-Level Reporting/Missing Rate**
 
 This scenario calculates the proportion of active facilities that reported any data (across a specified set of variables) for each time-unit and geographic group (e.g. year-month by district).
 
-A facility is counted as reporting ($r$) in a given year-month if any of the selected vars_of_interest is non-missing. It is included in the denominator ($e$) for a given year-month only if it had first reported on any of the key_indicators at or before that year-month. This ensures facilities are only expected to report after becoming active.
+A facility is counted as reporting ($r$) in a given year-month if any of the selected `vars_of_interest` is non-missing. It is included in the denominator ($e$) for a given year-month only if it had first reported on any of the `key_indicators` at or before that year-month. This ensures facilities are only expected to report after becoming active.
 
 **Formula**
 
@@ -331,7 +331,7 @@ Let:
 - $f$ = a health facility in administrative unit $a$
 - `key_indicators` = a set of variables used to determine whether a facility is active
 e.g. "test", "treat", "conf", "pres", "allout"
-- `vars_of_interest` = variables used to determine if a facility has reported during a given time period e.g. "conf", "pres"
+- `vars_of_interest` = variables of interest that the reporting rate will be calculated for e.g. "conf", "pres"
 
 For each administrative unit $a$ and time period $t$, the reporting rate is:
 
@@ -393,7 +393,7 @@ sl_dhis2 <- readRDS("inst/extdata/sl_exmaple_dhis2.rds") |>
 calculate_reporting_metrics(
   data = sl_dhis2,
   vars_of_interest = c("conf", "pres"), # Variables to check if a facility reported
-  x_var = "date",                       # Temporal unit: year-month
+  x_var = "year_mon",                       # Temporal unit: year-month
   y_var = "adm2",                       # Spatial unit: district
   hf_col = "hf_uid",                    # Health facility ID column
   key_indicators = c(                   # Used to determine denominator
@@ -451,7 +451,7 @@ This scenario calculates the frequency of valid (non-missing, non-zero) reports 
 calculate_reporting_metrics(
   data = sl_dhis2,
   vars_of_interest = c("conf", "pres"), # Confirmed and presumptive malaria cases
-  x_var = "date",                       # Time dimension
+  x_var = "year_mon",                       # Time dimension
   y_var = "adm2"                        # Geographic dimension
 )
 ```
