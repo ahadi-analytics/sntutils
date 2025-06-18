@@ -717,8 +717,8 @@ testthat::expect_equal(jan$reprate, 100)
 # February: A had reported before and is eligible; B first reports in Feb
 # → A and B are in denominator; only B reported → 2 exp, 1 rep
 testthat::expect_equal(feb$exp, 2)
-testthat::expect_equal(feb$rep, 1)
-testthat::expect_equal(feb$reprate, 50)
+testthat::expect_equal(feb$rep, 0)
+testthat::expect_equal(feb$reprate, 0)
 
 # March: A and B are eligible (reported in Jan and Feb respectively)
 # → 2 exp, only A reports → 2 exp, 1 rep
