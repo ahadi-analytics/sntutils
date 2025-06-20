@@ -11,6 +11,7 @@ process_weighted_raster_collection(
   id_cols = c("adm0", "adm1", "adm2"),
   value_pattern = "\\\\.tiff$",
   pop_pattern = "\\\\.tif$",
+  value_layer_to_process = 1,
   weight_na_as_zero = TRUE
 )
 }
@@ -29,6 +30,11 @@ process_weighted_raster_collection(
 
 \item{pop_pattern}{Character. Regex pattern to match population raster files
 (default: "\\.tif$")}
+
+\item{value_layer_to_process}{Integer or character. Specifies which layer in
+a multi-layer raster to extract. If the raster contains multiple layers
+(e.g., different years or indicators), this argument selects the layer to
+be processed. Default is 1.}
 
 \item{weight_na_as_zero}{Logical. Treat NA weights as 0 (default: TRUE)}
 }
