@@ -9,6 +9,7 @@ batch_extract_weighted_mean(
   pop_raster_file,
   shapefile,
   id_cols = c("adm0", "adm1", "adm2"),
+  value_layer_to_process = 1,
   weight_na_as_zero = TRUE
 )
 }
@@ -21,6 +22,11 @@ weight (e.g., PfPR2-10)}
 \item{shapefile}{sf or SpatVector object of administrative boundaries}
 
 \item{id_cols}{Character vector of administrative columns to keep}
+
+\item{value_layer_to_process}{Integer or character. Specifies which layer in a
+multi-layer raster to extract. If the raster contains multiple layers
+(e.g., different years or indicators), this argument selects the layer to
+be processed. Default is 1.}
 
 \item{weight_na_as_zero}{Logical; if TRUE, treats NA weights as zero
 (default: TRUE)}

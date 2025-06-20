@@ -64,12 +64,15 @@ check_dhs_indicators <- function(
   full_url <- paste0(base_url, query)
 
   # Fetch with progress bar
-  response <- httr::GET(full_url, httr::progress())
-  jsonlite::fromJSON(httr::content(
-    response,
-    as = "text",
-    encoding = "UTF-8"
-  ))$Data
+  response <- httr2::request(full_url) |>
+    httr2::req_progress() |>
+    httr2::req_perform()
+
+# Parse and extract the `$Data` element
+response |>
+  httr2::resp_body_string() |>
+  jsonlite::fromJSON(simplifyVector = TRUE) |>
+  purrr::pluck("Data")
 }
 
 #' Query DHS API Directly via URL Parameters
@@ -121,13 +124,15 @@ download_dhs_indicators <- function(
 
   cli::cli_alert_info("Downloading DHS data...")
 
-  response <- httr::GET(full_url, httr::progress())
+  response <- httr2::request(full_url) |>
+    httr2::req_progress() |>
+    httr2::req_perform()
 
-  if (httr::http_error(response)) {
-    stop("API request failed: ", httr::status_code(response))
+  if (httr2::resp_is_error(response)) {
+    stop("API request failed: ", httr2::resp_status(response))
   }
 
-  content_raw <- httr::content(response, as = "text", encoding = "UTF-8")
+  content_raw <- httr2::resp_body_string(response)
   data <- jsonlite::fromJSON(content_raw)$Data
 
   cli::cli_alert_success("Download complete: {nrow(data)} records retrieved.")
