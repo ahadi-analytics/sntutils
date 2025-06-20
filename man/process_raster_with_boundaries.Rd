@@ -9,7 +9,8 @@ process_raster_with_boundaries(
   shapefile,
   id_cols = c("adm0", "adm1"),
   aggregations = c("mean"),
-  raster_is_density = FALSE
+  raster_is_density = FALSE,
+  layer_to_process = 1
 )
 }
 \arguments{
@@ -27,6 +28,11 @@ values are "mean", "sum", and "median". Default is c("mean")}
 \item{raster_is_density}{Logical indicating if raster values represent density.
 If TRUE, values are converted from density to counts using cell area.
 Default is FALSE.}
+
+\item{layer_to_process}{Integer or character. Specifies which layer in a
+multi-layer raster to extract. If the raster contains multiple layers
+(e.g., different years or indicators), this argument selects the layer to
+be processed. Default is 1}
 }
 \value{
 A data frame containing:

@@ -10,6 +10,7 @@ process_raster_collection(
   id_cols = c("adm0", "adm1", "adm2"),
   pattern = "\\\\.tif$",
   aggregations = c("mean"),
+  layer_to_process = 1,
   raster_is_density = FALSE
 )
 }
@@ -27,6 +28,11 @@ Default is c("adm0", "adm1", "adm2") for country and first admin level}
 
 \item{aggregations}{Vector of aggregation methods to calculate. Supported
 values are "mean", "sum", and "median". Default is c("mean")}
+
+\item{layer_to_process}{Integer or character. Specifies which layer in a
+multi-layer raster to extract. If the raster contains multiple layers
+(e.g., different years or indicators), this argument selects the layer to
+be processed. Default is 1.}
 
 \item{raster_is_density}{Logical indicating if raster values represent density.
 If TRUE, values are converted from density to counts using cell area.
