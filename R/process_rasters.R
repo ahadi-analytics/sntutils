@@ -243,6 +243,10 @@ extract_time_components <- function(filename, info) {
 #' @param raster_is_density Logical indicating if raster values represent density.
 #'   If TRUE, values are converted from density to counts using cell area.
 #'   Default is FALSE.
+#' @param layer_to_process Integer or character. Specifies which layer in a
+#'   multi-layer raster to extract. If the raster contains multiple layers
+#'   (e.g., different years or indicators), this argument selects the layer to
+#'   be processed. Default is 1
 #'
 #' @return A data frame containing:
 #'   \itemize{
@@ -280,7 +284,8 @@ process_raster_with_boundaries <- function(raster_file,
                                            shapefile,
                                            id_cols = c("adm0", "adm1"),
                                            aggregations = c("mean"),
-                                           raster_is_density = FALSE) {
+                                           raster_is_density = FALSE,
+                                           layer_to_process = 1) {
 
   valid_aggs <- c("mean", "sum", "median")
   if (!all(aggregations %in% valid_aggs)) {
@@ -290,7 +295,7 @@ process_raster_with_boundaries <- function(raster_file,
   pattern_info <- detect_time_pattern(raster_file)
   components <- extract_time_components(raster_file, pattern_info)
 
-  rast <- terra::rast(raster_file)[[1]]
+  rast <- terra::rast(raster_file)[[layer_to_process]]
   rast[rast == -9999] <- NA
 
   if (raster_is_density) {
@@ -373,6 +378,10 @@ process_raster_with_boundaries <- function(raster_file,
 #' @param raster_is_density Logical indicating if raster values represent density.
 #'   If TRUE, values are converted from density to counts using cell area.
 #'   Default is FALSE.
+#' @param layer_to_process Integer or character. Specifies which layer in a
+#'   multi-layer raster to extract. If the raster contains multiple layers
+#'   (e.g., different years or indicators), this argument selects the layer to
+#'   be processed. Default is 1.
 #'
 #' @return A combined data frame containing results from all processed files,
 #'   sorted by time unit if available. Has the same structure as output from
@@ -404,6 +413,7 @@ process_raster_collection <- function(directory,
                                       id_cols = c("adm0", "adm1", "adm2"),
                                       pattern = "\\.tif$",
                                       aggregations = c("mean"),
+                                      layer_to_process = 1,
                                       raster_is_density = FALSE) {
 
   # Get list of raster files in directory
@@ -435,7 +445,8 @@ process_raster_collection <- function(directory,
       shapefile = shapefile,
       id_cols = id_cols,
       aggregations = aggregations,
-      raster_is_density = raster_is_density
+      raster_is_density = raster_is_density,
+      layer_to_process = layer_to_process
     )
     pb$tick()
     result
@@ -463,6 +474,10 @@ process_raster_collection <- function(directory,
 #' @param pop_raster_file Path to the population raster file used for weighting
 #' @param shapefile sf or SpatVector object of administrative boundaries
 #' @param id_cols Character vector of administrative columns to keep
+#' @param value_layer_to_process Integer or character. Specifies which layer in a
+#'   multi-layer raster to extract. If the raster contains multiple layers
+#'   (e.g., different years or indicators), this argument selects the layer to
+#'   be processed. Default is 1.
 #' @param weight_na_as_zero Logical; if TRUE, treats NA weights as zero
 #'   (default: TRUE)
 #'
@@ -473,6 +488,7 @@ batch_extract_weighted_mean <- function(
   pop_raster_file,
   shapefile,
   id_cols = c("adm0", "adm1", "adm2"),
+  value_layer_to_process = 1,
   weight_na_as_zero = TRUE
 ) {
   # Detect time pattern and extract components
@@ -480,7 +496,7 @@ batch_extract_weighted_mean <- function(
   components <- extract_time_components(value_raster_file, pattern_info)
 
   # Load rasters
-  value_rast <- terra::rast(value_raster_file)[[1]]
+  value_rast <- terra::rast(value_raster_file)[[value_layer_to_process]]
   pop_rast <- terra::rast(pop_raster_file)[[1]]
 
   # Reproject population raster to match value raster CRS
@@ -574,6 +590,10 @@ batch_extract_weighted_mean <- function(
 #'        (default: "\\.tiff$")
 #' @param pop_pattern Character. Regex pattern to match population raster files
 #'        (default: "\\.tif$")
+#' @param value_layer_to_process Integer or character. Specifies which layer in
+#'   a multi-layer raster to extract. If the raster contains multiple layers
+#'   (e.g., different years or indicators), this argument selects the layer to
+#'   be processed. Default is 1.
 #' @param weight_na_as_zero Logical. Treat NA weights as 0 (default: TRUE)
 #'
 #' @return A data frame containing:
@@ -598,6 +618,7 @@ process_weighted_raster_collection <- function(
   id_cols = c("adm0", "adm1", "adm2"),
   value_pattern = "\\.tiff$",
   pop_pattern = "\\.tif$",
+  value_layer_to_process = 1,
   weight_na_as_zero = TRUE
 ) {
   # List and clean value raster filenames
@@ -664,6 +685,7 @@ process_weighted_raster_collection <- function(
       pop_raster_file = matched_pop,
       shapefile = shapefile,
       id_cols = id_cols,
+      value_layer_to_process = value_layer_to_process,
       weight_na_as_zero = weight_na_as_zero
     )
 
