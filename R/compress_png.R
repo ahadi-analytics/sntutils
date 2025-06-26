@@ -5,10 +5,12 @@
 #' automatically. On Windows, it will attempt to find the executable
 #' in common installation locations before offering to install.
 #'
+#' @param verbosity Logical. Controls output verbosity. FALSE = silent,
+#'    TRUE = verbose.
 #' @return Path to pngquant executable as character string, or NULL
 #'   if not found/installed or if installation was declined
 #' @export
-find_pngquant <- function() {
+find_pngquant <- function(verbosity) {
   os <- Sys.info()[["sysname"]]
   pngquant_path <- Sys.which("pngquant")
 
@@ -22,7 +24,8 @@ find_pngquant <- function() {
     for (path in homebrew_paths) {
       if (file.exists(path)) {
         pngquant_path <- path
-        cli::cli_alert_info(paste("Found pngquant at:", pngquant_path))
+        if (verbosity) cli::cli_alert_info(
+          paste("Found pngquant at:", pngquant_path))
         break
       }
     }
@@ -59,7 +62,8 @@ find_pngquant <- function() {
     for (p in potential_paths) {
       if (file.exists(p)) {
         pngquant_path <- p
-        cli::cli_alert_info(paste("Found pngquant at:", pngquant_path))
+        if (verbosity) cli::cli_alert_info(
+          paste("Found pngquant at:", pngquant_path))
         break
       }
     }
@@ -69,7 +73,8 @@ find_pngquant <- function() {
   if (pngquant_path == "") {
     ans <- readline("pngquant is not installed. Install automatically? (y/n): ")
     if (tolower(ans) != "y") {
-      cli::cli_alert_warning("pngquant installation aborted. Exiting function.")
+      if (verbosity) cli::cli_alert_warning(
+      "pngquant installation aborted. Exiting function.")
       return(invisible(NULL))
     }
 
@@ -108,12 +113,14 @@ find_pngquant <- function() {
           stop("pngquant binary not found after build.")
         }
         file.copy(pngquant_path, file.path(install_dir, "pngquant.exe"))
-        cli::cli_alert_success(paste("pngquant installed at:", pngquant_path))
-        cli::cli_alert_info(
-          paste("Also copied to:", file.path(install_dir, "pngquant.exe"))
-        )
+        if (verbosity) {
+          cli::cli_alert_success(paste("pngquant installed at:", pngquant_path))
+          cli::cli_alert_info(
+            paste("Also copied to:", file.path(install_dir, "pngquant.exe"))
+          )
+        }
       } else {
-        cli::cli_alert_info(
+        if (verbosity) cli::cli_alert_info(
           "Git not available. Downloading pre-built pngquant binary..."
         )
         zip_url <- "https://pngquant.org/pngquant-windows.zip"
@@ -138,7 +145,8 @@ find_pngquant <- function() {
           )
           pngquant_path <- file.path(install_dir, "pngquant.exe")
         }
-        cli::cli_alert_success(paste("pngquant installed at:", pngquant_path))
+        if (verbosity) cli::cli_alert_success(
+          paste("pngquant installed at:", pngquant_path))
         Sys.setenv(PATH = paste(Sys.getenv("PATH"), install_dir, sep = ";"))
       }
     } else {
@@ -167,13 +175,14 @@ find_pngquant <- function() {
       if (!file.exists(pngquant_path)) {
         stop("pngquant binary not found after build.")
       }
-      cli::cli_alert_success(paste("pngquant installed at:", pngquant_path))
+      if (verbosity) cli::cli_alert_success(
+        paste("pngquant installed at:", pngquant_path))
     }
   }
 
   ## Final sanity check: does the path actually exist?
   if (!file.exists(pngquant_path)) {
-    cli::cli_alert_danger(
+    if (verbosity) cli::cli_alert_danger(
       paste("pngquant path exists but file not found at:", pngquant_path)
     )
     return(invisible(NULL))
@@ -189,12 +198,12 @@ find_pngquant <- function() {
 
   for (check in system_checks) {
     if (!is.null(check) && check != "" && file.exists(check)) {
-      cli::cli_alert_success(paste("Found pngquant at:", check))
+      if (verbosity) cli::cli_alert_success(paste("Found pngquant at:", check))
       return(invisible(check))
     }
   }
 
-    if (is.null(pngquant_path)) {
+    if (is.null(pngquant_path) && verbosity) {
       cli::cli_bullets(c(
         "!" = "Cannot find pngquant. Common installation methods:",
         " " = "\u2014 First, try Homebrew (macOS): brew install pngquant",
@@ -343,7 +352,8 @@ compression_stats <- function(filename, init_size, final_size,
 #' - pngquant_path: Path to the pngquant executable
 #' - speed: Compression speed (1-11, where 1 is slowest but highest quality)
 #'
-pngquant_compress_single_file <- function(pngquant_path, file, speed, png_overwrite,
+pngquant_compress_single_file <- function(pngquant_path, file,
+                                          speed, png_overwrite,
                                           verbosity = FALSE) {
   # Get initial file size before compression
   init_size <- file.info(file)$size
@@ -429,10 +439,9 @@ pngquant_compress_single_file <- function(pngquant_path, file, speed, png_overwr
 #' @export
 compress_png <- function(path, png_overwrite = TRUE,
                          speed = 1, verbosity = TRUE) {
-  ensure_packages("progress")
 
   # Find pngquant executable
-  pngquant_path <- find_pngquant()
+  pngquant_path <- find_pngquant(verbosity)
   if (is.null(pngquant_path)) {
     cli::cli_alert_warning("pngquant not found and installation declined.")
     return(invisible(NULL))
