@@ -239,4 +239,3 @@ download_chirps2.0 <- function(dataset, start, end = NULL,
   cli::cli_text("")
   cli::cli_alert_success("All CHIRPS files downloaded")
 }
-
