@@ -4,7 +4,11 @@
 \alias{find_pngquant}
 \title{Find or install pngquant executable}
 \usage{
-find_pngquant()
+find_pngquant(verbosity = FALSE)
+}
+\arguments{
+\item{verbosity}{Logical. Controls output verbosity. FALSE = silent,
+TRUE = verbose.}
 }
 \value{
 Path to pngquant executable as character string, or NULL
