@@ -10,7 +10,7 @@
 #' @return Path to pngquant executable as character string, or NULL
 #'   if not found/installed or if installation was declined
 #' @export
-find_pngquant <- function(verbosity) {
+find_pngquant <- function(verbosity = FALSE) {
   os <- Sys.info()[["sysname"]]
   pngquant_path <- Sys.which("pngquant")
 
@@ -472,8 +472,11 @@ compress_png <- function(path, png_overwrite = TRUE,
   if (is_file) {
     # Single file processing
     result <- pngquant_compress_single_file(
-      pngquant_path, png_files, speed,
-      png_overwrite, verbosity
+      pngquant_path,
+      png_files,
+      speed,
+      png_overwrite,
+      verbosity = verbosity
     )
     if (result$success) {
       if (!is.null(result$already_compressed) && result$already_compressed) {
