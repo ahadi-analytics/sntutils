@@ -12,7 +12,8 @@ process_ihme_u5m_raster(
   shape,
   raster_stack,
   id_col = c("adm1", "adm2"),
-  rates = TRUE
+  rates = TRUE,
+  stat_type = "mean"
 )
 }
 \arguments{
@@ -26,6 +27,9 @@ mortality data}
 
 \item{rates}{Logical indicating whether values are rates (TRUE) or counts
 (TRUE, default)}
+
+\item{stat_type}{Character string specifying statistic type: "mean", "median",
+or "both". Only applies when rates = TRUE. For counts, sum is always used.}
 }
 \value{
 A tibble containing extracted values for each area and year with
@@ -43,13 +47,13 @@ estimates for under-5 mortality rates in low and middle-income countries
 \details{
 The function processes each layer in the IHME raster stack, which
 represents annual estimates starting from 2000. For rates, mean
-values are extracted; for counts, sums are used. The IHME data
-provides high-resolution (5 x 5 km) estimates of under-5 mortality
-across LMICs.
+or median values are extracted based on stat_type; for counts,
+sums are used. The IHME data provides high-resolution (5 x 5 km)
+estimates of under-5 mortality across LMICs.
 }
 \note{
-The IHME raster data represents model-based estimates and should be used
-with consideration of the underlying methodology and uncertainties
+The IHME raster data represents model-based estimates and should be
+usedwith consideration of the underlying methodology and uncertainties
 described in the source documentation.
 }
 \examples{
@@ -58,15 +62,34 @@ described in the source documentation.
 library(sf)
 library(terra)
 
-# Example with rates (deaths per 1,000 live births)
-mortality_rates <- process_ihme_u5m_raster(
+# Example with rates using mean (default)
+mortality_rates_mean <- process_ihme_u5m_raster(
   shape = admin_boundaries,
   raster_stack = mortality_raster,
   id_col = c("adm1", "adm2"),
-  rates = TRUE
+  rates = TRUE,
+  stat_type = "mean"
 )
 
-# Example with counts (total deaths)
+# Example with rates using median
+mortality_rates_median <- process_ihme_u5m_raster(
+  shape = admin_boundaries,
+  raster_stack = mortality_raster,
+  id_col = c("adm1", "adm2"),
+  rates = TRUE,
+  stat_type = "median"
+)
+
+# Example with both mean and median
+mortality_rates_both <- process_ihme_u5m_raster(
+  shape = admin_boundaries,
+  raster_stack = mortality_raster,
+  id_col = c("adm1", "adm2"),
+  rates = TRUE,
+  stat_type = "both"
+)
+
+# Example with counts (total deaths - always uses sum)
 mortality_counts <- process_ihme_u5m_raster(
   shape = admin_boundaries,
   raster_stack = mortality_raster,
