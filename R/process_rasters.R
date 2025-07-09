@@ -347,8 +347,11 @@ process_raster_with_boundaries <- function(raster_file,
     result_df <- result_df |> dplyr::mutate(month = components$month)
   }
 
-  time_cols <- if (
-    pattern_info$pattern == "monthly") c("year", "month") else "year"
+  time_cols <- if (pattern_info$pattern == "monthly") {
+    c("year", "month")
+  } else {
+    "year"
+  }
 
   result_df |>
     dplyr::select(
@@ -760,6 +763,7 @@ normalize_raster_by_polygon <- function(raster, shp, id_col) {
   terra::mosaic(normalized_collection)
 }
 
+
 #' Extract Under-5 Mortality Values from IHME Raster Stack
 #'
 #' This function extracts under-5 mortality values from IHME (Institute for
@@ -775,6 +779,8 @@ normalize_raster_by_polygon <- function(raster, shp, id_col) {
 #'        (default: c("adm1", "adm2"))
 #' @param rates Logical indicating whether values are rates (TRUE) or counts
 #'        (TRUE, default)
+#' @param stat_type Character string specifying statistic type: "mean", "median",
+#'        or "both". Only applies when rates = TRUE. For counts, sum is always used.
 #'
 #' @return A tibble containing extracted values for each area and year with
 #'         columns for area identifiers, year, and mortality values. For rates,
@@ -783,9 +789,9 @@ normalize_raster_by_polygon <- function(raster, shp, id_col) {
 #'
 #' @details The function processes each layer in the IHME raster stack, which
 #'          represents annual estimates starting from 2000. For rates, mean
-#'          values are extracted; for counts, sums are used. The IHME data
-#'          provides high-resolution (5 x 5 km) estimates of under-5 mortality
-#'          across LMICs.
+#'          or median values are extracted based on stat_type; for counts,
+#'          sums are used. The IHME data provides high-resolution (5 x 5 km)
+#'          estimates of under-5 mortality across LMICs.
 #'
 #' @source \url{https://ghdx.healthdata.org/record/ihme-data/
 #'      lmic-under5-mortality-rate-geospatial-estimates-2000-2017}
@@ -796,15 +802,34 @@ normalize_raster_by_polygon <- function(raster, shp, id_col) {
 #' library(sf)
 #' library(terra)
 #'
-#' # Example with rates (deaths per 1,000 live births)
-#' mortality_rates <- process_ihme_u5m_raster(
+#' # Example with rates using mean (default)
+#' mortality_rates_mean <- process_ihme_u5m_raster(
 #'   shape = admin_boundaries,
 #'   raster_stack = mortality_raster,
 #'   id_col = c("adm1", "adm2"),
-#'   rates = TRUE
+#'   rates = TRUE,
+#'   stat_type = "mean"
 #' )
 #'
-#' # Example with counts (total deaths)
+#' # Example with rates using median
+#' mortality_rates_median <- process_ihme_u5m_raster(
+#'   shape = admin_boundaries,
+#'   raster_stack = mortality_raster,
+#'   id_col = c("adm1", "adm2"),
+#'   rates = TRUE,
+#'   stat_type = "median"
+#' )
+#'
+#' # Example with both mean and median
+#' mortality_rates_both <- process_ihme_u5m_raster(
+#'   shape = admin_boundaries,
+#'   raster_stack = mortality_raster,
+#'   id_col = c("adm1", "adm2"),
+#'   rates = TRUE,
+#'   stat_type = "both"
+#' )
+#'
+#' # Example with counts (total deaths - always uses sum)
 #' mortality_counts <- process_ihme_u5m_raster(
 #'   shape = admin_boundaries,
 #'   raster_stack = mortality_raster,
@@ -813,20 +838,68 @@ normalize_raster_by_polygon <- function(raster, shp, id_col) {
 #' )
 #' }
 #'
-#' @note The IHME raster data represents model-based estimates and should be used
-#'       with consideration of the underlying methodology and uncertainties
+#' @note The IHME raster data represents model-based estimates and should be
+#'        usedwith consideration of the underlying methodology and uncertainties
 #'       described in the source documentation.
 #'
 #' @export
-process_ihme_u5m_raster <- function(shape,
-                                    raster_stack,
-                                    id_col = c("adm1", "adm2"),
-                                    rates = TRUE) {
+process_ihme_u5m_raster <- function(
+  shape,
+  raster_stack,
+  id_col = c("adm1", "adm2"),
+  rates = TRUE,
+  stat_type = "mean"
+) {
+  # input validation
+  if (!stat_type %in% c("mean", "median", "both")) {
+    stop("stat_type must be 'mean', 'median', or 'both'")
+  }
+
+  if (!rates && stat_type != "mean") {
+    cli::cli_warn(
+      "stat_type is ignored when rates = FALSE. using sum for counts."
+    )
+  }
 
   type <- if (rates) "rate" else "count"
-  stat <- if (rates) "mean" else "sum"
 
-  cli::cli_h2("Starting U5 Mortality {type} extraction from raster stack")
+  # define extraction functions
+  median_fun <- function(values, coverage_fractions) {
+    valid_idx <- !is.na(values) & coverage_fractions > 0
+
+    if (sum(valid_idx) == 0 || length(values[valid_idx]) == 0) {
+      return(NA_real_)
+    }
+
+    # use coverage fractions as weights for median
+    matrixStats::weightedMedian(
+      values[valid_idx],
+      w = coverage_fractions[valid_idx],
+      na.rm = TRUE
+    )
+  }
+
+  both_stats_fun <- function(values, coverage_fractions) {
+    valid_idx <- !is.na(values) & coverage_fractions > 0
+
+    if (sum(valid_idx) == 0 || length(values[valid_idx]) == 0) {
+      return(data.frame(mean_val = NA_real_, median_val = NA_real_))
+    }
+
+    clean_values <- values[valid_idx]
+    clean_fractions <- coverage_fractions[valid_idx]
+
+    data.frame(
+      mean_val = sum(clean_values * clean_fractions) / sum(clean_fractions),
+      median_val = matrixStats::weightedMedian(
+        clean_values,
+        w = clean_fractions,
+        na.rm = TRUE
+      )
+    )
+  }
+
+  cli::cli_h2("starting u5 mortality {type} extraction from raster stack")
 
   stopifnot(inherits(shape, "sf"))
   stopifnot(length(id_col) >= 1)
@@ -842,30 +915,92 @@ process_ihme_u5m_raster <- function(shape,
     yr <- years[i]
     layer <- raster::raster(raster_stack[[i]])
 
-    cli::cli_progress_step("Extracting year {yr} ({i}/{n_layers})")
+    cli::cli_progress_step("extracting year {yr} ({i}/{n_layers})")
 
-    u5_vals <- exactextractr::exact_extract(
-      layer, shape, stat, progress = FALSE
-    )
+    # extract values based on rates and stat_type
+    if (!rates) {
+      # for counts, always use sum
+      u5_vals <- exactextractr::exact_extract(
+        layer,
+        shape,
+        "sum",
+        progress = FALSE
+      )
 
-    ids <- shape |>
-      sf::st_drop_geometry() |>
-      dplyr::select(dplyr::all_of(id_col))
+      ids <- shape |>
+        sf::st_drop_geometry() |>
+        dplyr::select(dplyr::all_of(id_col))
 
-    results[[i]] <- dplyr::bind_cols(
-      ids,
-      tibble::tibble(year = yr, !!paste0("u5m_", type) := u5_vals)
-    )
+      results[[i]] <- dplyr::bind_cols(
+        ids,
+        tibble::tibble(year = yr, !!paste0("u5m_", type) := u5_vals)
+      )
+    } else {
+      # for rates, use specified stat_type
+      if (stat_type == "mean") {
+        u5_vals <- exactextractr::exact_extract(
+          layer,
+          shape,
+          "mean",
+          progress = FALSE
+        )
+
+        ids <- shape |>
+          sf::st_drop_geometry() |>
+          dplyr::select(dplyr::all_of(id_col))
+
+        results[[i]] <- dplyr::bind_cols(
+          ids,
+          tibble::tibble(year = yr, !!paste0("u5m_", type) := u5_vals)
+        )
+      } else if (stat_type == "median") {
+        u5_vals <- exactextractr::exact_extract(
+          layer,
+          shape,
+          median_fun,
+          progress = FALSE
+        )
+
+        ids <- shape |>
+          sf::st_drop_geometry() |>
+          dplyr::select(dplyr::all_of(id_col))
+
+        results[[i]] <- dplyr::bind_cols(
+          ids,
+          tibble::tibble(year = yr, !!paste0("u5m_", type) := u5_vals)
+        )
+      } else if (stat_type == "both") {
+        stats_results <- exactextractr::exact_extract(
+          layer,
+          shape,
+          both_stats_fun,
+          progress = FALSE
+        )
+
+        ids <- shape |>
+          sf::st_drop_geometry() |>
+          dplyr::select(dplyr::all_of(id_col))
+
+        results[[i]] <- dplyr::bind_cols(
+          ids,
+          tibble::tibble(
+            year = yr,
+            !!paste0("u5m_", type, "_mean") := stats_results$mean_val,
+            !!paste0("u5m_", type, "_median") := stats_results$median_val
+          )
+        )
+      }
+    }
   }
 
-  cli::cli_alert_success("Extraction complete for {n_layers} years.")
+  cli::cli_alert_success("extraction complete for {n_layers} years.")
 
   dplyr::bind_rows(results)
 }
 
 #' Process Weighted Raster Stacks
 #'
-#' This function processes raster stacks by calculating weighted means based on
+#' This function processes raster stacks by calculating weighted statistics based on
 #' population data for each shape in the input shapefile across multiple years.
 #'
 #' @param value_raster A SpatRaster object containing the values to be weighted
@@ -873,51 +1008,155 @@ process_ihme_u5m_raster <- function(shape,
 #' @param shape A sf/shapefile object containing geometries and shape_id column
 #' @param value_var Character string for naming the weighted value column
 #' @param start_year Numeric indicating the starting year for the time series
+#' @param stat_type Character string specifying statistic type: "mean",
+#'     "median", or "both"
 #'
 #' @return A tibble with columns for shape_id, year, and the weighted values
 #' @export
-process_weighted_raster_stacks <- function(value_raster,
-                                       pop_raster,
-                                       shape,
-                                       value_var = "indicator_weighted",
-                                       start_year = 2000) {
-
+process_weighted_raster_stacks <- function(
+  value_raster,
+  pop_raster,
+  shape,
+  value_var = "indicator_weighted",
+  start_year = 2000,
+  stat_type = "mean"
+) {
   # Input validation
-  if (!inherits(value_raster, "SpatRaster") || !inherits(pop_raster,
-  "SpatRaster")) {
+  if (
+    !inherits(value_raster, "SpatRaster") ||
+      !inherits(pop_raster, "SpatRaster")
+  ) {
     stop("value_raster and pop_raster must be SpatRaster objects")
   }
   if (!inherits(shape, "sf")) {
     stop("shape must be an sf object")
   }
-  if (!("shape_id" %in% names(shape))) {
-    stop("shape must contain a 'shape_id' column")
-  }
   if (terra::nlyr(value_raster) != terra::nlyr(pop_raster)) {
     stop("value_raster and pop_raster must have the same number of layers")
+  }
+  if (!stat_type %in% c("mean", "median", "both")) {
+    stop("stat_type must be 'mean', 'median', or 'both'")
   }
 
   # Step 1: Crop and resample value raster to match population raster
   value_raster_cropped <- terra::crop(value_raster, pop_raster)
   value_raster_resampled <- terra::resample(value_raster_cropped, pop_raster)
 
-  # Step 2: Extract weighted mean per year
+  # Define weighted median function
+  weighted_median_fun <- function(values, coverage_fractions, weights) {
+    total_weights <- weights * coverage_fractions
+    valid_idx <- !is.na(values) &
+      !is.na(total_weights) &
+      total_weights > 0 &
+      coverage_fractions > 0
+
+    if (sum(valid_idx) == 0 || length(values[valid_idx]) == 0) {
+      return(NA_real_)
+    }
+
+    matrixStats::weightedMedian(
+      values[valid_idx],
+      w = total_weights[valid_idx],
+      na.rm = TRUE
+    )
+  }
+
+  # Define combined statistics function
+  combined_stats_fun <- function(values, coverage_fractions, weights) {
+    total_weights <- weights * coverage_fractions
+    valid_idx <- !is.na(values) &
+      !is.na(total_weights) &
+      total_weights > 0 &
+      coverage_fractions > 0
+
+    if (sum(valid_idx) == 0 || length(values[valid_idx]) == 0) {
+      return(data.frame(
+        weighted_mean = NA_real_,
+        weighted_median = NA_real_
+      ))
+    }
+
+    clean_values <- values[valid_idx]
+    clean_weights <- total_weights[valid_idx]
+
+    if (sum(clean_weights) == 0) {
+      return(data.frame(
+        weighted_mean = NA_real_,
+        weighted_median = NA_real_
+      ))
+    }
+
+    data.frame(
+      weighted_mean = sum(clean_values * clean_weights) / sum(clean_weights),
+      weighted_median = matrixStats::weightedMedian(
+        clean_values,
+        w = clean_weights,
+        na.rm = TRUE
+      )
+    )
+  }
+
+  # Step 2: Extract weighted statistics per year
   results_list <- purrr::map(
     seq_len(terra::nlyr(value_raster_resampled)),
     ~ {
-      vals <- exactextractr::exact_extract(
-        x = value_raster_resampled[[.x]],
-        y = shape,
-        weights = pop_raster[[.x]],
-        default_weight = 0,
-        fun = "weighted_mean"
-      )
+      year_value <- start_year - 1 + .x
+      shape_data <- sf::st_drop_geometry(shape)
 
-      tibble::tibble(
-        shape_id = shape$shape_id,
-        year = start_year - 1 + .x,
-        !!value_var := vals
-      )
+      if (stat_type == "mean") {
+        vals <- exactextractr::exact_extract(
+          x = value_raster_resampled[[.x]],
+          y = shape,
+          weights = pop_raster[[.x]],
+          default_weight = 0,
+          fun = "weighted_mean"
+        )
+
+        dplyr::bind_cols(
+          shape_data,
+          tibble::tibble(
+            year = year_value,
+            !!value_var := vals
+          )
+        )
+      } else if (stat_type == "median") {
+        vals <- exactextractr::exact_extract(
+          x = value_raster_resampled[[.x]],
+          y = shape,
+          weights = pop_raster[[.x]],
+          default_weight = 0,
+          fun = weighted_median_fun
+        )
+
+        dplyr::bind_cols(
+          shape_data,
+          tibble::tibble(
+            year = year_value,
+            !!value_var := vals
+          )
+        )
+      } else if (stat_type == "both") {
+        stats_results <- exactextractr::exact_extract(
+          x = value_raster_resampled[[.x]],
+          y = shape,
+          weights = pop_raster[[.x]],
+          default_weight = 0,
+          fun = combined_stats_fun
+        )
+
+        # Create column names based on value_var
+        mean_col <- paste0(value_var, "_mean")
+        median_col <- paste0(value_var, "_median")
+
+        dplyr::bind_cols(
+          shape_data,
+          tibble::tibble(
+            year = year_value,
+            !!mean_col := stats_results$weighted_mean,
+            !!median_col := stats_results$weighted_median
+          )
+        )
+      }
     }
   )
 

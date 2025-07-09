@@ -9,7 +9,8 @@ process_weighted_raster_stacks(
   pop_raster,
   shape,
   value_var = "indicator_weighted",
-  start_year = 2000
+  start_year = 2000,
+  stat_type = "mean"
 )
 }
 \arguments{
@@ -22,11 +23,14 @@ process_weighted_raster_stacks(
 \item{value_var}{Character string for naming the weighted value column}
 
 \item{start_year}{Numeric indicating the starting year for the time series}
+
+\item{stat_type}{Character string specifying statistic type: "mean",
+"median", or "both"}
 }
 \value{
 A tibble with columns for shape_id, year, and the weighted values
 }
 \description{
-This function processes raster stacks by calculating weighted means based on
+This function processes raster stacks by calculating weighted statistics based on
 population data for each shape in the input shapefile across multiple years.
 }
