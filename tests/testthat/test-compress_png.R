@@ -1,16 +1,19 @@
 testthat::test_that("find_pngquant works correctly", {
-  # Mock functions to avoid actual system calls
-  mockery::stub(find_pngquant, "Sys.which", function(cmd) {
-    if (cmd == "pngquant") {
-      return("/opt/homebrew/bin/pngquant")
+  withr::with_envvar(
+    c("PATH" = "/opt/homebrew/bin:/usr/bin:/bin"),
+    {
+      # create a temporary pngquant executable
+      temp_dir <- withr::local_tempdir()
+      pngquant_path <- file.path(temp_dir, "pngquant")
+      file.create(pngquant_path)
+      Sys.chmod(pngquant_path, "755")
+
+      withr::with_path(temp_dir, {
+        result_path <- sntutils::find_pngquant()
+        testthat::expect_true(grepl("pngquant", result_path))
+      })
     }
-    ""
-  })
-
-  mockery::stub(find_pngquant, "file.exists", function(path) TRUE)
-
-  path <- find_pngquant()
-  testthat::expect_equal(path, "/usr/local/bin/pngquant")
+  )
 })
 
 testthat::test_that("find_pngquant handles missing executable", {
@@ -83,18 +86,18 @@ testthat::test_that("pngquant_compress_single_file compresses files", {
 })
 
 testthat::test_that("compress_png handles single file", {
-  # Mock functions
-  mockery::stub(compress_png, "find_pngquant", function() {
-    "/usr/bin/pngquant"
-  })
+  # mock base r functions
+  testthat::local_mocked_bindings(
+    file.exists = function(path) TRUE,
+    dir.exists = function(path) FALSE,
+    grepl = function(...) TRUE,
+    .package = "base"
+  )
 
-  mockery::stub(compress_png, "file.exists", function(path) TRUE)
-  mockery::stub(compress_png, "dir.exists", function(path) FALSE)
-  mockery::stub(compress_png, "grepl", function(...) TRUE)
-
-  mockery::stub(
-    compress_png, "pngquant_compress_single_file",
-    function(...) {
+  # mock package-specific functions
+  testthat::local_mocked_bindings(
+    find_pngquant = function(verbosity = FALSE) "/usr/bin/pngquant",
+    pngquant_compress_single_file = function(...) {
       list(
         success = TRUE,
         stats = list(
@@ -104,63 +107,64 @@ testthat::test_that("compress_png handles single file", {
           percent_saved = 30
         )
       )
-    }
+    },
+    .package = "sntutils"
   )
 
   result <- compress_png("test.png", verbosity = FALSE)
-
   testthat::expect_equal(result$bytes_saved, 30000)
 })
 
 testthat::test_that("compress_png handles directory", {
-  # Mock functions
-  mockery::stub(compress_png, "find_pngquant", function() {
-    "/usr/bin/pngquant"
-  })
+  # mock base r functions
+  testthat::local_mocked_bindings(
+    file.exists = function(path) TRUE,
+    dir.exists = function(path) TRUE,
+    list.files = function(...) c("test1.png", "test2.png"),
+    .package = "base"
+  )
 
-  mockery::stub(compress_png, "file.exists", function(path) TRUE)
-  mockery::stub(compress_png, "dir.exists", function(path) TRUE)
-  mockery::stub(compress_png, "list.files", function(...) {
-    c("test1.png", "test2.png")
-  })
-
-  # Create mock stats that will properly convert to data frame
+  # create mock stats as data frames that rbind can handle properly
   test_stats <- list()
   test_stats[["test1.png"]] <- data.frame(
     initial_size = 100000,
     final_size = 70000,
     bytes_saved = 30000,
-    percent_saved = 30
+    percent_saved = 30,
+    stringsAsFactors = FALSE
   )
   test_stats[["test2.png"]] <- data.frame(
     initial_size = 200000,
     final_size = 120000,
     bytes_saved = 80000,
-    percent_saved = 40
+    percent_saved = 40,
+    stringsAsFactors = FALSE
   )
 
-  mockery::stub(
-    compress_png, "pngquant_compress_single_file",
-    function(pngquant_path, file, ...) {
-      # Return appropriate stats based on filename
-      idx <- if (file == "test1.png") 1 else 2
-      filename <- c("test1.png", "test2.png")[idx]
+  # mock package-specific functions
+  testthat::local_mocked_bindings(
+    find_pngquant = function(verbosity = FALSE) "/usr/bin/pngquant",
+    pngquant_compress_single_file = function(pngquant_path, file, ...) {
+      # return appropriate stats based on filename
+      filename <- basename(file)
       list(
         success = TRUE,
         stats = test_stats[[filename]]
       )
-    }
+    },
+    .package = "sntutils"
   )
 
+  # use mockery to stub the specific function calls that use :: notation
   mockery::stub(
-    compress_png, "progress::progress_bar$new",
-    function(...) {
-      list(tick = function() NULL)
-    }
+    compress_png,
+    "progress::progress_bar$new",
+    function(...) list(tick = function() NULL)
   )
 
   mockery::stub(compress_png, "cli::cli_h2", function(...) NULL)
   mockery::stub(compress_png, "cli::cli_bullets", function(...) NULL)
+  mockery::stub(compress_png, "glue::glue", function(...) "mocked text")
 
   result <- compress_png("test_dir/", verbosity = FALSE)
 
