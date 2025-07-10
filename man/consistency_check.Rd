@@ -67,7 +67,7 @@ returns a ggplot2 object visualizing the results.
 }
 \examples{
 # check the consistency between malaria tests and cases
-
+\dontrun{
 # get path
 path <- system.file(
   "extdata",
@@ -92,5 +92,6 @@ consistency_check(
   save_plot = TRUE,
   plot_path = tempdir()
 )
+}
 
 }
