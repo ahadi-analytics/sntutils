@@ -1,6 +1,4 @@
-[![CodeFactor](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils/badge)](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils)
-
-![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/ahadi-analytics/sntutils/main/coverage/shield.json)
+[![CodeFactor](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils/badge)](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils) ![Coverage](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/ahadi-analytics/sntutils/main/coverage/shield.json)
 
 # sntutils
 
