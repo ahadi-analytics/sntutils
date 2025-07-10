@@ -5,5 +5,5 @@
 ^README\.qmd$
 ^README\.html$
 ^README_files$
-
+generate_svg_badge.R
 /.quarto/
