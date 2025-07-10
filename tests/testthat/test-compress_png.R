@@ -16,6 +16,86 @@ testthat::test_that("find_pngquant works correctly", {
   )
 })
 
+
+testthat::test_that("find_pngquant returns path when pngquant is in PATH", {
+  # mock Sys.which to return a valid path
+  mockery::stub(find_pngquant, "Sys.which", "/usr/bin/pngquant")
+
+  # mock file.exists to confirm the file exists
+  mockery::stub(find_pngquant, "file.exists", TRUE)
+
+  # mock system checks to return the path
+  mockery::stub(
+    find_pngquant,
+    "system",
+    function(command, intern = FALSE, ...) {
+      if (grepl("which pngquant", command)) {
+        return("/usr/bin/pngquant")
+      }
+      return("")
+    }
+  )
+
+  result <- find_pngquant(verbosity = FALSE)
+
+  testthat::expect_equal(result, "/usr/bin/pngquant")
+})
+
+testthat::test_that("find_pngquant finds pngquant in macOS homebrew paths", {
+  # mock macOS system
+  mockery::stub(find_pngquant, "Sys.info", c(sysname = "Darwin"))
+
+  # mock Sys.which to return empty (not in PATH)
+  mockery::stub(find_pngquant, "Sys.which", "")
+
+  # mock file.exists to return TRUE for homebrew path
+  mock_file_exists <- function(path) {
+    if (path == "/opt/homebrew/bin/pngquant") {
+      return(TRUE)
+    }
+    return(FALSE)
+  }
+  mockery::stub(find_pngquant, "file.exists", mock_file_exists)
+
+  # mock system checks to return the path
+  mockery::stub(
+    find_pngquant,
+    "system",
+    function(command, intern = FALSE, ...) {
+      if (grepl("which pngquant", command)) {
+        return("/opt/homebrew/bin/pngquant")
+      }
+      return("")
+    }
+  )
+
+  result <- find_pngquant(verbosity = FALSE)
+
+  testthat::expect_equal(result, "/opt/homebrew/bin/pngquant")
+})
+
+
+testthat::test_that("find_pngquant returns NULL when user declines installation", {
+  # mock system to return empty (pngquant not found)
+  mockery::stub(find_pngquant, "Sys.which", "")
+  mockery::stub(find_pngquant, "file.exists", FALSE)
+
+  # mock system checks to return empty
+  mockery::stub(
+    find_pngquant,
+    "system",
+    function(command, intern = FALSE, ...) ""
+  )
+
+  # mock readline to simulate user declining installation
+  mockery::stub(find_pngquant, "readline", "n")
+
+  result <- find_pngquant(verbosity = FALSE)
+
+  testthat::expect_null(result)
+})
+
+
 testthat::test_that("find_pngquant handles missing executable", {
   # Mock to simulate pngquant not found
   mockery::stub(find_pngquant, "Sys.which", function(cmd) "")
@@ -24,6 +104,359 @@ testthat::test_that("find_pngquant handles missing executable", {
 
   testthat::expect_null(find_pngquant())
 })
+
+# test-find_pngquant.R
+# tests for find_pngquant function
+# author: test suite
+# date: 2025-07-10
+
+testthat::test_that("find_pngquant returns path when pngquant is in PATH", {
+  # mock Sys.which to return a valid path
+  mockery::stub(find_pngquant, "Sys.which", "/usr/bin/pngquant")
+
+  # mock file.exists to confirm the path exists
+  mockery::stub(find_pngquant, "file.exists", TRUE)
+
+  # mock system calls to return the path
+  mockery::stub(find_pngquant, "system", function(cmd, intern = FALSE) {
+    if (grepl("which pngquant", cmd)) {
+      return("/usr/bin/pngquant")
+    }
+    if (grepl("command -v pngquant", cmd)) {
+      return("/usr/bin/pngquant")
+    }
+    if (grepl("type -p pngquant", cmd)) {
+      return("/usr/bin/pngquant")
+    }
+    return(character(0))
+  })
+
+  result <- find_pngquant(verbosity = FALSE)
+
+  testthat::expect_equal(result, "/usr/bin/pngquant")
+})
+
+testthat::test_that("find_pngquant searches homebrew paths on macOS", {
+  # mock macOS system
+  mockery::stub(
+    find_pngquant,
+    "Sys.info",
+    c(sysname = "Darwin", release = "21.0.0")
+  )
+
+  # mock Sys.which to return empty (not in PATH)
+  mockery::stub(find_pngquant, "Sys.which", "")
+
+  # mock file.exists to find pngquant in homebrew path
+  mockery::stub(find_pngquant, "file.exists", function(path) {
+    path == "/opt/homebrew/bin/pngquant"
+  })
+
+  # mock system calls
+  mockery::stub(find_pngquant, "system", function(cmd, intern = FALSE) {
+    if (grepl("which pngquant", cmd)) {
+      return("/opt/homebrew/bin/pngquant")
+    }
+    return(character(0))
+  })
+
+  result <- find_pngquant(verbosity = FALSE)
+
+  testthat::expect_equal(result, "/opt/homebrew/bin/pngquant")
+})
+
+testthat::test_that("find_pngquant handles user declining installation", {
+  # mock system info
+  mockery::stub(
+    find_pngquant,
+    "Sys.info",
+    c(sysname = "Linux", release = "5.0")
+  )
+
+  # mock Sys.which to return empty (not found)
+  mockery::stub(find_pngquant, "Sys.which", "")
+
+  # mock file.exists to return FALSE (not found in common paths)
+  mockery::stub(find_pngquant, "file.exists", FALSE)
+
+  # mock readline to simulate user declining installation
+  mockery::stub(find_pngquant, "readline", "n")
+
+  result <- find_pngquant(verbosity = FALSE)
+
+  testthat::expect_null(result)
+})
+
+testthat::test_that("find_pngquant handles user accepting installation on unix", {
+  # mock Linux system
+  mockery::stub(
+    find_pngquant,
+    "Sys.info",
+    c(sysname = "Linux", release = "5.0")
+  )
+
+  # mock Sys.which to return empty initially, then git available
+  call_count <- 0
+  mockery::stub(find_pngquant, "Sys.which", function(cmd) {
+    call_count <<- call_count + 1
+    if (cmd == "pngquant") {
+      return("") # pngquant not found
+    } else if (cmd == "git") {
+      return("/usr/bin/git") # git available
+    }
+    return("")
+  })
+
+  # mock file.exists
+  mockery::stub(find_pngquant, "file.exists", function(path) {
+    # return TRUE for built binary path
+    grepl("target/release/pngquant$", path)
+  })
+
+  # mock readline to simulate user accepting installation
+  mockery::stub(find_pngquant, "readline", "y")
+
+  # mock system commands
+  mockery::stub(find_pngquant, "system", function(cmd, intern = FALSE) {
+    if (grepl("git clone", cmd)) {
+      return(0) # successful clone
+    } else if (grepl("cargo build", cmd)) {
+      return(0) # successful build
+    } else if (intern) {
+      # for which/command -v/type -p checks
+      if (grepl("which pngquant", cmd)) {
+        return("/tmp/pngquant/target/release/pngquant")
+      }
+      return(character(0))
+    }
+    return(1)
+  })
+
+  # mock dir.create
+  mockery::stub(find_pngquant, "dir.create", TRUE)
+
+  # mock normalizePath
+  mockery::stub(find_pngquant, "normalizePath", function(path, ...) path)
+
+  result <- find_pngquant(verbosity = FALSE)
+
+  testthat::expect_true(!is.null(result))
+  testthat::expect_true(grepl("pngquant", result))
+})
+
+
+testthat::test_that("find_pngquant handles installation failures gracefully", {
+  # mock Linux system
+  mockery::stub(
+    find_pngquant,
+    "Sys.info",
+    c(sysname = "Linux", release = "5.0")
+  )
+
+  # mock Sys.which
+  mockery::stub(find_pngquant, "Sys.which", function(cmd) {
+    if (cmd == "pngquant") {
+      return("")
+    }
+    if (cmd == "git") {
+      return("/usr/bin/git")
+    }
+    return("")
+  })
+
+  # mock file.exists to return FALSE (installation failed)
+  mockery::stub(find_pngquant, "file.exists", FALSE)
+
+  # mock readline to accept installation
+  mockery::stub(find_pngquant, "readline", "y")
+
+  # mock system to fail git clone
+  mockery::stub(find_pngquant, "system", function(cmd, intern = FALSE) {
+    if (grepl("git clone", cmd)) {
+      return(1)
+    } # failure
+    if (intern) {
+      return(character(0))
+    }
+    return(1)
+  })
+
+  # mock dir.create
+  mockery::stub(find_pngquant, "dir.create", TRUE)
+  mockery::stub(find_pngquant, "normalizePath", function(path, ...) path)
+
+  # should throw error on git clone failure
+  testthat::expect_error(
+    find_pngquant(verbosity = FALSE),
+    "Failed to clone pngquant repository"
+  )
+})
+
+testthat::test_that("find_pngquant handles build failures", {
+  # mock Linux system
+  mockery::stub(
+    find_pngquant,
+    "Sys.info",
+    c(sysname = "Linux", release = "5.0")
+  )
+
+  # mock Sys.which
+  mockery::stub(find_pngquant, "Sys.which", function(cmd) {
+    if (cmd == "pngquant") {
+      return("")
+    }
+    if (cmd == "git") {
+      return("/usr/bin/git")
+    }
+    return("")
+  })
+
+  # mock file.exists
+  mockery::stub(find_pngquant, "file.exists", FALSE)
+
+  # mock readline to accept installation
+  mockery::stub(find_pngquant, "readline", "y")
+
+  # mock system - git succeeds but cargo build fails
+  mockery::stub(find_pngquant, "system", function(cmd, intern = FALSE) {
+    if (grepl("git clone", cmd)) {
+      return(0)
+    } # success
+    if (grepl("cargo build", cmd)) {
+      return(1)
+    } # failure
+    if (intern) {
+      return(character(0))
+    }
+    return(1)
+  })
+
+  # mock dir.create
+  mockery::stub(find_pngquant, "dir.create", TRUE)
+  mockery::stub(find_pngquant, "normalizePath", function(path, ...) path)
+
+  # should throw error on build failure
+  testthat::expect_error(
+    find_pngquant(verbosity = FALSE),
+    "Failed to build pngquant"
+  )
+})
+
+testthat::test_that("find_pngquant verbosity controls output", {
+  # mock system with pngquant in PATH
+  mockery::stub(find_pngquant, "Sys.which", "/usr/bin/pngquant")
+  mockery::stub(find_pngquant, "file.exists", TRUE)
+
+  # mock system calls
+  mockery::stub(find_pngquant, "system", function(cmd, intern = FALSE) {
+    if (grepl("which pngquant", cmd)) {
+      return("/usr/bin/pngquant")
+    }
+    return(character(0))
+  })
+
+  # test with verbosity = FALSE (should not produce output)
+  testthat::expect_silent(
+    result1 <- find_pngquant(verbosity = FALSE)
+  )
+
+  # test with verbosity = TRUE (may produce output, but shouldn't error)
+  testthat::expect_no_error(
+    result2 <- find_pngquant(verbosity = TRUE)
+  )
+
+  # results should be the same regardless of verbosity
+  testthat::expect_equal(result1, result2)
+})
+
+testthat::test_that("find_pngquant returns NULL when file doesn't exist", {
+  # mock Sys.which to return empty
+  mockery::stub(find_pngquant, "Sys.which", "")
+
+  # mock file.exists to always return FALSE
+  mockery::stub(find_pngquant, "file.exists", FALSE)
+
+  # mock readline to decline installation
+  mockery::stub(find_pngquant, "readline", "n")
+
+  result <- find_pngquant(verbosity = FALSE)
+
+  testthat::expect_null(result)
+})
+
+testthat::test_that("find_pngquant handles different user responses", {
+  # mock system
+  mockery::stub(
+    find_pngquant,
+    "Sys.info",
+    c(sysname = "Linux", release = "5.0")
+  )
+  mockery::stub(find_pngquant, "Sys.which", "")
+  mockery::stub(find_pngquant, "file.exists", FALSE)
+
+  # test various user responses that should decline installation
+  for (response in c("n", "N", "no", "NO", "nope", "")) {
+    mockery::stub(find_pngquant, "readline", response)
+    result <- find_pngquant(verbosity = FALSE)
+    testthat::expect_null(
+      result,
+      info = paste("Failed for response:", response)
+    )
+  }
+})
+
+testthat::test_that("find_pngquant handles missing binary after build", {
+  # mock Linux system
+  mockery::stub(
+    find_pngquant,
+    "Sys.info",
+    c(sysname = "Linux", release = "5.0")
+  )
+
+  # mock Sys.which
+  mockery::stub(find_pngquant, "Sys.which", function(cmd) {
+    if (cmd == "pngquant") {
+      return("")
+    }
+    if (cmd == "git") {
+      return("/usr/bin/git")
+    }
+    return("")
+  })
+
+  # mock file.exists to return FALSE for binary path
+  mockery::stub(find_pngquant, "file.exists", function(path) {
+    !grepl("target/release/pngquant$", path) # binary doesn't exist
+  })
+
+  # mock readline to accept installation
+  mockery::stub(find_pngquant, "readline", "y")
+
+  # mock system commands to succeed
+  mockery::stub(find_pngquant, "system", function(cmd, intern = FALSE) {
+    if (grepl("git clone", cmd)) {
+      return(0)
+    }
+    if (grepl("cargo build", cmd)) {
+      return(0)
+    }
+    if (intern) {
+      return(character(0))
+    }
+    return(1)
+  })
+
+  # mock dir.create
+  mockery::stub(find_pngquant, "dir.create", TRUE)
+  mockery::stub(find_pngquant, "normalizePath", function(path, ...) path)
+
+  # should throw error when binary not found after build
+  testthat::expect_error(
+    find_pngquant(verbosity = FALSE),
+    "pngquant binary not found after build"
+  )
+})
+
 
 testthat::test_that("compression_stats calculates correctly", {
   init_size <- 100000
@@ -47,6 +480,7 @@ testthat::test_that("compression_stats calculates correctly", {
   stats_verbose <- compression_stats("test.png", init_size, final_size, TRUE)
   testthat::expect_equal(stats_verbose$bytes_saved, 25000)
 })
+
 
 testthat::test_that("pngquant_compress_single_file compresses files", {
   # Mock functions
