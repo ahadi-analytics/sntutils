@@ -15,6 +15,7 @@ globalVariables(
     "median_absolute", "median", "moyenne", "moyenne_lower_bound", "where",
     "moyenne_upper_bound", "n_outlier", "n_total", "q1", "q3", "sd",
      "lower", "upper", "first_report_month", "include_in_denom",
-     "reported_any", "%+%"
+     "reported_any", "%+%",
+     "geometry", "geometry_hash"
   )
 )
