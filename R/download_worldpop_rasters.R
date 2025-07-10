@@ -44,7 +44,9 @@ download_worldpop <- function(
     type = "count",
     dest_dir = here::here(),
     quiet = FALSE) {
-  type <- match.arg(type)
+
+  type <- match.arg(type, choices = c("count", "density"))
+
   if (!dir.exists(dest_dir)) dir.create(dest_dir, recursive = TRUE)
 
   base_url <- "https://data.worldpop.org/GIS/Population"
@@ -217,7 +219,7 @@ download_worldpop <- function(
 #' )
 #' }
 #' @export
-ddownload_worldpop_age_band <- function(
+download_worldpop_age_band <- function(
     country_codes,
     years,
     age_range = c(1, 9),
