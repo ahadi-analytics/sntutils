@@ -18,7 +18,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          install.packages(c("covr", "jsonlite", "dplyr"))
+          install.packages(c("covr", "devtools", "remotes", "jsonlite", "dplyr"))
           remotes::install_deps(dependencies = TRUE)
         shell: Rscript {0}
 
