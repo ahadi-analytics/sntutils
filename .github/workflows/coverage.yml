@@ -20,6 +20,7 @@ jobs:
         run: |
           install.packages(c("covr", "devtools", "remotes", "DT","jsonlite", "dplyr"))
           remotes::install_deps(dependencies = TRUE)
+          devtools::install()
         shell: Rscript {0}
 
       - name: Generate coverage badge data
