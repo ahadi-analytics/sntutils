@@ -43,7 +43,7 @@
 #' )
 #'
 #' # get example data
-#' fake_epi_df_togo <- read(path)
+#' fake_epi_df_togo <- sntutils::read(path)
 #'
 #' consistency_check(
 #'   fake_epi_df_togo,
