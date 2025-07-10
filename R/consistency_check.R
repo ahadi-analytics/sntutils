@@ -34,7 +34,7 @@
 #'
 #' @examples
 #' # check the consistency between malaria tests and cases
-#'
+#'\dontrun{
 #' # get path
 #' path <- system.file(
 #'   "extdata",
@@ -59,6 +59,7 @@
 #'   save_plot = TRUE,
 #'   plot_path = tempdir()
 #' )
+#'}
 #'
 #' @export
 consistency_check <- function(data, tests, cases,
