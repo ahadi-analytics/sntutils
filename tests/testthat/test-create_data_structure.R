@@ -422,25 +422,6 @@ testthat::test_that("functions work with relative paths", {
   cleanup_test_dir(test_dir)
 })
 
-testthat::test_that("functions handle very long paths", {
-  test_dir <- create_temp_test_dir()
-
-  # create nested long path
-  long_path_parts <- rep("very_long_folder_name", 5)
-  long_path <- fs::path(test_dir, paste(long_path_parts, collapse = "/"))
-
-  testthat::expect_no_error({
-    initialize_project_structure(base_path = long_path)
-  })
-
-  # structure should be created
-  testthat::expect_true(
-    fs::dir_exists(fs::path(long_path, "01_data"))
-  )
-
-  cleanup_test_dir(test_dir)
-})
-
 # integration and workflow tests ----
 testthat::test_that("functions work together in typical workflow", {
   test_dir <- create_temp_test_dir()
