@@ -7,3 +7,6 @@
 ^README_files$
 generate_svg_badge.R
 /.quarto/
+.covrignore
+generate_svg_badge.R
+.Rbuildignore
