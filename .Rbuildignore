@@ -4,3 +4,6 @@
 ^README\.html$
 ^README_files$
 ^\.github$
+.covrignore
+generate_svg_badge.R
+.Rbuildignore
