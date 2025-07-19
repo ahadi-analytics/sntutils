@@ -12,7 +12,8 @@ process_weighted_raster_collection(
   value_pattern = "\\\\.tiff$",
   pop_pattern = "\\\\.tif$",
   value_layer_to_process = 1,
-  weight_na_as_zero = TRUE
+  weight_na_as_zero = TRUE,
+  stat_type = "mean"
 )
 }
 \arguments{
@@ -37,6 +38,17 @@ a multi-layer raster to extract. If the raster contains multiple layers
 be processed. Default is 1.}
 
 \item{weight_na_as_zero}{Logical. Treat NA weights as 0 (default: TRUE)}
+
+\item{stat_type}{Character string specifying statistic type:
+\itemize{
+\item "mean": Population-weighted mean using exactextractr's weighted_mean
+function
+\item "median": Population-weighted median using matrixStats::weightedMedian()
+approach that finds the value where 50\% of the population weight lies
+below and 50\% above, interpolating between pixel values when needed
+\item "both": Returns both weighted mean and weighted median statistics
+(default: "mean")
+}}
 }
 \value{
 A data frame containing:
