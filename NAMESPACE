@@ -2,7 +2,6 @@
 
 export(autoparse_dates)
 export(available_date_formats)
-export(batch_extract_weighted_mean)
 export(big_mark)
 export(calculate_reporting_metrics)
 export(check_chirps_available)

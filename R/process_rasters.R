@@ -483,17 +483,30 @@ process_raster_collection <- function(directory,
 #'   be processed. Default is 1.
 #' @param weight_na_as_zero Logical; if TRUE, treats NA weights as zero
 #'   (default: TRUE)
+#' @param stat_type Character string specifying statistic type:
+#'   - "mean": Population-weighted mean using exactextractr's weighted_mean
+#'       function
+#'   - "median": Population-weighted median using matrixStats::weightedMedian()
+#'     approach that finds the value where 50% of the population weight lies
+#'     below and 50% above, interpolating between pixel values when needed
+#'   - "both": Returns both weighted mean and weighted median statistics
+#'   (default: "mean")
 #'
 #' @return Data frame with id_cols and population-weighted mean values
-#' @export
-batch_extract_weighted_mean <- function(
+batch_extract_weighted_stats <- function(
   value_raster_file,
   pop_raster_file,
   shapefile,
   id_cols = c("adm0", "adm1", "adm2"),
   value_layer_to_process = 1,
-  weight_na_as_zero = TRUE
+  weight_na_as_zero = TRUE,
+  stat_type = "mean"
 ) {
+  # Input validation
+  if (!stat_type %in% c("mean", "median", "both")) {
+    cli::cli_abort("stat_type must be 'mean', 'median', or 'both'")
+  }
+
   # Detect time pattern and extract components
   pattern_info <- detect_time_pattern(value_raster_file)
   components <- extract_time_components(value_raster_file, pattern_info)
@@ -514,15 +527,19 @@ batch_extract_weighted_mean <- function(
   terra::origin(pop_rast_proj) <- terra::origin(value_rast)
 
   # Calculate population sum per polygon (for fallback detection)
-  pop_sum <- exactextractr::exact_extract(
-    pop_rast_proj,
-    shapefile,
-    fun = "sum",
-    progress = FALSE
-  ) |>
-    round()
+  suppressWarnings(
+    pop_sum <-
+      exactextractr::exact_extract(
+        pop_rast_proj,
+        shapefile,
+        fun = "sum",
+        progress = FALSE
+      ) |>
+      round()
+  )
 
   # Calculate population-weighted mean
+  suppressWarnings(
   weighted_mean <- exactextractr::exact_extract(
     value_rast,
     shapefile,
@@ -531,7 +548,39 @@ batch_extract_weighted_mean <- function(
     default_weight = if (weight_na_as_zero) 0 else NA,
     progress = FALSE
   )
+  )
+  # Define weighted median function
+  weighted_median_fun <- function(values, coverage_fractions, weights) {
+    total_weights <- weights * coverage_fractions
+    valid_idx <- !is.na(values) &
+      !is.na(total_weights) &
+      total_weights > 0 &
+      coverage_fractions > 0
 
+    if (sum(valid_idx) == 0 || length(values[valid_idx]) == 0) {
+      return(NA_real_)
+    }
+
+    matrixStats::weightedMedian(
+      values[valid_idx],
+      w = total_weights[valid_idx],
+      na.rm = TRUE
+    )
+  }
+
+  # Calculate population-weighted median
+  suppressWarnings(
+  weighted_median <- exactextractr::exact_extract(
+    value_rast,
+    shapefile,
+    fun = weighted_median_fun,
+    weights = pop_rast_proj,
+    default_weight = if (weight_na_as_zero) 0 else NA,
+    progress = FALSE
+  )
+  )
+
+  suppressWarnings(
   # Calculate unweighted mean for fallback
   unweighted_mean <- exactextractr::exact_extract(
     value_rast,
@@ -539,9 +588,16 @@ batch_extract_weighted_mean <- function(
     fun = "mean",
     progress = FALSE
   )
+)
 
-  # Define aggregation columns
-  aggregations <- c("pop_sum", "weighted_mean", "unweighted_mean")
+  # Define aggregation columns based on stat_type
+  if (stat_type == "mean") {
+    aggregations <- c("pop_sum", "weighted_mean", "unweighted_mean")
+  } else if (stat_type == "median") {
+    aggregations <- c("pop_sum", "weighted_median", "unweighted_mean")
+  } else if (stat_type == "both") {
+    aggregations <- c("pop_sum", "weighted_mean", "weighted_median", "unweighted_mean")
+  }
 
   # Create initial results dataframe
   result_df <- dplyr::bind_cols(
@@ -552,6 +608,7 @@ batch_extract_weighted_mean <- function(
       year = components$year,
       pop_sum = pop_sum,
       weighted_mean = weighted_mean,
+      weighted_median = weighted_median,
       unweighted_mean = unweighted_mean
     )
   )
@@ -568,7 +625,7 @@ batch_extract_weighted_mean <- function(
     "year"
   }
 
-  # Return final results
+  # Return final results with only requested columns
   result_df |>
     dplyr::select(
       dplyr::all_of(id_cols),
@@ -598,6 +655,14 @@ batch_extract_weighted_mean <- function(
 #'   (e.g., different years or indicators), this argument selects the layer to
 #'   be processed. Default is 1.
 #' @param weight_na_as_zero Logical. Treat NA weights as 0 (default: TRUE)
+#' @param stat_type Character string specifying statistic type:
+#'   - "mean": Population-weighted mean using exactextractr's weighted_mean
+#'       function
+#'   - "median": Population-weighted median using matrixStats::weightedMedian()
+#'     approach that finds the value where 50% of the population weight lies
+#'     below and 50% above, interpolating between pixel values when needed
+#'   - "both": Returns both weighted mean and weighted median statistics
+#'   (default: "mean")
 #'
 #' @return A data frame containing:
 #'   - Spatial identifiers from id_cols
@@ -622,9 +687,15 @@ process_weighted_raster_collection <- function(
   value_pattern = "\\.tiff$",
   pop_pattern = "\\.tif$",
   value_layer_to_process = 1,
-  weight_na_as_zero = TRUE
+  weight_na_as_zero = TRUE,
+  stat_type = "mean"
 ) {
-  # List and clean value raster filenames
+  # input validation
+  if (!stat_type %in% c("mean", "median", "both")) {
+    cli::cli_abort("stat_type must be 'mean', 'median', or 'both'")
+  }
+
+  # list and clean value raster filenames
   value_raster_files <- list.files(
     value_raster_dir,
     pattern = value_pattern,
@@ -636,7 +707,7 @@ process_weighted_raster_collection <- function(
     cli::cli_abort("No value raster files found in '{value_raster_dir}'.")
   }
 
-  # List and clean population raster filenames
+  # list and clean population raster filenames
   pop_raster_files <- list.files(
     pop_raster_dir,
     pattern = pop_pattern,
@@ -648,22 +719,26 @@ process_weighted_raster_collection <- function(
     cli::cli_abort("No population raster files found in '{pop_raster_dir}'.")
   }
 
-  # Detect time pattern once for value rasters
+  # detect time pattern once for value rasters
   pattern_info <- detect_time_pattern(value_raster_files)
 
-  # Progress bar
-  pb <- progress::progress_bar$new(
-    format = "Processing [:bar] :percent | ETA: :eta",
+  # initialize progress bar
+  cli::cli_progress_bar(
+    "Extracting population-weighted statistics",
     total = length(value_raster_files)
   )
 
-  # Process each value raster
-  results <- lapply(value_raster_files, function(value_file) {
-    # Extract time components
+  # process each value raster using for loop for progress tracking
+  results <- vector("list", length(value_raster_files))
+
+  for (i in seq_along(value_raster_files)) {
+    value_file <- value_raster_files[i]
+
+    # extract time components
     time_components <- extract_time_components(value_file, pattern_info)
     year_str <- as.character(time_components$year)
 
-    # Find matching population raster by year
+    # find matching population raster by year
     matched_pop <- pop_raster_files[grepl(year_str, basename(pop_raster_files))]
 
     if (length(matched_pop) == 0) {
@@ -682,21 +757,25 @@ process_weighted_raster_collection <- function(
       )
     }
 
-    # Process with matched population raster
-    result <- batch_extract_weighted_mean(
+    # process with matched population raster
+    results[[i]] <- batch_extract_weighted_stats(
       value_raster_file = value_file,
       pop_raster_file = matched_pop,
       shapefile = shapefile,
       id_cols = id_cols,
       value_layer_to_process = value_layer_to_process,
-      weight_na_as_zero = weight_na_as_zero
+      weight_na_as_zero = weight_na_as_zero,
+      stat_type = stat_type
     )
 
-    pb$tick()
-    return(result)
-  })
+    # update progress
+    cli::cli_progress_update()
+  }
 
-  # Combine and sort results
+  # complete progress bar
+  cli::cli_progress_done()
+
+  # combine and sort results
   combined_results <- dplyr::bind_rows(results)
   sort_cols <- c("year", "month", id_cols)
   sort_cols <- sort_cols[sort_cols %in% names(combined_results)]
@@ -708,7 +787,6 @@ process_weighted_raster_collection <- function(
 
   return(combined_results)
 }
-
 
 #' Normalize Raster Values by Polygon Regions
 #'
@@ -1000,16 +1078,23 @@ process_ihme_u5m_raster <- function(
 
 #' Process Weighted Raster Stacks
 #'
-#' This function processes raster stacks by calculating weighted statistics based on
-#' population data for each shape in the input shapefile across multiple years.
+#' This function processes raster stacks by calculating weighted statistics
+#' based on population data for each shape in the input shapefile across
+#' multiple years.
 #'
 #' @param value_raster A SpatRaster object containing the values to be weighted
 #' @param pop_raster A SpatRaster object containing population weights
 #' @param shape A sf/shapefile object containing geometries and shape_id column
 #' @param value_var Character string for naming the weighted value column
 #' @param start_year Numeric indicating the starting year for the time series
-#' @param stat_type Character string specifying statistic type: "mean",
-#'     "median", or "both"
+#' @param stat_type Character string specifying statistic type:
+#'   - "mean": Population-weighted mean using exactextractr's weighted_mean
+#'       function
+#'   - "median": Population-weighted median using matrixStats::weightedMedian()
+#'     approach that finds the value where 50% of the population weight lies
+#'     below and 50% above, interpolating between pixel values when needed
+#'   - "both": Returns both weighted mean and weighted median statistics
+#'   (default: "mean")
 #'
 #' @return A tibble with columns for shape_id, year, and the weighted values
 #' @export

@@ -24,13 +24,22 @@ process_weighted_raster_stacks(
 
 \item{start_year}{Numeric indicating the starting year for the time series}
 
-\item{stat_type}{Character string specifying statistic type: "mean",
-"median", or "both"}
+\item{stat_type}{Character string specifying statistic type:
+\itemize{
+\item "mean": Population-weighted mean using exactextractr's weighted_mean
+function
+\item "median": Population-weighted median using matrixStats::weightedMedian()
+approach that finds the value where 50\% of the population weight lies
+below and 50\% above, interpolating between pixel values when needed
+\item "both": Returns both weighted mean and weighted median statistics
+(default: "mean")
+}}
 }
 \value{
 A tibble with columns for shape_id, year, and the weighted values
 }
 \description{
-This function processes raster stacks by calculating weighted statistics based on
-population data for each shape in the input shapefile across multiple years.
+This function processes raster stacks by calculating weighted statistics
+based on population data for each shape in the input shapefile across
+multiple years.
 }
