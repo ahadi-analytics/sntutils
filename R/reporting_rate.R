@@ -16,9 +16,6 @@
 #'    - Computes reporting/missing rates for each variable over time
 #'      (x_var only).
 #'
-#' Note: By default, 0 values are treated as missing (`NA`) in both
-#' `vars_of_interest` and `key_indicators`, unless `na_to_zero = FALSE`.
-#'
 #' @param data A data frame containing health facility data.
 #' @param vars_of_interest Character vector of variable names to assess
 #'   reporting (used for numerator).
@@ -31,8 +28,6 @@
 #' @param key_indicators Optional. Character vector of indicators used to define
 #'   facility activity in scenario 1. Defaults to
 #'   `c("allout", "conf", "test", "treat", "pres")`.
-#' @param na_to_zero Logical. If TRUE (default), treat zero values as missing
-#'   (`NA`) in both `vars_of_interest` and `key_indicators`.
 #'
 #' @return A tibble with the number of reporting (`rep`) and expected (`exp`)
 #' facilities or records, and the computed `reprate` and `missrate`.
@@ -91,8 +86,7 @@ calculate_reporting_metrics <- function(
   x_var,
   y_var = NULL,
   hf_col = NULL,
-  key_indicators = c("allout", "conf", "test", "treat", "pres"),
-  na_to_zero = TRUE
+  key_indicators = c("allout", "conf", "test", "treat", "pres")
 ) {
   # ensure_packages("dtplyr")
 
@@ -137,27 +131,6 @@ calculate_reporting_metrics <- function(
       "!" = "y_var required when hf_col is provided",
       "i" = "Run `rlang::last_trace()` to see where the error occurred."
     ))
-  }
-
-  # Treat 0s as NA
-  if (na_to_zero) {
-    if (!is.null(key_indicators)) {
-      data <- dplyr::mutate(
-        data,
-        dplyr::across(
-          dplyr::any_of(key_indicators),
-          ~ dplyr::if_else(.x == 0, NA, .x)
-        )
-      )
-    }
-
-    data <- dplyr::mutate(
-      data,
-      dplyr::across(
-        dplyr::any_of(vars_of_interest),
-        ~ dplyr::if_else(.x == 0, NA_real_, .x)
-      )
-    )
   }
 
   calculate_rates <- function(df) {
@@ -296,8 +269,6 @@ calculate_reporting_metrics <- function(
 #' @param key_indicators Optional. Character vector of indicators used to define
 #'   facility activity in scenario 1. Defaults to
 #'   `c("allout", "conf", "test", "treat", "pres")`.
-#' @param na_to_zero Logical. If TRUE (default), treat zero values as missing
-#'   (`NA`) in both `vars_of_interest` and `key_indicators`.
 #'
 #' @return A list with plot_data and plotting metadata
 #' @examples
@@ -356,8 +327,7 @@ prepare_plot_data <- function(
   by_facility = FALSE,
   hf_col = NULL,
   use_reprate = TRUE,
-  key_indicators = c("allout", "conf", "test", "treat", "pres"),
-  na_to_zero = TRUE
+  key_indicators = c("allout", "conf", "test", "treat", "pres")
 ) {
 
   # Input validation
@@ -467,8 +437,7 @@ prepare_plot_data <- function(
     x_var = x_var,
     y_var = y_var,
     hf_col = if (by_facility) hf_col else NULL,
-    key_indicators = key_indicators,
-    na_to_zero = na_to_zero
+    key_indicators = key_indicators
   )
 
   list(
@@ -505,8 +474,6 @@ prepare_plot_data <- function(
 #' @param key_indicators Optional. Character vector of indicators used to define
 #'   facility activity in scenario 1. Defaults to
 #'   `c("allout", "conf", "test", "treat", "pres")`.
-#' @param na_to_zero Logical. If TRUE (default), treat zero values as missing
-#'   (`NA`) in both `vars_of_interest` and `key_indicators`.
 #' @param use_reprate A logical value. If TRUE, the reporting rate is
 #'   visualized; otherwise, the proportion of missing data is visualized.
 #'   Defaults to TRUE
@@ -583,7 +550,6 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 key_indicators = c("allout", "conf",
                                                   "test", "treat",
                                                   "pres"),
-                                na_to_zero = TRUE,
                                 use_reprate = TRUE,
                                 full_range = TRUE,
                                 target_language = "en",
@@ -649,8 +615,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     by_facility = scenario == "facility",
     hf_col = hf_col,
     use_reprate = use_reprate,
-    key_indicators = key_indicators,
-    na_to_zero = na_to_zero
+    key_indicators = key_indicators
   )
 
   # Extract prepared data components
