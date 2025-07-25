@@ -154,7 +154,10 @@ consistency_check <- function(data, tests, cases,
   }
 
   # Create the plot
-  plot <- ggplot2::ggplot(results, ggplot2::aes(x = cases, y = tests)) +
+  plot <-
+    results |>
+    dplyr::filter(!is.na(cases) & !is.na(tests)) |>
+    ggplot2::ggplot(ggplot2::aes(x = cases, y = tests)) +
     ggplot2::geom_point(
       ggplot2::aes(color = cases > tests),
       shape = 16,
@@ -180,7 +183,8 @@ consistency_check <- function(data, tests, cases,
     ggplot2::aes(x = cases, y = tests),
     color  = "grey10",
     linetype = "dashed",
-    linewidth = 1
+    linewidth = 1,
+    na.rm = TRUE
   ) +
     ggplot2::facet_wrap(~disease, scales = "free") +
     ggplot2::labs(
