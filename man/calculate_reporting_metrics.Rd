@@ -10,8 +10,7 @@ calculate_reporting_metrics(
   x_var,
   y_var = NULL,
   hf_col = NULL,
-  key_indicators = c("allout", "conf", "test", "treat", "pres"),
-  na_to_zero = TRUE
+  key_indicators = c("allout", "conf", "test", "treat", "pres")
 )
 }
 \arguments{
@@ -32,9 +31,6 @@ IDs. Required only for scenario 1.}
 \item{key_indicators}{Optional. Character vector of indicators used to define
 facility activity in scenario 1. Defaults to
 \code{c("allout", "conf", "test", "treat", "pres")}.}
-
-\item{na_to_zero}{Logical. If TRUE (default), treat zero values as missing
-(\code{NA}) in both \code{vars_of_interest} and \code{key_indicators}.}
 }
 \value{
 A tibble with the number of reporting (\code{rep}) and expected (\code{exp})
@@ -63,9 +59,6 @@ on \code{key_indicators}) that reported at least one of the
 (x_var only).
 }
 }
-
-Note: By default, 0 values are treated as missing (\code{NA}) in both
-\code{vars_of_interest} and \code{key_indicators}, unless \code{na_to_zero = FALSE}.
 }
 \examples{
 hf_data <- data.frame(
