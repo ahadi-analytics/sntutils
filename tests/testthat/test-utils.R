@@ -209,3 +209,72 @@ testthat::test_that("vdigest works with factors and converts correctly", {
   testthat::expect_type(result, "character")
   testthat::expect_length(result, 3)
 })
+
+testthat::test_that("fallback_diff computes absolute difference correctly", {
+
+  # Test normal case with both values present
+  testthat::expect_equal(fallback_diff(5, 3), 2)
+  testthat::expect_equal(fallback_diff(3, 5), 0)
+  testthat::expect_equal(fallback_diff(10, 10), 0)
+
+  # Test with one NA value - should return the non-missing value
+  testthat::expect_equal(fallback_diff(NA, 4), 4)
+  testthat::expect_equal(fallback_diff(7, NA), 7)
+
+  # Test with both NA values - should return NA
+  testthat::expect_true(is.na(fallback_diff(NA, NA)))
+
+  # Test with minimum parameter
+  testthat::expect_equal(fallback_diff(2, 3, minimum = 5), 5)
+  testthat::expect_equal(fallback_diff(NA, 2, minimum = 5), 5)
+  testthat::expect_equal(fallback_diff(3, NA, minimum = 1), 3)
+
+  # Test with vectors
+  col1 <- c(5, NA, 7, 4, NA)
+  col2 <- c(3, 4, NA, 9, NA)
+  expected <- c(2, 4, 7, 0, NA)
+  testthat::expect_equal(fallback_diff(col1, col2), expected)
+
+  # Test with negative differences (should be absolute)
+  testthat::expect_equal(fallback_diff(-5, 3), 0)
+  testthat::expect_equal(fallback_diff(3, -5), 8)
+})
+
+testthat::test_that("fallback_row_sum computes row-wise sums correctly", {
+
+  # Test basic row-wise sum
+  v1 <- c(1, 2, 3)
+  v2 <- c(4, 5, 6)
+  testthat::expect_equal(fallback_row_sum(v1, v2), c(5, 7, 9))
+
+  # Test with NA values and default min_present = 1
+  v1 <- c(1, NA, 3)
+  v2 <- c(2, 4, NA)
+  testthat::expect_equal(fallback_row_sum(v1, v2), c(3, 4, 3))
+
+  # Test with min_present = 2 (requires both values)
+  testthat::expect_equal(fallback_row_sum(v1, v2, min_present = 2), c(3, NA, NA))
+
+  # Test all NA row
+  v1 <- c(1, NA, 3)
+  v2 <- c(2, NA, 4)
+  testthat::expect_true(is.na(fallback_row_sum(v1, v2, min_present = 2)[2]))
+
+  # Test with three vectors
+  v3 <- c(1, 1, 1)
+  testthat::expect_equal(fallback_row_sum(v1, v2, v3), c(4, 1, 8))
+
+  # Test with all NA values
+  v1_all_na <- c(NA, NA)
+  v2_all_na <- c(NA, NA)
+  result <- fallback_row_sum(v1_all_na, v2_all_na)
+  testthat::expect_true(all(is.na(result)))
+
+  # Test single vector
+  testthat::expect_equal(fallback_row_sum(c(1, 2, 3)), c(1, 2, 3))
+
+  # Test with zeros
+  v1 <- c(0, 0, 5)
+  v2 <- c(0, 3, 0)
+  testthat::expect_equal(fallback_row_sum(v1, v2), c(0, 3, 5))
+})

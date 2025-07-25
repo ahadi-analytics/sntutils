@@ -162,3 +162,74 @@ median2 <- function(x) {
 #' vdigest(as.character(iris$Species))
 #' @export
 vdigest <- Vectorize(digest::digest)
+
+#' Smart row-wise sum with missing data handling
+#'
+#' Computes the row-wise sum across multiple input vectors, while allowing
+#' control over how many non-missing values must be present for a valid result.
+#' If the number of non-`NA` values in a row is below `min_present`, the result
+#' is set to `NA_real_`.
+#'
+#' @param ... Numeric vectors of equal length to be summed row-wise.
+#' @param min_present Integer. Minimum number of non-`NA` values required per row
+#'   to return a sum. Rows with fewer than `min_present` non-`NA` values return
+#'   `NA_real_`.
+#' @param .keep_zero_as_zero Logical. Currently unused, reserved for future
+#'   development. Defaults to `TRUE`.
+#'
+#' @return A numeric vector of row-wise sums with `NA_real_` where insufficient
+#'   data are present.
+#'
+#' @examples
+#' fallback_row_sum(c(1, NA, 3), c(2, 4, NA))  # returns c(3, NA, NA)
+#' fallback_row_sum(c(1, NA), c(2, NA), min_present = 1)  # returns c(3, NA)
+#'
+#' @export
+fallback_row_sum <- function(..., min_present = 1, .keep_zero_as_zero = TRUE) {
+  vars_matrix <- cbind(...)
+  valid_count <- rowSums(!is.na(vars_matrix))
+  raw_sum <- rowSums(vars_matrix, na.rm = TRUE)
+
+  ifelse(valid_count >= min_present, raw_sum, NA_real_)
+}
+
+#' Fallback Absolute Difference Between Two Vectors
+#'
+#' Computes the difference between two numeric vectors element-wise.
+#' If both values are present, returns \code{pmax(abs(col1 - col2), minimum)}.
+#' If only one value is present, returns the non-missing value or \code{minimum},
+#' whichever is greater. If both are missing, returns \code{NA_real_}.
+#'
+#' This function is useful when calculating differences that must be non-negative
+#' and when missingness should fall back to a non-missing value rather than return
+#' \code{NA}.
+#'
+#' @param col1 Numeric vector. First input column.
+#' @param col2 Numeric vector. Second input column.
+#' @param minimum Numeric scalar. Minimum allowable value for the result
+#'   (default is \code{0}).
+#'
+#' @return A numeric vector with the same length as the inputs. Each element is:
+#'   \itemize{
+#'     \item the absolute difference between \code{col1} and \code{col2}, if both are non-missing,
+#'     \item the non-missing value if only one is present,
+#'     \item \code{NA_real_} if both values are missing.
+#'   }
+#'   In all cases, the result is constrained to be no less than \code{minimum}.
+#'
+#' @examples
+#' fallback_diff(5, 3)        # 2
+#' fallback_diff(NA, 4)       # 4
+#' fallback_diff(7, NA)       # 7
+#' fallback_diff(4, 9)        # 0
+#' fallback_diff(NA, NA)      # NA
+#'
+#' @export
+fallback_diff <- function(col1, col2, minimum = 0) {
+  dplyr::case_when(
+    is.na(col1) & is.na(col2) ~ NA_real_,
+    is.na(col1) ~ pmax(col2, minimum),
+    is.na(col2) ~ pmax(col1, minimum),
+    TRUE ~ pmax(col1 - col2, minimum)
+  )
+}
