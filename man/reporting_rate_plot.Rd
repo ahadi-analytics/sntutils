@@ -11,7 +11,6 @@ reporting_rate_plot(
   vars_of_interest = NULL,
   hf_col = NULL,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
-  na_to_zero = TRUE,
   use_reprate = TRUE,
   full_range = TRUE,
   target_language = "en",
@@ -43,9 +42,6 @@ to be visualized in 'data'. If NULL, all variables except 'x_var' and
 \item{key_indicators}{Optional. Character vector of indicators used to define
 facility activity in scenario 1. Defaults to
 \code{c("allout", "conf", "test", "treat", "pres")}.}
-
-\item{na_to_zero}{Logical. If TRUE (default), treat zero values as missing
-(\code{NA}) in both \code{vars_of_interest} and \code{key_indicators}.}
 
 \item{use_reprate}{A logical value. If TRUE, the reporting rate is
 visualized; otherwise, the proportion of missing data is visualized.
