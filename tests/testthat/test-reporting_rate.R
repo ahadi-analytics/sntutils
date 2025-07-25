@@ -1,5 +1,3 @@
-.datatable.aware <- TRUE
-
 testthat::test_that(
   "calculate_reporting_metrics works correctly",
   {
@@ -699,8 +697,7 @@ testthat::test_that("Scenario 1 edge cases are handled correctly", {
     x_var = "month_year",
     y_var = "admin",
     hf_col = "facility_id",
-    key_indicators = c("malaria", "conf", "treat", "test", "allout"),
-    na_to_zero = TRUE
+    key_indicators = c("malaria", "conf", "treat", "test", "allout")
   )
   # Check rows
 testthat::expect_equal(nrow(result), 3)
