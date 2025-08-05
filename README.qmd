@@ -42,7 +42,10 @@ format:
 
 The package can be installed using `pak` in R. The steps are as follows:
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: install-sntutils
+#| eval: false
+#| include: true
 # 1) Install pak if you haven't already
 install.packages("pak")
 
@@ -56,7 +59,10 @@ pak::pkg_install("ahadi-analytics/sntutils")
 
 The `read()` and `write()` functions provide a simplified interface for importing and exporting data in various formats, inspired by the `rio` package.
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: data-import-export
+#| eval: false
+#| include: true
 # Load the sntutils package
 library(sntutils)
 
@@ -94,7 +100,10 @@ write(
 
 The `download_chirps2.0()` function allows you to fetch CHIRPS monthly rainfall raster data for any supported region and time period. It pulls data directly from the [UCSB Climate Hazards Group](https://www.chc.ucsb.edu/data/chirps) FTP archive and supports automatic unzipping. Only `.tif.gz` monthly rasters are supported, and the function avoids re-downloading existing files. To view all supported CHIRPS datasets, use `chirps_options()`. To check the available years and months for a specific CHIRPS dataset (e.g., africa_monthly), use the `check_chirps_available()` function.
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: chirps-download-example
+#| eval: false
+#| include: true
 # View available CHIRPS datasets
 chirps_options()
 #># A tibble: 4 × 4
@@ -147,7 +156,10 @@ Two functions are provided to help set up a consistent, hierarchical folder stru
 
 **create_data_structure()**
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: create-data-structure
+#| eval: false
+#| include: true
 # Create only the data structure under 01_data/
 create_data_structure(base_path = ".")
 ```
@@ -185,7 +197,10 @@ metadata_docs/
 
 Sets up the full AHADI project structure, including organized folders for data, scripts, outputs, reports, and metadata. This structure is purposefully designed to support the full analytical workflow by ensuring that every project component has a clear, dedicated place. This organization makes it straightforward to locate files, reduces confusion, and ensures the project remains traceable, reproducible, and easy to maintain from start to finish.
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: initialize-project-structure
+#| eval: false
+#| include: true
 # Initialize full project structure at specified path
 initialize_project_structure(base_path = "my_snt_project")
 ```
@@ -205,7 +220,10 @@ my_snt_project/
 
 The `autoparse_dates()` function parses and standardizes date columns in a data frame, ensuring consistency in date formats. This is particularly useful when working with datasets containing multiple date formats or ambiguous date entries.
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: autoparse-dates-example
+#| eval: false
+#| include: true
 # Example with mixed date formats
 df <- data.frame(
   mixed_dates = c("2023-10-03", "11.09.2022", "25-12-21 23:59", "2020-08-15T00:00:00Z"),
@@ -240,7 +258,10 @@ parsed_df$mixed_dates
 
 The `prep_geonames()` function combines algorithmic matching with user interactivity to clean and standardize administrative names. It uses string distance calculations for initial matching and allows users to make final corrections interactively, with all decisions saved for future use. The function supports a user-provided lookup dataset as a reference or defaults to internal WHO geonames data if no lookup is provided. Additionally, it supports hierarchical stratification across up to six administrative levels. It also caches user decisions to improve consistency and efficiency in subsequent sessions. For users who prefer to run the code without interactivity, the function can be executed with `interactive = FALSE`.
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: prep-geonames-example
+#| eval: false
+#| include: true
 # Example data with inconsistent admin names
 dhis2_dummy <- data.frame(
   country = c("ANGOLA", "UGA", "ZAMBIA", "KEN"),
@@ -277,7 +298,10 @@ The `process_raster_collection()` function automates zonal statistics extraction
 This is especially useful for climate data workflows that require aggregating high-resolution rasters to subnational geographies over time.
 
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: process-raster-collection
+#| eval: false
+#| include: true
 # Dummy example — replace with your shapefile and actual raster directory
 adm3_shp <- sf::st_read(system.file("extdata", "sle_adm3_example.geojson",
                                     package = "sntutils"))
@@ -371,7 +395,10 @@ $$
 
 Now to implement this in code:
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: reporting-metrics-scenario1
+#| eval: false
+#| include: true
 # Example data with inconsistent admin names
 sl_dhis2 <- readRDS("inst/extdata/sl_exmaple_dhis2.rds") |>
   dplyr::rename(year_mon = date) |>
@@ -402,7 +429,9 @@ calculate_reporting_metrics(
 )
 ```
 
-```{r echo=FALSE}
+```{r}
+#| label: reporting-metrics-scenario1-output
+#| echo: false
 library(sntutils)
 
 # Example data with inconsistent admin names
@@ -444,7 +473,10 @@ sntutils::calculate_reporting_metrics(
 
 This scenario calculates the frequency of valid (non-missing, non-zero) reports across two grouping variables (e.g., time period and location) for specified variables of interest:
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: reporting-metrics-scenario2
+#| eval: false
+#| include: true
 # Calculate reporting rates by date and district
 calculate_reporting_metrics(
   data = sl_dhis2,
@@ -455,6 +487,7 @@ calculate_reporting_metrics(
 ```
 
 ```{r}
+#| label: reporting-metrics-scenario2-output
 #| echo: false
 #| message: false
 #| warning: false
@@ -474,7 +507,10 @@ calculate_reporting_metrics(
 
 This scenario calculates reporting data rates along one key dimension—typically time, making it useful for identifying when different variables are reported and spotting gaps over time.
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: reporting-metrics-scenario3
+#| eval: false
+#| include: true
 # Evaluate reporting completeness over time
 calculate_reporting_metrics(
   data = sl_dhis2,
@@ -484,6 +520,7 @@ calculate_reporting_metrics(
 ```
 
 ```{r}
+#| label: reporting-metrics-scenario3-output
 #| echo: false
 # Evaluate reporting completeness over time
 sntutils::calculate_reporting_metrics(
@@ -502,7 +539,10 @@ The `reporting_rate_plot()` function plots the reporting rates for health facili
 
 **Scenario 1: Facility-Level Reporting/Missing Rate**
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: reporting-rate-plot-scenario1
+#| eval: false
+#| include: true
 reporting_rate_plot(
   data = sl_dhis2,
   vars_of_interest = "conf",            # Variables to check if a facility reported
@@ -515,13 +555,15 @@ reporting_rate_plot(
 )
 ```
 
-```{r, fig.path="man/figures-readme/"}
+```{r}
+#| label: reporting-rate-plot-scenario1-output
 #| echo: false
 #| message: true
 #| warning: false
 #| fig-height: 8
 #| fig-width: 10
 #| fig-dpi: 300
+#| fig-path: "man/figures-readme/"
 reporting_rate_plot(
   data = sl_dhis2,
   vars_of_interest = "conf", # Variables to check if a facility reported
@@ -541,7 +583,10 @@ reporting_rate_plot(
 
 **Scenario 2: Reporting/Missing Rate by Two Dimensions**
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: reporting-rate-plot-scenario2
+#| eval: false
+#| include: true
 reporting_rate_plot(
   data = sl_dhis2,
   vars_of_interest = "conf",            # Variables to check if a facility reported
@@ -552,13 +597,15 @@ reporting_rate_plot(
 ```
 
 
-```{r, fig.path="man/figures-readme/"}
+```{r}
+#| label: reporting-rate-plot-scenario2-output
 #| echo: false
 #| message: true
 #| warning: false
 #| fig-height: 8
 #| fig-width: 10
 #| fig-dpi: 300
+#| fig-path: "man/figures-readme/"
 reporting_rate_plot(
   data = sl_dhis2,
   vars_of_interest = "conf",            # Variables to check if a facility reported
@@ -571,7 +618,10 @@ reporting_rate_plot(
 
 **Scenario 3: Reporting/Missing Rates Over Time**
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: reporting-rate-plot-scenario3
+#| eval: false
+#| include: true
 # get the variables of interest
 vars <- c(
   "test", "test_u5", "test_5_14", "test_ov15",
@@ -590,14 +640,15 @@ reporting_rate_plot(
 )
 ```
 
-```{r, fig.path="man/figures-readme/"}
+```{r}
+#| label: reporting-rate-plot-scenario3-output
 #| echo: false
 #| message: true
 #| warning: false
 #| fig-height: 8
 #| fig-width: 10
 #| fig-dpi: 300
-#|
+#| fig-path: "man/figures-readme/"
 # get the variables of interest
 vars <- c(
   "test", "test_u5", "test_5_14", "test_ov15",
@@ -621,7 +672,10 @@ reporting_rate_plot(
 
 The `consistency_check()` function identifies and visualizes inconsistencies between two variables such as the test and confirmed cases, useful for data quality assessment.
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: consistency-check-examples
+#| eval: false
+#| include: true
 # Check consistency between tests and cases
 consistency_check(
   sl_dhis2,
@@ -647,13 +701,15 @@ consistency_check(
 )
 ```
 
-```{r, fig.path="man/figures-readme/"}
+```{r}
+#| label: consistency-check-output
 #| echo: false
 #| message: true
 #| warning: false
 #| fig-height: 6
 #| fig-width: 10
 #| fig-dpi: 300
+#| fig-path: "man/figures-readme/"
 
 # randomly select 60 rows to modify
 set.seed(2025)
@@ -690,6 +746,7 @@ Outliers are assessed within groups defined by administrative area (adm1, adm2),
 The function returns a data frame with the record ID, the variable of interest, and whether each method flags the value as an outlier. It also includes bounds used by each method for transparency.
 
 ```{r}
+#| label: detect-outliers-example
 outlier_results <- detect_outliers(
   data = sl_dhis2,
   column = "conf",          # The var to check for outliers
@@ -704,6 +761,7 @@ outlier_results <- detect_outliers(
 The `detect_outliers()` function returns a table with outlier results for each row in your dataset. The key columns of interest are record_id, the value being checked, and the method-specific flags: outliers_iqr, outliers_halper, and outliers_moyenne. Each method marks the value as either "outlier" or "normal value". You can join this output back to your original data using record_id to flag values for review or action.
 
 ```{r}
+#| label: detect-outliers-output
 outlier_results |>
     dplyr::select(
         record_id, value,
@@ -718,6 +776,7 @@ outlier_results |>
 The `outlier_plot()` function builds on `detect_outliers()` to generate time series plots that help visualize where and when outliers occur in your data. Each method returns a separate ggplot object, with points colored by whether they were flagged as "outlier" or "normal value". The plots are faceted by district (adm2), and facet labels summarize the percentage of outliers in each group.
 
 ```{r}
+#| label: outlier-plot-generation
 #| message: false
 #| warning: false
 #| fig-height: 8
@@ -737,6 +796,7 @@ plots <- sntutils::outlier_plot(
 ```
 
 ```{r}
+#| label: outlier-plot-save
 #| include: false
 ggplot2::ggsave(
   here::here(
@@ -770,6 +830,7 @@ ggplot2::ggsave(
 *IQR method*
 
 ```{r}
+#| label: outlier-plot-iqr-display
 #| eval: false
 plots$iqr
 ```
@@ -778,6 +839,7 @@ plots$iqr
 *Halper method*
 
 ```{r}
+#| label: outlier-plot-halper-display
 #| eval: false
 plots$halper
 ```
@@ -786,6 +848,7 @@ plots$halper
 *Moyenne method*
 
 ```{r}
+#| label: outlier-plot-moyenne-display
 #| eval: false
 plots$moyenne
 ```
@@ -797,7 +860,10 @@ In cases where output file size—such as for PDFs or Word documents—becomes a
 
 Both `reporting_rate_plot()` and `consistency_check()` include built-in support for image compression during saving. Additionally, users can manually compress individual PNGs or entire folders using `compress_png()`:
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: compress-png-examples
+#| eval: false
+#| include: true
 # Compress a single PNG file
 compress_png(
   "path/to/large_image.png",
@@ -826,7 +892,10 @@ compress_png(
 
 The `translate_text()` function uses Google Translate API through the `gtranslate` package and implements a sophisticated caching system to improve efficiency and consistency for future usage:
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: translate-text-examples
+#| eval: false
+#| include: true
 # Translate a single text from English to French
 translate_text("Reporting rate by district",
                target_language = "fr",
@@ -842,7 +911,10 @@ translate_text("Malaria cases",
 
 For bulk translation of multiple strings, the vectorized version `translate_text_vec()` offers better performance and works easily with data frames when used in a piped workflow:
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: translate-text-vec-example
+#| eval: false
+#| include: true
 library(dplyr)
 
 df <- tibble::tibble(
@@ -854,6 +926,7 @@ df |>
 ```
 
 ```{r}
+#| label: translate-text-vec-output
 #| echo: false
 #| message: false
 #| warning: false
@@ -869,7 +942,10 @@ df |>
 
 When working with time series data, properly formatting dates in the local language improves report readability. The `translated_yearmon()` function supports this by using locale-aware month-year formatting:
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: translated-yearmon-examples
+#| eval: false
+#| include: true
 # Convert dates to localized month-year format
 dates <- seq(as.Date("2022-01-01"), as.Date("2022-03-01"), by = "month")
 
@@ -888,7 +964,10 @@ These translation functions are integrated throughout the package, allowing func
 
 Several helper functions make working with numeric data easier:
 
-```{r eval=FALSE, include=TRUE}
+```{r}
+#| label: numeric-formatting-examples
+#| eval: false
+#| include: true
 # Format numbers with thousands separator
 big_mark(1234567.89)
 #> [1] "1,234,567.89"
@@ -912,6 +991,7 @@ median2(c(1, 2, NA, 4, 5))  # Median with automatic NA removal
 The `vdigest()` function provides a vectorized implementation of the `digest::digest()` function, making it efficient to generate hash values for entire columns or vectors in a data frame. This is particularly useful for creating unique identifiers, tracking data changes, or anonymizing sensitive information.
 
 ```{r}
+#| label: vdigest-example
 sl_dhis2 |>
   dplyr::distinct(adm3) |>
   dplyr::mutate(

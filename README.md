@@ -41,17 +41,13 @@ functions in this version of `sntutils`:
 
 The package can be installed using `pak` in R. The steps are as follows:
 
-::: cell
-
-```{.r .cell-code}
+```r
 # 1) Install pak if you haven't already
 install.packages("pak")
 
 # 2) Install the sntutils package from GitHub
 pak::pkg_install("ahadi-analytics/sntutils")
 ```
-
-:::
 
 ## :book: Usage
 
@@ -61,9 +57,7 @@ The `read()` and `write()` functions provide a simplified interface for
 importing and exporting data in various formats, inspired by the `rio`
 package.
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Load the sntutils package
 library(sntutils)
 
@@ -97,8 +91,6 @@ write(
 )
 ```
 
-:::
-
 ### Downalod Climate Data (CHIRPS Rainfall)
 
 The `download_chirps2.0()` function allows you to fetch CHIRPS monthly
@@ -111,9 +103,7 @@ CHIRPS datasets, use `chirps_options()`. To check the available years
 and months for a specific CHIRPS dataset (e.g., africa_monthly), use the
 `check_chirps_available()` function.
 
-::: cell
-
-```{.r .cell-code}
+```r
 # View available CHIRPS datasets
 chirps_options()
 #># A tibble: 4 × 4
@@ -151,8 +141,6 @@ download_chirps2.0(
 )
 ```
 
-:::
-
 This will download the following files to the data/chirps/ folder (and
 unzip them if requested):
 
@@ -165,7 +153,7 @@ unzip them if requested):
 ### Project and Data Folder Structure Utilities
 
 Two functions are provided to help set up a consistent, hierarchical
-folder structure for SNT projects following AHADI's recommended layout.
+folder structure for SNT projects following AHADI’s recommended layout.
 Each key data domain in 01_data/ includes two subfolders: raw/ for
 storing the original, untouched data as received, and processed/ for
 storing cleaned or transformed versions ready for analysis. This
@@ -173,18 +161,12 @@ structure is applied consistently across all domains.
 
 **create_data_structure()**
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Create only the data structure under 01_data/
 create_data_structure(base_path = ".")
 ```
 
-:::
-
-::: cell
-
-```{.plaintext .cell-code}
+```plaintext
 01_data/
 ├── 1.1_foundational/
 │   ├── 1.1a_admin_boundaries/
@@ -213,8 +195,6 @@ create_data_structure(base_path = ".")
 metadata_docs/
 ```
 
-:::
-
 **initialize_project_structure()**
 
 Sets up the full AHADI project structure, including organized folders
@@ -225,18 +205,12 @@ organization makes it straightforward to locate files, reduces
 confusion, and ensures the project remains traceable, reproducible, and
 easy to maintain from start to finish.
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Initialize full project structure at specified path
 initialize_project_structure(base_path = "my_snt_project")
 ```
 
-:::
-
-::: cell
-
-```{.plaintext .cell-code}
+```plaintext
 my_snt_project/
 ├── 01_data/
 │   └── [Hierarchical data folders as above]
@@ -247,8 +221,6 @@ my_snt_project/
 └── metadata_docs/
 ```
 
-:::
-
 ### Automatic Date Parsing
 
 The `autoparse_dates()` function parses and standardizes date columns in
@@ -256,9 +228,7 @@ a data frame, ensuring consistency in date formats. This is particularly
 useful when working with datasets containing multiple date formats or
 ambiguous date entries.
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Example with mixed date formats
 df <- data.frame(
   mixed_dates = c("2023-10-03", "11.09.2022", "25-12-21 23:59", "2020-08-15T00:00:00Z"),
@@ -289,8 +259,6 @@ parsed_df$mixed_dates
 #> [1] "03/10/2023" "11/09/2022" "25/12/2021" "15/08/2020"
 ```
 
-:::
-
 ### Geolocation Name Cleaning
 
 The `prep_geonames()` function combines algorithmic matching with user
@@ -305,9 +273,7 @@ improve consistency and efficiency in subsequent sessions. For users who
 prefer to run the code without interactivity, the function can be
 executed with `interactive = FALSE`.
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Example data with inconsistent admin names
 dhis2_dummy <- data.frame(
   country = c("ANGOLA", "UGA", "ZAMBIA", "KEN"),
@@ -333,8 +299,6 @@ cleaned_df <- prep_geonames(
 )
 ```
 
-:::
-
 Here is a short video to demonstrate the full interactivity of
 `prep_geonames`:
 
@@ -353,9 +317,7 @@ This is especially useful for climate data workflows that require
 aggregating high-resolution rasters to subnational geographies over
 time.
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Dummy example — replace with your shapefile and actual raster directory
 adm3_shp <- sf::st_read(system.file("extdata", "sle_adm3_example.geojson",
                                     package = "sntutils"))
@@ -389,8 +351,6 @@ rainfall_df
 #>10  africa_monthly_chirps-v2.0.2020.01.tif    EASTERN  KAILAHUN       MALEMA 2020     1 13.839043
 ```
 
-:::
-
 ### Aggregating Reporting Rate
 
 The `sntutils::calculate_reporting_metrics()` function computes the
@@ -417,12 +377,12 @@ ensures facilities are only expected to report after becoming active.
 Let:
 
 - $a$ = administrative unit (e.g. district, LGA, region)
-- $t$ = time period (e.g. year-month, such as "2022-03")
+- $t$ = time period (e.g. year-month, such as “2022-03”)
 - $f$ = a health facility in administrative unit $a$
 - `key_indicators` = a set of variables used to determine whether a
-  facility is active e.g. "test", "treat", "conf", "pres", "allout"
+  facility is active e.g. “test”, “treat”, “conf”, “pres”, “allout”
 - `vars_of_interest` = variables of interest that the reporting rate
-  will be calculated for e.g. "conf", "pres"
+  will be calculated for e.g. “conf”, “pres”
 
 For each administrative unit $a$ and time period $t$, the reporting rate
 is:
@@ -434,11 +394,11 @@ $$
 
 Where:
 
-- $o_{a,t}$ (observed) = number of facilities in $a$ that reported
-  _any_ value in `vars_of_interest` during $t$
-- $e_{a,t}$ (expected) = number of facilities in $a$ whose
-  *first-eve*r report on any `key_indicators` occurred on or before
-  $t$ (i.e. expected to report)
+- $o_{a,t}$ (observed) = number of facilities in $a$ that reported _any_
+  value in `vars_of_interest` during $t$
+- $e_{a,t}$ (expected) = number of facilities in $a$ whose *first-eve*r
+  report on any `key_indicators` occurred on or before $t$
+  (i.e. expected to report)
 
 This filtering avoids overestimating non-reporting rates by excluding
 newly opened or late-starting facilities from the denominator in earlier
@@ -451,13 +411,13 @@ Suppose we are calculating the reporting rate for district $d$ in March.
 Let:
 
 - $K$ be the set of key indicators (`key_indicators`)
-- $v$ be the variable of interest (`vars_of_interest`) (e.g., "conf")
+- $v$ be the variable of interest (`vars_of_interest`) (e.g., “conf”)
 
 Observed data:
 
 - 6 facilities in total
-- 6 facilities have reported at least once on any $k \in K$ on or
-  before March
+- 6 facilities have reported at least once on any $k \in K$ on or before
+  March
 - 4 of those 6 reported on variable $v = \text{conf}$ in March
 
 $$
@@ -467,9 +427,7 @@ $$
 
 Now to implement this in code:
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Example data with inconsistent admin names
 sl_dhis2 <- readRDS("inst/extdata/sl_exmaple_dhis2.rds") |>
   dplyr::rename(year_mon = date) |>
@@ -500,33 +458,21 @@ calculate_reporting_metrics(
 )
 ```
 
-:::
-
-:::::: cell
-::: {.cell-output .cell-output-stderr}
-
     Attaching package: 'sntutils'
 
-:::
-
-::: {.cell-output .cell-output-stderr}
-The following object is masked from 'package:base':
+    The following object is masked from 'package:base':
 
         write
 
-:::
-
-::: {.cell-output .cell-output-stdout} # A tibble: 6 × 6
-year_mon adm2 rep exp reprate missrate
-<chr> <chr> <int> <int> <dbl> <dbl>
-1 2023-12 Moyamba District Council 106 108 98.1 1.85
-2 2023-12 Port Loko City Council 2 2 100 0
-3 2023-12 Port Loko District Council 99 103 96.1 3.88
-4 2023-12 Pujehun District Council 96 104 92.3 7.69
-5 2023-12 Tonkolili District Council 109 115 94.8 5.22
-6 2023-12 Western Area Rural District Council 62 64 96.9 3.12
-:::
-::::::
+    # A tibble: 6 × 6
+      year_mon adm2                                  rep   exp reprate missrate
+      <chr>    <chr>                               <int> <int>   <dbl>    <dbl>
+    1 2023-12  Moyamba District Council              106   108    98.1     1.85
+    2 2023-12  Port Loko City Council                  2     2   100       0
+    3 2023-12  Port Loko District Council             99   103    96.1     3.88
+    4 2023-12  Pujehun District Council               96   104    92.3     7.69
+    5 2023-12  Tonkolili District Council            109   115    94.8     5.22
+    6 2023-12  Western Area Rural District Council    62    64    96.9     3.12
 
 **Scenario 2: Reporting/Missing Rate by Two Dimensions**
 
@@ -534,9 +480,7 @@ This scenario calculates the frequency of valid (non-missing, non-zero)
 reports across two grouping variables (e.g., time period and location)
 for specified variables of interest:
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Calculate reporting rates by date and district
 calculate_reporting_metrics(
   data = sl_dhis2,
@@ -546,30 +490,23 @@ calculate_reporting_metrics(
 )
 ```
 
-:::
-
-:::: cell
-::: {.cell-output .cell-output-stdout} # A tibble: 6 × 7
-year_mon adm2 variable exp rep reprate missrate
-<chr> <chr> <chr> <int> <int> <dbl> <dbl>
-1 2021-01 Bo City Council conf 39 28 71.8 28.2
-2 2021-01 Bo City Council pres 39 28 71.8 28.2
-3 2021-01 Bo District Council conf 129 113 87.6 12.4
-4 2021-01 Bo District Council pres 129 113 87.6 12.4
-5 2021-01 Bombali District Council conf 81 73 90.1 9.88
-6 2021-01 Bombali District Council pres 81 73 90.1 9.88
-:::
-::::
+    # A tibble: 6 × 7
+      year_mon adm2                     variable   exp   rep reprate missrate
+      <chr>    <chr>                    <chr>    <int> <int>   <dbl>    <dbl>
+    1 2021-01  Bo City Council          conf        39    28    71.8    28.2
+    2 2021-01  Bo City Council          pres        39    28    71.8    28.2
+    3 2021-01  Bo District Council      conf       129   113    87.6    12.4
+    4 2021-01  Bo District Council      pres       129   113    87.6    12.4
+    5 2021-01  Bombali District Council conf        81    73    90.1     9.88
+    6 2021-01  Bombali District Council pres        81    73    90.1     9.88
 
 **Scenario 3: Reporting/Missing Rates Over Time**
 
 This scenario calculates reporting data rates along one key
-dimension---typically time, making it useful for identifying when
+dimension—typically time, making it useful for identifying when
 different variables are reported and spotting gaps over time.
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Evaluate reporting completeness over time
 calculate_reporting_metrics(
   data = sl_dhis2,
@@ -578,20 +515,15 @@ calculate_reporting_metrics(
 )
 ```
 
-:::
-
-:::: cell
-::: {.cell-output .cell-output-stdout} # A tibble: 6 × 6
-year_mon variable exp rep reprate missrate
-<chr> <chr> <int> <int> <dbl> <dbl>
-1 2021-01 conf 1702 1354 79.6 20.4
-2 2021-01 pres 1702 1356 79.7 20.3
-3 2021-01 test 1702 1355 79.6 20.4
-4 2021-02 conf 1702 1351 79.4 20.6
-5 2021-02 pres 1702 1356 79.7 20.3
-6 2021-02 test 1702 1351 79.4 20.6
-:::
-::::
+    # A tibble: 6 × 6
+      year_mon variable   exp   rep reprate missrate
+      <chr>    <chr>    <int> <int>   <dbl>    <dbl>
+    1 2021-01  conf      1702  1354    79.6     20.4
+    2 2021-01  pres      1702  1356    79.7     20.3
+    3 2021-01  test      1702  1355    79.6     20.4
+    4 2021-02  conf      1702  1351    79.4     20.6
+    5 2021-02  pres      1702  1356    79.7     20.3
+    6 2021-02  test      1702  1351    79.4     20.6
 
 ### Reporting Rate Plots
 
@@ -604,9 +536,7 @@ reporting scenarios discussed above.
 
 **Scenario 1: Facility-Level Reporting/Missing Rate**
 
-::: cell
-
-```{.r .cell-code}
+```r
 reporting_rate_plot(
   data = sl_dhis2,
   vars_of_interest = "conf",            # Variables to check if a facility reported
@@ -619,19 +549,11 @@ reporting_rate_plot(
 )
 ```
 
-:::
-
-:::: cell
-::: cell-output-display
-![](man/figures-readme/unnamed-chunk-18-1.png)
-:::
-::::
+![](man/figures-readme/reporting-rate-plot-scenario1-output-1.png)
 
 **Scenario 2: Reporting/Missing Rate by Two Dimensions**
 
-::: cell
-
-```{.r .cell-code}
+```r
 reporting_rate_plot(
   data = sl_dhis2,
   vars_of_interest = "conf",            # Variables to check if a facility reported
@@ -641,19 +563,11 @@ reporting_rate_plot(
 )
 ```
 
-:::
-
-:::: cell
-::: cell-output-display
-![](man/figures-readme/unnamed-chunk-20-1.png)
-:::
-::::
+![](man/figures-readme/reporting-rate-plot-scenario2-output-1.png)
 
 **Scenario 3: Reporting/Missing Rates Over Time**
 
-::: cell
-
-```{.r .cell-code}
+```r
 # get the variables of interest
 vars <- c(
   "test", "test_u5", "test_5_14", "test_ov15",
@@ -672,13 +586,7 @@ reporting_rate_plot(
 )
 ```
 
-:::
-
-:::: cell
-::: cell-output-display
-![](man/figures-readme/unnamed-chunk-22-1.png)
-:::
-::::
+![](man/figures-readme/reporting-rate-plot-scenario3-output-1.png)
 
 ### Consistencty Check
 
@@ -686,9 +594,7 @@ The `consistency_check()` function identifies and visualizes
 inconsistencies between two variables such as the test and confirmed
 cases, useful for data quality assessment.
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Check consistency between tests and cases
 consistency_check(
   sl_dhis2,
@@ -714,13 +620,7 @@ consistency_check(
 )
 ```
 
-:::
-
-:::: cell
-::: cell-output-display
-![](man/figures-readme/unnamed-chunk-24-1.png)
-:::
-::::
+![](man/figures-readme/consistency-check-output-1.png)
 
 ### Outlier Detection
 
@@ -729,7 +629,7 @@ numeric variables using three complementary statistical methods:
 
 - Mean ± 3 SD (parametric approach)
 - Hampel Identifier (median ± 15 × MAD, robust to extreme values)
-- Tukey's Fences (based on IQR, with adjustable sensitivity)
+- Tukey’s Fences (based on IQR, with adjustable sensitivity)
 
 Outliers are assessed within groups defined by administrative area
 (adm1, adm2), health facility, and year. This grouping ensures
@@ -740,9 +640,7 @@ The function returns a data frame with the record ID, the variable of
 interest, and whether each method flags the value as an outlier. It also
 includes bounds used by each method for transparency.
 
-::: cell
-
-```{.r .cell-code}
+```r
 outlier_results <- detect_outliers(
   data = sl_dhis2,
   column = "conf",          # The var to check for outliers
@@ -754,18 +652,14 @@ outlier_results <- detect_outliers(
 )
 ```
 
-:::
-
 The `detect_outliers()` function returns a table with outlier results
 for each row in your dataset. The key columns of interest are record_id,
 the value being checked, and the method-specific flags: outliers_iqr,
 outliers_halper, and outliers_moyenne. Each method marks the value as
-either "outlier" or "normal value". You can join this output back to
+either “outlier” or “normal value”. You can join this output back to
 your original data using record_id to flag values for review or action.
 
-:::: cell
-
-```{.r .cell-code}
+```r
 outlier_results |>
     dplyr::select(
         record_id, value,
@@ -775,30 +669,26 @@ outlier_results |>
     tail()
 ```
 
-::: {.cell-output .cell-output-stdout} # A tibble: 6 × 5
-record_id value outliers_iqr outliers_halper outliers_moyenne
-<chr> <dbl> <chr> <chr> <chr>
-1 e8947016 321 normal value normal value normal value
-2 28b6ea90 353 normal value normal value normal value
-3 8aa281d9 246 normal value normal value normal value
-4 8b337b53 305 normal value normal value normal value
-5 7358f600 284 normal value normal value normal value
-6 499f0390 309 normal value normal value normal value
-:::
-::::
+    # A tibble: 6 × 5
+      record_id value outliers_iqr outliers_halper outliers_moyenne
+      <chr>     <dbl> <chr>        <chr>           <chr>
+    1 e8947016    321 normal value normal value    normal value
+    2 28b6ea90    353 normal value normal value    normal value
+    3 8aa281d9    246 normal value normal value    normal value
+    4 8b337b53    305 normal value normal value    normal value
+    5 7358f600    284 normal value normal value    normal value
+    6 499f0390    309 normal value normal value    normal value
 
 ### Visualise Outliers
 
 The `outlier_plot()` function builds on `detect_outliers()` to generate
 time series plots that help visualize where and when outliers occur in
 your data. Each method returns a separate ggplot object, with points
-colored by whether they were flagged as "outlier" or "normal value". The
+colored by whether they were flagged as “outlier” or “normal value”. The
 plots are faceted by district (adm2), and facet labels summarize the
 percentage of outliers in each group.
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Generate the outlier plots
 plots <- sntutils::outlier_plot(
   data = sl_dhis2,
@@ -811,60 +701,44 @@ plots <- sntutils::outlier_plot(
 )
 ```
 
-:::
-
 _IQR method_
 
-::: cell
-
-```{.r .cell-code}
+```r
 plots$iqr
 ```
-
-:::
 
 ![Outlier Plot1](man/figures-readme/outlier_plot.png)
 
 _Halper method_
 
-::: cell
-
-```{.r .cell-code}
+```r
 plots$halper
 ```
-
-:::
 
 ![Outlier Plot1](man/figures-readme/outlier_plot2.png)
 
 _Moyenne method_
 
-::: cell
-
-```{.r .cell-code}
+```r
 plots$moyenne
 ```
-
-:::
 
 ![Outlier Plot1](man/figures-readme/outlier_plot3.png)
 
 ### Image Compression
 
-In cases where output file size---such as for PDFs or Word
-documents---becomes a concern, compressing images can significantly
-reduce size without noticeably affecting quality. The `compress_png()`
-function helps with this by reducing PNG file sizes while preserving
-visual fidelity.
+In cases where output file size—such as for PDFs or Word
+documents—becomes a concern, compressing images can significantly reduce
+size without noticeably affecting quality. The `compress_png()` function
+helps with this by reducing PNG file sizes while preserving visual
+fidelity.
 
 Both `reporting_rate_plot()` and `consistency_check()` include built-in
 support for image compression during saving. Additionally, users can
 manually compress individual PNGs or entire folders using
 `compress_png()`:
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Compress a single PNG file
 compress_png(
   "path/to/large_image.png",
@@ -889,17 +763,13 @@ compress_png(
 )
 ```
 
-:::
-
 ### Text Translation with Caching
 
 The `translate_text()` function uses Google Translate API through the
 `gtranslate` package and implements a sophisticated caching system to
 improve efficiency and consistency for future usage:
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Translate a single text from English to French
 translate_text("Reporting rate by district",
                target_language = "fr",
@@ -913,15 +783,11 @@ translate_text("Malaria cases",
 #> "Casos de malária"
 ```
 
-:::
-
 For bulk translation of multiple strings, the vectorized version
 `translate_text_vec()` offers better performance and works easily with
 data frames when used in a piped workflow:
 
-::: cell
-
-```{.r .cell-code}
+```r
 library(dplyr)
 
 df <- tibble::tibble(
@@ -932,25 +798,18 @@ df |>
   dplyr::mutate(label_es = translate_text_vec(label, target_language = "es"))
 ```
 
-:::
-
-:::: cell
-::: {.cell-output .cell-output-stdout} # A tibble: 3 × 2
-label label_es
-<chr> <chr>
-1 Confirmed cases Casos confirmados
-2 Presumed cases Casos presuntos
-3 Tests performed Pruebas realizadas
-:::
-::::
+    # A tibble: 3 × 2
+      label           label_es
+      <chr>           <chr>
+    1 Confirmed cases Casos confirmados
+    2 Presumed cases  Casos presuntos
+    3 Tests performed Pruebas realizadas
 
 When working with time series data, properly formatting dates in the
 local language improves report readability. The `translated_yearmon()`
 function supports this by using locale-aware month-year formatting:
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Convert dates to localized month-year format
 dates <- seq(as.Date("2022-01-01"), as.Date("2022-03-01"), by = "month")
 
@@ -963,8 +822,6 @@ translated_yearmon(dates, language = "es", format = "%B %Y")
 #> [1] "enero 2022" "febrero 2022" "marzo 2022"
 ```
 
-:::
-
 These translation functions are integrated throughout the package,
 allowing functions like `reporting_rate_plot()` and
 `consistency_check()` to generate outputs in the users preferred
@@ -974,9 +831,7 @@ language through their `target_language` parameter.
 
 Several helper functions make working with numeric data easier:
 
-::: cell
-
-```{.r .cell-code}
+```r
 # Format numbers with thousands separator
 big_mark(1234567.89)
 #> [1] "1,234,567.89"
@@ -995,8 +850,6 @@ median2(c(1, 2, NA, 4, 5))  # Median with automatic NA removal
 #> [1] 3
 ```
 
-:::
-
 ### Vectorized Digest for Efficient Data Hashing
 
 The `vdigest()` function provides a vectorized implementation of the
@@ -1005,9 +858,7 @@ for entire columns or vectors in a data frame. This is particularly
 useful for creating unique identifiers, tracking data changes, or
 anonymizing sensitive information.
 
-:::: cell
-
-```{.r .cell-code}
+```r
 sl_dhis2 |>
   dplyr::distinct(adm3) |>
   dplyr::mutate(
@@ -1016,17 +867,15 @@ sl_dhis2 |>
   ) |> head()
 ```
 
-::: {.cell-output .cell-output-stdout} # A tibble: 6 × 2
-adm3 adm3_hash
-<chr> <chr>
-1 Bo City c810b59ec12efb2ac8b5cc84f46857ce
-2 Kakua Chiefdom 27fd84f751fac150c2f8a8f42b71c3da
-3 Baoma Chiefdom 462ef3c87dc9b40b2ec2e0e0a54dd63e
-4 Valunia Chiefdom df394518e6987ed686d76e83a409f090
-5 Bagbwe Chiefdom 3aa7a61247e34ab397ff813fe520c8b7
-6 Wonde Chiefdom 196dc9792e2038b41411ec2afae37e61
-:::
-::::
+    # A tibble: 6 × 2
+      adm3             adm3_hash
+      <chr>            <chr>
+    1 Bo City          c810b59ec12efb2ac8b5cc84f46857ce
+    2 Kakua Chiefdom   27fd84f751fac150c2f8a8f42b71c3da
+    3 Baoma Chiefdom   462ef3c87dc9b40b2ec2e0e0a54dd63e
+    4 Valunia Chiefdom df394518e6987ed686d76e83a409f090
+    5 Bagbwe Chiefdom  3aa7a61247e34ab397ff813fe520c8b7
+    6 Wonde Chiefdom   196dc9792e2038b41411ec2afae37e61
 
 ## :handshake: Contribution
 
