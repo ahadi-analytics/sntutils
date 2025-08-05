@@ -171,7 +171,7 @@ calculate_reporting_metrics <- function(
       dplyr::filter(include_in_denom) |>
       dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var)))) |>
       dplyr::summarise(
-        rep = sum(!is.na(.data[[vars_of_interest]])),
+        rep = sum(dplyr::if_any(dplyr::all_of(vars_of_interest), ~ !is.na(.x))),
         exp = dplyr::n_distinct(.data[[hf_col]]),
         .groups = "drop"
       ) |>
