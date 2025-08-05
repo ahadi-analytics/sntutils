@@ -136,8 +136,8 @@ calculate_reporting_metrics <- function(
   calculate_rates <- function(df) {
     df |>
       dplyr::mutate(
-        reprate = (rep / exp) * 100,
-        missrate = ((exp - rep) / exp) * 100
+        reprate = (rep / exp),
+        missrate = ((exp - rep) / exp)
       )
   }
 
@@ -176,8 +176,8 @@ calculate_reporting_metrics <- function(
         .groups = "drop"
       ) |>
       dplyr::mutate(
-        reprate = (rep / exp) * 100,
-        missrate = 100 - reprate
+        reprate = (rep / exp),
+        missrate = 1 - reprate
       )
   } else if (!is.null(y_var)) {
     long_data <- data |>
@@ -439,6 +439,13 @@ prepare_plot_data <- function(
     hf_col = if (by_facility) hf_col else NULL,
     key_indicators = key_indicators
   )
+
+  # Convert rates to percentages for plotting
+  plot_data <- plot_data |>
+    dplyr::mutate(
+      reprate = reprate * 100,
+      missrate = missrate * 100
+    )
 
   list(
     plot_data = plot_data,
