@@ -40,14 +40,14 @@ format:
 
 ## :wrench: Installation
 
-The package can be installed using `devtools` in R. The steps are as follows:
+The package can be installed using `pak` in R. The steps are as follows:
 
 ```{r eval=FALSE, include=TRUE}
-# 1) Install devtools if you haven't already
-install.packages("devtools")
+# 1) Install pak if you haven't already
+install.packages("pak")
 
 # 2) Install the sntutils package from GitHub
-devtools::install_github("ahadi-analytics/sntutils")
+pak::pkg_install("ahadi-analytics/sntutils")
 ```
 
 ## :book: Usage
@@ -398,9 +398,8 @@ calculate_reporting_metrics(
   hf_col = "hf_uid",                    # Health facility ID column
   key_indicators = c(                   # Used to determine denominator
     "allout", "test",  "treat",
-    "conf", "pres"),
-  na_to_zero = TRUE                     # Zeros treated as missing (non-reporting)
-)                                       # this is the default
+    "conf", "pres")
+)
 ```
 
 ```{r echo=FALSE}
@@ -436,8 +435,7 @@ sntutils::calculate_reporting_metrics(
     "treat",
     "conf",
     "pres"
-  ),
-  na_to_zero = TRUE # Zeros treated as missing (non-reporting)
+  )
 ) |>
   tail()
 ```
@@ -509,13 +507,12 @@ reporting_rate_plot(
   data = sl_dhis2,
   vars_of_interest = "conf",            # Variables to check if a facility reported
   x_var = "year_mon",                   # Temporal unit: year-month
-  y_var = "adm3",                       # Spatial unit: adm3
+  y_var = "adm2",                       # Spatial unit: adm3
   hf_col = "hf_uid",                    # Health facility ID column
   key_indicators = c(                   # Used to determine denominator
     "allout", "test",  "treat",
-    "conf", "pres"),
-  na_to_zero = TRUE                     # Zeros treated as missing (non-reporting)
-)                                       # this is the default
+    "conf", "pres")
+)
 ```
 
 ```{r, fig.path="man/figures-readme/"}
@@ -529,7 +526,7 @@ reporting_rate_plot(
   data = sl_dhis2,
   vars_of_interest = "conf", # Variables to check if a facility reported
   x_var = "year_mon", # Temporal unit: year-month
-  y_var = "adm3", # Spatial unit: district
+  y_var = "adm2", # Spatial unit: district
   hf_col = "hf_uid", # Health facility ID column
   key_indicators = c(
     # Used to define eligibility
@@ -538,8 +535,7 @@ reporting_rate_plot(
     "treat",
     "conf",
     "pres"
-  ),
-  na_to_zero = TRUE # Zeros treated as missing (non-reporting)
+  )
 )
 ```
 
@@ -550,7 +546,7 @@ reporting_rate_plot(
   data = sl_dhis2,
   vars_of_interest = "conf",            # Variables to check if a facility reported
   x_var = "year_mon",                   # Temporal unit: year-month
-  y_var = "adm3",                       # Spatial unit: adm3
+  y_var = "adm2",                       # Spatial unit: adm3
   target_language = "fr"                # This time we translate it to French
 )
 ```
@@ -567,7 +563,7 @@ reporting_rate_plot(
   data = sl_dhis2,
   vars_of_interest = "conf",            # Variables to check if a facility reported
   x_var = "year_mon",                   # Temporal unit: year-month
-  y_var = "adm3",                       # Spatial unit: adm3
+  y_var = "adm2",                       # Spatial unit: adm3
   target_language = "fr"                # This time we translate it to French
 )
 ```
@@ -576,18 +572,21 @@ reporting_rate_plot(
 **Scenario 3: Reporting/Missing Rates Over Time**
 
 ```{r eval=FALSE, include=TRUE}
-
 # get the variables of interest
-vars <- c("conf", "test", "pres", "allout",
-         "maladm", "maldth", "maltreat", "allout_u5",
-         "allout_ov5", "maladm_u5", "maladm_5_14",
-         "maldth_u5", "maldth_5_14", "maldth_ov15")
+vars <- c(
+  "test", "test_u5", "test_5_14", "test_ov15",
+  "susp",  "susp_u5", "susp_5_14",  "susp_ov15",
+  "pres", "pres_u5", "pres_5_14", "pres_ov15",
+  "conf", "conf_u5", "conf_5_14", "conf_ov15",
+  "maltreat", "maltreat_u5", "maltreat_5_14", "maltreat_ov15"
+)
 
 reporting_rate_plot(
   sl_dhis2,
-  vars_of_interest = vars,   # Variables to check if reported overtime
-  x_var = "year_mon",        # Temporal unit: year-month
-  target_language = "fr"     # This time we translate it to French
+  full_range = FALSE,            # use actual data range
+  vars_of_interest = vars,       # Variables to check if reported overtime
+  x_var = "year_mon",            # Temporal unit: year-month
+  target_language = "fr"         # This time we translate it to French
 )
 ```
 
@@ -601,30 +600,24 @@ reporting_rate_plot(
 #|
 # get the variables of interest
 vars <- c(
-  "conf",
-  "test",
-  "pres",
-  "allout",
-  "maladm",
-  "maldth",
-  "maltreat",
-  "allout_u5",
-  "allout_ov5",
-  "maladm_u5",
-  "maladm_5_14",
-  "maldth_u5",
-  "maldth_5_14",
-  "maldth_ov15"
+  "test", "test_u5", "test_5_14", "test_ov15",
+  "susp",  "susp_u5", "susp_5_14",  "susp_ov15",
+  "pres", "pres_u5", "pres_5_14", "pres_ov15",
+  "conf", "conf_u5", "conf_5_14", "conf_ov15",
+  "maltreat", "maltreat_u5", "maltreat_5_14", "maltreat_ov15"
 )
 
 reporting_rate_plot(
   sl_dhis2,
-  vars_of_interest = vars, # Variables to check if reported overtime
-  x_var = "year_mon", # Temporal unit: year-month
-  target_language = "fr" # This time we translate it to French
+  full_range = FALSE,            # use actual data range
+  vars_of_interest = vars,       # Variables to check if reported overtime
+  x_var = "year_mon",            # Temporal unit: year-month
+  target_language = "fr"         # This time we translate it to French
 )
 ```
 
+
+### Consistencty Check
 
 The `consistency_check()` function identifies and visualizes inconsistencies between two variables such as the test and confirmed cases, useful for data quality assessment.
 
@@ -661,9 +654,22 @@ consistency_check(
 #| fig-height: 6
 #| fig-width: 10
 #| fig-dpi: 300
+
+# randomly select 60 rows to modify
+set.seed(2025)
+rows_to_modify <- sl_dhis2 |>
+  dplyr::sample_n(17) |>
+  dplyr::mutate(
+    test = sample(500:20000, 17, replace = TRUE, ),
+    conf = test + sample(100:20000, 17, replace = TRUE)
+  )
+
+# overwrite those rows in sl_dhis2
+sl_dhis2_v2 <- sl_dhis2 |>
+  dplyr::rows_update(rows_to_modify, by = c("hf_uid", "year_mon"))
 # Assess facility-level reporting by district over time
 consistency_check(
-  sl_dhis2,
+  sl_dhis2_v2,
   tests = c("test"),
   cases = c("conf"),
   target_language = "fr"
@@ -737,8 +743,8 @@ ggplot2::ggsave(
     "man/figures-readme/outlier_plot.png"
   ),
   plot = plots$iqr,
-  width = 12,
-  height = 9
+  width = 16,
+  height = 12
 )
 
 ggplot2::ggsave(
@@ -746,8 +752,8 @@ ggplot2::ggsave(
     "man/figures-readme/outlier_plot2.png"
   ),
   plot = plots$halper,
-  width = 12,
-  height = 9
+  width = 16,
+  height = 12
 )
 
 ggplot2::ggsave(
@@ -755,8 +761,8 @@ ggplot2::ggsave(
     "man/figures-readme/outlier_plot3.png"
   ),
   plot = plots$moyenne,
-  width = 12,
-  height = 9
+  width = 16,
+  height = 12
 )
 
 ```
