@@ -686,11 +686,6 @@ testthat::test_that("Scenario 1 edge cases are handled correctly", {
     allout = c(NA, NA, NA, NA, NA, NA, NA, NA, NA)
   )
 
-  # Explanation of edge case:
-  # - Facility A reports in Jan and Mar → should count in both
-  # - Facility B reports only in Feb → should not be in denominator in Jan
-  # - Facility C never reports → should never be in any denominator
-
   result <- calculate_reporting_metrics(
     data = edge_data,
     vars_of_interest = c("malaria"),
@@ -706,21 +701,16 @@ jan <- dplyr::filter(result, month_year == "2023-01")
 feb <- dplyr::filter(result, month_year == "2023-02")
 mar <- dplyr::filter(result, month_year == "2023-03")
 
-# January: Only A reported and first reported in Jan → 1 exp, 1 rep
 testthat::expect_equal(jan$exp, 1)
 testthat::expect_equal(jan$rep, 1)
-testthat::expect_equal(jan$reprate, 100)
+testthat::expect_equal(jan$reprate, 1)
 
-# February: A had reported before and is eligible; B first reports in Feb
-# → A and B are in denominator; only B reported → 2 exp, 1 rep
 testthat::expect_equal(feb$exp, 2)
 testthat::expect_equal(feb$rep, 0)
 testthat::expect_equal(feb$reprate, 0)
 
-# March: A and B are eligible (reported in Jan and Feb respectively)
-# → 2 exp, only A reports → 2 exp, 1 rep
 testthat::expect_equal(mar$exp, 2)
 testthat::expect_equal(mar$rep, 1)
-testthat::expect_equal(mar$reprate, 50)
+testthat::expect_equal(mar$reprate, .5)
 }
 )
