@@ -389,7 +389,7 @@ is:
 
 $$
 \text{Reporting Rate}_{a,t} =
-\frac{o_{a,t}}{e_{a,t}} \times 100
+\frac{o_{a,t}}{e_{a,t}}
 $$
 
 Where:
@@ -422,7 +422,7 @@ Observed data:
 
 $$
 \text{Reporting Rate}_{d,\text{Mar}} =
-\frac{4}{6} \times 100 = 66.7\%
+\frac{4}{6} = 0.667
 $$
 
 Now to implement this in code:
@@ -467,12 +467,12 @@ calculate_reporting_metrics(
     # A tibble: 6 × 6
       year_mon adm2                                  rep   exp reprate missrate
       <chr>    <chr>                               <int> <int>   <dbl>    <dbl>
-    1 2023-12  Moyamba District Council              106   108    98.1     1.85
-    2 2023-12  Port Loko City Council                  2     2   100       0
-    3 2023-12  Port Loko District Council             99   103    96.1     3.88
-    4 2023-12  Pujehun District Council               96   104    92.3     7.69
-    5 2023-12  Tonkolili District Council            109   115    94.8     5.22
-    6 2023-12  Western Area Rural District Council    62    64    96.9     3.12
+    1 2023-12  Moyamba District Council              106   108   0.981   0.0185
+    2 2023-12  Port Loko City Council                  2     2   1       0
+    3 2023-12  Port Loko District Council             99   103   0.961   0.0388
+    4 2023-12  Pujehun District Council               96   104   0.923   0.0769
+    5 2023-12  Tonkolili District Council            109   115   0.948   0.0522
+    6 2023-12  Western Area Rural District Council    62    64   0.969   0.0312
 
 **Scenario 2: Reporting/Missing Rate by Two Dimensions**
 
@@ -493,12 +493,12 @@ calculate_reporting_metrics(
     # A tibble: 6 × 7
       year_mon adm2                     variable   exp   rep reprate missrate
       <chr>    <chr>                    <chr>    <int> <int>   <dbl>    <dbl>
-    1 2021-01  Bo City Council          conf        39    28    71.8    28.2
-    2 2021-01  Bo City Council          pres        39    28    71.8    28.2
-    3 2021-01  Bo District Council      conf       129   113    87.6    12.4
-    4 2021-01  Bo District Council      pres       129   113    87.6    12.4
-    5 2021-01  Bombali District Council conf        81    73    90.1     9.88
-    6 2021-01  Bombali District Council pres        81    73    90.1     9.88
+    1 2021-01  Bo City Council          conf        39    28   0.718   0.282
+    2 2021-01  Bo City Council          pres        39    28   0.718   0.282
+    3 2021-01  Bo District Council      conf       129   113   0.876   0.124
+    4 2021-01  Bo District Council      pres       129   113   0.876   0.124
+    5 2021-01  Bombali District Council conf        81    73   0.901   0.0988
+    6 2021-01  Bombali District Council pres        81    73   0.901   0.0988
 
 **Scenario 3: Reporting/Missing Rates Over Time**
 
@@ -518,12 +518,12 @@ calculate_reporting_metrics(
     # A tibble: 6 × 6
       year_mon variable   exp   rep reprate missrate
       <chr>    <chr>    <int> <int>   <dbl>    <dbl>
-    1 2021-01  conf      1702  1354    79.6     20.4
-    2 2021-01  pres      1702  1356    79.7     20.3
-    3 2021-01  test      1702  1355    79.6     20.4
-    4 2021-02  conf      1702  1351    79.4     20.6
-    5 2021-02  pres      1702  1356    79.7     20.3
-    6 2021-02  test      1702  1351    79.4     20.6
+    1 2021-01  conf      1702  1354   0.796    0.204
+    2 2021-01  pres      1702  1356   0.797    0.203
+    3 2021-01  test      1702  1355   0.796    0.204
+    4 2021-02  conf      1702  1351   0.794    0.206
+    5 2021-02  pres      1702  1356   0.797    0.203
+    6 2021-02  test      1702  1351   0.794    0.206
 
 ### Reporting Rate Plots
 
