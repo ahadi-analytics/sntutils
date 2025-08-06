@@ -10,3 +10,5 @@ generate_svg_badge.R
 .covrignore
 generate_svg_badge.R
 .Rbuildignore
+inst/extdata/sl_exmaple_dhis2.rds
+*.clau*
