@@ -146,7 +146,7 @@ check_chirps_available <- function(dataset_code = "africa_monthly") {
 #'
 #' # Download Africa monthly CHIRPS for Jan–Mar 2022
 #' \dontrun{
-#' download_chirps2.0(
+#' download_chirps(
 #'   dataset = "africa_monthly",
 #'   start = "2022-01",
 #'   end = "2022-03",
@@ -155,7 +155,7 @@ check_chirps_available <- function(dataset_code = "africa_monthly") {
 #' }
 #'
 #' @export
-download_chirps2.0 <- function(dataset, start, end = NULL,
+download_chirps <- function(dataset, start, end = NULL,
                                out_dir = ".", unzip = TRUE) {
   opts <- chirps_options()
   if (!dataset %in% opts$dataset) {
