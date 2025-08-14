@@ -200,13 +200,13 @@ testthat::test_that("check_chirps_available data is properly sorted", {
   }
 })
 
-# test download_chirps2.0 function ----
-testthat::test_that("download_chirps2.0 validates dataset parameter", {
+# test download_chirps function ----
+testthat::test_that("download_chirps validates dataset parameter", {
   temp_dir <- create_temp_download_dir()
 
   # invalid dataset should throw error
   testthat::expect_error(
-    download_chirps2.0(
+    download_chirps(
       dataset = "invalid_dataset",
       start = "2020-01",
       out_dir = temp_dir
@@ -218,14 +218,14 @@ testthat::test_that("download_chirps2.0 validates dataset parameter", {
 })
 
 
-testthat::test_that("download_chirps2.0 handles date range download", {
+testthat::test_that("download_chirps handles date range download", {
   skip_if_no_internet()
   skip_if_chirps_down()
 
   temp_dir <- create_temp_download_dir()
 
   testthat::expect_no_error({
-    download_chirps2.0(
+    download_chirps(
       dataset = "africa_monthly",
       start = "2020-01",
       end = "2020-02", # two months
@@ -251,14 +251,14 @@ testthat::test_that("download_chirps2.0 handles date range download", {
 })
 
 
-testthat::test_that("download_chirps2.0 skips existing files", {
+testthat::test_that("download_chirps skips existing files", {
   skip_if_no_internet()
   skip_if_chirps_down()
 
   temp_dir <- create_temp_download_dir()
 
   # first download
-  download_chirps2.0(
+  download_chirps(
     dataset = "africa_monthly",
     start = "2020-01",
     out_dir = temp_dir,
@@ -270,7 +270,7 @@ testthat::test_that("download_chirps2.0 skips existing files", {
 
   # second download should skip existing files
   testthat::expect_no_error({
-    download_chirps2.0(
+    download_chirps(
       dataset = "africa_monthly",
       start = "2020-01",
       out_dir = temp_dir,
@@ -287,7 +287,7 @@ testthat::test_that("download_chirps2.0 skips existing files", {
   cleanup_temp_dir(temp_dir)
 })
 
-testthat::test_that("download_chirps2.0 handles different datasets", {
+testthat::test_that("download_chirps handles different datasets", {
   skip_if_no_internet()
   skip_if_chirps_down()
 
@@ -295,7 +295,7 @@ testthat::test_that("download_chirps2.0 handles different datasets", {
 
   # test with global dataset
   testthat::expect_no_error({
-    download_chirps2.0(
+    download_chirps(
       dataset = "EAC_monthly",
       start = "2020-01",
       out_dir = temp_dir,
@@ -324,12 +324,12 @@ testthat::test_that("functions handle network errors gracefully", {
   testthat::expect_null(result)
 })
 
-testthat::test_that("download_chirps2.0 handles invalid dates", {
+testthat::test_that("download_chirps handles invalid dates", {
   temp_dir <- create_temp_download_dir()
 
   # malformed date should cause error
   testthat::expect_error({
-    download_chirps2.0(
+    download_chirps(
       dataset = "africa_monthly",
       start = "invalid-date",
       out_dir = temp_dir

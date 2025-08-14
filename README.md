@@ -15,7 +15,7 @@ functions in this version of `sntutils`:
 | ----------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------ |
 | **Data Import/Export**        | `read()`                         | Reads data from various file formats (CSV, Excel, Stata, RDS, shp)                         |
 |                               | `write()`                        | Exports data to various file formats                                                       |
-| **Download Chirps Data**      | `download_chirps2.0()`           | Downloads monthly CHIRPS rainfall rasters for a given region and date range                |
+| **Download Chirps Data**      | `download_chirps()`              | Downloads monthly CHIRPS rainfall rasters for a given region and date range                |
 | **Project Structure**         | `create_data_structure()`        | Creates AHADI-style hierarchical data folders under 01_data/                               |
 |                               | `initialize_project_structure()` | Sets up full project folder structure with data, scripts, outputs, and reports             |
 | **Date Handling**             | `autoparse_dates()`              | Automatically detects and standardizes various date formats                                |
@@ -93,7 +93,7 @@ write(
 
 ### Downalod Climate Data (CHIRPS Rainfall)
 
-The `download_chirps2.0()` function allows you to fetch CHIRPS monthly
+The `download_chirps()` function allows you to fetch CHIRPS monthly
 rainfall raster data for any supported region and time period. It pulls
 data directly from the [UCSB Climate Hazards
 Group](https://www.chc.ucsb.edu/data/chirps) FTP archive and supports
@@ -133,7 +133,7 @@ check_chirps_available(dataset_code = "africa_monthly")
 #>10 chirps-v2.0.2024.07.tif.gz 2024  07    africa_monthly
 
 # Download Africa monthly rainfall for Jan to Mar 2022
-download_chirps2.0(
+download_chirps(
   dataset = "africa_monthly",
   start = "2022-01",
   end = "2022-03",
