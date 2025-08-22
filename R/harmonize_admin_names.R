@@ -855,6 +855,128 @@ construct_geo_names <- function(data, level0, level1, level2,
     dplyr::ungroup()
 }
 
+#' Get User Identity
+#'
+#' Helper function to get the user identity from various environment variables
+#'
+#' @return Character string with the user identity
+#' @keywords internal
+get_user_identity <- function() {
+  if (nzchar(Sys.getenv("RSTUDIO_USER_IDENTITY"))) {
+    Sys.getenv("RSTUDIO_USER_IDENTITY")
+  } else if (nzchar(Sys.getenv("USER"))) {
+    Sys.getenv("USER")
+  } else if (nzchar(Sys.getenv("USERNAME"))) {
+    Sys.getenv("USERNAME")
+  } else {
+    Sys.info()[["user"]]
+  }
+}
+
+#' Export Unmatched Administrative Names
+#'
+#' Internal helper function to export complete rows with unmatched data
+#' to a file with metadata, showing full hierarchical context.
+#'
+#' @param target_todo Data frame containing unmatched records
+#' @param unmatched_export_path Path to save the unmatched data
+#' @param level0 Name of level0 column
+#' @param level1 Name of level1 column
+#' @param level2 Name of level2 column
+#' @param level3 Name of level3 column
+#' @param level4 Name of level4 column
+#'
+#' @keywords internal
+export_unmatched_data <- function(target_todo, unmatched_export_path,
+                                 level0, level1, level2, level3, level4) {
+  
+  if (nrow(target_todo) > 0) {
+    # Get the source names from the tagged data
+    target_name <- unique(target_todo$target_data)[1]
+    lookup_name <- unique(target_todo$lookup_data)[1]
+    
+    # Build list of columns to keep - dynamic based on input
+    cols_to_keep <- c()
+    if (!is.null(level0) && level0 %in% names(target_todo)) cols_to_keep <- c(cols_to_keep, level0)
+    if (!is.null(level1) && level1 %in% names(target_todo)) cols_to_keep <- c(cols_to_keep, level1)
+    if (!is.null(level2) && level2 %in% names(target_todo)) cols_to_keep <- c(cols_to_keep, level2)
+    if (!is.null(level3) && level3 %in% names(target_todo)) cols_to_keep <- c(cols_to_keep, level3)
+    if (!is.null(level4) && level4 %in% names(target_todo)) cols_to_keep <- c(cols_to_keep, level4)
+    
+    # Identify the unmatched column (typically the lowest/most granular level)
+    # Start from level4 (most granular) and work up
+    unmatched_column <- NA
+    if (!is.null(level4) && level4 %in% cols_to_keep) {
+      unmatched_column <- level4  # e.g., "hf"
+    } else if (!is.null(level3) && level3 %in% cols_to_keep) {
+      unmatched_column <- level3  # e.g., "adm3"
+    } else if (!is.null(level2) && level2 %in% cols_to_keep) {
+      unmatched_column <- level2  # e.g., "adm2"
+    } else if (!is.null(level1) && level1 %in% cols_to_keep) {
+      unmatched_column <- level1  # e.g., "adm1"
+    } else if (!is.null(level0) && level0 %in% cols_to_keep) {
+      unmatched_column <- level0  # e.g., "adm0"
+    }
+    
+    # Create the export dataframe with all context
+    # Keep complete rows showing the hierarchical context
+    unmatched_df <- target_todo |>
+      dplyr::select(dplyr::all_of(cols_to_keep)) |>
+      dplyr::distinct() |>
+      dplyr::mutate(
+        unmatched_column = unmatched_column,
+        target_data = target_name,
+        lookup_data = lookup_name,
+        created_time = Sys.time(),
+        name_of_creator = get_user_identity()
+      ) |>
+      # Reorganize columns - unmatched_column first, then admin levels, then metadata
+      dplyr::select(
+        unmatched_column,
+        dplyr::all_of(cols_to_keep),
+        target_data,
+        lookup_data,
+        created_time,
+        name_of_creator
+      )
+    
+    # Save based on file extension
+    file_ext <- tools::file_ext(unmatched_export_path)
+    
+    tryCatch({
+      if (tolower(file_ext) == "csv") {
+        utils::write.csv(unmatched_df, unmatched_export_path, row.names = FALSE)
+        cli::cli_alert_success(
+          "Unmatched data exported to: {unmatched_export_path}"
+        )
+      } else if (tolower(file_ext) == "rds") {
+        saveRDS(unmatched_df, unmatched_export_path)
+        cli::cli_alert_success(
+          "Unmatched data exported to: {unmatched_export_path}"
+        )
+      } else {
+        # Default to CSV if extension not recognized
+        utils::write.csv(unmatched_df, paste0(unmatched_export_path, ".csv"),
+                        row.names = FALSE)
+        cli::cli_alert_success(
+          "Unmatched data exported to: {paste0(unmatched_export_path, '.csv')}"
+        )
+      }
+      
+      # Show summary of unmatched data
+      cli::cli_alert_info(
+        "Exported {nrow(unmatched_df)} unique unmatched rows for column '{unmatched_column}'"
+      )
+    }, error = function(e) {
+      cli::cli_alert_warning(
+        "Failed to export unmatched data: {e$message}"
+      )
+    })
+  } else {
+    cli::cli_alert_info("No unmatched values to export")
+  }
+}
+
 #' Interactive Admin Name Cleaning and Matching
 #'
 #' This function streamlines the admin name cleaning process, leveraging both
@@ -882,6 +1004,11 @@ construct_geo_names <- function(data, level0, level1, level2,
 #'        session. If NULL or the file does not exist at the provided path,
 #'        users will be prompted to specify a new path or create a new cache
 #'        data frame.
+#' @param unmatched_export_path Optional; path to save unique unmatched admin
+#'        names after processing. The file will include the unmatched values for
+#'        each admin level along with metadata (timestamp, username, and data
+#'        source). Supports .csv and .rds file formats based on the file
+#'        extension.
 #' @param method The string distance calculation method(s) to be used. Users
 #'        can specify one or more algorithms from the
 #'        \code{\link[stringdist]{stringdist}} package to compute
@@ -944,9 +1071,14 @@ prep_geonames <- function(target_df, lookup_df = NULL,
                                   level3 = NULL,
                                   level4 = NULL,
                                   cache_path = NULL,
+                                  unmatched_export_path = NULL,
                                   method = "jw",
                                   interactive = TRUE,
                                   max_options = 200) {
+  # Capture the names of the data frames at the beginning
+  target_df_name <- deparse(substitute(target_df))
+  lookup_df_name <- deparse(substitute(lookup_df))
+  
   # Validation -----------------------------------------------------------------
 
   # Ensure higher levels cannot be used without corresponding lower levels
@@ -1359,6 +1491,19 @@ prep_geonames <- function(target_df, lookup_df = NULL,
     cli::cli_alert_success(
       "In non-interactive mode. Exiting after matching with cache..."
     )
+    
+    # Export unmatched data before returning in non-interactive mode
+    if (!is.null(unmatched_export_path) && nrow(target_todo) > 0) {
+      # Tag the target_todo with source names
+      target_todo_tagged <- target_todo |>
+        dplyr::mutate(
+          target_data = target_df_name,
+          lookup_data = lookup_df_name
+        )
+      
+      export_unmatched_data(target_todo_tagged, unmatched_export_path,
+                           level0, level1, level2, level3, level4)
+    }
 
     return(orig_df)
   }
@@ -1562,7 +1707,7 @@ prep_geonames <- function(target_df, lookup_df = NULL,
           dplyr::across(.cols = -created_time, ~ dplyr::na_if(.x, ""))
         ) |>
         # add username
-        dplyr::mutate(name_of_creator = Sys.getenv("RSTUDIO_USER_IDENTITY"))
+        dplyr::mutate(name_of_creator = get_user_identity())
     )
 
     # combine cleaned data frames
@@ -1622,6 +1767,20 @@ prep_geonames <- function(target_df, lookup_df = NULL,
   calculate_match_stats(
     finalised_df, lookup_df, level0, level1, level2, level3, level4
   )
+
+  # Step 6: Export unmatched data after all matching is complete ---------------
+  # Export the final unmatched data (after interactive matching) if requested
+  if (!is.null(unmatched_export_path) && nrow(target_todo) > 0) {
+    # Tag the target_todo with source names
+    target_todo_tagged <- target_todo |>
+      dplyr::mutate(
+        target_data = target_df_name,
+        lookup_data = lookup_df_name
+      )
+    
+    export_unmatched_data(target_todo_tagged, unmatched_export_path,
+                         level0, level1, level2, level3, level4)
+  }
 
   gc() # clean up memory
 
