@@ -92,6 +92,50 @@ handle_file_save <- function(data_to_save, default_save_path = NULL) {
   }
 }
 
+#' Get Hierarchical Administrative Combinations
+#'
+#' Helper function to extract unique hierarchical combinations of administrative
+#' levels from a dataframe. This ensures proper counting of admin units as
+#' combinations rather than isolated values.
+#'
+#' @param df A dataframe containing administrative level columns
+#' @param levels Character vector of column names representing hierarchical
+#'  admin levels
+#'
+#' @return A dataframe with unique combinations of the specified levels,
+#'         excluding rows with any NA values
+#'
+#' @details This function is used internally by calculate_match_stats to ensure
+#'          administrative units are counted as hierarchical combinations
+#'          (e.g., country-province-district) rather than as isolated unique
+#'          values
+#'
+#' @examples
+#' # df <- data.frame(
+#' #   country = c("A", "A", "B"),
+#' #   province = c("P1", "P2", "P1"),
+#' #   district = c("D1", "D1", "D2")
+#' # )
+#' # get_hierarchical_combinations(df, c("country", "province", "district"))
+#'
+#' @keywords internal
+get_hierarchical_combinations <- function(df, levels) {
+  if (length(levels) == 0 || is.null(levels)) {
+    return(data.frame())
+  }
+
+  # Filter to only the specified levels that exist in the dataframe
+  existing_levels <- levels[levels %in% names(df)]
+  if (length(existing_levels) == 0) {
+    return(data.frame())
+  }
+
+  # Remove rows with any NA values and get unique combinations
+  df_clean <- df[stats::complete.cases(df[existing_levels]),
+                 existing_levels, drop = FALSE]
+  unique(df_clean)
+}
+
 #' Calculate and Report Geo-naming Match Statistics
 #'
 #' Compares entries in a given dataset against a lookup dataset across specified
@@ -122,52 +166,128 @@ handle_file_save <- function(data_to_save, default_save_path = NULL) {
 calculate_match_stats <- function(data, lookup_data, level0 = NULL,
                                   level1 = NULL, level2 = NULL,
                                   level3 = NULL, level4 = NULL) {
-  # Calculate unique matches for each admin level
+  # Calculate unique matches for each admin level using hierarchical combinations
   results <- list()
 
+  # For level0, it's just the unique values
   if (!is.null(level0)) {
-    unique_data_values <- unique(stats::na.omit(data[[level0]]))
-    unique_lookup_values <- unique(stats::na.omit(lookup_data[[level0]]))
-    matches_level0 <- sum(unique_data_values %in% unique_lookup_values)
-    results$level0 <- c(
-      "matches" = matches_level0, "total" = length(unique_data_values)
-    )
+    data_combos <- get_hierarchical_combinations(data, level0)
+    lookup_combos <- get_hierarchical_combinations(lookup_data, level0)
+
+    if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
+      matches_level0 <- sum(data_combos[[level0]] %in% lookup_combos[[level0]])
+      results$level0 <- c(
+        "matches" = matches_level0, "total" = nrow(data_combos)
+      )
+    } else {
+      results$level0 <- c("matches" = 0, "total" = nrow(data_combos))
+    }
   }
 
-  if (!is.null(level1)) {
-    unique_data_values <- unique(stats::na.omit(data[[level1]]))
-    unique_lookup_values <- unique(stats::na.omit(lookup_data[[level1]]))
-    matches_level1 <- sum(unique_data_values %in% unique_lookup_values)
-    results$level1 <- c(
-      "matches" = matches_level1, "total" = length(unique_data_values)
-    )
+  # For level1, it's country-province combinations
+  if (!is.null(level1) && !is.null(level0)) {
+    data_combos <- get_hierarchical_combinations(data, c(level0, level1))
+    lookup_combos <- get_hierarchical_combinations(lookup_data, c(level0, level1))
+
+    if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
+      # Create combined keys for matching
+      data_keys <- paste(data_combos[[level0]], data_combos[[level1]], sep = "_")
+      lookup_keys <- paste(lookup_combos[[level0]], lookup_combos[[level1]], sep = "_")
+      matches_level1 <- sum(data_keys %in% lookup_keys)
+      results$level1 <- c(
+        "matches" = matches_level1, "total" = length(data_keys)
+      )
+    } else {
+      results$level1 <- c("matches" = 0, "total" = nrow(data_combos))
+    }
+  } else if (!is.null(level1)) {
+    # If level0 is not provided, just match level1 alone
+    data_combos <- get_hierarchical_combinations(data, level1)
+    lookup_combos <- get_hierarchical_combinations(lookup_data, level1)
+
+    if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
+      matches_level1 <- sum(data_combos[[level1]] %in% lookup_combos[[level1]])
+      results$level1 <- c(
+        "matches" = matches_level1, "total" = nrow(data_combos)
+      )
+    } else {
+      results$level1 <- c("matches" = 0, "total" = nrow(data_combos))
+    }
   }
 
+  # For level2, it's country-province-district combinations
   if (!is.null(level2)) {
-    unique_data_values <- unique(stats::na.omit(data[[level2]]))
-    unique_lookup_values <- unique(stats::na.omit(lookup_data[[level2]]))
-    matches_level2 <- sum(unique_data_values %in% unique_lookup_values)
-    results$level2 <- c(
-      "matches" = matches_level2, "total" = length(unique_data_values)
-    )
+    # Build the hierarchy based on what's available
+    hierarchy <- c()
+    if (!is.null(level0)) hierarchy <- c(hierarchy, level0)
+    if (!is.null(level1)) hierarchy <- c(hierarchy, level1)
+    hierarchy <- c(hierarchy, level2)
+
+    data_combos <- get_hierarchical_combinations(data, hierarchy)
+    lookup_combos <- get_hierarchical_combinations(lookup_data, hierarchy)
+
+    if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
+      # Create combined keys for matching
+      data_keys <- do.call(paste, c(data_combos[hierarchy], sep = "_"))
+      lookup_keys <- do.call(paste, c(lookup_combos[hierarchy], sep = "_"))
+      matches_level2 <- sum(data_keys %in% lookup_keys)
+      results$level2 <- c(
+        "matches" = matches_level2, "total" = length(data_keys)
+      )
+    } else {
+      results$level2 <- c("matches" = 0, "total" = nrow(data_combos))
+    }
   }
 
+  # For level3, it's country-province-district-subdistrict combinations
   if (!is.null(level3)) {
-    unique_data_values <- unique(stats::na.omit(data[[level3]]))
-    unique_lookup_values <- unique(stats::na.omit(lookup_data[[level3]]))
-    matches_level3 <- sum(unique_data_values %in% unique_lookup_values)
-    results$level3 <- c(
-      "matches" = matches_level3, "total" = length(unique_data_values)
-    )
+    # Build the hierarchy based on what's available
+    hierarchy <- c()
+    if (!is.null(level0)) hierarchy <- c(hierarchy, level0)
+    if (!is.null(level1)) hierarchy <- c(hierarchy, level1)
+    if (!is.null(level2)) hierarchy <- c(hierarchy, level2)
+    hierarchy <- c(hierarchy, level3)
+
+    data_combos <- get_hierarchical_combinations(data, hierarchy)
+    lookup_combos <- get_hierarchical_combinations(lookup_data, hierarchy)
+
+    if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
+      # Create combined keys for matching
+      data_keys <- do.call(paste, c(data_combos[hierarchy], sep = "_"))
+      lookup_keys <- do.call(paste, c(lookup_combos[hierarchy], sep = "_"))
+      matches_level3 <- sum(data_keys %in% lookup_keys)
+      results$level3 <- c(
+        "matches" = matches_level3, "total" = length(data_keys)
+      )
+    } else {
+      results$level3 <- c("matches" = 0, "total" = nrow(data_combos))
+    }
   }
 
+  # For level4, it's the full hierarchy
   if (!is.null(level4)) {
-    unique_data_values <- unique(stats::na.omit(data[[level4]]))
-    unique_lookup_values <- unique(stats::na.omit(lookup_data[[level4]]))
-    matches_level4 <- sum(unique_data_values %in% unique_lookup_values)
-    results$level4 <- c(
-      "matches" = matches_level4, "total" = length(unique_data_values)
-    )
+    # Build the hierarchy based on what's available
+    hierarchy <- c()
+    if (!is.null(level0)) hierarchy <- c(hierarchy, level0)
+    if (!is.null(level1)) hierarchy <- c(hierarchy, level1)
+    if (!is.null(level2)) hierarchy <- c(hierarchy, level2)
+    if (!is.null(level3)) hierarchy <- c(hierarchy, level3)
+    hierarchy <- c(hierarchy, level4)
+
+    data_combos <- get_hierarchical_combinations(data, hierarchy)
+    lookup_combos <- get_hierarchical_combinations(lookup_data, hierarchy)
+
+    if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
+      # Create combined keys for matching
+      data_keys <- do.call(paste, c(data_combos[hierarchy], sep = "_"))
+      lookup_keys <- do.call(paste, c(lookup_combos[hierarchy], sep = "_"))
+      matches_level4 <- sum(data_keys %in% lookup_keys)
+      results$level4 <- c(
+        "matches" = matches_level4, "total" = length(data_keys)
+      )
+    } else {
+      results$level4 <- c("matches" = 0, "total" = nrow(data_combos))
+    }
   }
 
   # Presenting the results using cli
