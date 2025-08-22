@@ -7,3 +7,4 @@
 .covrignore
 generate_svg_badge.R
 .Rbuildignore
+.clau*
