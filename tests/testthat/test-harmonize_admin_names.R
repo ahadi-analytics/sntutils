@@ -823,7 +823,6 @@ testthat::test_that(
       levels = c("country", "province", "district"),
       level = "province",
       clear_console = FALSE,
-      stratify = TRUE,
       max_options = 10
     )
 
@@ -871,7 +870,6 @@ testthat::test_that("handle_user_interaction handles manual entry", {
     levels = c("country", "province", "district"),
     level = "district",
     clear_console = FALSE,
-    stratify = TRUE,
     max_options = 10
   )
 
@@ -925,7 +923,6 @@ testthat::test_that("handle_user_interaction processes multiple selections", {
     levels = c("country", "province", "district"),
     level = "district",
     clear_console = FALSE,
-    stratify = TRUE,
     max_options = 10
   )
 
@@ -968,7 +965,6 @@ testthat::test_that("handle_user_interaction handles 'Save and exit' action", {
     levels = c("country", "province", "district", "subdistrict", "settlement"),
     level = "settlement",
     clear_console = FALSE,
-    stratify = TRUE,
     max_options = 10
   )
 
@@ -1011,8 +1007,7 @@ testthat::test_that(
       levels = c("country", "province"),
       level = "country",
       clear_console = FALSE,
-      stratify = TRUE,
-      max_options = 10
+        max_options = 10
     )
 
     # Verify result is NULL when exiting without saving
@@ -1063,7 +1058,6 @@ testthat::test_that("handle_user_interaction handles 'Go Back' action", {
     levels = c("country", "province", "district", "subdistrict"),
     level = "subdistrict",
     clear_console = FALSE,
-    stratify = TRUE,
     max_options = 10
   )
 
@@ -1113,7 +1107,6 @@ testthat::test_that("handle_user_interaction handles empty choices", {
     levels = c("country", "province"),
     level = "country",
     clear_console = FALSE,
-    stratify = FALSE,
     max_options = 10
   )
 
@@ -1292,8 +1285,7 @@ testthat::test_that(
       lookup_df = lookup_df,
       level0 = "country",
       level1 = "province",
-      interactive = FALSE,
-      stratify = TRUE
+      interactive = FALSE
     )
 
     # Verify result contains all original rows and didn't change anything
@@ -1357,8 +1349,7 @@ testthat::test_that(
       prep_geonames(
         target_df = target_df,
         level2 = "district", # Missing level0 and level1
-        interactive = FALSE,
-        stratify = TRUE
+        interactive = FALSE
       ),
       "You cannot specify level2 without both level0 and level1"
     )
@@ -1368,8 +1359,7 @@ testthat::test_that(
       prep_geonames(
         target_df = target_df,
         level1 = "province", # Missing level0
-        interactive = FALSE,
-        stratify = TRUE
+        interactive = FALSE
       ),
       "You cannot specify level1 without level0"
     )

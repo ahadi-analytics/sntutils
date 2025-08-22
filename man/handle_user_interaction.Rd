@@ -9,7 +9,6 @@ handle_user_interaction(
   levels,
   level,
   clear_console = TRUE,
-  stratify,
   max_options
 )
 }
@@ -22,8 +21,6 @@ handle_user_interaction(
 
 \item{clear_console}{Logical, whether to clear the console before showing
 prompts; defaults to TRUE.}
-
-\item{stratify}{Logical, whether to stratify the cleaning process.}
 
 \item{max_options}{Maximum number of options to display in the menu.
 Default is 200.}
