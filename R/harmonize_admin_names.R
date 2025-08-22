@@ -393,7 +393,6 @@ calculate_string_distance <- function(
 #' @param level The admins level being cleaned, i.ie level1 or even disrict.
 #' @param clear_console Logical, whether to clear the console before showing
 #'                  prompts; defaults to TRUE.
-#' @param stratify Logical, whether to stratify the cleaning process.
 #' @param max_options Maximum number of options to display in the menu.
 #'       Default is 200.
 #'
@@ -406,7 +405,7 @@ calculate_string_distance <- function(
 #' @keywords internal
 handle_user_interaction <- function(input_data, levels, level,
                                     clear_console = TRUE,
-                                    stratify, max_options) {
+                                    max_options) {
   # Interactivity --------------------------------------------------------------
 
   # set up the messaging prompts at the start of the function
@@ -482,7 +481,7 @@ handle_user_interaction <- function(input_data, levels, level,
       "{stringr::str_to_title(level)} {i} of {length(unique_names)}"
     )
 
-    if (!is.na(levels[2]) && stratify && level == levels[2]) {
+    if (!is.na(levels[2]) && level == levels[2]) {
       level_label <- "level1"
       long_geo <- unique_geo_long$long_geo[1]
       str_cache <- stringr::str_to_title(name_to_clean)
@@ -491,7 +490,7 @@ handle_user_interaction <- function(input_data, levels, level,
         "Which {level} name would you like to replace {b(red(str_cache))}",
         " within {bl(str_long_geo)}?"
       )
-    } else if (!is.na(levels[3]) && stratify && level == levels[3]) {
+    } else if (!is.na(levels[3]) && level == levels[3]) {
       level_label <- "level2"
       long_geo <- unique_geo_long$long_geo[1]
       long_geo_country <- stringr::str_to_title(
@@ -506,7 +505,7 @@ handle_user_interaction <- function(input_data, levels, level,
         " within the {gr(long_geo_province)} {levels[2]} ",
         "of {bl(long_geo_country)}?"
       )
-    } else if (!is.na(levels[4]) && stratify && level == levels[4]) {
+    } else if (!is.na(levels[4]) && level == levels[4]) {
       level_label <- "level3"
       long_geo <- unique_geo_long$long_geo[1]
       long_geo_split <- strsplit(long_geo, "_")[[1]]
@@ -519,7 +518,7 @@ handle_user_interaction <- function(input_data, levels, level,
         " within the {gr(long_geo_district)} {levels[3]} of ",
         "{gr(long_geo_province)} {levels[2]} in {bl(long_geo_country)}?"
       )
-    } else if (!is.na(levels[5]) && stratify && level == levels[5]) {
+    } else if (!is.na(levels[5]) && level == levels[5]) {
       level_label <- "level4"
       long_geo <- unique_geo_long$long_geo[1]
       long_geo_split <- strsplit(long_geo, "_")[[1]]
@@ -534,7 +533,7 @@ handle_user_interaction <- function(input_data, levels, level,
         "{gr(long_geo_district)} {levels[3]} of ",
         "{gr(long_geo_province)} {levels[2]} in {bl(long_geo_country)}?"
       )
-    } else if (!is.na(levels[1]) && stratify && level == levels[1]) {
+    } else if (!is.na(levels[1]) && level == levels[1]) {
       level_label <- "level0"
       long_geo <- unique_geo_long$long_geo[1]
       str_cache <- stringr::str_to_title(name_to_clean)
@@ -542,7 +541,7 @@ handle_user_interaction <- function(input_data, levels, level,
         "Which {level} name would you like to replace ",
         "{b(red(str_cache))} with?"
       )
-    } else if (!stratify) {
+    } else {
       long_geo <- unique_geo_long$long_geo[1]
       str_cache <- stringr::str_to_title(name_to_clean)
       title <- glue::glue(
@@ -744,7 +743,7 @@ construct_geo_names <- function(data, level0, level1, level2,
 #' final decision-making, which are then saved for future reference and sharing.
 #' Although the function does not require limiting name matching exclusively to
 #' upper-level admins, optimal performance is achieved by confining to stricter
-#' within-admin stratifications (through the use of stratify function option),
+#' within-admin stratifications,
 #' ensuring more accurate results. The function can also work with site names
 #' or even any string matching that has lookup data.
 #'
@@ -776,8 +775,6 @@ construct_geo_names <- function(data, level0, level1, level2,
 #'        (Damerau-Levenshtein), \code{"lcs"} (Longest Common Subsequence),
 #'        \code{"qgram"} (Q-Gram), \code{"jw"} (Jaro-Winkler), and
 #'        \code{"soundex"}.
-#' @param stratify Logical; if TRUE, performs cleaning stratified by
-#'        admin levels to maintain hierarchical consistency.
 #' @param interactive Logical; if TRUE, prompts the user for interactive
 #'        matching decisions. Defaults to FALSE.
 #' @param max_options Maximum number of options to output for string distance
@@ -833,19 +830,18 @@ prep_geonames <- function(target_df, lookup_df = NULL,
                                   who_region = NULL,
                                   cache_path = NULL,
                                   method = "jw",
-                                  stratify = TRUE,
                                   interactive = TRUE,
                                   max_options = 200) {
   # Validation -----------------------------------------------------------------
 
   # Ensure higher levels cannot be used without corresponding lower levels
-  if (stratify && !is.null(level1) && is.null(level0)) {
+  if (!is.null(level1) && is.null(level0)) {
     cli::cli_abort("You cannot specify level1 without level0.")
   }
-  if (stratify && !is.null(level2) && (is.null(level0) || is.null(level1))) {
+  if (!is.null(level2) && (is.null(level0) || is.null(level1))) {
     cli::cli_abort("You cannot specify level2 without both level0 and level1.")
   }
-  if (stratify && !is.null(level3) && (
+  if (!is.null(level3) && (
     is.null(level0) || is.null(level1) || is.null(level2)
   )) {
     cli::cli_abort(
@@ -942,11 +938,6 @@ prep_geonames <- function(target_df, lookup_df = NULL,
         Supported methods are:", paste(supported_methods, collapse = ", ")
       )
     )
-  }
-
-  # Ensure stratify is logical
-  if (!is.logical(stratify)) {
-    cli::cli_abort("stratify must be a logical value (TRUE or FALSE).")
   }
 
   # Ensure interactive is logical
@@ -1287,8 +1278,8 @@ prep_geonames <- function(target_df, lookup_df = NULL,
     top_res_list <- list()
     replacement_df <- NULL
 
-    # Check if the current level should be stratified
-    if (stratify && level %in% c(levels[2], levels[3], levels[4], levels[5])) {
+    # Check if the current level has a hierarchical parent
+    if (level %in% c(levels[2], levels[3], levels[4], levels[5])) {
       # Set up the grouping level (previous level in hierarchy)
       grouping_level <- levels[which(levels == level) - 1]
 
@@ -1387,7 +1378,7 @@ prep_geonames <- function(target_df, lookup_df = NULL,
       cli::cli_alert_info("Handling user interaction for level: {level}")
       replacement_df <- handle_user_interaction(
         input_data = top_res, levels = levels, level = level,
-        stratify = stratify, max_options = max_options
+        max_options = max_options
       )
 
       if (!is.null(replacement_df) && nrow(replacement_df) > 0) {
