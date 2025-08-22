@@ -1599,3 +1599,299 @@ testthat::test_that("impute_higher_admin works correctly", {
 
   testthat::expect_equal(result_complex$region_code, c("BK", "BK", "Unknown"))
 })
+
+# Tests for unmatched_export_path feature
+testthat::test_that("unmatched_export_path exports unmatched data correctly", {
+  # Create test data with some unmatched values
+  test_target <- data.frame(
+    country = c("KENYA", "KENYA", "KENYA", "TANZANIA"),
+    province = c("NAIROBI", "COAST", "UNKNOWN_PROVINCE", "DAR"),
+    district = c("WESTLANDS", "MOMBASA", "UNKNOWN_DISTRICT", "ILALA"),
+    stringsAsFactors = FALSE
+  )
+
+  test_lookup <- data.frame(
+    country = c("KENYA", "KENYA"),
+    province = c("NAIROBI", "COAST"),
+    district = c("WESTLANDS", "MOMBASA"),
+    stringsAsFactors = FALSE
+  )
+
+  # Test CSV export
+  csv_path <- tempfile(fileext = ".csv")
+
+  result <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "country",
+    level1 = "province",
+    level2 = "district",
+    interactive = FALSE,
+    unmatched_export_path = csv_path
+  )
+
+  # Check that file was created
+  testthat::expect_true(file.exists(csv_path))
+
+  # Read and check the exported data
+  exported_data <- read.csv(csv_path, stringsAsFactors = FALSE)
+
+  # Check structure
+  testthat::expect_true("unmatched_column" %in% names(exported_data))
+  testthat::expect_true("country" %in% names(exported_data))
+  testthat::expect_true("province" %in% names(exported_data))
+  testthat::expect_true("district" %in% names(exported_data))
+  testthat::expect_true("target_data" %in% names(exported_data))
+  testthat::expect_true("lookup_data" %in% names(exported_data))
+  testthat::expect_true("created_time" %in% names(exported_data))
+  testthat::expect_true("name_of_creator" %in% names(exported_data))
+
+  # Check that unmatched values are present
+  testthat::expect_true("UNKNOWN_PROVINCE" %in% exported_data$province ||
+                       "UNKNOWN_DISTRICT" %in% exported_data$district ||
+                       "TANZANIA" %in% exported_data$country)
+
+  # Clean up
+  unlink(csv_path)
+})
+
+testthat::test_that("unmatched_export_path works with RDS format", {
+  test_target <- data.frame(
+    adm0 = c("COUNTRY_A", "COUNTRY_B"),
+    adm1 = c("REGION_1", "REGION_2"),
+    stringsAsFactors = FALSE
+  )
+
+  test_lookup <- data.frame(
+    adm0 = c("COUNTRY_A"),
+    adm1 = c("REGION_1"),
+    stringsAsFactors = FALSE
+  )
+
+  # Test RDS export
+  rds_path <- tempfile(fileext = ".rds")
+
+  result <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "adm0",
+    level1 = "adm1",
+    interactive = FALSE,
+    unmatched_export_path = rds_path
+  )
+
+  # Check that RDS file was created
+  testthat::expect_true(file.exists(rds_path))
+
+  # Read the RDS file
+  exported_rds <- readRDS(rds_path)
+
+  # Check that it's a data frame with expected structure
+  testthat::expect_s3_class(exported_rds, "data.frame")
+  testthat::expect_true("unmatched_column" %in% names(exported_rds))
+
+  # Check that unmatched_column identifies the most granular level
+  testthat::expect_equal(unique(exported_rds$unmatched_column), "adm1")
+
+  # Clean up
+  unlink(rds_path)
+})
+
+testthat::test_that("unmatched_export_path identifies correct unmatched column", {
+  # Test with health facility data (level4)
+  test_target <- data.frame(
+    country = c("KENYA", "KENYA"),
+    province = c("NAIROBI", "NAIROBI"),
+    district = c("WESTLANDS", "WESTLANDS"),
+    facility = c("HOSP_A", "HOSP_B"),
+    stringsAsFactors = FALSE
+  )
+
+  test_lookup <- data.frame(
+    country = c("KENYA"),
+    province = c("NAIROBI"),
+    district = c("WESTLANDS"),
+    facility = c("HOSP_A"),
+    stringsAsFactors = FALSE
+  )
+
+  csv_path <- tempfile(fileext = ".csv")
+
+  result <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "country",
+    level1 = "province",
+    level2 = "district",
+    level4 = "facility",  # Note: using level4 for health facilities
+    interactive = FALSE,
+    unmatched_export_path = csv_path
+  )
+
+  exported_data <- read.csv(csv_path, stringsAsFactors = FALSE)
+
+  # Should identify "facility" as the unmatched column
+  testthat::expect_equal(unique(exported_data$unmatched_column), "facility")
+  testthat::expect_true("HOSP_B" %in% exported_data$facility)
+
+  # Clean up
+  unlink(csv_path)
+})
+
+# Tests for preserve_case feature
+testthat::test_that("preserve_case preserves original case from lookup data", {
+  # Create test data with uppercase
+  test_target <- data.frame(
+    country = c("KENYA", "KENYA", "UGANDA"),
+    province = c("NAIROBI", "COAST", "KAMPALA"),
+    stringsAsFactors = FALSE
+  )
+
+  # Lookup data with mixed case
+  test_lookup <- data.frame(
+    country = c("Kenya", "Kenya", "Uganda"),
+    province = c("Nairobi", "Coast", "Kampala"),
+    stringsAsFactors = FALSE
+  )
+
+  # Test with preserve_case = FALSE (default)
+  result_uppercase <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "country",
+    level1 = "province",
+    interactive = FALSE,
+    preserve_case = FALSE
+  )
+
+  # Should return uppercase
+  testthat::expect_equal(result_uppercase$country[1], "KENYA")
+  testthat::expect_equal(result_uppercase$province[1], "NAIROBI")
+
+  # Test with preserve_case = TRUE
+  result_preserved <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "country",
+    level1 = "province",
+    interactive = FALSE,
+    preserve_case = TRUE
+  )
+
+  # Should return original case from lookup
+  testthat::expect_equal(result_preserved$country[1], "Kenya")
+  testthat::expect_equal(result_preserved$province[1], "Nairobi")
+})
+
+testthat::test_that("preserve_case works with all administrative levels", {
+  test_target <- data.frame(
+    level0 = c("COUNTRY_A"),
+    level1 = c("REGION_A"),
+    level2 = c("DISTRICT_A"),
+    level3 = c("SUBDISTRICT_A"),
+    level4 = c("FACILITY_A"),
+    stringsAsFactors = FALSE
+  )
+
+  test_lookup <- data.frame(
+    level0 = c("Country_A"),
+    level1 = c("Region_A"),
+    level2 = c("District_A"),
+    level3 = c("SubDistrict_A"),
+    level4 = c("Facility_A"),
+    stringsAsFactors = FALSE
+  )
+
+  result <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "level0",
+    level1 = "level1",
+    level2 = "level2",
+    level3 = "level3",
+    level4 = "level4",
+    interactive = FALSE,
+    preserve_case = TRUE
+  )
+
+  # Check all levels preserve case
+  testthat::expect_equal(result$level0[1], "Country_A")
+  testthat::expect_equal(result$level1[1], "Region_A")
+  testthat::expect_equal(result$level2[1], "District_A")
+  testthat::expect_equal(result$level3[1], "SubDistrict_A")
+  testthat::expect_equal(result$level4[1], "Facility_A")
+})
+
+testthat::test_that("preserve_case handles partial matches correctly", {
+  test_target <- data.frame(
+    country = c("KENYA", "TANZANIA", "UNKNOWN_COUNTRY"),
+    province = c("NAIROBI", "DAR ES SALAAM", "UNKNOWN_PROVINCE"),
+    stringsAsFactors = FALSE
+  )
+
+  test_lookup <- data.frame(
+    country = c("Kenya", "Tanzania"),
+    province = c("Nairobi", "Dar es Salaam"),
+    stringsAsFactors = FALSE
+  )
+
+  result <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "country",
+    level1 = "province",
+    interactive = FALSE,
+    preserve_case = TRUE
+  )
+
+  # Matched values should have preserved case
+  testthat::expect_equal(result$country[1], "Kenya")
+  testthat::expect_equal(result$province[2], "Dar es Salaam")
+
+  # Unmatched values should remain as they were (uppercase)
+  testthat::expect_equal(result$country[3], "UNKNOWN_COUNTRY")
+  testthat::expect_equal(result$province[3], "UNKNOWN_PROVINCE")
+})
+
+testthat::test_that("both features work together correctly", {
+  # Test that preserve_case and unmatched_export_path work together
+  test_target <- data.frame(
+    adm0 = c("SIERRA LEONE", "SIERRA LEONE"),
+    adm1 = c("WESTERN", "UNKNOWN"),
+    adm2 = c("BO", "UNKNOWN_DISTRICT"),
+    stringsAsFactors = FALSE
+  )
+
+  test_lookup <- data.frame(
+    adm0 = c("Sierra Leone"),
+    adm1 = c("Western"),
+    adm2 = c("Bo"),
+    stringsAsFactors = FALSE
+  )
+
+  csv_path <- tempfile(fileext = ".csv")
+
+  result <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "adm0",
+    level1 = "adm1",
+    level2 = "adm2",
+    interactive = FALSE,
+    preserve_case = TRUE,
+    unmatched_export_path = csv_path
+  )
+
+  # Check preserved case for matched values
+  testthat::expect_equal(result$adm0[1], "Sierra Leone")
+  testthat::expect_equal(result$adm1[1], "Western")
+  testthat::expect_equal(result$adm2[1], "Bo")
+
+  # Check that unmatched data was exported
+  testthat::expect_true(file.exists(csv_path))
+  exported_data <- read.csv(csv_path, stringsAsFactors = FALSE)
+  testthat::expect_true(nrow(exported_data) > 0)
+
+  # Clean up
+  unlink(csv_path)
+})

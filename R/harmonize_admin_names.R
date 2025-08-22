@@ -835,24 +835,59 @@ construct_geo_names <- function(data, level0, level1, level2,
     dplyr::rowwise() |>
     dplyr::mutate(long_geo = {
       non_null_adms <- NULL
-      if (!is.null(level0) && !is.na(get(level0))) {
-        non_null_adms <- c(non_null_adms, get(level0))
+      if (!is.null(level0) && !is.na(.data[[level0]])) {
+        non_null_adms <- c(non_null_adms, .data[[level0]])
       }
-      if (!is.null(level1) && !is.na(get(level1))) {
-        non_null_adms <- c(non_null_adms, get(level1))
+      if (!is.null(level1) && !is.na(.data[[level1]])) {
+        non_null_adms <- c(non_null_adms, .data[[level1]])
       }
-      if (!is.null(level2) && !is.na(get(level2))) {
-        non_null_adms <- c(non_null_adms, get(level2))
+      if (!is.null(level2) && !is.na(.data[[level2]])) {
+        non_null_adms <- c(non_null_adms, .data[[level2]])
       }
-      if (!is.null(level3) && !is.na(get(level3))) {
-        non_null_adms <- c(non_null_adms, get(level3))
+      if (!is.null(level3) && !is.na(.data[[level3]])) {
+        non_null_adms <- c(non_null_adms, .data[[level3]])
       }
-      if (!is.null(level4) && !is.na(get(level4))) {
-        non_null_adms <- c(non_null_adms, get(level4))
+      if (!is.null(level4) && !is.na(.data[[level4]])) {
+        non_null_adms <- c(non_null_adms, .data[[level4]])
       }
       paste(non_null_adms, collapse = "_")
     }) |>
     dplyr::ungroup()
+}
+
+#' Apply Case Mapping to Data Frame
+#'
+#' Internal helper function to apply original case from lookup data
+#' to the matched values in the target data frame.
+#'
+#' @param df Data frame to apply case mapping to
+#' @param case_mapping List of case mappings for each level
+#' @param levels Vector of level column names
+#'
+#' @keywords internal
+apply_case_mapping <- function(df, case_mapping, levels) {
+  if (is.null(case_mapping)) {
+    return(df)
+  }
+  
+  for (level in levels) {
+    if (!is.null(level) && level %in% names(df) && level %in% names(case_mapping)) {
+      mapping <- case_mapping[[level]]
+      
+      # Join with mapping to get original case
+      df <- df |>
+        dplyr::left_join(
+          mapping,
+          by = stats::setNames("uppercase", level)
+        ) |>
+        dplyr::mutate(
+          !!level := dplyr::coalesce(original, .data[[level]])
+        ) |>
+        dplyr::select(-original)
+    }
+  }
+  
+  return(df)
 }
 
 #' Get User Identity
@@ -892,8 +927,16 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
   
   if (nrow(target_todo) > 0) {
     # Get the source names from the tagged data
-    target_name <- unique(target_todo$target_data)[1]
-    lookup_name <- unique(target_todo$lookup_data)[1]
+    target_name <- if ("target_data" %in% names(target_todo)) {
+      unique(target_todo[["target_data"]])[1]
+    } else {
+      NA_character_
+    }
+    lookup_name <- if ("lookup_data" %in% names(target_todo)) {
+      unique(target_todo[["lookup_data"]])[1]
+    } else {
+      NA_character_
+    }
     
     # Build list of columns to keep - dynamic based on input
     cols_to_keep <- c()
@@ -932,12 +975,12 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
       ) |>
       # Reorganize columns - unmatched_column first, then admin levels, then metadata
       dplyr::select(
-        unmatched_column,
+        "unmatched_column",
         dplyr::all_of(cols_to_keep),
-        target_data,
-        lookup_data,
-        created_time,
-        name_of_creator
+        "target_data",
+        "lookup_data",
+        "created_time",
+        "name_of_creator"
       )
     
     # Save based on file extension
@@ -1004,11 +1047,12 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
 #'        session. If NULL or the file does not exist at the provided path,
 #'        users will be prompted to specify a new path or create a new cache
 #'        data frame.
-#' @param unmatched_export_path Optional; path to save unique unmatched admin
-#'        names after processing. The file will include the unmatched values for
-#'        each admin level along with metadata (timestamp, username, and data
-#'        source). Supports .csv and .rds file formats based on the file
-#'        extension.
+#' @param unmatched_export_path Optional; path to save unmatched data after
+#'        processing. The file will include complete rows with full hierarchical
+#'        context, showing which column needs matching (typically the most
+#'        granular level like health facilities) along with all administrative
+#'        levels and metadata (timestamp, username, data sources). Supports .csv
+#'        and .rds file formats based on the file extension.
 #' @param method The string distance calculation method(s) to be used. Users
 #'        can specify one or more algorithms from the
 #'        \code{\link[stringdist]{stringdist}} package to compute
@@ -1022,6 +1066,9 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
 #'        matching decisions. Defaults to FALSE.
 #' @param max_options Maximum number of options to output for string distance
 #'        matching. Default is 200.
+#' @param preserve_case Logical; if TRUE, preserves the original case of admin
+#'        names from the lookup data when returning matched values. If FALSE
+#'        (default), returns all admin names in uppercase as before.
 #'
 #' @details
 #' The function performs the following steps:
@@ -1074,7 +1121,8 @@ prep_geonames <- function(target_df, lookup_df = NULL,
                                   unmatched_export_path = NULL,
                                   method = "jw",
                                   interactive = TRUE,
-                                  max_options = 200) {
+                                  max_options = 200,
+                                  preserve_case = FALSE) {
   # Capture the names of the data frames at the beginning
   target_df_name <- deparse(substitute(target_df))
   lookup_df_name <- deparse(substitute(lookup_df))
@@ -1252,7 +1300,32 @@ prep_geonames <- function(target_df, lookup_df = NULL,
     if (exists("level4")) level4 else NULL
   )
 
-  # Ensure administrative names are uppercase
+  # Store original case lookup values if preserve_case is TRUE
+  lookup_case_mapping <- NULL
+  if (preserve_case && !is.null(lookup_df)) {
+    # Create a mapping from uppercase to original case for each level
+    lookup_case_mapping <- list()
+    
+    for (level in levels) {
+      if (level %in% names(lookup_df)) {
+        # Get unique mappings from uppercase to original case
+        original_values <- lookup_df[[level]]
+        uppercase_values <- toupper(original_values)
+        
+        # Create mapping dataframe
+        mapping_df <- data.frame(
+          uppercase = uppercase_values,
+          original = original_values,
+          stringsAsFactors = FALSE
+        ) |>
+        dplyr::distinct()
+        
+        lookup_case_mapping[[level]] <- mapping_df
+      }
+    }
+  }
+  
+  # Ensure administrative names are uppercase for matching
   target_df <- target_df |>
     dplyr::mutate(
       dplyr::across(
@@ -1441,7 +1514,7 @@ prep_geonames <- function(target_df, lookup_df = NULL,
 
   # Step 2: Filter out for those where there is a match ------------------------
 
-  # get the original data
+  # get the original data (with cache applied if it was loaded)
   orig_df <- target_df
 
   # Dynamically filter for missing geolocations
@@ -1482,6 +1555,11 @@ prep_geonames <- function(target_df, lookup_df = NULL,
     cli::cli_alert_success(
       "All records matched; process completed. Exiting..."
     )
+    
+    # Apply case mapping if preserve_case is TRUE
+    if (preserve_case) {
+      orig_df <- apply_case_mapping(orig_df, lookup_case_mapping, levels)
+    }
 
     return(orig_df)
   }
@@ -1504,6 +1582,11 @@ prep_geonames <- function(target_df, lookup_df = NULL,
       export_unmatched_data(target_todo_tagged, unmatched_export_path,
                            level0, level1, level2, level3, level4)
     }
+    
+    # Apply case mapping if preserve_case is TRUE
+    if (preserve_case) {
+      orig_df <- apply_case_mapping(orig_df, lookup_case_mapping, levels)
+    }
 
     return(orig_df)
   }
@@ -1519,6 +1602,12 @@ prep_geonames <- function(target_df, lookup_df = NULL,
     cli::cli_alert_info(
       "Exiting without interactive matching..."
     )
+    
+    # Apply case mapping if preserve_case is TRUE
+    if (preserve_case) {
+      orig_df <- apply_case_mapping(orig_df, lookup_case_mapping, levels)
+    }
+    
     return(orig_df)
   }
 
@@ -1784,6 +1873,11 @@ prep_geonames <- function(target_df, lookup_df = NULL,
 
   gc() # clean up memory
 
+  # Apply case mapping if preserve_case is TRUE
+  if (preserve_case) {
+    finalised_df <- apply_case_mapping(finalised_df, lookup_case_mapping, levels)
+  }
+  
   # return the final data frame
   finalised_df
 }
