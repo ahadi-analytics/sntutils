@@ -13,9 +13,11 @@ prep_geonames(
   level3 = NULL,
   level4 = NULL,
   cache_path = NULL,
+  unmatched_export_path = NULL,
   method = "jw",
   interactive = TRUE,
-  max_options = 200
+  max_options = 200,
+  preserve_case = FALSE
 )
 }
 \arguments{
@@ -42,6 +44,13 @@ session. If NULL or the file does not exist at the provided path,
 users will be prompted to specify a new path or create a new cache
 data frame.}
 
+\item{unmatched_export_path}{Optional; path to save unmatched data after
+processing. The file will include complete rows with full hierarchical
+context, showing which column needs matching (typically the most
+granular level like health facilities) along with all administrative
+levels and metadata (timestamp, username, data sources). Supports .csv
+and .rds file formats based on the file extension.}
+
 \item{method}{The string distance calculation method(s) to be used. Users
 can specify one or more algorithms from the
 \code{\link[stringdist]{stringdist}} package to compute
@@ -57,6 +66,10 @@ matching decisions. Defaults to FALSE.}
 
 \item{max_options}{Maximum number of options to output for string distance
 matching. Default is 200.}
+
+\item{preserve_case}{Logical; if TRUE, preserves the original case of admin
+names from the lookup data when returning matched values. If FALSE
+(default), returns all admin names in uppercase as before.}
 }
 \value{
 A data frame with cleaned administrative names and saved data frame
