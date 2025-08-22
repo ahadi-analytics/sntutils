@@ -126,50 +126,47 @@ calculate_match_stats <- function(data, lookup_data, level0 = NULL,
   results <- list()
 
   if (!is.null(level0)) {
-    matches_level0 <- sum(unique(data[[level0]]) %in% unique(
-      lookup_data[[level0]]
-    ))
+    unique_data_values <- unique(stats::na.omit(data[[level0]]))
+    unique_lookup_values <- unique(stats::na.omit(lookup_data[[level0]]))
+    matches_level0 <- sum(unique_data_values %in% unique_lookup_values)
     results$level0 <- c(
-      "matches" = matches_level0, "total" = length(unique(data[[level0]]))
+      "matches" = matches_level0, "total" = length(unique_data_values)
     )
   }
 
   if (!is.null(level1)) {
-    matches_level1 <- sum(
-      unique(data[[level1]]) %in% unique(lookup_data[[level1]])
-    )
+    unique_data_values <- unique(stats::na.omit(data[[level1]]))
+    unique_lookup_values <- unique(stats::na.omit(lookup_data[[level1]]))
+    matches_level1 <- sum(unique_data_values %in% unique_lookup_values)
     results$level1 <- c(
-      "matches" = matches_level1, "total" = length(unique(data[[level1]]))
+      "matches" = matches_level1, "total" = length(unique_data_values)
     )
   }
 
   if (!is.null(level2)) {
-    matches_level2 <- sum(
-      unique(data[[level2]]) %in% unique(lookup_data[[level2]])
-    )
+    unique_data_values <- unique(stats::na.omit(data[[level2]]))
+    unique_lookup_values <- unique(stats::na.omit(lookup_data[[level2]]))
+    matches_level2 <- sum(unique_data_values %in% unique_lookup_values)
     results$level2 <- c(
-      "matches" = matches_level2, "total" =
-        length(unique(data[[level2]]))
+      "matches" = matches_level2, "total" = length(unique_data_values)
     )
   }
 
   if (!is.null(level3)) {
-    matches_level3 <- sum(
-      unique(data[[level3]]) %in% unique(lookup_data[[level3]])
-    )
+    unique_data_values <- unique(stats::na.omit(data[[level3]]))
+    unique_lookup_values <- unique(stats::na.omit(lookup_data[[level3]]))
+    matches_level3 <- sum(unique_data_values %in% unique_lookup_values)
     results$level3 <- c(
-      "matches" = matches_level3, "total" =
-        length(unique(data[[level3]]))
+      "matches" = matches_level3, "total" = length(unique_data_values)
     )
   }
 
   if (!is.null(level4)) {
-    matches_level4 <- sum(
-      unique(data[[level4]]) %in% unique(lookup_data[[level4]])
-    )
+    unique_data_values <- unique(stats::na.omit(data[[level4]]))
+    unique_lookup_values <- unique(stats::na.omit(lookup_data[[level4]]))
+    matches_level4 <- sum(unique_data_values %in% unique_lookup_values)
     results$level4 <- c(
-      "matches" = matches_level4, "total" =
-        length(unique(data[[level4]]))
+      "matches" = matches_level4, "total" = length(unique_data_values)
     )
   }
 
