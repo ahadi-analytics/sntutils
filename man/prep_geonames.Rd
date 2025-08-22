@@ -15,7 +15,6 @@ prep_geonames(
   who_region = NULL,
   cache_path = NULL,
   method = "jw",
-  stratify = TRUE,
   interactive = TRUE,
   max_options = 200
 )
@@ -59,9 +58,6 @@ default uses \code{"jw"} (Jaro-Winkler). Other options include:
 \code{"qgram"} (Q-Gram), \code{"jw"} (Jaro-Winkler), and
 \code{"soundex"}.}
 
-\item{stratify}{Logical; if TRUE, performs cleaning stratified by
-admin levels to maintain hierarchical consistency.}
-
 \item{interactive}{Logical; if TRUE, prompts the user for interactive
 matching decisions. Defaults to FALSE.}
 
@@ -79,7 +75,7 @@ distance algorithms for initial matching and offers user interactivity for
 final decision-making, which are then saved for future reference and sharing.
 Although the function does not require limiting name matching exclusively to
 upper-level admins, optimal performance is achieved by confining to stricter
-within-admin stratifications (through the use of stratify function option),
+within-admin stratifications,
 ensuring more accurate results. The function can also work with site names
 or even any string matching that has lookup data.
 }
