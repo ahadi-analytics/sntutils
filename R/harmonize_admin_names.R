@@ -882,10 +882,6 @@ construct_geo_names <- function(data, level0, level1, level2,
 #'        session. If NULL or the file does not exist at the provided path,
 #'        users will be prompted to specify a new path or create a new cache
 #'        data frame.
-#' @param who_region If using the internal version of WHO geoname data, you can]
-#'        specify the region name of interest to speed up the name matching.
-#'        The default is NULL which includes all regions, however, users can
-#'        pick from the following regions: AFRO, AMRO, EMRO, EURO, SEARO & WPRO.
 #' @param method The string distance calculation method(s) to be used. Users
 #'        can specify one or more algorithms from the
 #'        \code{\link[stringdist]{stringdist}} package to compute
@@ -947,7 +943,6 @@ prep_geonames <- function(target_df, lookup_df = NULL,
                                   level2 = NULL,
                                   level3 = NULL,
                                   level4 = NULL,
-                                  who_region = NULL,
                                   cache_path = NULL,
                                   method = "jw",
                                   interactive = TRUE,
@@ -1098,9 +1093,6 @@ prep_geonames <- function(target_df, lookup_df = NULL,
   if (is.null(lookup_df)) {
     lookup_df <- sntutils::shp_global
 
-    if (!is.null(who_region)) {
-      lookup_df <- dplyr::filter(lookup_df, WHO_REGION == toupper(who_region))
-    }
 
     if (!is.null(level0)) {
       lookup_df <- dplyr::rename(lookup_df, !!level0 := ADM0_NAME)

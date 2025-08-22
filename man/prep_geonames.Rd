@@ -12,7 +12,6 @@ prep_geonames(
   level2 = NULL,
   level3 = NULL,
   level4 = NULL,
-  who_region = NULL,
   cache_path = NULL,
   method = "jw",
   interactive = TRUE,
@@ -35,11 +34,6 @@ attached to sntutils is used.}
 \item{level3}{level3 col name (subdistrict) in both 'data' and 'lookup_data'.}
 
 \item{level4}{level4 col name (settlement) in both 'data' and 'lookup_data'.}
-
-\item{who_region}{If using the internal version of WHO geoname data, you can]
-specify the region name of interest to speed up the name matching.
-The default is NULL which includes all regions, however, users can
-pick from the following regions: AFRO, AMRO, EMRO, EURO, SEARO & WPRO.}
 
 \item{cache_path}{Optional; the path where the cache data frame is
 saved after user modifications. This path is also used to match and
