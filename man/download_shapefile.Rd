@@ -8,7 +8,7 @@ download_shapefile(
   country_codes,
   admin_level = "ADM2",
   latest = TRUE,
-  dest_file = NULL
+  dest_path = NULL
 )
 }
 \arguments{
@@ -21,7 +21,7 @@ download_shapefile(
 \item{latest}{Logical. If TRUE (default), returns only the latest/active
 boundaries. If FALSE, returns all historical boundaries.}
 
-\item{dest_file}{File path where data is saved. If NULL (default),
+\item{dest_path}{File path where data is saved. If NULL (default),
 data is returned without saving to disk.}
 }
 \value{
@@ -36,7 +36,7 @@ following columns:
 \item{end_date}{Date when the boundary ceased (9999-12-31 for current)}
 \item{geometry}{Spatial geometry column}
 }
-If \code{dest_file} is provided, the data is also saved to that location.
+If \code{dest_path} is provided, the data is also saved to that location.
 }
 \description{
 Downloads administrative boundaries from WHO's ArcGIS services for specified
@@ -86,30 +86,33 @@ sudan_historical <- download_shapefile(
 # This would show Sudan before and after South Sudan independence
 # (2011-07-11)
 
-# Download multiple countries and save to file
-# File will be saved as "east_africa_adm0.gpkg"
+# Download multiple countries and save to directory
+# File will be saved as "who_shapefile_ken_uga_tza_adm0.gpkg"
 africa_countries <- download_shapefile(
   country_codes = c("KEN", "UGA", "TZA"),
   admin_level = "ADM0",
-  dest_file = here::here(tf, "east_africa.gpkg")
+  dest_path = tf
 )
 
 # Incremental update - add more countries to existing file
-# Will use the same "east_africa_adm0.gpkg" file
+# Will automatically use the same filename for the same countries+admin combo
 download_shapefile(
   country_codes = c("KEN", "UGA", "TZA", "RWA", "BDI"),
   admin_level = "ADM0",
-  dest_file = here::here(tf, "east_africa.gpkg")
+  dest_path = tf
 )
-# Only RWA and BDI will be downloaded and appended
+# Creates "who_shapefile_ken_uga_tza_rwa_bdi_adm0.gpkg"
 
-# Different admin levels saved to different files
-# Saves as "kenya_boundaries_adm1.gpkg"
-download_shapefile("KEN", "ADM1",
-                   dest_file = here::here(tf, "kenya_boundaries.gpkg"))
-# Saves as "kenya_boundaries_adm2.gpkg"
-download_shapefile("KEN", "ADM2",
-                   dest_file = here::here(tf, "kenya_boundaries.gpkg"))
+# Different admin levels saved to different files automatically
+# Saves as "who_shapefile_ken_adm1.gpkg"
+download_shapefile("KEN", "ADM1", dest_path = tf)
+
+# Saves as "who_shapefile_ken_adm2.gpkg"
+download_shapefile("KEN", "ADM2", dest_path = tf)
+
+# Multiple countries at ADM2 level
+# Saves as "who_shapefile_com_syc_mus_adm2.gpkg"
+download_shapefile(c("COM", "SYC", "MUS"), "ADM2", dest_path = tf)
 }
 
 }

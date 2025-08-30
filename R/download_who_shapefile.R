@@ -27,7 +27,7 @@
 #'   ("ADM0", "ADM1", or "ADM2"). Default is "ADM2".
 #' @param latest Logical. If TRUE (default), returns only the latest/active
 #'   boundaries. If FALSE, returns all historical boundaries.
-#' @param dest_file File path where data is saved. If NULL (default),
+#' @param dest_path File path where data is saved. If NULL (default),
 #'   data is returned without saving to disk.
 #'
 #' @return An `sf` object containing administrative boundaries with the
@@ -41,7 +41,7 @@
 #'     \item{end_date}{Date when the boundary ceased (9999-12-31 for current)}
 #'     \item{geometry}{Spatial geometry column}
 #'   }
-#'   If `dest_file` is provided, the data is also saved to that location.
+#'   If `dest_path` is provided, the data is also saved to that location.
 #' @examples
 #'
 #' \donttest{
@@ -64,30 +64,33 @@
 #' # This would show Sudan before and after South Sudan independence
 #' # (2011-07-11)
 #'
-#' # Download multiple countries and save to file
-#' # File will be saved as "east_africa_adm0.gpkg"
+#' # Download multiple countries and save to directory
+#' # File will be saved as "who_shapefile_ken_uga_tza_adm0.gpkg"
 #' africa_countries <- download_shapefile(
 #'   country_codes = c("KEN", "UGA", "TZA"),
 #'   admin_level = "ADM0",
-#'   dest_file = here::here(tf, "east_africa.gpkg")
+#'   dest_path = tf
 #' )
 #'
 #' # Incremental update - add more countries to existing file
-#' # Will use the same "east_africa_adm0.gpkg" file
+#' # Will automatically use the same filename for the same countries+admin combo
 #' download_shapefile(
 #'   country_codes = c("KEN", "UGA", "TZA", "RWA", "BDI"),
 #'   admin_level = "ADM0",
-#'   dest_file = here::here(tf, "east_africa.gpkg")
+#'   dest_path = tf
 #' )
-#' # Only RWA and BDI will be downloaded and appended
+#' # Creates "who_shapefile_ken_uga_tza_rwa_bdi_adm0.gpkg"
 #'
-#' # Different admin levels saved to different files
-#' # Saves as "kenya_boundaries_adm1.gpkg"
-#' download_shapefile("KEN", "ADM1",
-#'                    dest_file = here::here(tf, "kenya_boundaries.gpkg"))
-#' # Saves as "kenya_boundaries_adm2.gpkg"
-#' download_shapefile("KEN", "ADM2",
-#'                    dest_file = here::here(tf, "kenya_boundaries.gpkg"))
+#' # Different admin levels saved to different files automatically
+#' # Saves as "who_shapefile_ken_adm1.gpkg"
+#' download_shapefile("KEN", "ADM1", dest_path = tf)
+#'
+#' # Saves as "who_shapefile_ken_adm2.gpkg"
+#' download_shapefile("KEN", "ADM2", dest_path = tf)
+#'
+#' # Multiple countries at ADM2 level
+#' # Saves as "who_shapefile_com_syc_mus_adm2.gpkg"
+#' download_shapefile(c("COM", "SYC", "MUS"), "ADM2", dest_path = tf)
 #' }
 #'
 #' @note
@@ -104,7 +107,7 @@ download_shapefile <- function(
   country_codes,
   admin_level = "ADM2",
   latest = TRUE,
-  dest_file = NULL
+  dest_path = NULL
 ) {
   # Check for required packages
   if (!requireNamespace("httr2", quietly = TRUE)) {
@@ -128,30 +131,41 @@ download_shapefile <- function(
     )
   }
 
-  # Initialize existing codes if dest_file is provided and exists
-  if (!is.null(dest_file)) {
+  # Initialize existing codes if dest_path is provided
+  dest_file <- NULL
+  if (!is.null(dest_path)) {
+    # Ensure directory exists
+    dir.create(dest_path, recursive = TRUE, showWarnings = FALSE)
+
+    # Construct filename based on country codes and admin level
+    countries_str <- tolower(paste(country_codes, collapse = "_"))
+    admin_str <- tolower(admin_level)
+    dest_file <- file.path(
+      dest_path,
+      paste0("who_shapefile_", countries_str, "_", admin_str, ".gpkg")
+    )
+
     if (file.exists(dest_file)) {
       existing_sf <- sf::st_read(dest_file, quiet = TRUE)
       existing_codes <- unique(existing_sf$adm0_code)
+
+      # Calculate missing codes
+      diff_codes <- setdiff(country_codes, existing_codes)
+
+      # Assign only the missing codes back to `country_codes`
+      country_codes <- diff_codes
+
+      if (length(country_codes) == 0) {
+        cli::cli_alert_info(
+          glue::glue(
+            "All requested country codes are already in {basename(dest_file)}. No updates needed."
+          )
+        )
+        # Return the existing data
+        return(existing_sf)
+      }
     } else {
       existing_codes <- character(0) # No existing codes if file doesn't exist
-    }
-
-    # Calculate missing codes
-    diff_codes <- setdiff(country_codes, existing_codes)
-
-    # Assign only the missing codes back to `country_codes`
-    country_codes <- diff_codes
-
-    if (length(country_codes) == 0) {
-      cli::cli_alert_info(
-        glue::glue(
-          "All requested country codes are already ",
-          "in {dest_file}. No updates needed."
-        )
-      )
-      # Return the existing data
-      return(existing_sf)
     }
   }
 
@@ -252,27 +266,8 @@ download_shapefile <- function(
       )
   )
 
-  # Save data if dest_file is provided
-  if (!is.null(dest_file)) {
-    # Add admin level suffix to filename if not already present
-    admin_suffix <- tolower(admin_level)
-
-    # Check if the file already has an admin level suffix
-    if (!grepl(paste0("_", admin_suffix), basename(dest_file))) {
-      # Split the file path into directory, name, and extension
-      file_dir <- dirname(dest_file)
-      file_name <- tools::file_path_sans_ext(basename(dest_file))
-      file_ext <- tools::file_ext(dest_file)
-
-      # Reconstruct with admin level suffix
-      dest_file <- file.path(
-        file_dir,
-        paste0(file_name, "_", admin_suffix, ".", file_ext)
-      )
-    }
-
-    # Ensure directory exists
-    dir.create(dirname(dest_file), recursive = TRUE, showWarnings = FALSE)
+  # Save data if dest_path was provided
+  if (!is.null(dest_path) && !is.null(dest_file)) {
 
     if (file.exists(dest_file)) {
       # Append to existing file
@@ -284,8 +279,8 @@ download_shapefile <- function(
       )
       cli::cli_alert_success(
         glue::glue(
-          "Appended missing country codes to existing ",
-          "shapefile: {paste(country_codes, collapse=', ')}"
+          "Appended missing country codes to existing shapefile ({basename(dest_file)}): ",
+          "{paste(country_codes, collapse=', ')}"
         )
       )
       # Read and return the complete dataset
@@ -300,7 +295,7 @@ download_shapefile <- function(
       )
       cli::cli_alert_success(
         glue::glue(
-          "Created new shapefile with country codes: ",
+          "Created new shapefile ({basename(dest_file)}) with country codes: ",
           "{paste(country_codes, collapse=', ')}"
         )
       )

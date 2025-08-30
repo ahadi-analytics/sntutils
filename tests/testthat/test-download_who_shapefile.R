@@ -33,7 +33,7 @@ testthat::test_that("download_shapefile accepts valid admin levels", {
   })
 })
 
-testthat::test_that("download_shapefile returns sf object without saving when dest_file is NULL", {
+testthat::test_that("download_shapefile returns sf object without saving when dest_path is NULL", {
   testthat::skip_on_cran()
   testthat::skip_if_offline()
 
@@ -75,27 +75,27 @@ testthat::test_that("download_shapefile returns correct columns for each admin l
   testthat::expect_true("end_date" %in% names(result_adm0))
 })
 
-testthat::test_that("download_shapefile saves to file when dest_file is provided", {
+testthat::test_that("download_shapefile saves to file when dest_path is provided", {
   testthat::skip_on_cran()
   testthat::skip_if_offline()
 
   temp_dir <- tempdir()
-  temp_file <- file.path(temp_dir, "test_shapefile.gpkg")
+  expected_file <- file.path(temp_dir, "who_shapefile_com_adm0.gpkg")
 
   # Clean up if file exists
-  if (file.exists(temp_file)) unlink(temp_file)
+  if (file.exists(expected_file)) unlink(expected_file)
 
   result <- download_shapefile(
     "COM",
     admin_level = "ADM0",
-    dest_file = temp_file
+    dest_path = temp_dir
   )
 
-  testthat::expect_true(file.exists(temp_file))
+  testthat::expect_true(file.exists(expected_file))
   testthat::expect_s3_class(result, "sf")
 
   # Read back the saved file
-  saved_data <- sf::st_read(temp_file, quiet = TRUE)
+  saved_data <- sf::st_read(expected_file, quiet = TRUE)
   testthat::expect_equal(nrow(saved_data), nrow(result))
   # Geometry column name may change when saving/reading
   testthat::expect_equal(
@@ -104,7 +104,7 @@ testthat::test_that("download_shapefile saves to file when dest_file is provided
   )
 
   # Clean up
-  unlink(temp_file)
+  unlink(expected_file)
 })
 
 testthat::test_that("download_shapefile handles incremental updates correctly", {
@@ -112,38 +112,42 @@ testthat::test_that("download_shapefile handles incremental updates correctly", 
   testthat::skip_if_offline()
 
   temp_dir <- tempdir()
-  temp_file <- file.path(temp_dir, "test_incremental.gpkg")
+  # File name will be who_shapefile_com_syc_adm0.gpkg when both are added
+  first_file <- file.path(temp_dir, "who_shapefile_com_adm0.gpkg")
+  second_file <- file.path(temp_dir, "who_shapefile_com_syc_adm0.gpkg")
 
-  # Clean up if file exists
-  if (file.exists(temp_file)) unlink(temp_file)
+  # Clean up if files exist
+  if (file.exists(first_file)) unlink(first_file)
+  if (file.exists(second_file)) unlink(second_file)
 
   # First download
   result1 <- download_shapefile(
     "COM",
     admin_level = "ADM0",
-    dest_file = temp_file
+    dest_path = temp_dir
   )
 
-  testthat::expect_true(file.exists(temp_file))
+  testthat::expect_true(file.exists(first_file))
   testthat::expect_equal(unique(result1$adm0_code), "COM")
 
-  # Second download with additional country
+  # Second download with additional country creates new file
   result2 <- download_shapefile(
     c("COM", "SYC"),
     admin_level = "ADM0",
-    dest_file = temp_file
+    dest_path = temp_dir
   )
 
-  # Should have both countries now
+  # Should have both countries in new file
+  testthat::expect_true(file.exists(second_file))
   testthat::expect_true(all(c("COM", "SYC") %in% result2$adm0_code))
-  testthat::expect_true(nrow(result2) > nrow(result1))
+  testthat::expect_true(nrow(result2) >= 2)
 
   # Third download with same countries (should not download again)
   expect_message(
     result3 <- download_shapefile(
       c("COM", "SYC"),
       admin_level = "ADM0",
-      dest_file = temp_file
+      dest_path = temp_dir
     ),
     "All requested country codes are already"
   )
@@ -151,7 +155,8 @@ testthat::test_that("download_shapefile handles incremental updates correctly", 
   testthat::expect_equal(nrow(result3), nrow(result2))
 
   # Clean up
-  unlink(temp_file)
+  unlink(first_file)
+  unlink(second_file)
 })
 
 testthat::test_that("download_shapefile handles multiple country codes", {
@@ -187,7 +192,7 @@ testthat::test_that("download_shapefile creates directory if it doesn't exist", 
   testthat::skip_if_offline()
 
   temp_dir <- file.path(tempdir(), "new_test_dir", "nested")
-  temp_file <- file.path(temp_dir, "test_shapefile.gpkg")
+  expected_file <- file.path(temp_dir, "who_shapefile_com_adm0.gpkg")
 
   # Ensure directory doesn't exist
   if (dir.exists(temp_dir)) unlink(temp_dir, recursive = TRUE)
@@ -195,11 +200,11 @@ testthat::test_that("download_shapefile creates directory if it doesn't exist", 
   result <- download_shapefile(
     "COM",
     admin_level = "ADM0",
-    dest_file = temp_file
+    dest_path = temp_dir
   )
 
   testthat::expect_true(dir.exists(temp_dir))
-  testthat::expect_true(file.exists(temp_file))
+  testthat::expect_true(file.exists(expected_file))
 
   # Clean up
   unlink(dirname(temp_dir), recursive = TRUE)
@@ -280,15 +285,16 @@ testthat::test_that("download_shapefile validates geometries", {
   testthat::expect_true(all(sf::st_is_valid(result)))
 
   # When saving, geometries should also be valid
-  temp_file <- tempfile(fileext = ".gpkg")
+  temp_dir <- tempdir()
   result_saved <- download_shapefile(
     "COM",
     admin_level = "ADM0",
-    dest_file = temp_file
+    dest_path = temp_dir
   )
 
   testthat::expect_true(all(sf::st_is_valid(result_saved)))
 
   # Clean up
-  unlink(temp_file)
+  expected_file <- file.path(temp_dir, "who_shapefile_com_adm0.gpkg")
+  if (file.exists(expected_file)) unlink(expected_file)
 })
