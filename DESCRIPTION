@@ -2,16 +2,14 @@ Package: sntutils
 Type: Package
 Title: Utility Functions for Data Preparation and Analysis in Subnational
     Tailoring of Malaria Interventions (SNT)
-Version: 1.6.3
+Version: 1.6.4
 Authors@R: c(
     person("Mohamed A.", "Yusuf",
            role = c("aut", "cre"),
            email = "moyusuf@who.who",
            comment = c(ORCID = "0000-0002-9339-4613",
                       second_email = "mohamedayusuf87@gmail.com")))
-Description: A helper package for the Subnational Tailoring (SNT) process which
-    includes a number of utility functions to help users with data cleaning,
-    management, visualization, and analysis.
+Description: A helper package for the Subnational Tailoring (SNT) process which includes a number of utility functions to help users with data cleaning, management, visualization, and analysis.
 License: CC BY 4.0
 URL: https://github.com/ahadi-analytics/sntutils
 BugReports: https://github.com/ahadi-analytics/sntutils/issues
