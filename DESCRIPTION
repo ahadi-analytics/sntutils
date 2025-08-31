@@ -32,7 +32,11 @@ Imports:
     stringr,
     tidyr,
     ggplot2,
-    digest
+    digest,
+    exactextractr,
+    terra,
+    tibble,
+    matrixStats
 Suggests:
     ggtext,
     scales,
@@ -47,17 +51,13 @@ Suggests:
     stringi,
     zoo,
     R.utils,
-    tibble,
-    exactextractr,
-    terra,
     fs,
     rvest,
     xml2,
     here,
     httr2,
     raster,
-    jsonlite,
-    matrixStats
+    jsonlite
 Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
