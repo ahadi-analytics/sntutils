@@ -124,6 +124,11 @@ get_hierarchical_combinations <- function(df, levels) {
     return(data.frame())
   }
 
+  # If input is an sf object, drop geometry to avoid list columns
+  if (inherits(df, "sf")) {
+    df <- sf::st_drop_geometry(df)
+  }
+
   # Filter to only the specified levels that exist in the dataframe
   existing_levels <- levels[levels %in% names(df)]
   if (length(existing_levels) == 0) {
@@ -131,8 +136,8 @@ get_hierarchical_combinations <- function(df, levels) {
   }
 
   # Remove rows with any NA values and get unique combinations
-  df_clean <- df[stats::complete.cases(df[existing_levels]),
-                 existing_levels, drop = FALSE]
+  df_subset <- df[, existing_levels, drop = FALSE]
+  df_clean <- df_subset[stats::complete.cases(df_subset), , drop = FALSE]
   unique(df_clean)
 }
 
