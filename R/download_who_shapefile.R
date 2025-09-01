@@ -28,7 +28,8 @@
 #' @param latest Logical. If TRUE (default), returns only the latest/active
 #'   boundaries. If FALSE, returns all historical boundaries.
 #' @param dest_path File path where data is saved. If NULL (default),
-#'   data is returned without saving to disk.
+#'   data is returned without saving to disk. When `latest = TRUE`, the output
+#'   filename will include the suffix `_latest` before the extension.
 #'
 #' @return An `sf` object containing administrative boundaries with the
 #'   following columns:
@@ -65,7 +66,7 @@
 #' # (2011-07-11)
 #'
 #' # Download multiple countries and save to directory
-#' # File will be saved as "who_shapefile_ken_uga_tza_adm0.gpkg"
+#' # File will be saved as "who_shapefile_ken_uga_tza_adm0_latest.gpkg" (latest=TRUE)
 #' africa_countries <- download_shapefile(
 #'   country_codes = c("KEN", "UGA", "TZA"),
 #'   admin_level = "ADM0",
@@ -79,17 +80,17 @@
 #'   admin_level = "ADM0",
 #'   dest_path = tf
 #' )
-#' # Creates "who_shapefile_ken_uga_tza_rwa_bdi_adm0.gpkg"
+#' # Creates "who_shapefile_ken_uga_tza_rwa_bdi_adm0_latest.gpkg" (latest=TRUE)
 #'
 #' # Different admin levels saved to different files automatically
-#' # Saves as "who_shapefile_ken_adm1.gpkg"
+#' # Saves as "who_shapefile_ken_adm1_latest.gpkg" (latest=TRUE)
 #' download_shapefile("KEN", "ADM1", dest_path = tf)
 #'
-#' # Saves as "who_shapefile_ken_adm2.gpkg"
+#' # Saves as "who_shapefile_ken_adm2_latest.gpkg" (latest=TRUE)
 #' download_shapefile("KEN", "ADM2", dest_path = tf)
 #'
 #' # Multiple countries at ADM2 level
-#' # Saves as "who_shapefile_com_syc_mus_adm2.gpkg"
+#' # Saves as "who_shapefile_com_syc_mus_adm2_latest.gpkg" (latest=TRUE)
 #' download_shapefile(c("COM", "SYC", "MUS"), "ADM2", dest_path = tf)
 #' }
 #'
@@ -140,10 +141,12 @@ download_shapefile <- function(
     # Construct filename based on country codes and admin level
     countries_str <- tolower(paste(country_codes, collapse = "_"))
     admin_str <- tolower(admin_level)
-    dest_file <- file.path(
-      dest_path,
-      paste0("who_shapefile_", countries_str, "_", admin_str, ".gpkg")
-    )
+    # Build base filename and append suffix when latest = TRUE
+    file_stem <- paste0("who_shapefile_", countries_str, "_", admin_str)
+    if (isTRUE(latest)) {
+      file_stem <- paste0(file_stem, "_latest")
+    }
+    dest_file <- file.path(dest_path, paste0(file_stem, ".gpkg"))
 
     if (file.exists(dest_file)) {
       existing_sf <- sf::st_read(dest_file, quiet = TRUE)
