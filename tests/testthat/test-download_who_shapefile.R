@@ -80,7 +80,7 @@ testthat::test_that("download_shapefile saves to file when dest_path is provided
   testthat::skip_if_offline()
 
   temp_dir <- tempdir()
-  expected_file <- file.path(temp_dir, "who_shapefile_com_adm0.gpkg")
+  expected_file <- file.path(temp_dir, "who_shapefile_com_adm0_latest.gpkg")
 
   # Clean up if file exists
   if (file.exists(expected_file)) unlink(expected_file)
@@ -112,9 +112,10 @@ testthat::test_that("download_shapefile handles incremental updates correctly", 
   testthat::skip_if_offline()
 
   temp_dir <- tempdir()
-  # File name will be who_shapefile_com_syc_adm0.gpkg when both are added
-  first_file <- file.path(temp_dir, "who_shapefile_com_adm0.gpkg")
-  second_file <- file.path(temp_dir, "who_shapefile_com_syc_adm0.gpkg")
+  # File names include _latest suffix when latest = TRUE (default)
+  # File name will be who_shapefile_com_syc_adm0_latest.gpkg when both are added
+  first_file <- file.path(temp_dir, "who_shapefile_com_adm0_latest.gpkg")
+  second_file <- file.path(temp_dir, "who_shapefile_com_syc_adm0_latest.gpkg")
 
   # Clean up if files exist
   if (file.exists(first_file)) unlink(first_file)
@@ -192,7 +193,7 @@ testthat::test_that("download_shapefile creates directory if it doesn't exist", 
   testthat::skip_if_offline()
 
   temp_dir <- file.path(tempdir(), "new_test_dir", "nested")
-  expected_file <- file.path(temp_dir, "who_shapefile_com_adm0.gpkg")
+  expected_file <- file.path(temp_dir, "who_shapefile_com_adm0_latest.gpkg")
 
   # Ensure directory doesn't exist
   if (dir.exists(temp_dir)) unlink(temp_dir, recursive = TRUE)
@@ -295,6 +296,6 @@ testthat::test_that("download_shapefile validates geometries", {
   testthat::expect_true(all(sf::st_is_valid(result_saved)))
 
   # Clean up
-  expected_file <- file.path(temp_dir, "who_shapefile_com_adm0.gpkg")
+  expected_file <- file.path(temp_dir, "who_shapefile_com_adm0_latest.gpkg")
   if (file.exists(expected_file)) unlink(expected_file)
 })

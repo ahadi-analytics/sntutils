@@ -22,7 +22,8 @@ download_shapefile(
 boundaries. If FALSE, returns all historical boundaries.}
 
 \item{dest_path}{File path where data is saved. If NULL (default),
-data is returned without saving to disk.}
+data is returned without saving to disk. When \code{latest = TRUE}, the output
+filename will include the suffix \verb{_latest} before the extension.}
 }
 \value{
 An \code{sf} object containing administrative boundaries with the
@@ -87,7 +88,7 @@ sudan_historical <- download_shapefile(
 # (2011-07-11)
 
 # Download multiple countries and save to directory
-# File will be saved as "who_shapefile_ken_uga_tza_adm0.gpkg"
+# File will be saved as "who_shapefile_ken_uga_tza_adm0_latest.gpkg" (latest=TRUE)
 africa_countries <- download_shapefile(
   country_codes = c("KEN", "UGA", "TZA"),
   admin_level = "ADM0",
@@ -101,17 +102,17 @@ download_shapefile(
   admin_level = "ADM0",
   dest_path = tf
 )
-# Creates "who_shapefile_ken_uga_tza_rwa_bdi_adm0.gpkg"
+# Creates "who_shapefile_ken_uga_tza_rwa_bdi_adm0_latest.gpkg" (latest=TRUE)
 
 # Different admin levels saved to different files automatically
-# Saves as "who_shapefile_ken_adm1.gpkg"
+# Saves as "who_shapefile_ken_adm1_latest.gpkg" (latest=TRUE)
 download_shapefile("KEN", "ADM1", dest_path = tf)
 
-# Saves as "who_shapefile_ken_adm2.gpkg"
+# Saves as "who_shapefile_ken_adm2_latest.gpkg" (latest=TRUE)
 download_shapefile("KEN", "ADM2", dest_path = tf)
 
 # Multiple countries at ADM2 level
-# Saves as "who_shapefile_com_syc_mus_adm2.gpkg"
+# Saves as "who_shapefile_com_syc_mus_adm2_latest.gpkg" (latest=TRUE)
 download_shapefile(c("COM", "SYC", "MUS"), "ADM2", dest_path = tf)
 }
 
