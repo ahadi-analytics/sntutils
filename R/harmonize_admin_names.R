@@ -194,13 +194,14 @@ calculate_match_stats <- function(data, lookup_data, level0 = NULL,
     data_combos <- get_hierarchical_combinations(data, level0)
     lookup_combos <- get_hierarchical_combinations(lookup_data, level0)
 
-    if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
-      matches_level0 <- sum(data_combos[[level0]] %in% lookup_combos[[level0]])
-      results$level0 <- c(
-        "matches" = matches_level0, "total" = nrow(data_combos)
+    total_level0 <- nrow(lookup_combos)
+    if (nrow(data_combos) > 0 && total_level0 > 0) {
+      matches_level0 <- length(
+        intersect(unique(data_combos[[level0]]), unique(lookup_combos[[level0]]))
       )
+      results$level0 <- c("matches" = matches_level0, "total" = total_level0)
     } else {
-      results$level0 <- c("matches" = 0, "total" = nrow(data_combos))
+      results$level0 <- c("matches" = 0, "total" = total_level0)
     }
   }
 
@@ -211,27 +212,26 @@ calculate_match_stats <- function(data, lookup_data, level0 = NULL,
 
     if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
       # Create combined keys for matching
-      data_keys <- paste(data_combos[[level0]], data_combos[[level1]], sep = "_")
-      lookup_keys <- paste(lookup_combos[[level0]], lookup_combos[[level1]], sep = "_")
-      matches_level1 <- sum(data_keys %in% lookup_keys)
-      results$level1 <- c(
-        "matches" = matches_level1, "total" = length(data_keys)
-      )
+      data_keys <- unique(paste(data_combos[[level0]], data_combos[[level1]], sep = "_"))
+      lookup_keys <- unique(paste(lookup_combos[[level0]], lookup_combos[[level1]], sep = "_"))
+      matches_level1 <- length(intersect(data_keys, lookup_keys))
+      results$level1 <- c("matches" = matches_level1, "total" = length(lookup_keys))
     } else {
-      results$level1 <- c("matches" = 0, "total" = nrow(data_combos))
+      results$level1 <- c("matches" = 0, "total" = nrow(lookup_combos))
     }
   } else if (!is.null(level1)) {
     # If level0 is not provided, just match level1 alone
     data_combos <- get_hierarchical_combinations(data, level1)
     lookup_combos <- get_hierarchical_combinations(lookup_data, level1)
 
-    if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
-      matches_level1 <- sum(data_combos[[level1]] %in% lookup_combos[[level1]])
-      results$level1 <- c(
-        "matches" = matches_level1, "total" = nrow(data_combos)
+    total_level1 <- nrow(lookup_combos)
+    if (nrow(data_combos) > 0 && total_level1 > 0) {
+      matches_level1 <- length(
+        intersect(unique(data_combos[[level1]]), unique(lookup_combos[[level1]]))
       )
+      results$level1 <- c("matches" = matches_level1, "total" = total_level1)
     } else {
-      results$level1 <- c("matches" = 0, "total" = nrow(data_combos))
+      results$level1 <- c("matches" = 0, "total" = total_level1)
     }
   }
 
@@ -248,14 +248,12 @@ calculate_match_stats <- function(data, lookup_data, level0 = NULL,
 
     if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
       # Create combined keys for matching
-      data_keys <- do.call(paste, c(data_combos[hierarchy], sep = "_"))
-      lookup_keys <- do.call(paste, c(lookup_combos[hierarchy], sep = "_"))
-      matches_level2 <- sum(data_keys %in% lookup_keys)
-      results$level2 <- c(
-        "matches" = matches_level2, "total" = length(data_keys)
-      )
+      data_keys <- unique(do.call(paste, c(data_combos[hierarchy], sep = "_")))
+      lookup_keys <- unique(do.call(paste, c(lookup_combos[hierarchy], sep = "_")))
+      matches_level2 <- length(intersect(data_keys, lookup_keys))
+      results$level2 <- c("matches" = matches_level2, "total" = length(lookup_keys))
     } else {
-      results$level2 <- c("matches" = 0, "total" = nrow(data_combos))
+      results$level2 <- c("matches" = 0, "total" = nrow(lookup_combos))
     }
   }
 
@@ -273,14 +271,12 @@ calculate_match_stats <- function(data, lookup_data, level0 = NULL,
 
     if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
       # Create combined keys for matching
-      data_keys <- do.call(paste, c(data_combos[hierarchy], sep = "_"))
-      lookup_keys <- do.call(paste, c(lookup_combos[hierarchy], sep = "_"))
-      matches_level3 <- sum(data_keys %in% lookup_keys)
-      results$level3 <- c(
-        "matches" = matches_level3, "total" = length(data_keys)
-      )
+      data_keys <- unique(do.call(paste, c(data_combos[hierarchy], sep = "_")))
+      lookup_keys <- unique(do.call(paste, c(lookup_combos[hierarchy], sep = "_")))
+      matches_level3 <- length(intersect(data_keys, lookup_keys))
+      results$level3 <- c("matches" = matches_level3, "total" = length(lookup_keys))
     } else {
-      results$level3 <- c("matches" = 0, "total" = nrow(data_combos))
+      results$level3 <- c("matches" = 0, "total" = nrow(lookup_combos))
     }
   }
 
@@ -299,14 +295,12 @@ calculate_match_stats <- function(data, lookup_data, level0 = NULL,
 
     if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
       # Create combined keys for matching
-      data_keys <- do.call(paste, c(data_combos[hierarchy], sep = "_"))
-      lookup_keys <- do.call(paste, c(lookup_combos[hierarchy], sep = "_"))
-      matches_level4 <- sum(data_keys %in% lookup_keys)
-      results$level4 <- c(
-        "matches" = matches_level4, "total" = length(data_keys)
-      )
+      data_keys <- unique(do.call(paste, c(data_combos[hierarchy], sep = "_")))
+      lookup_keys <- unique(do.call(paste, c(lookup_combos[hierarchy], sep = "_")))
+      matches_level4 <- length(intersect(data_keys, lookup_keys))
+      results$level4 <- c("matches" = matches_level4, "total" = length(lookup_keys))
     } else {
-      results$level4 <- c("matches" = 0, "total" = nrow(data_combos))
+      results$level4 <- c("matches" = 0, "total" = nrow(lookup_combos))
     }
   }
 
