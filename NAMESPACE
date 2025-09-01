@@ -3,6 +3,7 @@
 export(autoparse_dates)
 export(available_date_formats)
 export(big_mark)
+export(calculate_match_stats)
 export(calculate_reporting_metrics)
 export(check_chirps_available)
 export(check_dhs_indicators)
