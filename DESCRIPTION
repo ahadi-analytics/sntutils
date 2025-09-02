@@ -21,7 +21,6 @@ Imports:
     rio,
     rlang,
     sf,
-    archive,
     crayon,
     dplyr,
     filelock,
@@ -59,7 +58,9 @@ Suggests:
     raster,
     jsonlite,
     qs2,
-    qs
+    qs,
+    shadowtext,
+    archive
 Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
