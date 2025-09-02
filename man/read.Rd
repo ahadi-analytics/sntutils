@@ -21,9 +21,10 @@ A data frame or appropriate R object containing the imported data.
 \description{
 This function provides a unified interface for reading data from various
 file formats supported by the \code{\link[rio]{import}},
-\code{\link[sf]{read_sf}}, and \code{\link[readxl]{read_excel}} packages. The
-format is automatically detected from the file extension to simplify the
-importing process.
+\code{\link[sf]{read_sf}}, and \code{\link[readxl]{read_excel}} packages.
+Additionally, it supports fast binary formats \code{.qs} and \code{.qs2}
+via the optional \code{qs2} package. The format is automatically detected
+from the file extension to simplify the importing process.
 }
 \examples{
 # Locate test data directory
@@ -54,7 +55,6 @@ data_geojson <- read(file_path = file.path(path, "test_data.GeoJSON"))
 }
 \seealso{
 \code{\link[rio]{import}},
-\code{\link[sf]{read_sf}}, and
-\code{\link[readxl]{read_excel}}, which this
-function is based on.
+\code{\link[sf]{read_sf}}, \code{\link[readxl]{read_excel}},
+and \code{qs2::qread} for reading \code{.qs}/\code{.qs2} files.
 }
