@@ -2,9 +2,10 @@
 #'
 #' This function provides a unified interface for reading data from various
 #' file formats supported by the \code{\link[rio]{import}},
-#' \code{\link[sf]{read_sf}}, and \code{\link[readxl]{read_excel}} packages. The
-#' format is automatically detected from the file extension to simplify the
-#' importing process.
+#' \code{\link[sf]{read_sf}}, and \code{\link[readxl]{read_excel}} packages.
+#' Additionally, it supports fast binary formats \code{.qs} and \code{.qs2}
+#' via the optional \code{qs2} package. The format is automatically detected
+#' from the file extension to simplify the importing process.
 #'
 #' @param file_path Character string specifying the path to the input file or
 #'   a URL pointing to the dataset.
@@ -42,9 +43,8 @@
 #' data_geojson <- read(file_path = file.path(path, "test_data.GeoJSON"))
 #'
 #' @seealso \code{\link[rio]{import}},
-#'         \code{\link[sf]{read_sf}}, and
-#'         \code{\link[readxl]{read_excel}}, which this
-#'               function is based on.
+#'         \code{\link[sf]{read_sf}}, \code{\link[readxl]{read_excel}},
+#'         and \code{qs2::qread} for reading \code{.qs}/\code{.qs2} files.
 #'
 #' @export
 read <- function(file_path, ...) {
@@ -75,6 +75,23 @@ read <- function(file_path, ...) {
     res <- readRDS(con)
     close(con)
     res
+  } else if (file_ext %in% c("qs", "qs2")) {
+    # Prefer qs2 if installed and exports qread; otherwise fall back to qs
+    if (requireNamespace("qs2", quietly = TRUE)) {
+      ns <- asNamespace("qs2")
+      if (exists("qread", envir = ns, mode = "function")) {
+        return(get("qread", envir = ns)(file_path, ...))
+      }
+    }
+    if (requireNamespace("qs", quietly = TRUE)) {
+      return(qs::qread(file_path, ...))
+    }
+    stop(
+      paste0(
+        "Reading '.", file_ext, "' requires the 'qs2' or 'qs' package. ",
+        "Please install one of them: install.packages('qs2') or install.packages('qs')."
+      )
+    )
   } else if (file_ext %in% c("shp", "json", "geojson")) { # for shapefiles
     sf::read_sf(file_path, ...)
   } else {

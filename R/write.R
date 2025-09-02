@@ -2,7 +2,9 @@
 #'
 #' This function provides a unified interface for saving data to various
 #' file formats supported by the \code{rio::export}
-#' function. The format is automatically detected from the file extension to
+#' function. Additionally, it supports fast binary formats \code{.qs} and
+#' \code{.qs2} via the optional \code{qs2} package.
+#' The format is automatically detected from the file extension to
 #' simplify the saving process.
 #'
 #' @param data The dataset to be saved
@@ -29,7 +31,10 @@
 #' write(mtcars, file_path = file.path(tmpdir, "file.dta"))
 #'
 #' # Save an RDS file
-#' #write(mtcars, file_path = file.path(tmpdir, "file.rds"))
+#' # write(mtcars, file_path = file.path(tmpdir, "file.rds"))
+#'
+#' # Save a qs/qs2 file (requires 'qs2')
+#' # write(mtcars, file_path = file.path(tmpdir, "file.qs"))
 #'
 #' # Save an RData file
 #' write(list(mtcars = mtcars, iris = iris),
@@ -42,7 +47,7 @@
 #'     cbind(mtcars[1, ]) |>
 #'     sf::st_as_sf(crs = sf::st_crs(4326))
 #'
-#' # save an RDS file
+#' # save a shapefile
 #' # write(my_shp, file_path = file.path(tmpdir, "file.shp"))
 #'
 #' # Remove the temporary directory and its contents
@@ -72,6 +77,25 @@ write <- function(data, file_path, ...) {
     saveRDS(data, con)
     close(con)
 
+  } else if (file_ext %in% c("qs", "qs2")) {
+    # Prefer qs2 if installed and exports qsave; otherwise fall back to qs
+    if (requireNamespace("qs2", quietly = TRUE)) {
+      ns <- asNamespace("qs2")
+      if (exists("qsave", envir = ns, mode = "function")) {
+        get("qsave", envir = ns)(data, file_path, ...)
+        return(invisible(NULL))
+      }
+    }
+    if (requireNamespace("qs", quietly = TRUE)) {
+      qs::qsave(data, file_path, ...)
+      return(invisible(NULL))
+    }
+    stop(
+      paste0(
+        "Writing '.", file_ext, "' requires the 'qs2' or 'qs' package. ",
+        "Please install one of them: install.packages('qs2') or install.packages('qs')."
+      )
+    )
   } else if (file_ext %in% "shp") { # shp shapefiles
     sf::write_sf(data, file_path, ...)
   } else if (file_ext %in% c("json", "geojson")) { # json shapefiles
