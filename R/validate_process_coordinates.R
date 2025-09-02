@@ -23,6 +23,9 @@
 #'   EPSG:4326.
 #' @param min_decimals Minimum decimal places required for lon/lat to be
 #'   considered precise (default 4).
+#' @param id_col Optional character name of a unique identifier column
+#'   (e.g., facility ID). When provided, duplicate reporting includes
+#'   IDs for coordinate-duplicate rows to aid de-dup decisions.
 #' @param fix_issues Logical, whether to attempt automatic fixes (drop
 #'   invalids, set CRS, standardize columns, remove duplicates, attempt
 #'   flip fixes when `adm0_sf` is available).
@@ -79,6 +82,7 @@ validate_process_coordinates <- function(
   adm0_sf = NULL,
   geometry_crs = 4326,
   min_decimals = 4,
+  id_col = NULL,
   fix_issues = TRUE,
   quiet = FALSE
 ) {
@@ -120,17 +124,42 @@ validate_process_coordinates <- function(
   if (inherits(data, "sf")) {
     pts <- data
   } else {
-    if (is.null(lon_col) || is.null(lat_col)) {
-      cli::cli_abort(
-        paste0(
-          "When 'data' is not an sf object, 'lon_col' and 'lat_col' ",
-          "must be provided"
+    # Try to coerce to sf if a geometry column exists
+    pts_try <- tryCatch(sf::st_as_sf(data), error = function(e) NULL)
+    if (inherits(pts_try, "sf") && !is.null(sf::st_geometry(pts_try))) {
+      pts <- pts_try
+    } else {
+      # Attempt to auto-detect lon/lat columns by common names
+      nm <- names(data)
+      nm_low <- tolower(nm)
+      pick_name <- function(cands) {
+        idx <- match(cands, nm_low)
+        if (all(is.na(idx))) return(NULL)
+        nm[stats::na.omit(idx)[1]]
+      }
+      lon_guess <- pick_name(c(
+        "lon", "long", "longitude", "lng", "x"
+      ))
+      lat_guess <- pick_name(c(
+        "lat", "latitude", "y"
+      ))
+
+      lon_col <- if (is.null(lon_col)) lon_guess else lon_col
+      lat_col <- if (is.null(lat_col)) lat_guess else lat_col
+
+      if (is.null(lon_col) || is.null(lat_col)) {
+        cli::cli_abort(
+          paste0(
+            "When 'data' is not an sf object, lon/lat columns must be ",
+            "provided or auto-detected. If starting from an sf, ensure ",
+            "geometry is retained (e.g., use '.keep_all = TRUE' with ",
+            "dplyr::distinct)."
+          )
         )
-      )
-    }
-    if (!all(c(lon_col, lat_col) %in% names(data))) {
-      cli::cli_abort("Longitude/Latitude columns not found in data")
-    }
+      }
+      if (!all(c(lon_col, lat_col) %in% names(data))) {
+        cli::cli_abort("Longitude/Latitude columns not found in data")
+      }
 
     # Raw strings for checks
     lon_chr <- as.character(data[[lon_col]])
@@ -156,6 +185,7 @@ validate_process_coordinates <- function(
       } else {
         results$passed <- FALSE
       }
+    }
     }
 
     # Attempt parse (DMS or otherwise) via parzer if available
@@ -473,6 +503,19 @@ validate_process_coordinates <- function(
         results$duplicate_rows,
         list(coordinate_duplicates = pts_4326[geom_dups_idx, ])
       )
+      # Enrich duplicate reporting with ID column if available
+      if (!is.null(id_col) && id_col %in% names(pts_4326)) {
+        pts_4326_dup <- sf::st_transform(pts_4326[geom_dups_idx, ], 4326)
+        coords_dup <- sf::st_coordinates(pts_4326_dup)
+        dup_info <- pts_4326[geom_dups_idx, ] |>
+          dplyr::mutate(
+            lon = coords_dup[, 1],
+            lat = coords_dup[, 2]
+          ) |>
+          dplyr::select(dplyr::all_of(id_col), lon, lat) |>
+          sf::st_drop_geometry()
+        results$duplicate_rows$coordinate_duplicates_by_id <- dup_info
+      }
       pts_4326 <- pts_4326[!duplicated(geom_binary), ]
       if (!quiet) {
         cli::cli_alert_success(
@@ -519,15 +562,19 @@ validate_process_coordinates <- function(
     pts_join <- sf::st_join(
       pts_geom, admin_small, join = sf::st_within, left = TRUE
     )
-    outside_country <- is.na(pts_join$adm0) & is.na(pts_join$adm1) &
-      is.na(pts_join$adm2) & is.na(pts_join$adm3)
-    # if no admin cols exist, fall back to pure within check
+    # outside_country robust to missing admin columns
     if (length(join_cols) == 0) {
       rel <- sf::st_within(pts_geom, adm0_target)
       outside_country <- lengths(rel) == 0
       pts_join$outside_country <- outside_country
     } else {
-      pts_join$outside_country <- outside_country
+      miss <- setdiff(c("adm0", "adm1", "adm2", "adm3"), names(pts_join))
+      if (length(miss) > 0) {
+        for (m in miss) pts_join[[m]] <- NA_character_
+      }
+      pts_join$outside_country <- rowSums(!is.na(
+        pts_join[, c("adm0", "adm1", "adm2", "adm3"), drop = FALSE]
+      )) == 0
     }
     n_out <- sum(pts_join$outside_country, na.rm = TRUE)
     if (n_out > 0) {
@@ -557,11 +604,12 @@ validate_process_coordinates <- function(
     }
     add_lonlat <- TRUE
     # derive lon/lat from 4326 regardless of geometry_crs
-    coords <- sf::st_coordinates(sf::st_transform(pts, 4326))
+    pts4326_tmp <- sf::st_transform(pts, 4326)
+    coords_lonlat <- sf::st_coordinates(pts4326_tmp)
     pts <- pts |>
       dplyr::mutate(
-        lon = coords[, 1],
-        lat = coords[, 2]
+        lon = coords_lonlat[, 1],
+        lat = coords_lonlat[, 2]
       )
 
     # Drop diagnostic columns from final output
