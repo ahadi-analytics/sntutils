@@ -12,6 +12,7 @@ validate_process_coordinates(
   adm0_sf = NULL,
   geometry_crs = 4326,
   min_decimals = 4,
+  id_col = NULL,
   fix_issues = TRUE,
   quiet = FALSE
 )
@@ -39,6 +40,10 @@ EPSG:4326.}
 
 \item{min_decimals}{Minimum decimal places required for lon/lat to be
 considered precise (default 4).}
+
+\item{id_col}{Optional character name of a unique identifier column
+(e.g., facility ID). When provided, duplicate reporting includes
+IDs for coordinate-duplicate rows to aid de-dup decisions.}
 
 \item{fix_issues}{Logical, whether to attempt automatic fixes (drop
 invalids, set CRS, standardize columns, remove duplicates, attempt
