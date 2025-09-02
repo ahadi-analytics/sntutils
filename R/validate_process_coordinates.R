@@ -158,31 +158,18 @@ validate_process_coordinates <- function(
       }
     }
 
-    # Detect DMS-like strings and attempt conversion via parzer if available
-    detect_dms <- function(x) {
-      grepl("[\\u00B0\\u00BA].*['\\u2032\"\\u2033]", x)
-    }
-    dms_idx <- which(detect_dms(lon_chr) | detect_dms(lat_chr))
-    if (length(dms_idx) > 0) {
-      conv_ok <- FALSE
-      if (requireNamespace("parzer", quietly = TRUE)) {
-        lon_try <- suppressWarnings(parzer::parse_lon(lon_chr))
-        lat_try <- suppressWarnings(parzer::parse_lat(lat_chr))
-        # overwrite where parse succeeded
-        has_val <- !is.na(lon_try) & !is.na(lat_try)
-        lon_chr[has_val] <- as.character(lon_try[has_val])
-        lat_chr[has_val] <- as.character(lat_try[has_val])
-        n_conv <- sum(has_val)
-        if (n_conv > 0 && !quiet) {
-          cli::cli_alert_success(
-            "Converted {n_conv} DMS coordinates to decimal"
-          )
-        }
-        conv_ok <- n_conv > 0
-      } else {
-        results$issues <- c(
-          results$issues,
-          "DMS detected but 'parzer' not installed"
+    # Attempt parse (DMS or otherwise) via parzer if available
+    if (requireNamespace("parzer", quietly = TRUE)) {
+      lon_try <- suppressWarnings(parzer::parse_lon(lon_chr))
+      lat_try <- suppressWarnings(parzer::parse_lat(lat_chr))
+      # overwrite where parse succeeded for both lon and lat
+      has_val <- !is.na(lon_try) & !is.na(lat_try)
+      lon_chr[has_val] <- as.character(lon_try[has_val])
+      lat_chr[has_val] <- as.character(lat_try[has_val])
+      n_conv <- sum(has_val)
+      if (n_conv > 0 && !quiet) {
+        cli::cli_alert_success(
+          "Parsed coordinates with parzer for {n_conv} rows"
         )
       }
     }
@@ -221,7 +208,8 @@ validate_process_coordinates <- function(
         data, coords = c(lon_col, lat_col), crs = 4326
       )
     } else {
-      pts <- sf::st_as_sf(data.frame(), coords = c(1, 2))
+      # Create an empty sf with 4326 CRS
+      pts <- sf::st_sf(data.frame(), geometry = sf::st_sfc(crs = 4326))
     }
   }
 
