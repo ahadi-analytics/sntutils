@@ -80,6 +80,9 @@ globalVariables(
     "geometry_hash",
     "ENDDATE",
     "STARTDATE",
-    "ISO_3_CODE"
+    "ISO_3_CODE",
+    "fill_col",
+    "coords",
+    "pt"
   )
 )
