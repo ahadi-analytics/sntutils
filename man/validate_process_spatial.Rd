@@ -12,7 +12,8 @@ validate_process_spatial(
   adm2_col = NULL,
   adm3_col = NULL,
   fix_issues = TRUE,
-  quiet = FALSE
+  quiet = FALSE,
+  geometry_crs = 4326
 )
 }
 \arguments{
@@ -31,6 +32,10 @@ validate_process_spatial(
 \item{fix_issues}{Logical, whether to attempt automatic fixes}
 
 \item{quiet}{Logical, whether to suppress progress messages}
+
+\item{geometry_crs}{Target CRS for output geometry (default EPSG:4326).
+After CRS validation/fixes, geometries are transformed to this CRS
+for subsequent processing and output.}
 }
 \value{
 List with validation results and cleaned admin-level spatial vectors

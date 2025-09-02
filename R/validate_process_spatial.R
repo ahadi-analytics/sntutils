@@ -11,6 +11,9 @@
 #' @param adm3_col Character string, column name for chiefdom/commune level
 #' @param fix_issues Logical, whether to attempt automatic fixes
 #' @param quiet Logical, whether to suppress progress messages
+#' @param geometry_crs Target CRS for output geometry (default EPSG:4326).
+#'   After CRS validation/fixes, geometries are transformed to this CRS
+#'   for subsequent processing and output.
 #'
 #' @return List with validation results and cleaned admin-level spatial vectors
 #'
@@ -60,11 +63,22 @@ validate_process_spatial <- function(
   adm2_col = NULL,
   adm3_col = NULL,
   fix_issues = TRUE,
-  quiet = FALSE
+  quiet = FALSE,
+  geometry_crs = 4326
 ) {
-  # Input validation
+  # Input validation: try to coerce to sf if needed
   if (!inherits(shp, "sf")) {
-    cli::cli_abort("Input must be an sf object")
+    shp_try <- tryCatch(
+      sf::st_as_sf(shp),
+      error = function(e) NULL
+    )
+    if (inherits(shp_try, "sf")) {
+      shp <- shp_try
+    } else {
+      cli::cli_abort(
+        "Input must be an sf object or convertible via st_as_sf()"
+      )
+    }
   }
 
   if (fix_issues) {
@@ -156,6 +170,16 @@ validate_process_spatial <- function(
     }
   } else {
     if (!quiet) cli::cli_alert_success("All geometries valid")
+  }
+
+  # 2b. Transform to target CRS if requested -----------------------------------
+  if (!is.na(sf::st_crs(shp_clean)$epsg) &&
+      !is.na(geometry_crs) &&
+      sf::st_crs(shp_clean)$epsg != geometry_crs) {
+    shp_clean <- sf::st_transform(shp_clean, geometry_crs)
+    if (!quiet) {
+      cli::cli_alert_info("Transformed geometries to EPSG:{geometry_crs}")
+    }
   }
 
   # 3. Duplicate removal -------------------------------------------------------
