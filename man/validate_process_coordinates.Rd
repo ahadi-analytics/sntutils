@@ -55,7 +55,7 @@ flip fixes when \code{adm0_sf} is available).}
 A list with validation results. Key elements:
 \itemize{
 \item \code{issues}: Character vector of issues detected.
-\item \code{final_points_df}: Cleaned sf object of points with \code{geometry_hash}.
+\item \code{final_points_df}: Cleaned sf object of points.
 \item \code{invalid_rows}: sf/data.frame of rows failing basic coordinate checks.
 \item \code{checks$duplicate_rows}: Duplicates by ID + coordinates
 (standardized sf).
@@ -70,7 +70,7 @@ names.
 }
 \description{
 Validates coordinate data (points) and returns a cleaned sf object
-with standardized columns and geometry hashes. Accepts either an sf
+with standardized columns. Accepts either an sf
 object with POINT geometry or a data.frame with longitude and latitude
 columns. Checks include missing coordinates, DMS detection with
 optional conversion (via the suggested 'parzer' package), range,

@@ -24,12 +24,9 @@ testthat::test_that("validate_process_coordinates basic df input works", {
   testthat::expect_true("final_points_df" %in% names(res))
   pts <- res$final_points_df
   testthat::expect_s3_class(pts, "sf")
-  # geometry last, geometry_hash before
+  # geometry last; lon/lat present
   nm <- names(pts)
   testthat::expect_equal(nm[length(nm)], "geometry")
-  testthat::expect_true(
-    which(nm == "geometry_hash") == length(nm) - 1
-  )
   # lon/lat exist
   testthat::expect_true(all(c("lon", "lat") %in% nm))
 })
@@ -370,7 +367,6 @@ testthat::test_that("comprehensive validation with all issue types", {
   }
   
   # Test output structure
-  testthat::expect_true("geometry_hash" %in% names(pts))
   testthat::expect_true("lon" %in% names(pts))
   testthat::expect_true("lat" %in% names(pts))
   testthat::expect_equal(names(pts)[ncol(pts)], "geometry")
@@ -380,4 +376,3 @@ testthat::test_that("comprehensive validation with all issue types", {
     testthat::expect_type(res$checks, "list")
   }
 })
-
