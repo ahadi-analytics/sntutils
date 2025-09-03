@@ -31,8 +31,8 @@ is not sf).}
 
 \item{adm0_sf}{Optional \code{sf} polygon/multipolygon of the country to
 validate points against (EPSG:4326 preferred). When provided,
-points are checked for being inside the country and optionally
-assigned admin columns if present.}
+the function tests that all points fall within the given shape.
+No admin attributes are joined to the points.}
 
 \item{geometry_crs}{Target CRS for output geometry and for operations
 with \code{adm0_sf} (default EPSG:4326). Lat/Lon attributes remain in
@@ -54,12 +54,16 @@ flip fixes when \code{adm0_sf} is available).}
 \value{
 A list with validation results. Key elements:
 \itemize{
-\item \code{passed}: Logical indicating if validation passed.
 \item \code{issues}: Character vector of issues detected.
-\item \code{spat_vec$points}: Cleaned sf object of points with \code{geometry_hash}.
+\item \code{final_points_df}: Cleaned sf object of points with \code{geometry_hash}.
 \item \code{invalid_rows}: sf/data.frame of rows failing basic coordinate checks.
-\item \code{duplicate_rows}: List with \code{row_duplicates} and
-\code{coordinate_duplicates} (if detected).
+\item \code{checks$duplicate_rows}: Duplicates by ID + coordinates
+(standardized sf).
+\item \code{checks$all_shared_locations}: All records sharing a location.
+\item \code{checks$all_shared_locations_ungrouped}: Only the duplicate rows
+at shared locations.
+\item \code{checks$coordinates_adm0}: Points outside ADM0 with original
+lon/lat restored from geometry.
 \item \code{column_dictionary}: Data frame mapping old to standardized column
 names.
 }
@@ -101,7 +105,7 @@ res <- validate_process_coordinates(
 )
 
 # Cleaned points
-res$spat_vec$points
+res$final_points_df
 }
 
 }
