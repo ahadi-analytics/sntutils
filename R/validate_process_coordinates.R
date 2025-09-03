@@ -1,7 +1,7 @@
 #' Coordinate Validation and Cleaning
 #'
 #' Validates coordinate data (points) and returns a cleaned sf object
-#' with standardized columns and geometry hashes. Accepts either an sf
+#' with standardized columns. Accepts either an sf
 #' object with POINT geometry or a data.frame with longitude and latitude
 #' columns. Checks include missing coordinates, DMS detection with
 #' optional conversion (via the suggested 'parzer' package), range,
@@ -33,7 +33,7 @@
 #'
 #' @return A list with validation results. Key elements:
 #'   - `issues`: Character vector of issues detected.
-#'   - `final_points_df`: Cleaned sf object of points with `geometry_hash`.
+#'   - `final_points_df`: Cleaned sf object of points.
 #'   - `invalid_rows`: sf/data.frame of rows failing basic coordinate checks.
 #'   - `checks$duplicate_rows`: Duplicates by ID + coordinates
 #'     (standardized sf).
@@ -1010,7 +1010,7 @@ validate_process_coordinates <- function(
   cols_to_keep <- intersect(names(pts), c(non_geom_original, "geometry"))
   cols_to_keep <- setdiff(cols_to_keep, processing_cols)
 
-  # Create standardized output with lon/lat and geometry hash
+  # Create standardized output with lon/lat
   pts4326_tmp <- sf::st_transform(pts, 4326)
   coords_lonlat <- sf::st_coordinates(pts4326_tmp)
 
@@ -1022,18 +1022,17 @@ validate_process_coordinates <- function(
     dplyr::select(dplyr::any_of(cols_to_keep)) |>
     dplyr::mutate(
       "lon" = coords_lonlat[, 1],
-      "lat" = coords_lonlat[, 2],
-      geometry_hash = sntutils::vdigest(geometry, algo = "xxhash32")
+      "lat" = coords_lonlat[, 2]
     )
 
   # Reorder columns
   cols_final <- setdiff(
-    cols_to_keep, c("lon", "lat", "geometry_hash", "geometry")
+    cols_to_keep, c("lon", "lat", "geometry")
   )
   pts_out <- pts_out |>
     dplyr::select(
       dplyr::any_of(cols_final),
-      "lon", "lat", geometry_hash, geometry
+      "lon", "lat", geometry
     )
 
   results$final_points_df <- pts_out
@@ -1080,7 +1079,6 @@ validate_process_coordinates <- function(
     description <- switch(col_name,
       "lon" = "Longitude (EPSG:4326)",
       "lat" = "Latitude (EPSG:4326)",
-      "geometry_hash" = "Geometry unique identifier (xxhash32)",
       "geometry" = "Spatial geometry (sf POINT)",
       "Data column"
     )
@@ -1190,19 +1188,18 @@ validate_process_coordinates <- function(
   # Get matching columns
   cols_to_keep <- intersect(names(dup_tmp), names(pts_out))
   cols_final <- setdiff(
-    cols_to_keep, c("lon", "lat", "geometry_hash", "geometry")
+    cols_to_keep, c("lon", "lat", "geometry")
   )
 
   dup_tmp |>
     dplyr::select(dplyr::any_of(cols_to_keep)) |>
     dplyr::mutate(
       "lon" = dup_coords_lonlat[, 1],
-      "lat" = dup_coords_lonlat[, 2],
-      geometry_hash = sntutils::vdigest(geometry, algo = "xxhash32")
+      "lat" = dup_coords_lonlat[, 2]
     ) |>
     dplyr::select(
       dplyr::any_of(cols_final),
-      "lon", "lat", geometry_hash, geometry
+      "lon", "lat", geometry
     ) |>
     dplyr::arrange("lon", "lat")
 }
