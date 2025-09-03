@@ -38,11 +38,26 @@ After CRS validation/fixes, geometries are transformed to this CRS
 for subsequent processing and output.}
 }
 \value{
-List with validation results and cleaned admin-level spatial vectors
+A list with validation results. Key elements:
+\itemize{
+\item \code{issues}: Character vector of issues detected.
+\item \code{invalid_rows}: sf/data.frame of rows failing basic geometry checks.
+\item \code{checks$duplicate_rows}: Duplicates by admin names + geometry.
+\item \code{checks$all_shared_locations}: All records sharing geometry.
+\item \code{checks$all_shared_locations_ungrouped}: Only the duplicate rows at
+shared geometry.
+\item \code{checks$invalid_geometries}: Rows with invalid geometries before fixing.
+\item \code{checks$empty_geometries}: Rows with empty geometries.
+\item \code{checks$self_intersecting}: Rows with self-intersecting geometries.
+\item \code{column_dictionary}: Data frame with column_name and description.
+\item \code{final_spat_vec}: List of admin-level aggregations
+(adm0, adm1, adm2, adm3).
+}
 }
 \description{
 Validates spatial vector data and creates admin-level aggregations with
-geometry hashes
+geometry hashes. Follows the same validation approach as
+validate_process_coordinates() with modular checks and standardized outputs.
 }
 \examples{
 \dontrun{
@@ -57,13 +72,13 @@ result <- validate_process_spatial(
 )
 
 # Access cleaned admin levels
-shp_adm0 <- result$spat_vec$adm0
-shp_adm1 <- result$spat_vec$adm1
-shp_adm2 <- result$spat_vec$adm2
-shp_adm3 <- result$spat_vec$adm3
+shp_adm0 <- result$final_spat_vec$adm0
+shp_adm1 <- result$final_spat_vec$adm1
+shp_adm2 <- result$final_spat_vec$adm2
+shp_adm3 <- result$final_spat_vec$adm3
 
 # Check validation status
-if (result$passed) {
+if (length(result$issues) == 0) {
   cli::cli_alert_success("Ready for SNT analysis!")
 }
 
@@ -71,13 +86,12 @@ if (result$passed) {
 invalid_rows <- result$invalid_rows
 
 # Access duplicate rows (if any)
-duplicate_rows <- result$duplicate_rows
-# duplicate_rows$row_duplicates - exact row duplicates
-# duplicate_rows$geometry_duplicates - geometry-only duplicates
+duplicate_rows <- result$checks$duplicate_rows
+shared_locations <- result$checks$all_shared_locations
 
 # Check column structure as data frame
 col_dict <- result$column_dictionary
-# Shows data frame with old_name, new_name, description, shapefiles
+# Shows data frame with shapefile, old_name, new_name, description
 print(col_dict)
 }
 
