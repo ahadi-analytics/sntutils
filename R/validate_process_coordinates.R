@@ -1021,8 +1021,8 @@ validate_process_coordinates <- function(
   pts_out <- pts |>
     dplyr::select(dplyr::any_of(cols_to_keep)) |>
     dplyr::mutate(
-      lon = coords_lonlat[, 1],
-      lat = coords_lonlat[, 2],
+      "lon" = coords_lonlat[, 1],
+      "lat" = coords_lonlat[, 2],
       geometry_hash = sntutils::vdigest(geometry, algo = "xxhash32")
     )
 
@@ -1033,7 +1033,7 @@ validate_process_coordinates <- function(
   pts_out <- pts_out |>
     dplyr::select(
       dplyr::any_of(cols_final),
-      lon, lat, geometry_hash, geometry
+      "lon", "lat", geometry_hash, geometry
     )
 
   results$final_points_df <- pts_out
@@ -1116,7 +1116,7 @@ validate_process_coordinates <- function(
   if (exists("all_shared_locations_idx", duplicate_info) &&
       length(duplicate_info$all_shared_locations_idx) > 0) {
     checks$all_shared_locations_ungrouped <- dplyr::arrange(
-      pts_out[duplicate_info$all_shared_locations_idx, ], lon, lat
+      pts_out[duplicate_info$all_shared_locations_idx, ], "lon", "lat"
     )
   }
 
@@ -1169,8 +1169,8 @@ validate_process_coordinates <- function(
       coords_old <- sf::st_coordinates(
         sf::st_transform(checks$coordinates_adm0, 4326)
       )
-      checks$coordinates_adm0$lon <- coords_old[, 1]
-      checks$coordinates_adm0$lat <- coords_old[, 2]
+      checks$coordinates_adm0[["lon"]] <- coords_old[, 1]
+      checks$coordinates_adm0[["lat"]] <- coords_old[, 2]
     }
   }
 
@@ -1196,15 +1196,15 @@ validate_process_coordinates <- function(
   dup_tmp |>
     dplyr::select(dplyr::any_of(cols_to_keep)) |>
     dplyr::mutate(
-      lon = dup_coords_lonlat[, 1],
-      lat = dup_coords_lonlat[, 2],
+      "lon" = dup_coords_lonlat[, 1],
+      "lat" = dup_coords_lonlat[, 2],
       geometry_hash = sntutils::vdigest(geometry, algo = "xxhash32")
     ) |>
     dplyr::select(
       dplyr::any_of(cols_final),
-      lon, lat, geometry_hash, geometry
+      "lon", "lat", geometry_hash, geometry
     ) |>
-    dplyr::arrange(lon, lat)
+    dplyr::arrange("lon", "lat")
 }
 
 # Finalize results and generate summary
@@ -1241,7 +1241,7 @@ validate_process_coordinates <- function(
       cli::cli_alert_info("Validation completed - no cleaning performed")
     }
   } else {
-    cli::cli_h2("✗ Issues found:")
+    cli::cli_h2("Issues found:")
     for (issue in unique(results$issues)) {
       cli::cli_alert_warning(issue)
     }
@@ -1300,7 +1300,7 @@ validate_process_coordinates <- function(
   }
 
   if (length(fixed_actions) > 0) {
-    cli::cli_h2("✓ Fixed issues:")
+    cli::cli_h2("Fixed issues:")
     for (action in fixed_actions) {
       cli::cli_alert_success(action)
     }
