@@ -106,22 +106,22 @@ testthat::test_that("validate_process_spatial works with valid data", {
 
   # Check return structure
   testthat::expect_type(result, "list")
-  testthat::expect_true(result$passed)
+  testthat::expect_equal(length(result$issues), 0)  # No issues with valid data
   testthat::expect_equal(result$name, "test_data")
 
   # Check required components
-  testthat::expect_true("spat_vec" %in% names(result))
+  testthat::expect_true("final_spat_vec" %in% names(result))
   testthat::expect_true("column_dictionary" %in% names(result))
   testthat::expect_true("timestamp" %in% names(result))
 
   # Check spatial vectors created
-  testthat::expect_true("adm3" %in% names(result$spat_vec))
-  testthat::expect_true("adm2" %in% names(result$spat_vec))
-  testthat::expect_true("adm1" %in% names(result$spat_vec))
-  testthat::expect_true("adm0" %in% names(result$spat_vec))
+  testthat::expect_true("adm3" %in% names(result$final_spat_vec))
+  testthat::expect_true("adm2" %in% names(result$final_spat_vec))
+  testthat::expect_true("adm1" %in% names(result$final_spat_vec))
+  testthat::expect_true("adm0" %in% names(result$final_spat_vec))
 
   # Check column structure
-  adm3_cols <- names(result$spat_vec$adm3)
+  adm3_cols <- names(result$final_spat_vec$adm3)
   testthat::expect_true("adm0" %in% adm3_cols)
   testthat::expect_true("adm0_guid" %in% adm3_cols)
   testthat::expect_true("adm1" %in% adm3_cols)
@@ -169,7 +169,7 @@ testthat::test_that("validate_process_spatial handles CRS correctly", {
   )
 
   testthat::expect_true("Missing CRS" %in% result$issues)
-  testthat::expect_true(result$passed) # Should pass because it was fixed
+  testthat::expect_equal(length(result$final_spat_vec), 2) # Should have created adm0 and adm1
 
   # Test missing CRS with fix_issues = FALSE
   result_no_fix <- validate_process_spatial(
@@ -180,7 +180,7 @@ testthat::test_that("validate_process_spatial handles CRS correctly", {
     quiet = TRUE
   )
 
-  testthat::expect_false(result_no_fix$passed) # Should fail because not fixed
+  testthat::expect_true("Missing CRS" %in% result_no_fix$issues) # Should have issues
 })
 
 # Test 4b: Invalid geometry detection without fixing
@@ -215,10 +215,10 @@ testthat::test_that(
         quiet = TRUE
       )
 
-      # Should have failed validation
-      testthat::expect_false(result$passed)
-      testthat::expect_false(is.null(result$invalid_rows))
-      testthat::expect_true(nrow(result$invalid_rows) >= 1)
+      # Should have detected invalid geometries
+      testthat::expect_true(length(result$issues) > 0)
+      testthat::expect_true("checks" %in% names(result))
+      testthat::expect_true("invalid_geometries" %in% names(result$checks))
 
       # Check for any mention of "invalid" in issues
       has_invalid_mention <- any(grepl(
@@ -268,10 +268,13 @@ testthat::test_that("validate_process_spatial handles duplicates correctly", {
 
       # Debug output
       cat("Result issues:", paste(result$issues, collapse = " | "), "\n")
-      cat("Duplicate rows is null:", is.null(result$duplicate_rows), "\n")
+      cat("Checks is null:", is.null(result$checks), "\n")
+      if (!is.null(result$checks)) {
+        cat("Checks available:", paste(names(result$checks), collapse = ", "), "\n")
+      }
 
       # More lenient test - check if ANY duplicates were found
-      has_duplicates <- !is.null(result$duplicate_rows) ||
+      has_duplicates <- (!is.null(result$checks) && "duplicate_rows" %in% names(result$checks)) ||
         any(grepl("duplicate", result$issues, ignore.case = TRUE))
 
       testthat::expect_true(
@@ -298,7 +301,7 @@ testthat::test_that("validate_process_spatial validation-only mode works", {
   )
 
   # Should not create spatial vectors when fix_issues = FALSE
-  testthat::expect_true(length(result$spat_vec) == 0)
+  testthat::expect_true(length(result$final_spat_vec) == 0)
   testthat::expect_null(result$column_dictionary)
 })
 
@@ -315,7 +318,7 @@ testthat::test_that(
   )
 
   # Should not create spatial vectors when fix_issues = FALSE
-  testthat::expect_true(length(result$spat_vec) == 0)
+  testthat::expect_true(length(result$final_spat_vec) == 0)
   testthat::expect_null(result$column_dictionary)
 })
 
@@ -338,15 +341,15 @@ testthat::test_that("validate_process_spatial creates proper column dictionary",
   testthat::expect_s3_class(col_dict, "data.frame")
 
   # Check required columns
-  testthat::expect_true("old_name" %in% names(col_dict))
-  testthat::expect_true("new_name" %in% names(col_dict))
+  testthat::expect_true("shapefile" %in% names(col_dict))
+  testthat::expect_true("column_name" %in% names(col_dict))
   testthat::expect_true("description" %in% names(col_dict))
-  testthat::expect_true("shapefiles" %in% names(col_dict))
 
   # Check some expected entries
-  testthat::expect_true("country" %in% col_dict$old_name)
-  testthat::expect_true("adm0" %in% col_dict$new_name)
-  testthat::expect_true("geometry_hash" %in% col_dict$new_name)
+  testthat::expect_true("adm0" %in% col_dict$column_name)
+  testthat::expect_true("adm1" %in% col_dict$column_name)
+  testthat::expect_true("adm2" %in% col_dict$column_name)
+  testthat::expect_true("geometry_hash" %in% col_dict$column_name)
 })
 
 # Test 8: GUID generation with hierarchical hashing
@@ -366,7 +369,7 @@ testthat::test_that("validate_process_spatial creates hierarchical GUIDs correct
     quiet = TRUE
   )
 
-  adm2_data <- result$spat_vec$adm2
+  adm2_data <- result$final_spat_vec$adm2
 
   # GUIDs should be different even if some names are the same
   testthat::expect_true(length(unique(adm2_data$adm2_guid)) == nrow(adm2_data))
@@ -386,9 +389,9 @@ testthat::test_that("validate_process_spatial handles edge cases", {
     quiet = TRUE
   )
 
-  testthat::expect_true(result$passed)
-  testthat::expect_equal(nrow(result$spat_vec$adm1), 1)
-  testthat::expect_equal(nrow(result$spat_vec$adm0), 1)
+  testthat::expect_equal(length(result$issues), 0)
+  testthat::expect_equal(nrow(result$final_spat_vec$adm1), 1)
+  testthat::expect_equal(nrow(result$final_spat_vec$adm0), 1)
 })
 
 # Test 10: Geometry hash uniqueness
@@ -406,7 +409,7 @@ testthat::test_that("validate_process_spatial creates unique geometry hashes", {
   )
 
   # Check geometry hash uniqueness in finest level
-  finest_level <- result$spat_vec[[names(result$spat_vec)[1]]]
+  finest_level <- result$final_spat_vec[[names(result$final_spat_vec)[1]]]
   geom_hashes <- finest_level$geometry_hash
 
   testthat::expect_equal(length(geom_hashes), length(unique(geom_hashes)))
@@ -426,10 +429,10 @@ testthat::test_that("validate_process_spatial works with partial admin levels", 
     quiet = TRUE
   )
 
-  testthat::expect_true(result$passed)
-  testthat::expect_true("adm1" %in% names(result$spat_vec))
-  testthat::expect_true("adm0" %in% names(result$spat_vec))
-  testthat::expect_false("adm2" %in% names(result$spat_vec))
+  testthat::expect_equal(length(result$issues), 0)
+  testthat::expect_true("adm1" %in% names(result$final_spat_vec))
+  testthat::expect_true("adm0" %in% names(result$final_spat_vec))
+  testthat::expect_false("adm2" %in% names(result$final_spat_vec))
 })
 
 # Test 12: Large dataset simulation
@@ -453,8 +456,8 @@ testthat::test_that("validate_process_spatial handles larger datasets", {
   )
   end_time <- Sys.time()
 
-  testthat::expect_true(result$passed)
-  testthat::expect_true(nrow(result$spat_vec$adm3) == 100)
+  testthat::expect_equal(length(result$issues), 0)
+  testthat::expect_true(nrow(result$final_spat_vec$adm3) == 100)
 
   # Performance check (should complete within reasonable time)
   testthat::expect_true(as.numeric(end_time - start_time, units = "secs") < 30)
