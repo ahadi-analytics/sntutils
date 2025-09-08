@@ -19,6 +19,7 @@
 #' # handle_file_save(data_to_save, "path/to/default/location.rds")
 #'
 #' @keywords internal
+#' @noRd
 handle_file_save <- function(data_to_save, default_save_path = NULL) {
   cache_path <- default_save_path
 
@@ -119,6 +120,7 @@ handle_file_save <- function(data_to_save, default_save_path = NULL) {
 #' # get_hierarchical_combinations(df, c("country", "province", "district"))
 #'
 #' @keywords internal
+#' @noRd
 get_hierarchical_combinations <- function(df, levels) {
   if (length(levels) == 0 || is.null(levels)) {
     return(data.frame())
@@ -361,6 +363,7 @@ calculate_match_stats <- function(data, lookup_data, level0 = NULL,
 #' @param choice Character string of the choice text
 #' @param width Total width of the formatted choice
 #' @return Formatted choice string
+#' @noRd
 format_choice <- function(index, choice, width) {
   number_part <- sprintf("%3d: ", index)
   remaining_width <- width - nchar(number_part)
@@ -379,6 +382,7 @@ format_choice <- function(index, choice, width) {
 #' @param num_columns Number of columns to display
 #' @param column_width Width of each column
 #' @return Vector of formatted choice strings, one per row
+#' @noRd
 format_choices <- function(choices, num_columns, column_width = 45) {
   num_choices <- length(choices)
   rows_per_column <- ceiling(num_choices / num_columns)
@@ -419,6 +423,7 @@ format_choices <- function(choices, num_columns, column_width = 45) {
 #' #                     list(x = "Skip", y = "Save"), "Your choice:", 20)
 #'
 #' @keywords internal
+#' @noRd
 display_custom_menu <- function(title, main_header, choices_input,
                                 special_actions, prompt) {
   cli::cli_h1(main_header)
@@ -475,6 +480,7 @@ display_custom_menu <- function(title, main_header, choices_input,
 #' # )
 #'
 #' @keywords internal
+#' @noRd
 calculate_string_distance <- function(
     admins_to_clean, lookup_admins, method) {
   # Create a data frame with all combinations
@@ -537,6 +543,7 @@ calculate_string_distance <- function(
 #' # handle_user_interaction(my_data, "level1", TRUE, TRUE, 20)
 #'
 #' @keywords internal
+#' @noRd
 handle_user_interaction <- function(input_data, levels, level,
                                     clear_console = TRUE,
                                     max_options) {
@@ -843,6 +850,7 @@ handle_user_interaction <- function(input_data, levels, level,
 #' # )
 #' # result <- construct_geo_names(data, "country", "state", "city",
 #' # subdistrict")
+#' @noRd
 construct_geo_names <- function(data, level0, level1, level2,
                                 level3 = NULL, level4 = NULL) {
   data |>
@@ -879,6 +887,7 @@ construct_geo_names <- function(data, level0, level1, level2,
 #' @param levels Vector of level column names
 #'
 #' @keywords internal
+#' @noRd
 apply_case_mapping <- function(df, case_mapping, levels) {
   if (is.null(case_mapping)) {
     return(df)
@@ -910,6 +919,7 @@ apply_case_mapping <- function(df, case_mapping, levels) {
 #'
 #' @return Character string with the user identity
 #' @keywords internal
+#' @noRd
 get_user_identity <- function() {
   if (nzchar(Sys.getenv("RSTUDIO_USER_IDENTITY"))) {
     Sys.getenv("RSTUDIO_USER_IDENTITY")
@@ -936,6 +946,7 @@ get_user_identity <- function() {
 #' @param level4 Name of level4 column
 #'
 #' @keywords internal
+#' @noRd
 export_unmatched_data <- function(target_todo, unmatched_export_path,
                                  level0, level1, level2, level3, level4) {
 
@@ -954,11 +965,36 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
 
     # Build list of columns to keep - dynamic based on input
     cols_to_keep <- c()
-    if (!is.null(level0) && level0 %in% names(target_todo)) cols_to_keep <- c(cols_to_keep, level0)
-    if (!is.null(level1) && level1 %in% names(target_todo)) cols_to_keep <- c(cols_to_keep, level1)
-    if (!is.null(level2) && level2 %in% names(target_todo)) cols_to_keep <- c(cols_to_keep, level2)
-    if (!is.null(level3) && level3 %in% names(target_todo)) cols_to_keep <- c(cols_to_keep, level3)
-    if (!is.null(level4) && level4 %in% names(target_todo)) cols_to_keep <- c(cols_to_keep, level4)
+    if (
+      !is.null(level0) &&
+        level0 %in% names(target_todo)
+    ) {
+      cols_to_keep <- c(cols_to_keep, level0)
+    }
+    if (
+      !is.null(level1) &&
+        level1 %in% names(target_todo)
+    ) {
+      cols_to_keep <- c(cols_to_keep, level1)
+    }
+    if (
+      !is.null(level2) &&
+        level2 %in% names(target_todo)
+    ) {
+      cols_to_keep <- c(cols_to_keep, level2)
+    }
+    if (
+      !is.null(level3) &&
+        level3 %in% names(target_todo)
+    ) {
+      cols_to_keep <- c(cols_to_keep, level3)
+    }
+    if (
+      !is.null(level4) &&
+        level4 %in% names(target_todo)
+    ) {
+      cols_to_keep <- c(cols_to_keep, level4)
+    }
 
     # Identify the unmatched column (typically the lowest/most granular level)
     # Start from level4 (most granular) and work up
@@ -987,7 +1023,8 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
         created_time = Sys.time(),
         name_of_creator = get_user_identity()
       ) |>
-      # Reorganize columns - unmatched_column first, then admin levels, then metadata
+      # Reorganize columns - unmatched_column first, then admin levels,
+      # then metadata
       dplyr::select(
         "unmatched_column",
         dplyr::all_of(cols_to_keep),
@@ -1022,7 +1059,8 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
 
       # Show summary of unmatched data
       cli::cli_alert_info(
-        "Exported {nrow(unmatched_df)} unique unmatched rows for column '{unmatched_column}'"
+        "Exported {nrow(unmatched_df)} unmatched rows for column ",
+        "'{unmatched_column}'"
       )
     }, error = function(e) {
       cli::cli_alert_warning(
