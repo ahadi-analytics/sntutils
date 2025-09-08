@@ -2,21 +2,21 @@
 % Please edit documentation in R/create_folder_structure.R
 \name{initialize_project_structure}
 \alias{initialize_project_structure}
-\title{Initialize Full Project Folder Structure (Data + Scripts + Outputs)}
+\title{Initialize Full Project Folder Structure}
 \usage{
 initialize_project_structure(base_path = ".")
 }
 \arguments{
-\item{base_path}{Character. Path to the base_path directory of the project.
-Default is current working directory.}
+\item{base_path}{Character. Project root directory (default ".").}
 }
 \value{
-NULL (creates folders on disk)
+NULL (folders created on disk)
 }
 \description{
-This function sets up the full Ahadi-style project structure:
+Sets up a clean Ahadi-style project hierarchy:
 \itemize{
-\item 01_data/ with hierarchical folders (via create_data_structure())
-\item 02_scripts/, 03_outputs/plots/, 04_reports/, metadata_docs/
+\item 01_data/ with numbered domain folders
+\item 02_scripts/, 03_outputs/plots/validation, 03_outputs/tables/validation,
+04_reports/, 05_metadata_docs/
 }
 }

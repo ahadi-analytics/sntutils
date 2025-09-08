@@ -16,7 +16,7 @@ Initialize Full Project Folder Structure
 This function sets up a clean, hierarchical folder system for Ahadi projects:
 \itemize{
 \item 01_data/ with nested numbered folders and raw/processed subfolders
-\item 02_scripts/, 03_outputs/plots/, 04_reports/, metadata_docs/
+\item 02_scripts/, 03_outputs/plots/, 04_reports/, 05_metadata_docs/
 }
 
 NULL (folders created on disk)
