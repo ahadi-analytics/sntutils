@@ -146,7 +146,7 @@ testthat::test_that("dictionary includes EN and optional FR", {
   # EN only
   out1 <- snt_process_population(df, translate = FALSE)
   dict1 <- out1$data_dictionary
-  testthat::expect_true(all(c("variable", "label_english") %in% names(dict1)))
+  testthat::expect_true(all(c("variable", "label_en") %in% names(dict1)))
   testthat::expect_false(any(grepl("^label_fr$", names(dict1))))
 
   # EN + FR (when translator missing, FR will mirror EN via passthrough)
