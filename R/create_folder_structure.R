@@ -13,7 +13,7 @@
 #'
 #' This function sets up a clean, hierarchical folder system for Ahadi projects:
 #' - 01_data/ with nested numbered folders and raw/processed subfolders
-#' - 02_scripts/, 03_outputs/plots/, 04_reports/, metadata_docs/
+#' - 02_scripts/, 03_outputs/plots/, 04_reports/, 05_metadata_docs/
 #'
 #' @param base_path Character. base_path project directory (default = current directory)
 #'
@@ -67,39 +67,39 @@ create_data_structure <- function(base_path = ".") {
 
   # Other standard folders
   fs::dir_create(fs::path(base_path, "02_scripts"))
-  fs::dir_create(fs::path(base_path, "03_outputs", "plots"))
+  fs::dir_create(fs::path(base_path, "03_outputs", "plots", "validation"))
+  fs::dir_create(fs::path(base_path, "03_outputs", "tables", "validation"))
   fs::dir_create(fs::path(base_path, "04_reports"))
-  fs::dir_create(fs::path(base_path, "metadata_docs"))
+  fs::dir_create(fs::path(base_path, "05_metadata_docs"))
 
   invisible(NULL)
 }
 
-#' Initialize Full Project Folder Structure (Data + Scripts + Outputs)
+#' Initialize Full Project Folder Structure
 #'
-#' This function sets up the full Ahadi-style project structure:
-#' - 01_data/ with hierarchical folders (via create_data_structure())
-#' - 02_scripts/, 03_outputs/plots/, 04_reports/, metadata_docs/
+#' Sets up a clean Ahadi-style project hierarchy:
+#' - 01_data/ with numbered domain folders
+#' - 02_scripts/, 03_outputs/plots/validation, 03_outputs/tables/validation,
+#'   04_reports/, 05_metadata_docs/
 #'
-#' @param base_path Character. Path to the base_path directory of the project.
-#'             Default is current working directory.
+#' @param base_path Character. Project root directory (default ".").
 #'
-#' @return NULL (creates folders on disk)
+#' @return NULL (folders created on disk)
 #' @export
 initialize_project_structure <- function(base_path = ".") {
-
-  # Create base_path directory if it doesn't exist
   if (!fs::dir_exists(base_path)) {
     fs::dir_create(base_path)
   }
 
-  # Create 01_data structure
+  # create data domains
   create_data_structure(base_path)
 
-  # Create other folders
+  # other folders
   fs::dir_create(fs::path(base_path, "02_scripts"))
-  fs::dir_create(fs::path(base_path, "03_outputs", "plots"))
+  fs::dir_create(fs::path(base_path, "03_outputs", "plots", "validation"))
+  fs::dir_create(fs::path(base_path, "03_outputs", "tables", "validation"))
   fs::dir_create(fs::path(base_path, "04_reports"))
-  fs::dir_create(fs::path(base_path, "metadata_docs"))
+  fs::dir_create(fs::path(base_path, "05_metadata_docs"))
 
   invisible(NULL)
 }
