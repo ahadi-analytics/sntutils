@@ -628,6 +628,8 @@
           ns <- asNamespace("qs2")
           if (exists("qread", envir = ns, mode = "function")) {
             return(get("qread", envir = ns)(path))
+          } else if (exists("qs_read", envir = ns, mode = "function")) {
+            return(get("qs_read", envir = ns)(path))
           }
         }
         stop("no qs2 reader")
@@ -645,6 +647,8 @@
           ns <- asNamespace("qs2")
           if (exists("qread", envir = ns, mode = "function")) {
             return(get("qread", envir = ns)(path))
+          } else if (exists("qs_read", envir = ns, mode = "function")) {
+            return(get("qs_read", envir = ns)(path))
           }
         }
         stop("no qs2 reader")
@@ -809,7 +813,15 @@
       }
     }
 
-    if (isTRUE(same) && file.remove(f)) {
+    if (isTRUE(same)) {
+      # Prefer fs::file_delete for robust cross-platform removal
+      del_ok <- try(fs::file_delete(f), silent = TRUE)
+      del_ok <- !inherits(del_ok, "try-error") && !fs::file_exists(f)
+      if (!del_ok) {
+        # Fallback to base file.remove
+        del_ok <- tryCatch(isTRUE(file.remove(f)), error = function(...) FALSE)
+      }
+      if (del_ok) {
       removed <- c(removed, f)
       if (isTRUE(verbose)) {
         cli::cli_inform("Removed duplicate: {fs::path_file(f)}")
@@ -817,6 +829,7 @@
       # best effort: remove stale sidecar, too
       sc <- .sidecar_path(f)
       if (fs::file_exists(sc)) try(fs::file_delete(sc), silent = TRUE)
+      }
     }
   }
   unique(removed)

@@ -76,11 +76,13 @@ read <- function(file_path, ...) {
     close(con)
     res
   } else if (file_ext %in% c("qs", "qs2")) {
-    # Prefer qs2 if installed and exports qread; otherwise fall back to qs
+    # Prefer qs2 if installed and exports qread/qs_read; otherwise fall back to qs
     if (requireNamespace("qs2", quietly = TRUE)) {
       ns <- asNamespace("qs2")
       if (exists("qread", envir = ns, mode = "function")) {
         return(get("qread", envir = ns)(file_path, ...))
+      } else if (exists("qs_read", envir = ns, mode = "function")) {
+        return(get("qs_read", envir = ns)(file_path, ...))
       }
     }
     if (requireNamespace("qs", quietly = TRUE)) {
