@@ -25,8 +25,7 @@ testthat::test_that(".guess_type classifies common types", {
 })
 
 # ---- .nunique ----------------------------------------------------------------
-testthat::test_that(
-  ".nunique returns count and sets cap attribute when needed", {
+testthat::test_that(".nunique returns count and sets cap attribute when needed", {
   x <- c(1, 1, 2, 3, 3, 3)
   out <- .nunique(x, cap = 10L)
 
@@ -45,8 +44,7 @@ testthat::test_that(
 })
 
 # ---- .examples ---------------------------------------------------------------
-testthat::test_that(
-  ".examples shows frequent values for character/factor and truncates", {
+testthat::test_that(".examples shows frequent values for character/factor and truncates", {
   x <- c(rep("apple", 3), rep("banana", 2), "cherry")
   s <- .examples(x, n = 2L, width = 60L)
   # top 2 should be apple, banana (order may be "apple, banana")
@@ -82,8 +80,7 @@ testthat::test_that(".range_str returns min/max as strings and handles all-NA", 
 })
 
 # ---- build_dictionary ------------------------------------------------
-testthat::test_that(
-  "build_dictionary returns expected columns and profiles types", {
+testthat::test_that("build_dictionary returns expected columns and profiles types", {
   df <- data.frame(
     id = 1:5,
     grp = factor(c("a", "a", "b", "b", "c")),
@@ -187,35 +184,34 @@ testthat::test_that("build_dictionary can add translated label column", {
 })
 
 # ---- build_dictionary ----------------------------------------------------
-# testthat::test_that("build_dictionary writes CSV (utf-8, newline)", {
-#   tmp <- withr::local_tempdir()
-#   df <- data.frame(id = 1:2, name = c("école", "café"))
-#   dict <- build_dictionary(df, labels_path = tmp)
+testthat::test_that("build_dictionary writes CSV (utf-8, newline)", {
+  tmp <- withr::local_tempdir()
+  df <- data.frame(id = 1:2, name = c("école", "café"))
+  dict <- build_dictionary(df, labels_path = tmp)
 
-#   p <- fs::path(tmp, "dict.csv")
-#   testthat::expect_invisible(build_dictionary(dict, p))
-#   testthat::expect_true(fs::file_exists(p))
+  p <- fs::path(tmp, "dict.csv")
+  testthat::expect_invisible(build_dictionary(dict, p))
+  testthat::expect_true(fs::file_exists(p))
 
-#   txt <- readChar(p, 1e6, useBytes = TRUE)
-#   testthat::expect_true(grepl("école|café", txt, useBytes = TRUE))
-#   testthat::expect_true(grepl("\n", txt, fixed = TRUE))
-# })
+  txt <- readChar(p, 1e6, useBytes = TRUE)
+  testthat::expect_true(grepl("école|café", txt, useBytes = TRUE))
+  testthat::expect_true(grepl("\n", txt, fixed = TRUE))
+})
 
-# testthat::test_that(
-#   "build_dictionary writes XLSX when openxlsx available", {
-#   testthat::skip_if_not(has_pkg("openxlsx"))
+testthat::test_that("build_dictionary writes XLSX when openxlsx available", {
+  testthat::skip_if_not(has_pkg("openxlsx"))
 
-#   tmp <- withr::local_tempdir()
-#   df <- data.frame(id = 1:2, name = c("a", "b"))
-#   dict <- build_dictionary(df)
+  tmp <- withr::local_tempdir()
+  df <- data.frame(id = 1:2, name = c("a", "b"))
+  dict <- build_dictionary(df)
 
-#   p <- fs::path(tmp, "dict.xlsx")
-#   testthat::expect_invisible(build_dictionary(dict, p))
-#   testthat::expect_true(fs::file_exists(p))
+  p <- fs::path(tmp, "dict.xlsx")
+  testthat::expect_invisible(build_dictionary(dict, p))
+  testthat::expect_true(fs::file_exists(p))
 
-#   # sanity: can read back and get header row
-#   wb <- openxlsx::read.xlsx(p)
-#   testthat::expect_true(all(
-#     c("variable", "type", "label_english") %in% names(wb)
-#   ))
-# })
+  # sanity: can read back and get header row
+  wb <- openxlsx::read.xlsx(p)
+  testthat::expect_true(all(
+    c("variable", "type", "label_english") %in% names(wb)
+  ))
+})
