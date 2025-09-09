@@ -16,8 +16,9 @@
 #'   validation_plots, validation_tables.
 #'
 #' @examples
-#' paths <- setup_project_paths()
-#' list.files(paths$admin_shp)
+#' tmp <- tempdir()
+#' paths <- setup_project_paths(base_path = tmp, create = FALSE)
+#' paths$admin_shp
 #' @export
 setup_project_paths <- function(base_path = NULL, create = TRUE, quiet = TRUE) {
   # resolve root
