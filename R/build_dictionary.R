@@ -136,7 +136,7 @@
 #' This helper loads a simple two-column CSV containing variable names and
 #' their human-readable labels. It searches for flexible column names:
 #' - name column: one of "name", "variable", "key", "column"
-#' - label column: one of "label", "label_english", "english"
+#' - label column: one of "label", "label_en", "english"
 #'
 #' Duplicate variable names keep the last occurrence (later rows override).
 #' Blank or NA names are dropped. The returned object is a named character
@@ -172,7 +172,7 @@
         check.names = FALSE
       )
       name_col <- intersect(names(df), c("name", "variable", "key", "column"))
-      label_col <- intersect(names(df), c("label", "label_english", "english"))
+      label_col <- intersect(names(df), c("label", "label_en", "english"))
       if (length(name_col) == 0L || length(label_col) == 0L) {
         return(NULL)
       }
@@ -201,39 +201,40 @@
 #' type per column, adds English labels (merged with an on-disk CSV map
 #' when available), and reports small stats: missing %, unique count,
 #' a few example values, and min/max for numeric/date/datetime. Can add
-#' one translated label column via a user function.
+#' one translated label column via a user function, or mirror English
+#' labels when a translator is not provided.
 #'
 #' @param data A data.frame/tibble; sf columns are detected.
 #' @param labels_path Optional CSV with columns `name,label` used to
 #'   override/add English labels. If missing, only internal defaults are
 #'   used.
-#' @param language Optional ISO code (e.g., "fr"). If set and
-#'   `translate_fun` is provided, a `label_<language>` column is added.
-#' @param translate_fun Optional function(text, target_language) -> char.
-#'   Used only when `language` is non-NULL and not "en".
+#' @param language Optional ISO code (e.g., "fr"). If set, a
+#'   `label_<language>` column is added; values are translated using
+#'   an internal translator when available, otherwise mirrored from English.
 #' @param max_levels Max factor levels to summarize in notes (default 50).
 #' @param n_examples Number of example values to show (default 3).
 #'
 #' @return A tibble with at least:
-#'   - variable, type, label_english
+#'   - variable, type, label_en
 #'   - n, n_missing, pct_missing, n_unique
 #'   - example_values, min, max, notes
-#'   If `language` is set and translated, also `label_<language>`.
+#'   If `language` is set and not "en", also `label_<language>`.
 #'
 #' @details
 #' English labels are formed by merging internal defaults with the CSV
 #' at `labels_path`. CSV entries win on name conflicts. Unknown columns
-#' fall back to their original names.
+#' fall back to their original names. When `language` is provided but
+#' no translator is available, the translated label column mirrors the
+#' English labels.
 #'
 #' @examples
 #' dd <- build_dictionary(iris)
-#' head(dd[c("variable", "type", "label_english")])
+#' head(dd[c("variable", "type", "label_en")])
 #' @export
 build_dictionary <- function(
   data,
   labels_path = getOption("snt.labels_en_path", NULL),
   language = NULL,
-  translate_fun = NULL,
   max_levels = 50L,
   n_examples = 3L
 ) {
@@ -241,7 +242,7 @@ build_dictionary <- function(
   # as second argument (historical calling style), write it to disk
   if (
     is.data.frame(data) &&
-    all(c("variable", "type", "label_english") %in% names(data)) &&
+    all(c("variable", "type", "label_en") %in% names(data)) &&
     is.character(labels_path) && length(labels_path) == 1L && nzchar(labels_path) &&
     grepl("\\.(csv|xlsx)$", labels_path, ignore.case = TRUE)
   ) {
@@ -364,26 +365,32 @@ build_dictionary <- function(
   if (any(miss)) {
     eng[miss] <- dict$variable[miss]
   }
-  dict$label_english <- eng
+  dict$label_en <- eng
 
   # 4) optional translation
-  if (!is.null(language) && nzchar(language) && is.function(translate_fun)) {
+  if (!is.null(language) && nzchar(language)) {
     trg <- tolower(language)
     if (!identical(trg, "en")) {
       coln <- paste0("label_", trg)
-      dict[[coln]] <- tryCatch(
-        translate_fun(dict$label_english, trg),
-        error = function(e) rep_len(NA_character_, nrow(dict))
-      )
+      # Try to use package's vectorized translator if available
+      tr_fn <- get0("translate_text_vec", mode = "function")
+      if (is.function(tr_fn)) {
+        dict[[coln]] <- tryCatch(
+          tr_fn(dict$label_en, target_language = trg),
+          error = function(e) dict$label_en
+        )
+      } else {
+        dict[[coln]] <- dict$label_en
+      }
     }
   }
 
-  dict <- dict[, c(
-    "variable",
-    "type",
-    "label_english",
-    setdiff(names(dict), c("variable", "type", "label_english"))
-  )]
+  # Ensure translated label columns appear immediately after label_en
+  all_cols <- names(dict)
+  label_cols <- grep("^label_", all_cols, value = TRUE)
+  extra_labels <- setdiff(label_cols, "label_en")
+  rest <- setdiff(all_cols, c("variable", "type", label_cols))
+  dict <- dict[, c("variable", "type", "label_en", extra_labels, rest)]
 
   dict
 }

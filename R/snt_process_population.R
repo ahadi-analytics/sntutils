@@ -12,8 +12,11 @@
 #' @param pop_data data.frame/tibble with `adm0`, optional `adm1`/`adm2`/`adm3`,
 #'   `year`, and `pop`. `year` may be integer, numeric, Date/POSIXt, factor,
 #'   or character; it is coerced to integer years when feasible.
-#' @param translate logical; when TRUE, add a French label column using the
-#'   translation cache.
+#' @param translate logical; when TRUE, add a translated label column
+#'   (default FR unless `language` is provided) using the translation cache.
+#' @param language Optional ISO code (e.g., "fr"). When provided, a
+#'   `label_<language>` column is added to the dictionary and placed
+#'   immediately after `label_en`.
 #' @param trans_cache_path character path to the translation cache directory.
 #'   default: `here::here("cache/translations")` if available, else
 #'   `"cache/translations"`.
@@ -43,6 +46,7 @@
 snt_process_population <- function(
   pop_data,
   translate = TRUE,
+  language = NULL,
   trans_cache_path = if (requireNamespace("here", quietly = TRUE)) {
     here::here("cache/translations")
   } else {
@@ -79,11 +83,20 @@ snt_process_population <- function(
   dict_vars <- unique(c(levels_present, "year", "pop"))
   keep_cols <- intersect(names(pop_data), dict_vars)
 
+  # determine target language: explicit `language` wins; otherwise use FR when
+  # translate=TRUE; NULL -> English only
+  target_lang <- if (!is.null(language) && nzchar(language)) {
+    language
+  } else if (isTRUE(translate)) {
+    "fr"
+  } else {
+    NULL
+  }
+
   dict <- build_dictionary(
     data = pop_data[, keep_cols, drop = FALSE],
     labels_path = getOption("snt.labels_en_path", NULL),
-    language = if (isTRUE(translate)) "fr" else NULL,
-    translate_fun = .translate_cached_factory(trans_cache_path),
+    language = target_lang,
     max_levels = 50L,
     n_examples = 3L
   )

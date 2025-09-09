@@ -7,6 +7,7 @@
 snt_process_population(
   pop_data,
   translate = TRUE,
+  language = NULL,
   trans_cache_path = if (requireNamespace("here", quietly = TRUE)) {
     
     here::here("cache/translations")
@@ -21,8 +22,12 @@ snt_process_population(
 \code{year}, and \code{pop}. \code{year} may be integer, numeric, Date/POSIXt, factor,
 or character; it is coerced to integer years when feasible.}
 
-\item{translate}{logical; when TRUE, add a French label column using the
-translation cache.}
+\item{translate}{logical; when TRUE, add a translated label column
+(default FR unless \code{language} is provided) using the translation cache.}
+
+\item{language}{Optional ISO code (e.g., "fr"). When provided, a
+\verb{label_<language>} column is added to the dictionary and placed
+immediately after \code{label_en}.}
 
 \item{trans_cache_path}{character path to the translation cache directory.
 default: \code{here::here("cache/translations")} if available, else

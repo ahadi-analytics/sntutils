@@ -96,7 +96,7 @@ testthat::test_that("build_dictionary returns expected columns and profiles type
   needed <- c(
     "variable",
     "type",
-    "label_english",
+    "label_en",
     "n",
     "n_missing",
     "pct_missing",
@@ -121,8 +121,8 @@ testthat::test_that("build_dictionary returns expected columns and profiles type
   pm <- setNames(dict$pct_missing, dict$variable)
   testthat::expect_equal(unname(pm["flag"]), 20.00)
 
-  # label_english falls back to variable name when no map
-  lem <- setNames(dict$label_english, dict$variable)
+  # label_en falls back to variable name when no map
+  lem <- setNames(dict$label_en, dict$variable)
   testthat::expect_equal(unname(lem["id"]), "id")
 })
 
@@ -143,7 +143,7 @@ testthat::test_that("build_dictionary merges labels from CSV map", {
   )
   dict <- build_dictionary(data = df, labels_path = map_path)
 
-  lem <- setNames(dict$label_english, dict$variable)
+  lem <- setNames(dict$label_en, dict$variable)
   testthat::expect_equal(unname(lem["id"]), "Identifier")
   testthat::expect_equal(unname(lem["grp"]), "Group")
   # unknown column falls back to its name
@@ -174,13 +174,28 @@ testthat::test_that("build_dictionary handles geometry and lists cleanly", {
   testthat::expect_true(grepl("^list of:", row_l$notes[[1]]))
 })
 
-testthat::test_that("build_dictionary can add translated label column", {
-  tr_fn <- function(txt, lang) paste(txt, toupper(lang), sep = " / ")
+testthat::test_that("build_dictionary adds translated label column and orders it", {
   df <- data.frame(id = 1:2, name = c("a", "b"))
-  dict <- build_dictionary(df, language = "fr", translate_fun = tr_fn)
+  dict <- build_dictionary(df, language = "fr")
 
   testthat::expect_true("label_fr" %in% names(dict))
-  testthat::expect_true(all(grepl(" / FR$", dict$label_fr)))
+  # ensure label_fr is placed immediately after label_en
+  nm <- names(dict)
+  testthat::expect_equal(which(nm == "label_fr"), which(nm == "label_en") + 1L)
+  # basic type/length checks; content may mirror EN if translator missing
+  testthat::expect_type(dict$label_fr, "character")
+  testthat::expect_equal(length(dict$label_fr), nrow(dict))
+})
+
+testthat::test_that("build_dictionary(language='fr') adds label and orders column", {
+  df <- data.frame(id = 1:2, name = c("a", "b"))
+  dict <- build_dictionary(data = df, labels_path = NULL, language = "fr")
+  nm <- names(dict)
+  testthat::expect_true("label_fr" %in% nm)
+  testthat::expect_equal(which(nm == "label_fr"), which(nm == "label_en") + 1L)
+  testthat::expect_type(dict$label_fr, "character")
+  testthat::expect_equal(length(dict$label_fr), nrow(dict))
+  testthat::expect_false(any(is.na(dict$label_fr)))
 })
 
 # ---- build_dictionary ----------------------------------------------------
@@ -212,6 +227,6 @@ testthat::test_that("build_dictionary writes XLSX when openxlsx available", {
   # sanity: can read back and get header row
   wb <- openxlsx::read.xlsx(p)
   testthat::expect_true(all(
-    c("variable", "type", "label_english") %in% names(wb)
+    c("variable", "type", "label_en") %in% names(wb)
   ))
 })

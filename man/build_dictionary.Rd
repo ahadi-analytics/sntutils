@@ -8,7 +8,6 @@ build_dictionary(
   data,
   labels_path = getOption("snt.labels_en_path", NULL),
   language = NULL,
-  translate_fun = NULL,
   max_levels = 50L,
   n_examples = 3L
 )
@@ -20,11 +19,9 @@ build_dictionary(
 override/add English labels. If missing, only internal defaults are
 used.}
 
-\item{language}{Optional ISO code (e.g., "fr"). If set and
-\code{translate_fun} is provided, a \verb{label_<language>} column is added.}
-
-\item{translate_fun}{Optional function(text, target_language) -> char.
-Used only when \code{language} is non-NULL and not "en".}
+\item{language}{Optional ISO code (e.g., "fr"). If set, a
+\verb{label_<language>} column is added; values are translated using
+an internal translator when available, otherwise mirrored from English.}
 
 \item{max_levels}{Max factor levels to summarize in notes (default 50).}
 
@@ -33,10 +30,10 @@ Used only when \code{language} is non-NULL and not "en".}
 \value{
 A tibble with at least:
 \itemize{
-\item variable, type, label_english
+\item variable, type, label_en
 \item n, n_missing, pct_missing, n_unique
 \item example_values, min, max, notes
-If \code{language} is set and translated, also \verb{label_<language>}.
+If \code{language} is set and not "en", also \verb{label_<language>}.
 }
 }
 \description{
@@ -44,14 +41,17 @@ Create a tidy dictionary from a data.frame (sf ok). Infers a simple
 type per column, adds English labels (merged with an on-disk CSV map
 when available), and reports small stats: missing \%, unique count,
 a few example values, and min/max for numeric/date/datetime. Can add
-one translated label column via a user function.
+one translated label column via a user function, or mirror English
+labels when a translator is not provided.
 }
 \details{
 English labels are formed by merging internal defaults with the CSV
 at \code{labels_path}. CSV entries win on name conflicts. Unknown columns
-fall back to their original names.
+fall back to their original names. When \code{language} is provided but
+no translator is available, the translated label column mirrors the
+English labels.
 }
 \examples{
 dd <- build_dictionary(iris)
-head(dd[c("variable", "type", "label_english")])
+head(dd[c("variable", "type", "label_en")])
 }
