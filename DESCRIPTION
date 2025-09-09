@@ -35,7 +35,11 @@ Imports:
     exactextractr,
     terra,
     tibble,
-    matrixStats
+    matrixStats,
+    tools,
+    fs,
+    readr,
+    forcats
 Suggests:
     ggtext,
     scales,
@@ -50,7 +54,6 @@ Suggests:
     stringi,
     zoo,
     R.utils,
-    fs,
     rvest,
     xml2,
     here,
@@ -60,8 +63,12 @@ Suggests:
     qs2,
     qs,
     shadowtext,
-    archive
-    , parzer
+    archive,
+    parzer,
+    openxlsx,
+    arrow,
+    vctrs,
+    rprojroot
 Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
