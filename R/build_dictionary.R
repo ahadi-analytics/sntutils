@@ -161,6 +161,9 @@
   if (is.null(path) || !nzchar(path) || !file.exists(path)) {
     return(NULL)
   }
+  # Avoid attempting to read directories; quietly return NULL
+  finfo <- tryCatch(utils::file_test("-d", path), error = function(e) NA)
+  if (isTRUE(finfo)) return(NULL)
   tryCatch(
     {
       df <- utils::read.csv(
@@ -234,6 +237,34 @@ build_dictionary <- function(
   max_levels = 50L,
   n_examples = 3L
 ) {
+  # special case: if caller passes a pre-built dictionary and a file path
+  # as second argument (historical calling style), write it to disk
+  if (
+    is.data.frame(data) &&
+    all(c("variable", "type", "label_english") %in% names(data)) &&
+    is.character(labels_path) && length(labels_path) == 1L && nzchar(labels_path) &&
+    grepl("\\.(csv|xlsx)$", labels_path, ignore.case = TRUE)
+  ) {
+    out_path <- labels_path
+    ext <- tolower(tools::file_ext(out_path))
+    if (identical(ext, "csv")) {
+      utils::write.csv(
+        data,
+        file = out_path,
+        row.names = FALSE,
+        fileEncoding = "UTF-8"
+      )
+    } else if (identical(ext, "xlsx")) {
+      if (!requireNamespace("openxlsx", quietly = TRUE)) {
+        stop("openxlsx package is required to write .xlsx files", call. = FALSE)
+      }
+      openxlsx::write.xlsx(data, file = out_path)
+    } else {
+      stop("Unsupported file extension: ", ext, call. = FALSE)
+    }
+    return(invisible(out_path))
+  }
+
   stopifnot(!is.null(data))
   vars <- names(data)
   if (is.null(vars)) {
