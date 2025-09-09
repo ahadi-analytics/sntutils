@@ -83,6 +83,9 @@ globalVariables(
     "ISO_3_CODE",
     "fill_col",
     "coords",
-    "pt"
+    "pt",
+    "n_non_na",
+    "n_unique",
+    "proposed"
   )
 )
