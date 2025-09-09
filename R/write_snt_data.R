@@ -135,7 +135,10 @@
         return(vapply(
           col,
           function(v) {
-            paste0(capture.output(str(v, give.attr = FALSE)), collapse = " ")
+            paste0(
+              utils::capture.output(utils::str(v, give.attr = FALSE)),
+              collapse = " "
+            )
           },
           character(1)
         ))
@@ -230,7 +233,10 @@
         return(vapply(
           col,
           function(v) {
-            paste0(capture.output(str(v, give.attr = FALSE)), collapse = " ")
+            paste0(
+              utils::capture.output(utils::str(v, give.attr = FALSE)),
+              collapse = " "
+            )
           },
           character(1)
         ))
@@ -532,7 +538,13 @@
   sc <- .sidecar_path(data_path)
   jsonlite::write_json(meta, path = sc, auto_unbox = TRUE, pretty = FALSE)
   if (.Platform$OS.type == "windows") {
-    try(fs::file_hide(sc), silent = TRUE)
+    # best-effort hide when fs::file_hide is available
+    if (requireNamespace("fs", quietly = TRUE)) {
+      ns <- asNamespace("fs")
+      if (exists("file_hide", envir = ns, mode = "function")) {
+        try(get("file_hide", envir = ns)(sc), silent = TRUE)
+      }
+    }
   }
   invisible(sc)
 }
