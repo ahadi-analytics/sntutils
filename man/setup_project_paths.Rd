@@ -27,6 +27,7 @@ Detects a project root automatically and constructs all data/cache/output
 paths with short, memorable names. Optionally creates missing folders.
 }
 \examples{
-paths <- setup_project_paths()
-list.files(paths$admin_shp)
+tmp <- tempdir()
+paths <- setup_project_paths(base_path = tmp, create = FALSE)
+paths$admin_shp
 }
