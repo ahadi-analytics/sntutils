@@ -198,7 +198,7 @@ testthat::test_that("create_data_structure creates other standard folders", {
     "02_scripts",
     "03_outputs/plots",
     "04_reports",
-    "metadata_docs"
+    "05_metadata_docs"
   )
 
   for (folder in standard_folders) {
@@ -227,7 +227,7 @@ testthat::test_that("create_data_structure works with custom base_path", {
     "01_data/1.1_foundational/1.1a_admin_boundaries/raw",
     "01_data/1.2_epidemiology/1.2a_routine_surveillance/processed",
     "02_scripts",
-    "metadata_docs"
+    "05_metadata_docs"
   )
 
   for (folder in key_folders) {
@@ -265,7 +265,7 @@ testthat::test_that("initialize_project_structure creates complete structure", {
     "02_scripts",
     "03_outputs",
     "04_reports",
-    "metadata_docs"
+    "05_metadata_docs"
   )
 
   for (folder in main_folders) {
@@ -446,7 +446,7 @@ testthat::test_that("functions work together in typical workflow", {
     "02_scripts",
     "03_outputs/plots",
     "04_reports",
-    "metadata_docs"
+    "05_metadata_docs"
   )
 
   for (path in complete_check_paths) {
