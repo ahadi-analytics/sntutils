@@ -9,7 +9,7 @@
 #'    TRUE = verbose.
 #' @return Path to pngquant executable as character string, or NULL
 #'   if not found/installed or if installation was declined
-#' @export
+#' @noRd
 find_pngquant <- function(verbosity = FALSE) {
   os <- Sys.info()[["sysname"]]
   pngquant_path <- Sys.which("pngquant")
@@ -241,7 +241,7 @@ find_pngquant <- function(verbosity = FALSE) {
 #' if (interactive()) {
 #'   compression_stats("mylovely.plot.png", 5242880, 3145728, verbosity = TRUE)
 #' }
-#' @export
+#' @noRd
 compression_stats <- function(filename, init_size, final_size,
                               verbosity = FALSE) {
   savings <- init_size - final_size
@@ -351,7 +351,7 @@ compression_stats <- function(filename, init_size, final_size,
 #' The function uses system parameters defined in the parent environment:
 #' - pngquant_path: Path to the pngquant executable
 #' - speed: Compression speed (1-11, where 1 is slowest but highest quality)
-#'
+#' @noRd
 pngquant_compress_single_file <- function(pngquant_path, file,
                                           speed, png_overwrite,
                                           verbosity = FALSE) {

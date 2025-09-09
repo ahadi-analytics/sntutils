@@ -7,6 +7,7 @@
 #' @param formats A character vector of date formats to try (see ?strptime for
 #'   format specifications)
 #' @return A POSIXct vector of parsed dates
+#' @noRd
 try_parsing <- function(x, formats) {
   parsed <- lubridate::parse_date_time(x,
     orders = formats, quiet = TRUE
