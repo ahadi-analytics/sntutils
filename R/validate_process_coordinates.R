@@ -1231,7 +1231,7 @@ validate_process_coordinates <- function(
     if (fix_issues) {
       cli::cli_h2("Summary of Coordinate Validation and Cleaning")
       cli::cli_alert_info(
-        "Points retained: {nrow(results$final_points_df %||% data.frame())}"
+        "Points retained: {nrow(rlang::`%||%`(results$final_points_df, data.frame()))}"
       )
     } else {
       cli::cli_h2("Summary of Coordinate Validation")

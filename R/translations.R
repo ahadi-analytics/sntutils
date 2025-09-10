@@ -36,30 +36,18 @@ translate_yearmon <- function(date, language = "fr", format = "%b %Y") {
   # Map language codes to locales, checking availability
   locale <- switch(
     language,
-    "fr" = grep("^fr_.*\\.UTF-8$", available_locales, value = TRUE)[1] %||%
-      "fr_FR.UTF-8",
-    "en" = grep("^en_.*\\.UTF-8$", available_locales, value = TRUE)[1] %||%
-      "en_US.UTF-8",
-    "es" = grep("^es_.*\\.UTF-8$", available_locales, value = TRUE)[1] %||%
-      "es_ES.UTF-8",
-    "de" = grep("^de_.*\\.UTF-8$", available_locales, value = TRUE)[1] %||%
-      "de_DE.UTF-8",
-    "it" = grep("^it_.*\\.UTF-8$", available_locales, value = TRUE)[1] %||%
-      "it_IT.UTF-8",
-    "pt" = grep("^pt_.*\\.UTF-8$", available_locales, value = TRUE)[1] %||%
-      "pt_PT.UTF-8",
-    "ru" = grep("^ru_.*\\.UTF-8$", available_locales, value = TRUE)[1] %||%
-      "ru_RU.UTF-8",
-    "zh" = grep("^zh_.*\\.UTF-8$", available_locales, value = TRUE)[1] %||%
-      "zh_CN.UTF-8",
-    "ja" = grep("^ja_.*\\.UTF-8$", available_locales, value = TRUE)[1] %||%
-      "ja_JP.UTF-8",
-    "ko" = grep("^ko_.*\\.UTF-8$", available_locales, value = TRUE)[1] %||%
-      "ko_KR.UTF-8",
-    "ar" = grep("^ar_.*\\.UTF-8$", available_locales, value = TRUE)[1] %||%
-      "ar_SA.UTF-8",
-    "hi" = grep("^hi_.*\\.UTF-8$", available_locales, value = TRUE)[1] %||%
-      "hi_IN.UTF-8"
+    "fr" = rlang::`%||%`(grep("^fr_.*\\.UTF-8$", available_locales, value = TRUE)[1], "fr_FR.UTF-8"),
+    "en" = rlang::`%||%`(grep("^en_.*\\.UTF-8$", available_locales, value = TRUE)[1], "en_US.UTF-8"),
+    "es" = rlang::`%||%`(grep("^es_.*\\.UTF-8$", available_locales, value = TRUE)[1], "es_ES.UTF-8"),
+    "de" = rlang::`%||%`(grep("^de_.*\\.UTF-8$", available_locales, value = TRUE)[1], "de_DE.UTF-8"),
+    "it" = rlang::`%||%`(grep("^it_.*\\.UTF-8$", available_locales, value = TRUE)[1], "it_IT.UTF-8"),
+    "pt" = rlang::`%||%`(grep("^pt_.*\\.UTF-8$", available_locales, value = TRUE)[1], "pt_PT.UTF-8"),
+    "ru" = rlang::`%||%`(grep("^ru_.*\\.UTF-8$", available_locales, value = TRUE)[1], "ru_RU.UTF-8"),
+    "zh" = rlang::`%||%`(grep("^zh_.*\\.UTF-8$", available_locales, value = TRUE)[1], "zh_CN.UTF-8"),
+    "ja" = rlang::`%||%`(grep("^ja_.*\\.UTF-8$", available_locales, value = TRUE)[1], "ja_JP.UTF-8"),
+    "ko" = rlang::`%||%`(grep("^ko_.*\\.UTF-8$", available_locales, value = TRUE)[1], "ko_KR.UTF-8"),
+    "ar" = rlang::`%||%`(grep("^ar_.*\\.UTF-8$", available_locales, value = TRUE)[1], "ar_SA.UTF-8"),
+    "hi" = rlang::`%||%`(grep("^hi_.*\\.UTF-8$", available_locales, value = TRUE)[1], "hi_IN.UTF-8")
   )
 
   # Check if locale is available
