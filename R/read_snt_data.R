@@ -67,5 +67,34 @@ read_snt_data <- function(path, data_name, file_formats = NULL, quiet = TRUE) {
       "Failed to read '{fs::path_file(chosen)}' (format: {fmt})."
     )
   }
+
+  # ensure sf's vctrs methods are available whenever sf/sfc appears anywhere
+  needs_sf <- (function(x) {
+    if (inherits(x, "sf") || inherits(x, "sfc")) {
+      return(TRUE)
+    }
+    if (is.data.frame(x)) {
+      return(any(vapply(x, inherits, logical(1), "sfc")))
+    }
+    if (is.list(x)) {
+      for (el in x) {
+        if (Recall(el)) return(TRUE)
+      }
+    }
+    FALSE
+  })(obj)
+
+  if (isTRUE(needs_sf)) {
+    requireNamespace("sf", quietly = TRUE)
+
+    # optional: clear accidental names on geometry if a single sf object
+    if (inherits(obj, "sf")) {
+      g <- sf::st_geometry(obj)
+      if (!is.null(names(g))) {
+        sf::st_geometry(obj) <- rlang::set_names(g, NULL)
+      }
+    }
+  }
+
   obj
 }
