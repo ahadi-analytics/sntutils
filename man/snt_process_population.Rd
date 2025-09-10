@@ -34,7 +34,7 @@ default: \code{here::here("cache/translations")} if available, else
 \code{"cache/translations"}.}
 
 \item{infer_types}{logical; when TRUE (default) coerce \code{pop_data} first using
-\code{infer_col_types(apply = TRUE, return = "data")}.}
+\code{auto_parse_types(apply = TRUE, return = "data")}.}
 }
 \value{
 named list with elements (only levels present are included):
@@ -50,7 +50,7 @@ Produces population summaries at the admin levels present in \code{pop_data}
 (any of adm0..adm3) and returns a list containing per-level tables, a
 bilingual (EN + optional FR) data dictionary, and a record of which
 admin levels were found. By default, column types are first inferred
-via \code{\link[=infer_col_types]{infer_col_types()}} with \code{apply = TRUE} and \code{return = "data"}.
+via \code{\link[=auto_parse_types]{auto_parse_types()}} with \code{apply = TRUE} and \code{return = "data"}.
 }
 \examples{
 example_pop <- tibble::tibble(

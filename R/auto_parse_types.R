@@ -1,21 +1,22 @@
 #' Infer column types using readr, then layer factor detection
 #'
-#' use readr::type_convert() to infer non-factor types (numeric, integer, date,
-#' datetime, logical), then propose factors via low-cardinality rules. protect
-#' id-like names and leading-zero codes. return the dataset by default, and
-#' include the metadata plan only when requested.
+#' use readr::type_convert() to infer non-factor types (numeric, integer,
+#' date, datetime, logical). then propose factors via low-cardinality rules.
+#' protect id-like names and leading-zero codes. return the dataset by
+#' default, and include the metadata plan only when requested.
 #'
 #' @param data data.frame or tibble.
 #' @param max_levels integer. max distinct values for factor. default 50.
-#' @param max_unique_ratio numeric (0, 1]. max unique/n for factor. default 0.2.
+#' @param max_unique_ratio numeric (0, 1]. max unique/n for factor.
+#'   default 0.2.
 #' @param protect_patterns character regexes for protected names.
 #'   default c("id$", "uid$", "code$", "ref$", "key$").
 #' @param keep_leading_zero_chars logical. keep character if any value has
 #'   leading zeros in digit-only strings. default TRUE.
-#' @param prefer_logical_for_binary logical. kept for api compatibility, not
-#'   used when delegating to readr. default TRUE.
+#' @param prefer_logical_for_binary logical. kept for api compatibility,
+#'   not used when delegating to readr. default TRUE.
 #' @param apply logical. if TRUE, apply factor conversions on top of parsed
-#'   types. default FALSE.
+#'   types. default TRUE.
 #' @param return one of "data", "both", "plan". default "data".
 #'
 #' @returns
@@ -29,30 +30,33 @@
 #'   id  = c("001", "002", "003"),
 #'   sex = c("M", "F", "F"),
 #'   age = c("1", "2", "3"),
-#'   dt  = c("2024-01-01 12:00:00", "2024-01-02 00:00:00",
-#'           "2024-01-03 01:02:03")
+#'   dt  = c(
+#'     "2024-01-01 12:00:00",
+#'     "2024-01-02 00:00:00",
+#'     "2024-01-03 01:02:03"
+#'   )
 #' )
 #'
-#' # just get the dataset (parsed + factors)
-#' dat <- infer_col_types(df, apply = TRUE, return = "data")
+#' # parsed types + inferred factors
+#' dat <- auto_parse_types(df, apply = TRUE, return = "data")
 #'
-#' # get dataset and plan
-#' both <- infer_col_types(df, apply = TRUE, return = "both")
+#' # dataset and plan
+#' both <- auto_parse_types(df, apply = TRUE, return = "both")
 #' both$plan |> dplyr::select(name, current_type, proposed_type, rule)
 #' dplyr::glimpse(both$data)
 #' @export
-infer_col_types <- function(
+auto_parse_types <- function(
   data,
   max_levels = 50,
   max_unique_ratio = 0.2,
   protect_patterns = c("id$", "uid$", "code$", "ref$", "key$"),
   keep_leading_zero_chars = TRUE,
   prefer_logical_for_binary = TRUE,
-  apply = FALSE,
+  apply = TRUE,
   return = c("data", "both", "plan")
 ) {
   # match return argument
-  return <- match.arg(return)
+  return <- base::match.arg(return)
 
   # validate inputs
   if (!inherits(data, "data.frame")) {
@@ -69,36 +73,59 @@ infer_col_types <- function(
     cli::cli_abort("`max_unique_ratio` must be in (0, 1].")
   }
 
-  # core stats for plan and factor heuristics
-  cols <- names(data)
-  n <- nrow(data)
-  n_non_na <- purrr::map_int(cols, function(nm) sum(!is.na(data[[nm]])))
-  n_unique <- purrr::map_int(cols, function(nm) {
-    dplyr::n_distinct(data[[nm]], na.rm = TRUE)
-  })
-  unique_ratio <- n_unique / dplyr::if_else(n_non_na > 0, n_non_na, 1L)
-  orig_types <- purrr::map_chr(cols, function(nm) class(data[[nm]])[1])
+  # compute basics
+  cols <- base::names(data)
+  n <- base::nrow(data)
 
-  # flags for protected and leading-zero character columns
-  protected <- purrr::map_lgl(cols, function(nm) {
-    .is_protected(nm, protect_patterns)
-  })
-  lead0 <- purrr::map_lgl(cols, function(nm) {
-    if (!keep_leading_zero_chars) {
-      return(FALSE)
+  # count non-missing per column
+  n_non_na <- purrr::map_int(
+    cols,
+    function(nm) base::sum(!base::is.na(data[[nm]]))
+  )
+
+  # count unique per column
+  n_unique <- purrr::map_int(
+    cols,
+    function(nm) dplyr::n_distinct(data[[nm]], na.rm = TRUE)
+  )
+
+  # compute unique ratio safely
+  unique_ratio <- n_unique / dplyr::if_else(n_non_na > 0, n_non_na, 1L)
+
+  # record original top-level classes
+  orig_types <- purrr::map_chr(
+    cols,
+    function(nm) base::class(data[[nm]])[1]
+  )
+
+  # flags for protected names
+  protected <- purrr::map_lgl(
+    cols,
+    function(nm) .is_protected(nm, protect_patterns)
+  )
+
+  # flags for leading-zero character columns
+  lead0 <- purrr::map_lgl(
+    cols,
+    function(nm) {
+      if (!keep_leading_zero_chars) {
+        return(FALSE)
+      }
+      x <- data[[nm]]
+      if (!base::is.character(x)) {
+        return(FALSE)
+      }
+      .has_leading_zeros(x)
     }
-    x <- data[[nm]]
-    if (!is.character(x)) {
-      return(FALSE)
-    }
-    .has_leading_zeros(x)
-  })
+  )
 
   # build readr col_types so protected/lead0 stay character
   col_map <- stats::setNames(
-    rep(list(readr::col_guess()), length(cols)),
+    base::rep(list(readr::col_guess()), length(cols)),
     cols
   )
+
+  # set forced character cols
   keep_char <- cols[protected | lead0]
   if (length(keep_char) > 0) {
     for (nm in keep_char) {
@@ -106,41 +133,56 @@ infer_col_types <- function(
     }
   }
 
-  # parse via readr only when there are character columns
+  # detect presence of any character columns
   has_char <- length(cols) > 0 &&
-    any(purrr::map_lgl(cols, function(nm) is.character(data[[nm]])))
+    any(purrr::map_lgl(cols, function(nm) base::is.character(data[[nm]])))
 
+  # parse via readr only when there are character columns
   data_parsed <- if (has_char) {
-    suppressWarnings(suppressMessages(
-      readr::type_convert(
-        dplyr::as_tibble(data),
-        col_types = do.call(readr::cols, col_map),
-        guess_integer = TRUE
+    suppressWarnings(
+      suppressMessages(
+        readr::type_convert(
+          dplyr::as_tibble(data),
+          col_types = base::do.call(readr::cols, col_map),
+          guess_integer = TRUE
+        )
       )
-    ))
+    )
   } else {
     dplyr::as_tibble(data)
   }
 
   # base proposals from readr
-  base_prop <- purrr::map_chr(cols, function(nm) class(data_parsed[[nm]])[1])
-  base_rule <- paste0("readr:", base_prop)
+  base_prop <- purrr::map_chr(
+    cols,
+    function(nm) base::class(data_parsed[[nm]])[1]
+  )
+  base_rule <- base::paste0("readr:", base_prop)
 
   # factor detection (character only) on original data
-  fplan <- detect_factors(
-    data = data,
-    max_levels = max_levels,
-    max_unique_ratio = max_unique_ratio,
-    protect_patterns = protect_patterns,
-    keep_leading_zero_chars = keep_leading_zero_chars
-  )
-  f_names <- if (nrow(fplan) == 0) character(0) else fplan$name
+  if (missing(max_levels)) {
+    fplan <- detect_factors(
+      data = data,
+      max_unique_ratio = max_unique_ratio,
+      protect_patterns = protect_patterns,
+      keep_leading_zero_chars = keep_leading_zero_chars
+    )
+  } else {
+    fplan <- detect_factors(
+      data = data,
+      max_levels = max_levels,
+      max_unique_ratio = max_unique_ratio,
+      protect_patterns = protect_patterns,
+      keep_leading_zero_chars = keep_leading_zero_chars
+    )
+  }
+  f_names <- if (base::nrow(fplan) == 0) character(0) else fplan$name
 
   # override proposals for protected/lead0 and factor candidates
   proposed_type <- base_prop
   rule <- base_rule
 
-  for (i in seq_along(cols)) {
+  for (i in base::seq_along(cols)) {
     nm <- cols[i]
     if (protected[i]) {
       proposed_type[i] <- "character"
@@ -171,31 +213,34 @@ infer_col_types <- function(
     unique_ratio = unique_ratio
   )
 
-  # build final dataset according to apply
+  # apply factor conversion when requested
   data_final <- data_parsed
   if (isTRUE(apply) && length(f_names) > 0) {
     for (nm in f_names) {
-      # convert using original text to preserve first-seen order
-      data_final[[nm]] <- forcats::as_factor(as.character(data[[nm]]))
+      # use original text to preserve first-seen order
+      data_final[[nm]] <- forcats::as_factor(base::as.character(data[[nm]]))
     }
   }
 
   # return based on `return` argument
   if (return == "data") {
-    return(invisible(data_final))
+    return(data_final)
   } else if (return == "plan") {
-    return(invisible(plan))
+    return(plan)
   } else {
-    return(invisible(list(plan = plan, data = data_final)))
+    return(
+        list(plan = plan, data = data_final)
+    )
   }
 }
 
 #' Detect factor-like character columns (low-cardinality only)
 #'
 #' identify character columns that look categorical using simple heuristics.
-#' protects id-like names and leading zeros. returns a compact tibble invisibly.
+#' protects id-like names and leading zeros. returns a compact tibble
+#' invisibly.
 #'
-#' @inheritParams infer_col_types
+#' @inheritParams auto_parse_types
 #'
 #' @returns
 #' invisible tibble with:
@@ -212,47 +257,69 @@ detect_factors <- function(
   protect_patterns = c("id$", "uid$", "code$", "ref$", "key$"),
   keep_leading_zero_chars = TRUE
 ) {
+  # validate inputs
   if (!inherits(data, "data.frame")) {
     cli::cli_abort("`data` must be a data.frame or tibble.")
   }
 
+  # track whether caller provided max_levels
+  use_max_levels <- !missing(max_levels)
+
   # compute stats
-  cols <- names(data)
-  n <- nrow(data)
+  cols <- base::names(data)
+  n <- base::nrow(data)
 
   plan <- tibble::tibble(
     name = cols,
     n = n,
-    n_non_na = purrr::map_int(cols, function(nm) {
-      sum(!is.na(data[[nm]]))
-    }),
-    n_unique = purrr::map_int(cols, function(nm) {
-      dplyr::n_distinct(data[[nm]], na.rm = TRUE)
-    }),
-    unique_ratio = n_unique /
-      dplyr::if_else(n_non_na > 0, n_non_na, 1L),
-    is_char = purrr::map_lgl(cols, function(nm) is.character(data[[nm]])),
-    protected = purrr::map_lgl(cols, function(nm) {
-      .is_protected(nm, protect_patterns)
-    }),
-    lead0 = purrr::map_lgl(cols, function(nm) {
-      if (!keep_leading_zero_chars) {
-        return(FALSE)
+    n_non_na = purrr::map_int(
+      cols,
+      function(nm) base::sum(!base::is.na(data[[nm]]))
+    ),
+    n_unique = purrr::map_int(
+      cols,
+      function(nm) dplyr::n_distinct(data[[nm]], na.rm = TRUE)
+    ),
+    unique_ratio = n_unique / dplyr::if_else(n_non_na > 0, n_non_na, 1L),
+    is_char = purrr::map_lgl(
+      cols,
+      function(nm) base::is.character(data[[nm]])
+    ),
+    protected = purrr::map_lgl(
+      cols,
+      function(nm) .is_protected(nm, protect_patterns)
+    ),
+    lead0 = purrr::map_lgl(
+      cols,
+      function(nm) {
+        if (!keep_leading_zero_chars) {
+          return(FALSE)
+        }
+        x <- data[[nm]]
+        if (!base::is.character(x)) {
+          return(FALSE)
+        }
+        .has_leading_zeros(x)
       }
-      x <- data[[nm]]
-      if (!is.character(x)) {
-        return(FALSE)
-      }
-      .has_leading_zeros(x)
-    })
-  ) |>
+    )
+  )
+
+  # enforce max_levels only if user provided it
+  plan$.too_many_levels <- if (use_max_levels) {
+    plan$n_unique > max_levels
+  } else {
+    base::rep(FALSE, length(cols))
+  }
+
+  plan <- plan |>
     dplyr::mutate(
       proposed = dplyr::case_when(
         !is_char ~ FALSE,
         protected ~ FALSE,
         lead0 ~ FALSE,
-        n_unique <= 1 ~ FALSE,
-        n_unique > max_levels ~ FALSE,
+        (n_non_na > 0 & n_unique == 1) ~ TRUE,
+        n_unique == 0 ~ FALSE,
+        .data$.too_many_levels ~ FALSE,
         unique_ratio > max_unique_ratio ~ FALSE,
         TRUE ~ TRUE
       ),
@@ -260,8 +327,9 @@ detect_factors <- function(
         !is_char ~ "not character",
         protected ~ "protected by name",
         lead0 ~ "leading zeros detected",
-        n_unique <= 1 ~ "constant or all NA",
-        n_unique > max_levels ~ "too many levels",
+        (n_non_na > 0 & n_unique == 1) ~ "constant (1 level)",
+        n_unique == 0 ~ "all NA",
+        .data$.too_many_levels ~ "too many levels",
         unique_ratio > max_unique_ratio ~ "too unique for factor",
         TRUE ~ "low cardinality character"
       )
@@ -279,7 +347,7 @@ detect_factors <- function(
       ))
     )
 
-  return(invisible(plan))
+  return(base::invisible(plan))
 }
 
 #' Check if a column name is protected by regex patterns
@@ -299,12 +367,15 @@ detect_factors <- function(
 #' @keywords internal
 #' @noRd
 .is_protected <- function(nm, patterns) {
+  # handle empty patterns
   if (length(patterns) == 0) {
     return(FALSE)
   }
-  any(vapply(
+
+  # check any pattern matches
+  base::any(base::vapply(
     patterns,
-    function(p) grepl(p, nm, ignore.case = TRUE),
+    function(p) base::grepl(p, nm, ignore.case = TRUE),
     logical(1)
   ))
 }
@@ -327,9 +398,11 @@ detect_factors <- function(
 #' @noRd
 .has_leading_zeros <- function(x_chr) {
   # keep only non-missing
-  x_chr <- x_chr[!is.na(x_chr)]
+  x_chr <- x_chr[!base::is.na(x_chr)]
   if (length(x_chr) == 0) {
     return(FALSE)
   }
-  any(grepl("^0+\\d+$", x_chr))
+
+  # detect any leading-zero digit strings
+  base::any(base::grepl("^0+\\d+$", x_chr))
 }
