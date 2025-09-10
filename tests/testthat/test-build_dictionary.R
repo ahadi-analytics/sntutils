@@ -198,6 +198,44 @@ testthat::test_that("build_dictionary(language='fr') adds label and orders colum
   testthat::expect_false(any(is.na(dict$label_fr)))
 })
 
+# ---- build_dictionary trans_cache_path passthrough ---------------------------
+testthat::test_that(
+  "build_dictionary forwards trans_cache_path to translate_text_vec", {
+  # Prepare a small data frame
+  df <- data.frame(id = 1:2, name = c("alpha", "beta"))
+  tmp_cache <- withr::local_tempdir()
+
+  # Access package namespace and swap translator with a test double
+  ns <- asNamespace("sntutils")
+  orig <- get("translate_text_vec", envir = ns)
+
+  captured <- NULL
+  fake_translator <- function(
+    text, target_language = "fr", trans_cache_path = NULL, ...) {
+    captured <<- trans_cache_path
+    paste0(as.character(text), "_", target_language)
+  }
+
+  # Replace binding safely and restore on exit
+  unlockBinding("translate_text_vec", ns)
+  withr::defer({
+    unlockBinding("translate_text_vec", ns)
+    assign("translate_text_vec", orig, envir = ns)
+    lockBinding("translate_text_vec", ns)
+  })
+  assign("translate_text_vec", fake_translator, envir = ns)
+  lockBinding("translate_text_vec", ns)
+
+  dict <- build_dictionary(df, language = "fr", trans_cache_path = tmp_cache)
+
+  # Expect trans_cache_path was forwarded to translator
+  testthat::expect_identical(captured, tmp_cache)
+
+  # And translated labels reflect our fake translator output
+  testthat::expect_true("label_fr" %in% names(dict))
+  testthat::expect_true(all(grepl("_fr$", dict$label_fr)))
+})
+
 # ---- build_dictionary ----------------------------------------------------
 testthat::test_that("build_dictionary writes CSV (utf-8, newline)", {
   tmp <- withr::local_tempdir()

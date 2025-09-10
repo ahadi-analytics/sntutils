@@ -2,56 +2,49 @@
 % Please edit documentation in R/build_dictionary.R
 \name{build_dictionary}
 \alias{build_dictionary}
-\title{Build a compact data dictionary}
+\title{build a compact data dictionary}
 \usage{
 build_dictionary(
   data,
-  labels_path = getOption("snt.labels_en_path", NULL),
+  labels_path = base::getOption("snt.labels_en_path", NULL),
   language = NULL,
   max_levels = 50L,
-  n_examples = 3L
+  n_examples = 3L,
+  trans_cache_path = NULL
 )
 }
 \arguments{
-\item{data}{A data.frame/tibble; sf columns are detected.}
+\item{data}{data.frame or tibble; sf columns allowed.}
 
-\item{labels_path}{Optional CSV with columns \verb{name,label} used to
-override/add English labels. If missing, only internal defaults are
-used.}
+\item{labels_path}{optional csv with columns like \verb{name,label} to
+override english labels.}
 
-\item{language}{Optional ISO code (e.g., "fr"). If set, a
-\verb{label_<language>} column is added; values are translated using
-an internal translator when available, otherwise mirrored from English.}
+\item{language}{optional iso code (e.g., "fr") to add \verb{label_<language>}.}
 
-\item{max_levels}{Max factor levels to summarize in notes (default 50).}
+\item{max_levels}{max factor levels to summarize in notes. default 50.}
 
-\item{n_examples}{Number of example values to show (default 3).}
+\item{n_examples}{number of example values to show. default 3.}
+
+\item{trans_cache_path}{optional cache dir for translate_text_vec().}
 }
 \value{
-A tibble with at least:
-\itemize{
-\item variable, type, label_en
-\item n, n_missing, pct_missing, n_unique
-\item example_values, min, max, notes
-If \code{language} is set and not "en", also \verb{label_<language>}.
-}
+tibble with:
+variable, type, label_en, n, n_missing, pct_missing, n_unique,
+example_values, min, max, notes, and optionally \verb{label_<language>}.
 }
 \description{
-Create a tidy dictionary from a data.frame (sf ok). Infers a simple
-type per column, adds English labels (merged with an on-disk CSV map
-when available), and reports small stats: missing \%, unique count,
-a few example values, and min/max for numeric/date/datetime. Can add
-one translated label column via a user function, or mirror English
-labels when a translator is not provided.
+create a tidy dictionary from a data.frame (sf supported). infer a
+simple type per column, attach english labels (optionally overridden
+by a csv map), and report stats: missing \%, unique count, example
+values, and min/max for numeric/date/datetime. optionally add a
+translated label column.
 }
 \details{
-English labels are formed by merging internal defaults with the CSV
-at \code{labels_path}. CSV entries win on name conflicts. Unknown columns
-fall back to their original names. When \code{language} is provided but
-no translator is available, the translated label column mirrors the
-English labels.
+english labels are merged as: internal defaults, then csv overrides.
+unknown variables fall back to their column name.
 }
 \examples{
-dd <- build_dictionary(iris)
-head(dd[c("variable", "type", "label_en")])
+dd <- build_dictionary(dplyr::as_tibble(iris))
+dd |> dplyr::select(variable, type, label_en) |> utils::head()
+
 }
