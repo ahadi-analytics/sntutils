@@ -107,7 +107,7 @@ translate_text <- function(text,
                            target_language = "en",
                            source_language = "en",
                            cache_path = tempdir()) {
-  # optionally preprocess english→french to enforce malaria acronyms
+  # optionally preprocess english->french to enforce malaria acronyms
   text_for_translation <- text
   if (
     base::identical(base::tolower(source_language), "en") &&
@@ -320,7 +320,7 @@ translate_text_vec <- function(text, ...) {
 
 #' French malaria acronyms mapping
 #'
-#' returns a tibble of English↔French acronyms and their full phrases used
+#' returns a tibble of English<->French acronyms and their full phrases used
 #' in malaria program contexts. the first French acronym listed is treated
 #' as the preferred one when enforcing acronyms.
 #'
@@ -336,44 +336,44 @@ french_malaria_acronyms <- function() {
   # raw rows, semicolon-separated variants
   rows <- list(
     list("CHW", "Community health worker", "ASBC; ASC",
-         "Agents Santé de Base Communautaire"),
+         "Agents Sant\u00e9 de Base Communautaire"),
     list("", "case management", "PEC",
          "Prise en charge des cas, gestion de cas"),
     list("", "case management at the household", "PECADOM",
-         "Prise en charge des cas à domicile"),
+         "Prise en charge des cas \u00e0 domicile"),
     list("iCCM", "Integrated community case management", "iCCM",
-         "Prise en charge communautaire intégrée des cas"),
+         "Prise en charge communautaire int\u00e9gr\u00e9e des cas"),
     list("ACT", "Artemisinin-based combination therapy", "CTA",
-         "Thérapie combinée à base d'artémisinine"),
+         "Th\u00e9rapie combin\u00e9e \u00e0 base d'art\u00e9misinine"),
     list("SMC", "Seasonal Malaria Chemoprevention", "CPS",
-         "La chimioprévention du paludisme saisonnier"),
+         "La chimiopr\u00e9vention du paludisme saisonnier"),
     list("IPTp", "Intermittent preventive treatment in pregnancy", "TPIg",
-         "Le traitement préventif intermittent pendant la grossesse"),
+         "Le traitement pr\u00e9ventif intermittent pendant la grossesse"),
     list("IPTi", "Intermittent preventive treatment in infants", "TPIn",
-         "Le traitement préventif intermittent du nourrisson"),
+         "Le traitement pr\u00e9ventif intermittent du nourrisson"),
     list("IRS", "Indoor residual spraying", "PID",
-         "Pulvérisation intra-domiciliaire"),
+         "Pulv\u00e9risation intra-domiciliaire"),
     list("LLIN; ITN", "Long-lasting insecticidal nets",
          "MILDA; MILD; MII",
-         "Moustiquaire imprégnée à longue durée d’action"),
+         "Moustiquaire impr\u00e9gn\u00e9e \u00e0 longue dur\u00e9e d\u2019action"),
     list("EPI", "Expanded Programme on Immunization", "PEV",
-         "Programme élargi de vaccination"),
+         "Programme \u00e9largi de vaccination"),
     list("WHO", "World Health Organization", "OMS",
-         "Organisation mondiale de la santé"),
+         "Organisation mondiale de la sant\u00e9"),
     list("GF", "Global Fund", "FM", "Fonds Mondial"),
     list("DHS", "Demographic and Health Survey", "EDS",
-         "Enquête démographique et de santé"),
+         "Enqu\u00eate d\u00e9mographique et de sant\u00e9"),
     list("MIS", "Malaria Indicators Survey", "EPI; EIPAG",
-         "Les enquêtes sur les indicateurs du paludisme"),
+         "Les enqu\u00eates sur les indicateurs du paludisme"),
     list("", "Health district", "DS", "District sanitaire"),
     list("BAU", "Business as usual", "CSP",
-         "Continuation de la stratégie précédente"),
+         "Continuation de la strat\u00e9gie pr\u00e9c\u00e9dente"),
     list("U5", "under five years old", "M5", "moins de cinq ans"),
     list("U1", "under one year old", "M1", "moins d'un an"),
     list("PMC", "perennial malaria chemoprevention", "CPP",
-         "Chimioprévention du paludisme pérenne"),
+         "Chimiopr\u00e9vention du paludisme p\u00e9renne"),
     list("RDT", "rapid diagnostic test", "TDR", "test diagnostique rapide"),
-    list("NSP", "national strategic plan", "PSN", "plan stratégique national"),
+    list("NSP", "national strategic plan", "PSN", "plan strat\u00e9gique national"),
     list("FR", "(GFATM) funding request", "DF", "demande de financement"),
     list("HF", "health facility", "FS", "formation sanitaire")
   )
@@ -405,7 +405,7 @@ french_malaria_acronyms <- function() {
   )
 }
 
-# internal: preprocess en→fr by enforcing acronyms
+# internal: preprocess en->fr by enforcing acronyms
 # replaces english acronyms or full phrases with preferred french acronym
 # prior to translation so the acronym survives translation intact.
 # @noRd
