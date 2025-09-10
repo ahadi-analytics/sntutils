@@ -35,7 +35,7 @@
   }
 
   file_formats <- tolower(file_formats)
-  ok_fmts <- c("rds", "csv", "tsv", "xlsx", "parquet", "feather", "qs", "qs2")
+  ok_fmts <- c("rds", "csv", "tsv", "xlsx", "parquet", "feather", "qs2")
   bad <- setdiff(file_formats, ok_fmts)
   if (length(bad) > 0) {
     cli::cli_abort(c(
@@ -94,7 +94,6 @@
 #'
 #' @param x A data.frame
 #' @return Data.frame with UTF-8 characters
-#' @examples
 #' @noRd
 .to_utf8 <- function(x) {
   if (!is.data.frame(x)) {
@@ -415,35 +414,13 @@
   }
 
   list(
-    qs = function(x, path, ...) {
-      if (requireNamespace("qs2", quietly = TRUE)) {
-        ns <- asNamespace("qs2")
-        fn <- if (exists("qsave", envir = ns, mode = "function")) {
-          get("qsave", envir = ns)
-        } else if (exists("qs_save", envir = ns, mode = "function")) {
-          get("qs_save", envir = ns)
-        } else {
-          NULL
-        }
-        if (!is.null(fn)) {
-          fn(x, path, ...)
-          return(path)
-        }
-      }
-      if (requireNamespace("qs", quietly = TRUE)) {
-        qs::qsave(x, path, ...)
-        return(path)
-      }
-      cli::cli_abort("Writing '.qs' requires 'qs2' or 'qs'.")
-    },
-
     qs2 = function(x, path, ...) {
       if (requireNamespace("qs2", quietly = TRUE)) {
         ns <- asNamespace("qs2")
-        fn <- if (exists("qsave", envir = ns, mode = "function")) {
-          get("qsave", envir = ns)
-        } else if (exists("qs_save", envir = ns, mode = "function")) {
+        fn <- if (exists("qs_save", envir = ns, mode = "function")) {
           get("qs_save", envir = ns)
+        } else if (exists("qsave", envir = ns, mode = "function")) {
+          get("qsave", envir = ns)
         } else {
           NULL
         }
@@ -452,11 +429,7 @@
           return(path)
         }
       }
-      if (requireNamespace("qs", quietly = TRUE)) {
-        qs::qsave(x, path, ...)
-        return(path)
-      }
-      cli::cli_abort("Writing '.qs2' requires 'qs2' (or fallback 'qs').")
+      cli::cli_abort("Writing '.qs2' requires 'qs2'.")
     },
 
     rds = function(x, path, ...) {
@@ -580,7 +553,7 @@
 #'
 #' @description
 #' Best-effort reader used for deduplication: attempts to import a file by
-#' format using lightweight dependencies (base, qs/qs2, arrow, openxlsx).
+#' format using lightweight dependencies (base, qs2, arrow, openxlsx).
 #'
 #' @param path File path to read.
 #' @param fmt Lowercase format (e.g., "csv", "qs2").
@@ -622,42 +595,17 @@
       ),
       silent = TRUE
     ),
-    qs = try_read(list(
-      function() {
-        if (requireNamespace("qs2", quietly = TRUE)) {
-          ns <- asNamespace("qs2")
-          if (exists("qread", envir = ns, mode = "function")) {
-            return(get("qread", envir = ns)(path))
-          } else if (exists("qs_read", envir = ns, mode = "function")) {
-            return(get("qs_read", envir = ns)(path))
-          }
-        }
-        stop("no qs2 reader")
-      },
-      function() {
-        if (requireNamespace("qs", quietly = TRUE)) {
-          return(qs::qread(path))
-        }
-        stop("no qs reader")
-      }
-    )),
     qs2 = try_read(list(
       function() {
         if (requireNamespace("qs2", quietly = TRUE)) {
           ns <- asNamespace("qs2")
-          if (exists("qread", envir = ns, mode = "function")) {
-            return(get("qread", envir = ns)(path))
-          } else if (exists("qs_read", envir = ns, mode = "function")) {
+          if (exists("qs_read", envir = ns, mode = "function")) {
             return(get("qs_read", envir = ns)(path))
+          } else if (exists("qread", envir = ns, mode = "function")) {
+            return(get("qread", envir = ns)(path))
           }
         }
         stop("no qs2 reader")
-      },
-      function() {
-        if (requireNamespace("qs", quietly = TRUE)) {
-          return(qs::qread(path))
-        }
-        stop("no qs reader")
       }
     )),
     parquet = if (requireNamespace("arrow", quietly = TRUE)) {

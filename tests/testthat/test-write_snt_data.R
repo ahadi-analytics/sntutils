@@ -206,25 +206,10 @@ testthat::test_that("feather writes when arrow is available", {
   testthat::expect_true(res$ok[[1]])
 })
 
-# qs / qs2 -------------------------------------------------------------------
+# qs2 -------------------------------------------------------------------
 
-testthat::test_that("qs writes when available", {
-  testthat::skip_if_not(has_pkg("qs"))
-  testthat::skip_if_not(has_writer("qs"))
-
-  tmp <- withr::local_tempdir()
-  res <- write_snt_data(
-    obj = head(mtcars),
-    path = tmp,
-    data_name = "cars",
-    file_formats = "qs",
-    quiet = FALSE
-  )
-  testthat::expect_true(res$ok[[1]])
-})
-
-testthat::test_that("qs2 writes when available", {
-  testthat::skip_if_not(has_pkg("qs"))
+testthat::test_that("qs2 writes when qs2 is available", {
+  testthat::skip_if_not(has_pkg("qs2"))
   testthat::skip_if_not(has_writer("qs2"))
 
   tmp <- withr::local_tempdir()

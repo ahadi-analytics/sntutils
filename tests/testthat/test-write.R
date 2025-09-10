@@ -18,9 +18,9 @@ testthat::test_that("export function works correctly", {
 
     # Supported formats
     formats <- c("csv", "tsv", "xlsx", "rds", "dta")
-    if (requireNamespace("qs2", quietly = TRUE) ||
-        requireNamespace("qs", quietly = TRUE)) {
-      formats <- c(formats, "qs", "qs2")
+    if (requireNamespace("qs2", quietly = TRUE)) {
+      # Test only .qs2 using the qs2 backend
+      formats <- c(formats, "qs2")
     }
 
     for (format in formats) {
