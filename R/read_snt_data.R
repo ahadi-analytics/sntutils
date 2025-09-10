@@ -10,6 +10,7 @@
 #' \dontrun{
 #' x <- read_snt_data(tmp, "my_population_data", "csv", quiet = FALSE)
 #' }
+#' @export
 read_snt_data <- function(path, data_name, file_formats = NULL, quiet = TRUE) {
   if (is.null(path) || !nzchar(path) || !fs::dir_exists(path)) {
     cli::cli_abort("Invalid or missing directory: {path}.")
@@ -18,7 +19,7 @@ read_snt_data <- function(path, data_name, file_formats = NULL, quiet = TRUE) {
     cli::cli_abort("`data_name` contains illegal characters.")
   }
 
-  all_ok <- c("rds", "csv", "tsv", "xlsx", "parquet", "feather", "qs", "qs2")
+  all_ok <- c("rds", "csv", "tsv", "xlsx", "parquet", "feather", "qs2")
   fmts <- if (is.null(file_formats)) all_ok else tolower(file_formats)
   bad <- setdiff(fmts, all_ok)
   if (length(bad)) {

@@ -22,8 +22,8 @@ No return value, called for side effects.
 \description{
 This function provides a unified interface for saving data to various
 file formats supported by the \code{rio::export}
-function. Additionally, it supports fast binary formats \code{.qs} and
-\code{.qs2} via the optional \code{qs2} package.
+function. Additionally, it supports fast binary format \code{.qs2}
+via the optional \code{qs2} package.
 The format is automatically detected from the file extension to
 simplify the saving process.
 }
@@ -44,8 +44,7 @@ write(mtcars, file_path = file.path(tmpdir, "file.dta"))
 # Save an RDS file
 # write(mtcars, file_path = file.path(tmpdir, "file.rds"))
 
-# Save a qs/qs2 file (requires 'qs2')
-# write(mtcars, file_path = file.path(tmpdir, "file.qs"))
+# Save a qs2 file (requires 'qs2')
 
 # Save an RData file
 write(list(mtcars = mtcars, iris = iris),
