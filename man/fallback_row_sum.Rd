@@ -2,32 +2,52 @@
 % Please edit documentation in R/utils.R
 \name{fallback_row_sum}
 \alias{fallback_row_sum}
-\title{Smart row-wise sum with missing data handling}
+\title{Smart row-wise sum with missing data handling and type preservation}
 \usage{
 fallback_row_sum(..., min_present = 1, .keep_zero_as_zero = TRUE)
 }
 \arguments{
-\item{...}{Numeric vectors of equal length to be summed row-wise.}
+\item{...}{Numeric or integer vectors of equal length to be summed row-wise.}
 
-\item{min_present}{Integer. Minimum number of non-\code{NA} values required per row
-to return a sum. Rows with fewer than \code{min_present} non-\code{NA} values return
-\code{NA_real_}.}
+\item{min_present}{Integer. Minimum number of non-\code{NA} values required per
+row to return a sum. Rows with fewer than \code{min_present} non-\code{NA} values
+return \code{NA_integer_} if all inputs are integer, otherwise \code{NA_real_}.}
 
 \item{.keep_zero_as_zero}{Logical. Currently unused, reserved for future
 development. Defaults to \code{TRUE}.}
 }
 \value{
-A numeric vector of row-wise sums with \code{NA_real_} where insufficient
-data are present.
+An integer or numeric vector of row-wise sums, depending on the input
+types, with appropriate \code{NA} values where insufficient data are present.
 }
 \description{
 Computes the row-wise sum across multiple input vectors, while allowing
-control over how many non-missing values must be present for a valid result.
-If the number of non-\code{NA} values in a row is below \code{min_present}, the result
-is set to \code{NA_real_}.
+control over how many non-missing values must be present for a valid
+result. If the number of non-\code{NA} values in a row is below \code{min_present},
+the result is set to \code{NA} of the appropriate type.
+}
+\details{
+The return type matches the inputs:
+\itemize{
+\item If all inputs are integer vectors, the result is an integer vector
+with \code{NA_integer_} where insufficient data are present.
+\item Otherwise, the result is a numeric (double) vector with \code{NA_real_}
+where insufficient data are present.
+}
 }
 \examples{
-fallback_row_sum(c(1, NA, 3), c(2, 4, NA))  # returns c(3, NA, NA)
-fallback_row_sum(c(1, NA), c(2, NA), min_present = 1)  # returns c(3, NA)
+# all integer inputs -> integer output
+x <- c(1L, 2L, NA_integer_)
+y <- c(3L, NA_integer_, 4L)
+fallback_row_sum(x, y)
+typeof(fallback_row_sum(x, y))  # "integer"
+
+# mixed integer and numeric inputs -> numeric output
+z <- c(1, 2, NA)
+fallback_row_sum(x, z)
+typeof(fallback_row_sum(x, z))  # "double"
+
+# using min_present to control NA behaviour
+fallback_row_sum(c(1, NA), c(2, NA), min_present = 1)
 
 }

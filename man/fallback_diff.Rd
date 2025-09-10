@@ -2,43 +2,54 @@
 % Please edit documentation in R/utils.R
 \name{fallback_diff}
 \alias{fallback_diff}
-\title{Fallback Absolute Difference Between Two Vectors}
+\title{Fallback Absolute Difference Between Two Vectors (type-preserving)}
 \usage{
 fallback_diff(col1, col2, minimum = 0)
 }
 \arguments{
-\item{col1}{Numeric vector. First input column.}
+\item{col1}{Numeric or integer vector. First input column.}
 
-\item{col2}{Numeric vector. Second input column.}
+\item{col2}{Numeric or integer vector. Second input column.}
 
-\item{minimum}{Numeric scalar. Minimum allowable value for the result
-(default is \code{0}).}
+\item{minimum}{Numeric or integer scalar. Minimum allowable value for the
+result (default is \code{0}).}
 }
 \value{
-A numeric vector with the same length as the inputs. Each element is:
+An integer or numeric vector with the same length as the inputs.
+Each element is:
 \itemize{
-\item the absolute difference between \code{col1} and \code{col2}, if both are non-missing,
+\item the absolute difference between \code{col1} and \code{col2}, if
+both are non-missing,
 \item the non-missing value if only one is present,
-\item \code{NA_real_} if both values are missing.
+\item \code{NA_integer_} or \code{NA_real_} if both are missing.
 }
 In all cases, the result is constrained to be no less than \code{minimum}.
 }
 \description{
-Computes the difference between two numeric vectors element-wise.
+Computes the difference between two numeric or integer vectors element-wise.
 If both values are present, returns \code{pmax(abs(col1 - col2), minimum)}.
 If only one value is present, returns the non-missing value or \code{minimum},
-whichever is greater. If both are missing, returns \code{NA_real_}.
+whichever is greater. If both are missing, returns \code{NA} of the
+appropriate type.
 }
 \details{
-This function is useful when calculating differences that must be non-negative
-and when missingness should fall back to a non-missing value rather than return
-\code{NA}.
+The return type matches the inputs:
+\itemize{
+\item If both inputs are integer vectors (and \code{minimum} is an integer scalar),
+the result is integer with \code{NA_integer_} where both are missing.
+\item Otherwise, the result is numeric (double) with \code{NA_real_} where both
+are missing.
+}
 }
 \examples{
 fallback_diff(5, 3)        # 2
 fallback_diff(NA, 4)       # 4
 fallback_diff(7, NA)       # 7
 fallback_diff(4, 9)        # 0
-fallback_diff(NA, NA)      # NA
+fallback_diff(NA, NA)      # NA_real_
+
+xi <- c(5L, NA, 7L)
+yi <- c(3L, 4L, NA_integer_)
+fallback_diff(xi, yi)      # integer output
 
 }
