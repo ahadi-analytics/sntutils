@@ -1,14 +1,14 @@
 has_pkg <- function(p) requireNamespace(p, quietly = TRUE)
 
-# stub infer_col_types if not present (pass-through)
+# stub auto_parse_types if not present (pass-through)
 .local_stub_infer <- function() {
-  if (!exists("infer_col_types", mode = "function")) {
+  if (!exists("auto_parse_types", mode = "function")) {
     assign(
-      "infer_col_types",
+      "auto_parse_types",
       function(data, apply = TRUE, return = "data") data,
       envir = .GlobalEnv
     )
-    withr::defer(rm(infer_col_types, envir = .GlobalEnv))
+    withr::defer(rm(auto_parse_types, envir = .GlobalEnv))
   }
 }
 
@@ -170,7 +170,7 @@ testthat::test_that("respects infer_types=FALSE path", {
     stringsAsFactors = FALSE
   )
 
-  # do not rely on infer_col_types; let internal year coercion run
+  # do not rely on auto_parse_types; let internal year coercion run
   out <- snt_process_population(
     df,
     translate = FALSE,
