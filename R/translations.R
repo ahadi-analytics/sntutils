@@ -107,6 +107,14 @@ translate_text <- function(text,
                            target_language = "en",
                            source_language = "en",
                            cache_path = tempdir()) {
+  # optionally preprocess english→french to enforce malaria acronyms
+  text_for_translation <- text
+  if (
+    base::identical(base::tolower(source_language), "en") &&
+      base::identical(base::tolower(target_language), "fr")
+  ) {
+    text_for_translation <- .preprocess_en_to_fr_acronyms(text_for_translation)
+  }
   # Check if source and target languages are the same
   if (source_language == target_language) {
     cli::cli_inform(
@@ -127,10 +135,7 @@ translate_text <- function(text,
 
   cache_file <- file.path(cache_path, "translation_cache.rds")
 
-  # Ensure digest is available
-  if (!requireNamespace("digest", quietly = TRUE)) {
-    stop("Package 'digest' is required for translation caching")
-  }
+  # no hashing required; keys are human-readable, no extra deps
 
   # Load or initialize cache as a data frame
   if (file.exists(cache_file)) {
@@ -157,30 +162,39 @@ translate_text <- function(text,
       from_lang = character(),
       translated_time = character(),
       name_of_creator = character(),
-      stringsAsFactors = TRUE
+      stringsAsFactors = FALSE
     )
   }
 
-  # Create a unique key for this text and language combination
+  # Create a stable cache key based on the ORIGINAL input text + languages
   source_suffix <- paste0("_from_", source_language)
 
-  # Normalize text by removing accents for more consistent caching
   normalized_text <- text
   if (requireNamespace("stringi", quietly = TRUE)) {
     normalized_text <- stringi::stri_trans_general(text, "Latin-ASCII")
   }
 
-  key <- digest::digest(paste0(
-    normalized_text, "_",
-    target_language, source_suffix
-  ))
+  key <- paste0(normalized_text, "_", target_language, source_suffix)
 
   # Return from cache if available
-  cache_match <- cache$key == key
+  # compare using character keys to avoid factor pitfalls
+  cache_keys_chr <- base::as.character(cache$key)
+  cache_match <- cache_keys_chr == key
   if (any(cache_match)) {
     match_idx <- which(cache_match)[1]
+    cached_text <- as.character(cache$text[match_idx])
+    # when EN -> FR, enforce french acronyms even for old cache entries
+    if (tolower(target_language) == "fr") {
+      enf <- base::get0(".enforce_fr_acronyms_in_french", mode = "function")
+      fixed <- if (base::is.function(enf)) enf(cached_text) else cached_text
+      if (!identical(fixed, cached_text)) {
+        cache$text[match_idx] <- fixed
+        saveRDS(cache, cache_file)
+        return(as.character(fixed))
+      }
+    }
     saveRDS(cache, cache_file)
-    return(as.character(cache$text[match_idx]))
+    return(as.character(cached_text))
   }
 
   # Check for internet connection
@@ -211,7 +225,7 @@ translate_text <- function(text,
         stop("Package 'gtranslate' is required for translation")
       }
       gtranslate::translate(
-        text,
+        text_for_translation,
         to = target_language,
         from = source_language
       )
@@ -221,6 +235,14 @@ translate_text <- function(text,
       text
     }
   )
+
+  # for EN -> FR, enforce acronyms on fresh results as well
+  if (tolower(target_language) == "fr") {
+    enf <- base::get0(".enforce_fr_acronyms_in_french", mode = "function")
+    if (base::is.function(enf)) {
+      result <- enf(result)
+    }
+  }
 
   # Cache if successful
   if (!identical(result, text)) {
@@ -232,7 +254,7 @@ translate_text <- function(text,
       from_lang = source_language,
       translated_time = format(Sys.time(), tz = "UTC", usetz = TRUE),
       name_of_creator = Sys.getenv("RSTUDIO_USER_IDENTITY"),
-      stringsAsFactors = TRUE
+      stringsAsFactors = FALSE
     ))
     rownames(cache) <- NULL
     saveRDS(cache, cache_file)
@@ -292,4 +314,127 @@ translate_text_vec <- function(text, ...) {
       )
     ) |>
     dplyr::pull(translated)
+}
+
+# french acronyms --------------------------------------------------------------
+
+#' French malaria acronyms mapping
+#'
+#' returns a tibble of English↔French acronyms and their full phrases used
+#' in malaria program contexts. the first French acronym listed is treated
+#' as the preferred one when enforcing acronyms.
+#'
+#' @return tibble with columns: english_acronyms (list), english_full,
+#'   french_acronyms (list), french_full, preferred_french_acronym
+#'
+#' @examples
+#' tbl <- french_malaria_acronyms()
+#' tbl$preferred_french_acronym
+#'
+#' @export
+french_malaria_acronyms <- function() {
+  # raw rows, semicolon-separated variants
+  rows <- list(
+    list("CHW", "Community health worker", "ASBC; ASC",
+         "Agents Santé de Base Communautaire"),
+    list("", "case management", "PEC",
+         "Prise en charge des cas, gestion de cas"),
+    list("", "case management at the household", "PECADOM",
+         "Prise en charge des cas à domicile"),
+    list("iCCM", "Integrated community case management", "iCCM",
+         "Prise en charge communautaire intégrée des cas"),
+    list("ACT", "Artemisinin-based combination therapy", "CTA",
+         "Thérapie combinée à base d'artémisinine"),
+    list("SMC", "Seasonal Malaria Chemoprevention", "CPS",
+         "La chimioprévention du paludisme saisonnier"),
+    list("IPTp", "Intermittent preventive treatment in pregnancy", "TPIg",
+         "Le traitement préventif intermittent pendant la grossesse"),
+    list("IPTi", "Intermittent preventive treatment in infants", "TPIn",
+         "Le traitement préventif intermittent du nourrisson"),
+    list("IRS", "Indoor residual spraying", "PID",
+         "Pulvérisation intra-domiciliaire"),
+    list("LLIN; ITN", "Long-lasting insecticidal nets",
+         "MILDA; MILD; MII",
+         "Moustiquaire imprégnée à longue durée d’action"),
+    list("EPI", "Expanded Programme on Immunization", "PEV",
+         "Programme élargi de vaccination"),
+    list("WHO", "World Health Organization", "OMS",
+         "Organisation mondiale de la santé"),
+    list("GF", "Global Fund", "FM", "Fonds Mondial"),
+    list("DHS", "Demographic and Health Survey", "EDS",
+         "Enquête démographique et de santé"),
+    list("MIS", "Malaria Indicators Survey", "EPI; EIPAG",
+         "Les enquêtes sur les indicateurs du paludisme"),
+    list("", "Health district", "DS", "District sanitaire"),
+    list("BAU", "Business as usual", "CSP",
+         "Continuation de la stratégie précédente"),
+    list("U5", "under five years old", "M5", "moins de cinq ans"),
+    list("U1", "under one year old", "M1", "moins d'un an"),
+    list("PMC", "perennial malaria chemoprevention", "CPP",
+         "Chimioprévention du paludisme pérenne"),
+    list("RDT", "rapid diagnostic test", "TDR", "test diagnostique rapide"),
+    list("NSP", "national strategic plan", "PSN", "plan stratégique national"),
+    list("FR", "(GFATM) funding request", "DF", "demande de financement"),
+    list("HF", "health facility", "FS", "formation sanitaire")
+  )
+
+  # convert into columns
+  split_trim <- function(s) {
+    if (base::is.na(s) || !base::nzchar(s)) return(character())
+    parts <- base::unlist(base::strsplit(s, ";", fixed = TRUE))
+    base::trimws(parts)
+  }
+
+  english_acronyms <- lapply(rows, function(r) split_trim(r[[1]]))
+  english_full <- vapply(rows, function(r) r[[2]], character(1))
+  french_acronyms <- lapply(rows, function(r) split_trim(r[[3]]))
+  french_full <- vapply(rows, function(r) r[[4]], character(1))
+
+  preferred <- vapply(
+    french_acronyms,
+    function(v) if (base::length(v)) v[[1]] else NA_character_,
+    character(1)
+  )
+
+  tibble::tibble(
+    english_acronyms = english_acronyms,
+    english_full = english_full,
+    french_acronyms = french_acronyms,
+    french_full = french_full,
+    preferred_french_acronym = preferred
+  )
+}
+
+# internal: preprocess en→fr by enforcing acronyms
+# replaces english acronyms or full phrases with preferred french acronym
+# prior to translation so the acronym survives translation intact.
+# @noRd
+.preprocess_en_to_fr_acronyms <- function(text) {
+  map_tbl <- french_malaria_acronyms()
+  out <- base::as.character(text)
+
+  # iterate rows and replace
+  for (i in base::seq_len(nrow(map_tbl))) {
+    fr_acr <- map_tbl$preferred_french_acronym[[i]]
+    if (!base::nzchar(fr_acr)) next
+
+    # english acronyms
+    en_acrs <- map_tbl$english_acronyms[[i]]
+    if (base::length(en_acrs)) {
+      for (tok in en_acrs) {
+        if (!base::nzchar(tok)) next
+        # word-boundary, case-insensitive
+        pattern <- base::paste0("\\b", tok, "\\b")
+        out <- base::gsub(pattern, fr_acr, out, ignore.case = TRUE)
+      }
+    }
+
+    # english full phrase
+    en_full <- map_tbl$english_full[[i]]
+    if (base::nzchar(en_full)) {
+      out <- base::gsub(en_full, fr_acr, out, ignore.case = TRUE)
+    }
+  }
+
+  out
 }
