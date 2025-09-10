@@ -962,7 +962,7 @@ write_snt_data <- function(
       ok = ok,
       bytes = bytes,
       hash = hash_val,
-      message = if (ok) "ok" else (err_msg %||% "error")
+      message = if (ok) "ok" else (rlang::`%||%`(err_msg, "error"))
     )
   }
 
