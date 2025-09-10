@@ -61,7 +61,6 @@ Suggests:
     raster,
     jsonlite,
     qs2,
-    qs,
     shadowtext,
     archive,
     parzer,

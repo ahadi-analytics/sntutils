@@ -8,3 +8,4 @@
 generate_svg_badge.R
 .Rbuildignore
 .clau*
+AGENTS.md
