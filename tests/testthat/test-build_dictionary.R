@@ -200,7 +200,7 @@ testthat::test_that("build_dictionary(language='fr') adds label and orders colum
 
 # ---- build_dictionary trans_cache_path passthrough ---------------------------
 testthat::test_that(
-  "build_dictionary forwards trans_cache_path to translate_text_vec", {
+  "build_dictionary forwards trans_cache_path as cache_path to translator", {
   # Prepare a small data frame
   df <- data.frame(id = 1:2, name = c("alpha", "beta"))
   tmp_cache <- withr::local_tempdir()
@@ -211,8 +211,8 @@ testthat::test_that(
 
   captured <- NULL
   fake_translator <- function(
-    text, target_language = "fr", trans_cache_path = NULL, ...) {
-    captured <<- trans_cache_path
+    text, target_language = "fr", cache_path = NULL, ...) {
+    captured <<- cache_path
     paste0(as.character(text), "_", target_language)
   }
 
@@ -228,7 +228,7 @@ testthat::test_that(
 
   dict <- build_dictionary(df, language = "fr", trans_cache_path = tmp_cache)
 
-  # Expect trans_cache_path was forwarded to translator
+  # Expect trans_cache_path (file path) was normalised to its directory
   testthat::expect_identical(captured, tmp_cache)
 
   # And translated labels reflect our fake translator output

@@ -717,28 +717,81 @@ build_dictionary <- function(
 
       # use package translator if present (resolve from package namespace)
       tr_fn <- tryCatch(
-        getFromNamespace("translate_text_vec", "sntutils"),
+        utils::getFromNamespace("translate_text_vec", "sntutils"),
         error = function(e) NULL
       )
 
-      # translate or mirror
-      dict[[coln]] <- if (base::is.function(tr_fn)) {
-        tryCatch(
-          {
-            if (!base::is.null(trans_cache_path)) {
-              tr_fn(
-                dict$label_en,
-                target_language = trg,
-                trans_cache_path = trans_cache_path
-              )
-            } else {
-              tr_fn(dict$label_en, target_language = trg)
-            }
-          },
-          error = function(e) dict$label_en
+      # translate unique english labels in small chunks
+      # on chunk error, fall back per‑item; keep others intact
+      if (base::is.function(tr_fn)) {
+        # deduplicate english labels to reduce calls
+        en_labels <- base::as.character(dict$label_en)
+        uniq_labels <- base::unique(en_labels)
+
+        # storage for translated values keyed by english label
+        translated_map <- stats::setNames(
+          object = base::rep(NA_character_, base::length(uniq_labels)),
+          nm = uniq_labels
         )
+
+        # chunk parameters (small by default to reduce rate limits)
+        chunk_size <- 25L
+        starts <- base::seq.int(1L, base::length(uniq_labels), by = chunk_size)
+
+        # helper: translate a character vector with safe fallback
+        safe_translate_vec <- function(items) {
+          # try vector call first
+          args <- list(text = items, target_language = trg)
+          if (!base::is.null(trans_cache_path)) {
+            args$cache_path <- trans_cache_path
+          }
+          out <- tryCatch(
+            base::do.call(tr_fn, args),
+            error = function(e) NULL
+          )
+          if (!base::is.null(out)) {
+            out_chr <- base::as.character(out)
+            out_chr[base::is.na(out_chr) | !base::nzchar(out_chr)] <-
+              items
+            return(out_chr)
+          }
+          # per‑item fallback on vector error
+          per <- base::character(base::length(items))
+          for (k in base::seq_along(items)) {
+            one <- tryCatch(
+              {
+                args1 <- list(text = items[k], target_language = trg)
+                if (!base::is.null(trans_cache_path)) {
+                  args1$cache_path <- trans_cache_path
+                }
+                base::do.call(tr_fn, args1)
+              },
+              error = function(e) items[k]
+            )
+            if (base::length(one) == 0L || base::is.na(one)) {
+              one <- items[k]
+            }
+            per[k] <- base::as.character(one)
+          }
+          per
+        }
+
+        # process chunks
+        for (s in starts) {
+          e <- base::min(s + chunk_size - 1L, base::length(uniq_labels))
+          chunk <- uniq_labels[s:e]
+          tr_chunk <- safe_translate_vec(chunk)
+          translated_map[chunk] <- tr_chunk
+        }
+
+        # map back to full vector; fill any NAs with english
+        fr_labels <- translated_map[en_labels]
+        miss <- base::is.na(fr_labels) | !base::nzchar(fr_labels)
+        if (base::any(miss)) fr_labels[miss] <- en_labels[miss]
+        dict[[coln]] <- base::unname(fr_labels)
       } else {
-        dict$label_en
+        # translator not available: mirror english labels
+        dict[[coln]] <- dict$label_en
       }
     }
   }
