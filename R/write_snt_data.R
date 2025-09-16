@@ -188,6 +188,236 @@
   x
 }
 
+#' Write Excel workbook with standardized formatting (internal)
+#'
+#' @description
+#' Saves a workbook where each sheet has fixed column widths, wrapping
+#' disabled, and navy column headers for readability.
+#'
+#' @param obj A data.frame or named list of data.frames ready for Excel.
+#' @param path Output path for the workbook.
+#' @return Invisibly returns the written path.
+#' @keywords internal
+#' @noRd
+.write_excel_formatted <- function(obj, path) {
+  wb <- openxlsx::createWorkbook()
+  sheets <- obj
+
+  if (is.data.frame(sheets)) {
+    sheets <- list(Data = sheets)
+  }
+
+  if (is.null(names(sheets))) {
+    names(sheets) <- base::paste0("Sheet", base::seq_along(sheets))
+  }
+
+  header_style <- openxlsx::createStyle(
+    fgFill = "#003865",
+    fontColour = "#FFFFFF",
+    textDecoration = "bold",
+    halign = "center",
+    wrapText = FALSE
+  )
+  body_style <- openxlsx::createStyle(wrapText = FALSE)
+  integer_style <- openxlsx::createStyle(
+    numFmt = "#,##0",
+    wrapText = FALSE
+  )
+  decimal_style <- openxlsx::createStyle(
+    numFmt = "#,##0.############",
+    wrapText = FALSE
+  )
+  percent_style <- openxlsx::createStyle(
+    numFmt = "0.00%",
+    wrapText = FALSE
+  )
+
+  # ensure all sheets share consistent layout and styling
+  for (sheet_name in names(sheets)) {
+    data <- sheets[[sheet_name]]
+    if (!is.data.frame(data)) {
+      data <- base::as.data.frame(data)
+    }
+    openxlsx::addWorksheet(wb, sheet_name)
+    openxlsx::writeData(
+      wb = wb,
+      sheet = sheet_name,
+      x = data,
+      withFilter = FALSE
+    )
+    n_cols <- base::ncol(data)
+    n_rows <- base::nrow(data)
+    if (n_cols > 0L) {
+      col_widths <- base::vapply(
+        X = base::seq_len(n_cols),
+        FUN = function(idx) {
+          col <- data[[idx]]
+          header <- base::names(data)[idx]
+          if (base::is.numeric(col)) {
+            cell_strings <- base::format(
+              col,
+              trim = TRUE,
+              scientific = FALSE
+            )
+          } else {
+            cell_strings <- base::as.character(col)
+          }
+          cell_strings <- cell_strings[!base::is.na(cell_strings)]
+          candidates <- base::c(header, cell_strings)
+          if (base::length(candidates) == 0L) {
+            return(12)
+          }
+          width <- base::max(base::nchar(candidates)) + 2L
+          base::min(60, base::max(12, width))
+        },
+        FUN.VALUE = base::double(1)
+      )
+      openxlsx::setColWidths(
+        wb = wb,
+        sheet = sheet_name,
+        cols = base::seq_len(n_cols),
+        widths = col_widths
+      )
+      openxlsx::addStyle(
+        wb = wb,
+        sheet = sheet_name,
+        style = header_style,
+        rows = 1,
+        cols = base::seq_len(n_cols),
+        gridExpand = TRUE
+      )
+      if (n_rows > 0L) {
+        body_rows <- 1L + base::seq_len(n_rows)
+        openxlsx::addStyle(
+          wb = wb,
+          sheet = sheet_name,
+          style = body_style,
+          rows = body_rows,
+          cols = base::seq_len(n_cols),
+          gridExpand = TRUE
+        )
+
+        numeric_mask <- base::vapply(
+          X = data,
+          FUN = base::is.numeric,
+          FUN.VALUE = base::logical(1)
+        )
+        numeric_cols <- base::which(numeric_mask)
+        if (base::length(numeric_cols) > 0L) {
+          col_names_lower <- base::tolower(base::names(data)[numeric_cols])
+          year_mask <- base::grepl("year", col_names_lower, fixed = TRUE)
+          numeric_cols <- numeric_cols[!year_mask]
+
+          if (base::length(numeric_cols) > 0L) {
+            numeric_data <- data[numeric_cols]
+            col_names_lower <- base::tolower(base::names(data)[numeric_cols])
+            percent_name_mask <- base::grepl(
+              pattern = "percent|pct|%",
+              x = col_names_lower
+            )
+            percent_value_mask <- base::vapply(
+              X = numeric_data,
+              FUN = function(col) {
+                clean <- col[!base::is.na(col)]
+                if (base::length(clean) == 0L) {
+                  return(FALSE)
+                }
+                max_abs <- base::max(base::abs(clean))
+                min_abs <- base::min(base::abs(clean))
+                (min_abs >= 0 && max_abs <= 1) ||
+                  (min_abs >= 0 && max_abs <= 100 && min_abs < 1)
+              },
+              FUN.VALUE = base::logical(1)
+            )
+            percent_mask <- percent_name_mask | percent_value_mask
+            percent_cols <- numeric_cols[percent_mask]
+            if (base::length(percent_cols) > 0L) {
+              for (col_idx in percent_cols) {
+                column_data <- data[[col_idx]]
+                clean_values <- column_data[!base::is.na(column_data)]
+                scale <- 1
+                if (base::length(clean_values) > 0L) {
+                  max_abs <- base::max(base::abs(clean_values))
+                  if (max_abs > 1) {
+                    scale <- 100
+                  }
+                }
+                if (!base::identical(scale, 1)) {
+                  data[[col_idx]] <- column_data / 100
+                  openxlsx::writeData(
+                    wb = wb,
+                    sheet = sheet_name,
+                    x = data[[col_idx]],
+                    startCol = col_idx,
+                    startRow = 2,
+                    colNames = FALSE
+                  )
+                }
+                openxlsx::addStyle(
+                  wb = wb,
+                  sheet = sheet_name,
+                  style = percent_style,
+                  rows = body_rows,
+                  cols = col_idx,
+                  gridExpand = TRUE
+                )
+              }
+            }
+
+            remaining_cols <- numeric_cols[!percent_mask]
+            if (base::length(remaining_cols) > 0L) {
+              remaining_data <- data[remaining_cols]
+              integer_cols <- remaining_cols[
+                base::vapply(
+                  X = remaining_data,
+                  FUN = function(col) {
+                    clean <- col[!base::is.na(col)]
+                    if (base::length(clean) == 0L) {
+                      return(TRUE)
+                    }
+                    base::all(
+                      base::abs(clean - base::round(clean)) <
+                        base::sqrt(base::.Machine$double.eps)
+                    )
+                  },
+                  FUN.VALUE = base::logical(1)
+                )
+              ]
+
+              decimal_cols <- base::setdiff(remaining_cols, integer_cols)
+
+              if (base::length(integer_cols) > 0L) {
+                openxlsx::addStyle(
+                  wb = wb,
+                  sheet = sheet_name,
+                  style = integer_style,
+                  rows = body_rows,
+                  cols = integer_cols,
+                  gridExpand = TRUE
+                )
+              }
+
+              if (base::length(decimal_cols) > 0L) {
+                openxlsx::addStyle(
+                  wb = wb,
+                  sheet = sheet_name,
+                  style = decimal_style,
+                  rows = body_rows,
+                  cols = decimal_cols,
+                  gridExpand = TRUE
+                )
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+  openxlsx::saveWorkbook(wb, file = path, overwrite = TRUE)
+  invisible(path)
+}
+
 # hashing ----------------------------------------------------------------------
 
 #' Normalize object for hashing (internal)
@@ -407,6 +637,10 @@
     }
     if (ext == "xlsx") {
       obj <- .prepare_for_excel(obj)
+      if (requireNamespace("openxlsx", quietly = TRUE)) {
+        .write_excel_formatted(obj, path)
+        return(path)
+      }
     }
 
     rio::export(obj, file = path, ...)
