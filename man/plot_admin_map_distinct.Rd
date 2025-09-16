@@ -2,11 +2,11 @@
 % Please edit documentation in R/plot_admin_map_distinct.R
 \name{plot_admin_map_distinct}
 \alias{plot_admin_map_distinct}
-\title{Color provinces so touching neighbors never share a color}
+\title{Color admin groups so touching neighbors never share a color}
 \usage{
 plot_admin_map_distinct(
   shp,
-  province_col,
+  group_col,
   id_col,
   out_png = NULL,
   palette = c("#D95F02", "#1B9E77", "#7570B3", "#E7298A", "#66A61E", "#E6AB02"),
@@ -14,18 +14,19 @@ plot_admin_map_distinct(
 )
 }
 \arguments{
-\item{shp}{sf. Polygon layer at adm2 level containing a column for provinces
-(adm1) and unique adm2 identifiers.}
+\item{shp}{sf. Polygon layer at adm2 level containing a column for the
+higher-level grouping (adm1) and unique adm2 identifiers.}
 
-\item{province_col}{character. Column name for province (adm1).}
+\item{group_col}{character. Column name for higher-level admin grouping
+(e.g., adm1).}
 
 \item{id_col}{character. Column name for unique adm2 identifiers.}
 
 \item{out_png}{character|NULL. File path to save PNG output. If \code{NULL},
 no file is saved.}
 
-\item{palette}{character. Vector of hex colors to use for coloring provinces.
-Will be recycled if there are more provinces than colors.}
+\item{palette}{character. Vector of hex colors to use for coloring groups.
+Will be recycled if there are more groups than colors.}
 
 \item{fix_valid}{logical. If \code{TRUE}, run \code{sf::st_make_valid()} to fix
 invalid geometries before processing.}
@@ -33,24 +34,24 @@ invalid geometries before processing.}
 \value{
 A list with three components:
 \itemize{
-\item shp: \code{sf} with province colors joined back to adm2 polygons
-\item labels: \code{sf} with label coordinates (x, y) for each province
+\item shp: \code{sf} with group colors joined back to adm2 polygons
+\item labels: \code{sf} with label coordinates (x, y) for each group
 \item gg: \code{ggplot} object of the colored map with labels
 }
 }
 \description{
-This function takes an adm2-level shapefile, dissolves it into provinces
-(adm1), constructs a neighbor graph, assigns colors to provinces ensuring
-that no adjacent provinces share the same color, and then maps those
-province colors back to the adm2 polygons. Labels are placed at the centroid
-of each province, and a \code{ggplot2} map is produced. The plot can optionally
-be saved as a PNG.
+This function takes an adm2-level shapefile, dissolves it into a higher
+administrative level (e.g., provinces at adm1), constructs a neighbor graph,
+assigns colors to the aggregated units ensuring that no adjacent units share
+the same color, and then maps those colors back to the adm2 polygons.
+Labels are placed at the centroid of each higher-level unit, and a
+\code{ggplot2} map is produced. The plot can optionally be saved as a PNG.
 }
 \examples{
 # Not run:
 # res <- plot_admin_map_distinct(
 #   shp = shp_output_old$spat_vec$adm2,
-#   province_col = "adm1",
+#   group_col = "adm1",
 #   id_col = "adm2",
 #   out_png = here::here("03_outputs/plots/burundi_health_dist_old2.png")
 # )
