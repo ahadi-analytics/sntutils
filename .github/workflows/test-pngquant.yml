@@ -1,0 +1,139 @@
+name: test-pngquant-download
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/test-pngquant.yml"
+
+jobs:
+  pngquant-test:
+    name: ${{ matrix.os }} | pngquant test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: "release"
+
+      # ---- OS-specific installation of pngquant ----
+      - name: Install pngquant on Ubuntu (apt)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pngquant
+
+      - name: Install pngquant on macOS (brew)
+        if: runner.os == 'macOS'
+        run: |
+          brew install pngquant
+
+      # Windows uses a self-managed, user-space download of the official zip
+      # (no admin, no external toolchain). macOS/Linux rely on package managers.
+      - name: Run cross-platform pngquant test
+        shell: Rscript {0}
+        run: |
+          # minimal deps without library()
+          if (!requireNamespace("cli", quietly = TRUE)) {
+            install.packages("cli", repos = "https://cloud.r-project.org")
+          }
+
+          # ensure_pngquant:
+          # - Windows: download official zip to a temp dir and add to PATH
+          # - macOS/Linux: require it to be installed on PATH (brew/apt above)
+          ensure_pngquant <- function(verbosity = TRUE) {
+            is_exec <- function(p) nzchar(p) && file.exists(p) && file.access(p, 1) == 0
+
+            # 1) Honor explicit env var
+            env_path <- Sys.getenv("PNGQUANT_PATH", unset = "")
+            if (is_exec(env_path)) return(normalizePath(env_path))
+
+            # 2) On PATH already?
+            on_path <- Sys.which("pngquant")
+            if (is_exec(on_path)) return(normalizePath(on_path))
+
+            # 3) Windows-only: download official zip into a user-writable dir
+            if (.Platform$OS.type == "windows") {
+              tools_dir <- file.path(tempdir(), "pngquant_tools")
+              dir.create(tools_dir, recursive = TRUE, showWarnings = FALSE)
+              zip_url  <- "https://pngquant.org/pngquant-windows.zip"
+              zip_file <- file.path(tools_dir, "pngquant-windows.zip")
+              if (verbosity) cli::cli_alert_info("Downloading pngquant (Windows zip)...")
+              utils::download.file(zip_url, destfile = zip_file, mode = "wb",
+                                   quiet = !verbosity)
+              utils::unzip(zip_file, exdir = tools_dir)
+              cand <- list.files(tools_dir, pattern = "^pngquant\\.exe$",
+                                 full.names = TRUE, recursive = TRUE)
+              if (length(cand) == 0) {
+                cli::cli_abort("pngquant.exe not found after unzip.")
+              }
+              exe <- normalizePath(cand[1])
+              Sys.setenv(PATH = paste(dirname(exe), Sys.getenv("PATH"), sep = ";"))
+              if (verbosity) cli::cli_alert_success(paste("pngquant ready at", exe))
+              return(exe)
+            }
+
+            # 4) Non-Windows: fail with guidance if still not found
+            cli::cli_abort(paste(
+              "pngquant is not available on PATH.",
+              "On Linux use apt/yum; on macOS use brew.",
+              sep = "\n"
+            ))
+          }
+
+          # tiny stats helper
+          compression_stats <- function(initial_size, final_size) {
+            list(
+              initial_size = initial_size,
+              final_size   = final_size,
+              bytes_saved  = initial_size - final_size,
+              percent_saved = round(100 * (initial_size - final_size) / initial_size, 2)
+            )
+          }
+
+          # acquire pngquant path (uses OS-specific logic above)
+          exe <- ensure_pngquant(verbosity = TRUE)
+
+          # create a PNG to compress
+          png_path <- file.path(tempdir(), "test_plot.png")
+          grDevices::png(png_path, width = 1200, height = 800, res = 144)
+          oldpar <- graphics::par(mar = c(4, 4, 1, 1))
+          on.exit(graphics::par(oldpar), add = TRUE)
+          graphics::plot(1:100, (1:100)^0.5, type = "l")
+          grDevices::dev.off()
+          if (!file.exists(png_path)) cli::cli_abort("Failed to create test PNG.")
+
+          # run pngquant in-place
+          init <- file.info(png_path)$size
+          cmd  <- paste(
+            shQuote(exe), "--speed", "3", "--force", "--ext", ".png", shQuote(png_path)
+          )
+          out <- suppressWarnings(system(cmd, intern = TRUE, ignore.stderr = TRUE))
+          status <- attr(out, "status")
+
+          # 0 or 99 (already optimized) are acceptable
+          if (!is.null(status) && !(status %in% c(0L, 99L))) {
+            cli::cli_abort(paste("pngquant returned non-zero status:", status))
+          }
+
+          final <- file.info(png_path)$size
+          st <- compression_stats(init, final)
+
+          cli::cli_h2("Compression result")
+          cli::cli_alert_info(paste("Initial:", init, "bytes"))
+          cli::cli_alert_info(paste("Final  :", final, "bytes"))
+          cli::cli_alert_success(
+            paste("Saved :", st$bytes_saved, "bytes (", st$percent_saved, "%)", sep = "")
+          )
+
+          # assertions
+          if (!file.exists(png_path)) cli::cli_abort("Output PNG missing.")
+          if (final > init) cli::cli_abort("Compressed file is larger than the original.")
