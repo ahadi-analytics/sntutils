@@ -11,7 +11,7 @@ tibble with columns: english_acronyms (list), english_full,
 french_acronyms (list), french_full, preferred_french_acronym
 }
 \description{
-returns a tibble of English↔French acronyms and their full phrases used
+returns a tibble of English<->French acronyms and their full phrases used
 in malaria program contexts. the first French acronym listed is treated
 as the preferred one when enforcing acronyms.
 }

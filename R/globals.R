@@ -86,6 +86,10 @@ globalVariables(
     "pt",
     "n_non_na",
     "n_unique",
-    "proposed"
+    "proposed",
+    ".facility",
+    ".month",
+    "activity_status",
+    "first_reporting_date"
   )
 )

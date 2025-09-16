@@ -69,7 +69,7 @@ Builds a balanced monthly panel, flags reporting on key indicators,
 derives first reporting date and activity status, and returns a ggplot.
 }
 \examples{
-\
+
 toy_data <- tibble::tibble(
   hf_uid_new = rep(c("HF1", "HF2"), each = 4),
   date = rep(
