@@ -1,218 +1,92 @@
-#' Find or install pngquant executable
+#' ensure pngquant is available (non-interactive, cross-platform)
 #'
-#' This function checks if pngquant is installed on the system
-#' and returns its path. If not found, it offers to install pngquant
-#' automatically. On Windows, it will attempt to find the executable
-#' in common installation locations before offering to install.
+#' order:
+#' 1) PNGQUANT_PATH env var
+#' 2) Sys.which("pngquant")
+#' 3) windows-only: download official zip to temp dir and add to PATH
+#' 4) else: fail with guidance (brew/apt)
 #'
-#' @param verbosity Logical. Controls output verbosity. FALSE = silent,
-#'    TRUE = verbose.
-#' @return Path to pngquant executable as character string, or NULL
-#'   if not found/installed or if installation was declined
+#' @param verbosity logical. print info if TRUE.
+#' @return character path or NULL if unavailable.
+#' @noRd
+ensure_pngquant <- function(verbosity = FALSE) {
+  # helper: does path point to an executable
+  is_exec <- function(p) {
+    nzchar(p) && file.exists(p) && file.access(p, 1) == 0
+  }
+
+  # 1) honor env var
+  env_path <- Sys.getenv("PNGQUANT_PATH", unset = "")
+  if (is_exec(env_path)) {
+    return(normalizePath(env_path))
+  }
+
+  # 2) on PATH already
+  on_path <- Sys.which("pngquant")
+  if (is_exec(on_path)) {
+    return(normalizePath(on_path))
+  }
+
+  # 3) windows: download official zip to a user-writable dir
+  if (.Platform$OS.type == "windows") {
+    tools_dir <- file.path(tempdir(), "pngquant_tools")
+    dir.create(tools_dir, recursive = TRUE, showWarnings = FALSE)
+
+    zip_url <- "https://pngquant.org/pngquant-windows.zip"
+    zip_file <- file.path(tools_dir, "pngquant-windows.zip")
+
+    if (verbosity) {
+      cli::cli_alert_info("downloading pngquant (windows zip)...")
+    }
+
+    utils::download.file(
+      url = zip_url,
+      destfile = zip_file,
+      mode = "wb",
+      quiet = !verbosity
+    )
+    utils::unzip(zip_file, exdir = tools_dir)
+
+    cand <- list.files(
+      tools_dir,
+      pattern = "^pngquant\\.exe$",
+      full.names = TRUE,
+      recursive = TRUE
+    )
+    if (length(cand) == 0) {
+      if (verbosity) {
+        cli::cli_alert_warning("pngquant.exe not found.")
+      }
+      return(NULL)
+    }
+
+    exe <- normalizePath(cand[1])
+    Sys.setenv(PATH = paste(dirname(exe), Sys.getenv("PATH"), sep = ";"))
+    if (verbosity) {
+      cli::cli_alert_success(paste("pngquant ready at", exe))
+    }
+    return(exe)
+  }
+
+  # 4) macos/linux: rely on system package managers
+  if (verbosity) {
+    cli::cli_bullets(c(
+      "!" = "pngquant not available on PATH.",
+      " " = "install with your package manager:",
+      " " = "- macOS: brew install pngquant",
+      " " = "- Ubuntu/Debian: sudo apt-get install -y pngquant"
+    ))
+  }
+  NULL
+}
+
+#' find or install pngquant executable (wrapper for back-compat)
+#'
+#' @param verbosity logical. print info if TRUE.
+#' @return character path or NULL if unavailable.
 #' @noRd
 find_pngquant <- function(verbosity = FALSE) {
-  os <- Sys.info()[["sysname"]]
-  pngquant_path <- Sys.which("pngquant")
-
-  ## macOS: check common Homebrew / MacPorts locations if Sys.which() failed
-  if (pngquant_path == "" && os == "Darwin") {
-    homebrew_paths <- c(
-      "/opt/homebrew/bin/pngquant", # Apple Silicon
-      "/usr/local/bin/pngquant", # Intel Mac
-      "/opt/local/bin/pngquant" # MacPorts
-    )
-    for (path in homebrew_paths) {
-      if (file.exists(path)) {
-        pngquant_path <- path
-        if (verbosity) cli::cli_alert_info(
-          paste("Found pngquant at:", pngquant_path))
-        break
-      }
-    }
-  }
-
-  ## Windows: search multiple likely install directories
-  if (pngquant_path == "" && .Platform$OS.type == "windows") {
-    path_sep <- "\\"
-    potential_paths <- c(
-      file.path(Sys.getenv("LOCALAPPDATA"), "pngquant", "pngquant.exe"),
-      file.path(Sys.getenv("APPDATA"), "pngquant", "pngquant.exe"),
-      file.path(
-        Sys.getenv("USERPROFILE"),
-        "Documents",
-        "pngquant",
-        "pngquant.exe"
-      ),
-      file.path(
-        Sys.getenv("USERPROFILE"),
-        "Downloads",
-        "pngquant",
-        "pngquant.exe"
-      ),
-      file.path(Sys.getenv("USERPROFILE"), "pngquant", "pngquant.exe"),
-      file.path("pngquant_bin", "pngquant.exe"),
-      file.path("pngquant", "target", "release", "pngquant.exe"),
-      file.path("C:", "Program Files", "pngquant", "pngquant.exe"),
-      file.path("C:", "Program Files (x86)", "pngquant", "pngquant.exe")
-    )
-    potential_paths <- sapply(
-      potential_paths,
-      function(p) normalizePath(p, winslash = path_sep, mustWork = FALSE)
-    )
-    for (p in potential_paths) {
-      if (file.exists(p)) {
-        pngquant_path <- p
-        if (verbosity) cli::cli_alert_info(
-          paste("Found pngquant at:", pngquant_path))
-        break
-      }
-    }
-  }
-
-  ## If still not found, ask user whether to install
-  if (pngquant_path == "") {
-    ans <- readline("pngquant is not installed. Install automatically? (y/n): ")
-    if (tolower(ans) != "y") {
-      if (verbosity) cli::cli_alert_warning(
-      "pngquant installation aborted. Exiting function.")
-      return(invisible(NULL))
-    }
-
-    ## Determine install_dir based on OS
-    install_dir <- if (os == "Windows") {
-      normalizePath(
-        file.path(Sys.getenv("LOCALAPPDATA"), "pngquant"),
-        winslash = path_sep,
-        mustWork = FALSE
-      )
-    } else {
-      normalizePath("/usr/local/bin", mustWork = FALSE)
-    }
-    dir.create(install_dir, showWarnings = FALSE, recursive = TRUE)
-
-    ## Windows installation path
-    if (os == "Windows") {
-      if (Sys.which("git") != "") {
-        clone_cmd <- paste0(
-          "git clone -b msvc --recursive ",
-          "https://github.com/kornelski/pngquant.git"
-        )
-        if (system(clone_cmd) != 0) {
-          stop("Failed to clone pngquant repository.")
-        }
-        src_dir <- file.path(getwd(), "pngquant")
-        build_cmd <- sprintf(
-          "cmd /c cd %s && cargo build --release",
-          shQuote(src_dir)
-        )
-        if (system(build_cmd) != 0) {
-          stop("Failed to build pngquant.")
-        }
-        pngquant_path <- file.path(src_dir, "target", "release", "pngquant.exe")
-        if (!file.exists(pngquant_path)) {
-          stop("pngquant binary not found after build.")
-        }
-        file.copy(pngquant_path, file.path(install_dir, "pngquant.exe"))
-        if (verbosity) {
-          cli::cli_alert_success(paste("pngquant installed at:", pngquant_path))
-          cli::cli_alert_info(
-            paste("Also copied to:", file.path(install_dir, "pngquant.exe"))
-          )
-        }
-      } else {
-        if (verbosity) cli::cli_alert_info(
-          "Git not available. Downloading pre-built pngquant binary..."
-        )
-        zip_url <- "https://pngquant.org/pngquant-windows.zip"
-        zip_file <- file.path(tempdir(), "pngquant-windows.zip")
-        utils::download.file(zip_url, destfile = zip_file, mode = "wb")
-        utils::unzip(zip_file, exdir = install_dir)
-        files_extracted <- list.files(
-          install_dir,
-          pattern = "pngquant\\.exe$",
-          full.names = TRUE,
-          recursive = TRUE
-        )
-        if (length(files_extracted) == 0) {
-          stop("Pre-built pngquant binary not found after extraction.")
-        }
-        pngquant_path <- files_extracted[1]
-        if (pngquant_path != file.path(install_dir, "pngquant.exe")) {
-          file.copy(
-            pngquant_path,
-            file.path(install_dir, "pngquant.exe"),
-            overwrite = TRUE
-          )
-          pngquant_path <- file.path(install_dir, "pngquant.exe")
-        }
-        if (verbosity) cli::cli_alert_success(
-          paste("pngquant installed at:", pngquant_path))
-        Sys.setenv(PATH = paste(Sys.getenv("PATH"), install_dir, sep = ";"))
-      }
-    } else {
-      ## Unix-like installation (macOS/Linux)
-      if (Sys.which("git") != "") {
-        clone_cmd <- paste0(
-          "git clone --recursive https://github.com/kornelski/pngquant.git"
-        )
-        if (system(clone_cmd) != 0) {
-          stop("Failed to clone pngquant repository.")
-        }
-        src_dir <- file.path(getwd(), "pngquant")
-      } else {
-        zip_url <- "https://github.com/kornelski/pngquant/" %+%
-          "archive/refs/heads/master.zip"
-        zip_file <- "pngquant-master.zip"
-        utils::download.file(zip_url, destfile = zip_file, mode = "wb")
-        utils::unzip(zip_file)
-        src_dir <- file.path(getwd(), "pngquant-master")
-      }
-      build_cmd <- sprintf("cd %s && cargo build --release", shQuote(src_dir))
-      if (system(build_cmd) != 0) {
-        stop("Failed to build pngquant.")
-      }
-      pngquant_path <- file.path(src_dir, "target", "release", "pngquant")
-      if (!file.exists(pngquant_path)) {
-        stop("pngquant binary not found after build.")
-      }
-      if (verbosity) cli::cli_alert_success(
-        paste("pngquant installed at:", pngquant_path))
-    }
-  }
-
-  ## Final sanity check: does the path actually exist?
-  if (!file.exists(pngquant_path)) {
-    if (verbosity) cli::cli_alert_danger(
-      paste("pngquant path exists but file not found at:", pngquant_path)
-    )
-    return(invisible(NULL))
-  }
-
-  ## Try a few system checks (which/command -v/type -p) to double-check
-  system_checks <- c(
-    system("which pngquant 2>/dev/null", intern = TRUE),
-    system("command -v pngquant 2>/dev/null", intern = TRUE),
-    system("type -p pngquant 2>/dev/null", intern = TRUE)
-  ) |>
-    suppressWarnings()
-
-  for (check in system_checks) {
-    if (!is.null(check) && check != "" && file.exists(check)) {
-      if (verbosity) cli::cli_alert_success(paste("Found pngquant at:", check))
-      return(invisible(check))
-    }
-  }
-
-    if (is.null(pngquant_path) && verbosity) {
-      cli::cli_bullets(c(
-        "!" = "Cannot find pngquant. Common installation methods:",
-        " " = "\u2014 First, try Homebrew (macOS): brew install pngquant",
-        " " = "\u2014 Next, on Debian/Ubuntu: sudo apt-get install pngquant",
-        " " = "\u2014 Or download manually: https://pngquant.org"
-      ))
-    }
-
-  invisible(pngquant_path)
+  ensure_pngquant(verbosity = verbosity)
 }
 
 #' Calculate Compression Statistics
