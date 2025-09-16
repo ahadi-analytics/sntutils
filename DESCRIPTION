@@ -30,7 +30,7 @@ Imports:
     stringdist,
     stringr,
     tidyr,
-    ggplot2,
+    ggplot2 (== 3.5.2),
     digest,
     exactextractr,
     terra,
