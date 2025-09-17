@@ -27,10 +27,12 @@ get_expected_data_structure <- function() {
   list(
     foundational = c(
       "1.1a_admin_boundaries",
-      "1.1b_health_facilities",
-      "1.1c_population/1.1ci_national",
-      "1.1c_population/1.1cii_worldpop_rasters",
-      "1.1d_cache_files"
+      "1.1b_physical_features",
+      "1.1c_health_facilities",
+      "1.1d_community_health_workers",
+      "1.1e_population/1.1ei_national",
+      "1.1e_population/1.1eii_worldpop_rasters",
+      "1.1f_cache_files"
     ),
     epidemiology = c(
       "1.2a_routine_surveillance",
@@ -99,9 +101,11 @@ testthat::test_that("create_data_structure creates foundational subfolders", {
   # check all foundational subfolders
   expected_subfolders <- c(
     "1.1a_admin_boundaries",
-    "1.1b_health_facilities",
-    "1.1c_population",
-    "1.1d_cache_files"
+    "1.1b_physical_features",
+    "1.1c_health_facilities",
+    "1.1d_community_health_workers",
+    "1.1e_population",
+    "1.1f_cache_files"
   )
 
   for (subfolder in expected_subfolders) {
@@ -113,8 +117,8 @@ testthat::test_that("create_data_structure creates foundational subfolders", {
   }
 
   # check nested population folders
-  pop_base <- fs::path(foundational_base, "1.1c_population")
-  nested_folders <- c("1.1ci_national", "1.1cii_worldpop_rasters")
+  pop_base <- fs::path(foundational_base, "1.1e_population")
+  nested_folders <- c("1.1ei_national", "1.1eii_worldpop_rasters")
 
   for (nested in nested_folders) {
     nested_path <- fs::path(pop_base, nested)
@@ -161,9 +165,12 @@ testthat::test_that("create_data_structure creates raw and processed folders", {
   # check complex domain subfolders have raw/processed
   complex_paths <- c(
     "1.1_foundational/1.1a_admin_boundaries",
-    "1.1_foundational/1.1b_health_facilities",
-    "1.1_foundational/1.1c_population/1.1ci_national",
-    "1.1_foundational/1.1c_population/1.1cii_worldpop_rasters",
+    "1.1_foundational/1.1b_physical_features",
+    "1.1_foundational/1.1c_health_facilities",
+    "1.1_foundational/1.1d_community_health_workers",
+    "1.1_foundational/1.1e_population/1.1ei_national",
+    "1.1_foundational/1.1e_population/1.1eii_worldpop_rasters",
+    "1.1_foundational/1.1f_cache_files",
     "1.2_epidemiology/1.2a_routine_surveillance",
     "1.5_environment/1.5a_climate",
     "1.6_health_systems/1.6a_dhs"
@@ -468,8 +475,9 @@ testthat::test_that("folder structure matches ahadi project standards", {
   # verify ahadi-specific structure elements
   ahadi_specific_paths <- c(
     # hierarchical data organization
-    "01_data/1.1_foundational/1.1c_population/1.1ci_national",
-    "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters",
+    "01_data/1.1_foundational/1.1d_community_health_workers",
+    "01_data/1.1_foundational/1.1e_population/1.1ei_national",
+    "01_data/1.1_foundational/1.1e_population/1.1eii_worldpop_rasters",
     # domain-specific organization
     "01_data/1.2_epidemiology/1.2a_routine_surveillance",
     "01_data/1.5_environment/1.5b_accessibility",

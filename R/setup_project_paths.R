@@ -57,20 +57,30 @@ setup_project_paths <- function(base_path = NULL, create = TRUE, quiet = TRUE) {
     core = root,
     # 1.1_foundational
     admin_shp = jp("01_data", "1.1_foundational", "1.1a_admin_boundaries"),
-    hf = jp("01_data", "1.1_foundational", "1.1b_health_facilities"),
+    physical_features = jp(
+      "01_data",
+      "1.1_foundational",
+      "1.1b_physical_features"
+    ),
+    hf = jp("01_data", "1.1_foundational", "1.1c_health_facilities"),
+    chw = jp(
+      "01_data",
+      "1.1_foundational",
+      "1.1d_community_health_workers"
+    ),
     pop_national = jp(
       "01_data",
       "1.1_foundational",
-      "1.1c_population",
-      "1.1ci_national"
+      "1.1e_population",
+      "1.1ei_national"
     ),
     pop_worldpop = jp(
       "01_data",
       "1.1_foundational",
-      "1.1c_population",
-      "1.1cii_worldpop_rasters"
+      "1.1e_population",
+      "1.1eii_worldpop_rasters"
     ),
-    cache = jp("01_data", "1.1_foundational", "1.1d_cache_files"),
+    cache = jp("01_data", "1.1_foundational", "1.1f_cache_files"),
     # 1.2_epidemiology
     dhis2 = jp("01_data", "1.2_epidemiology", "1.2a_routine_surveillance"),
     pfpr_est = jp("01_data", "1.2_epidemiology", "1.2b_pfpr_estimates"),
