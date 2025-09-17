@@ -199,6 +199,7 @@ calculate_match_stats <- function(
   level3 = NULL,
   level4 = NULL
 ) {
+
   # normalize case
   levels_vec <- c(level0, level1, level2, level3, level4) |>
     (\(v) v[!vapply(v, is.null, logical(1))])()
@@ -354,7 +355,7 @@ calculate_match_stats <- function(
   )
 
   cli::cli_h1(glue::glue("{cli::symbol$info} Match Summary"))
-
+   cat("\n")
   # compute completeness by side across all reported levels
   # (complete = all matches equal denominators on that side)
   target_complete <- length(rows) > 0 &&
@@ -443,13 +444,9 @@ calculate_match_stats <- function(
       }
     }
   }
-
+   cat("\n")
   # final box, no borders
-  cli::boxx(
-    content_vec,
-    padding = c(0, 1, 0, 1),
-    border_style = "none"
-  )
+  cli::cat_line(content_vec)
 }
 
 #' Format a single choice for display
