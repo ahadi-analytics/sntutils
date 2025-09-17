@@ -1133,19 +1133,23 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
       if (tolower(file_ext) == "csv") {
         utils::write.csv(unmatched_df, unmatched_export_path, row.names = FALSE)
         cli::cli_alert_success(
-          "Unmatched data exported to: {unmatched_export_path}"
+          "Unmatched data exported to: {fs::path_rel(unmatched_export_path)}"
         )
       } else if (tolower(file_ext) == "rds") {
         saveRDS(unmatched_df, unmatched_export_path)
         cli::cli_alert_success(
-          "Unmatched data exported to: {unmatched_export_path}"
+          "Unmatched data exported to: {fs::path_rel(unmatched_export_path)}"
         )
       } else {
         # Default to CSV if extension not recognized
-        utils::write.csv(unmatched_df, paste0(unmatched_export_path, ".csv"),
-                        row.names = FALSE)
+        utils::write.csv(
+          unmatched_df,
+          paste0(fs::path_rel(unmatched_export_path), ".csv"),
+          row.names = FALSE
+        )
         cli::cli_alert_success(
-          "Unmatched data exported to: {paste0(unmatched_export_path, '.csv')}"
+          "Unmatched data exported to: ",
+          "{paste0(fs::path_rel(unmatched_export_path), '.csv')}"
         )
       }
 
