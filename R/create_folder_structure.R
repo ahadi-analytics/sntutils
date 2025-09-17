@@ -23,10 +23,12 @@ create_data_structure <- function(base_path = ".") {
   data_structure <- list(
     "1.1_foundational" = c(
       "1.1a_admin_boundaries",
-      "1.1b_health_facilities",
-      "1.1c_population/1.1ci_national",
-      "1.1c_population/1.1cii_worldpop_rasters",
-      "1.1d_cache_files/."
+      "1.1b_physical_features",
+      "1.1c_health_facilities",
+      "1.1d_community_health_workers",
+      "1.1e_population/1.1ei_national",
+      "1.1e_population/1.1eii_worldpop_rasters",
+      "1.1f_cache_files/."
     ),
     "1.2_epidemiology" = c(
       "1.2a_routine_surveillance",
