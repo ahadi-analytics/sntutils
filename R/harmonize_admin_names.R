@@ -143,218 +143,313 @@ get_hierarchical_combinations <- function(df, levels) {
   unique(df_clean)
 }
 
-#' Calculate and Report Geo-naming Match Statistics
+#' Calculate and report geo-naming match statistics
 #'
-#' Compares entries in a given dataset against a lookup dataset across specified
-#' admn levels (e.g., countries, (province/state/region), districts,
-#' subdistricts, settlements) to calculate and report match statistics.
+#' Compares entries in a dataset against a lookup across specified admin levels
+#' (e.g., country, province/state/region, district, subdistrict, settlement)
+#' and reports match statistics to the console.
 #'
-#' @param data A dataframe containing the target data to be matched.
-#' @param lookup_data A dataframe serving as the reference for matching.
-#' @param level0 level0 col name (country) in both 'data' and 'lookup_data'.
-#' @param level1 level1 col name (province/state/region) in both 'data' and
-#'            'lookup_data'.
-#' @param level2 level2 col name (district) in both 'data' and 'lookup_data'.
-#' @param level3 level3 col name (subdistrict) in both 'data' and 'lookup_data'.
-#' @param level4 level4 col name (settlements) in both 'data' and 'lookup_data'.
+#' @param data A data frame containing the target data to be matched.
+#' @param lookup_data A data frame serving as the reference for matching.
+#' @param level0 Column name (country) present in both `data` and `lookup_data`.
+#' @param level1 Column name (province/state/region) present in both datasets.
+#' @param level2 Column name (district) present in both datasets.
+#' @param level3 Column name (subdistrict) present in both datasets.
+#' @param level4 Column name (settlement) present in both datasets.
 #'
-#' @details Calculates unique matches across administrative levels, reports
-#'        match and mismatch counts.
+#' @details
+#' - Input columns supplied via `level*` are normalized to lower case before
+#'   matching.
+#' - *Base N* for each side is the count of **unique hierarchical names**
+#'   formed from the supplied levels (e.g., `level0_level1_...`). Per-level
+#'   rows show matches out of each side's Base N.
+#' - Console output includes:
+#'   1) a two-column summary (Target vs Lookup as base N),
+#'   2) side-level completeness messages (success/info/warning),
+#'   3) a per-level report of **missing names** (NA or empty strings) on
+#'      either side. These missing names are **not included in N** only if the
+#'      implementation drops them before counting (see Note below).
 #'
-#' @return Invisible NULL. The primary purpose of this function is to reporting
-#'        match stats rather than return a value.
+#' @note
+#' If you want missing names (NA/empty) **excluded from Base N**, ensure the
+#' key-building step drops them before counting (see example patch below).
+#'
+#' @return Invisibly returns `NULL`. Output is produced via `cli` messages.
 #'
 #' @examples
-#' # calculate_match_stats(
-#' #      my_data, my_lookup, "country", "province", "district", "subdistrict",
-#' #      settlements)
-#'
+#' # minimal runnable example (toy data)
+#' data <- data.frame(
+#'   country = c("Kenya", "Kenya", "Uganda"),
+#'   district = c("Nairobi", "Kisumu", "Kampala")
+#' )
+#' lookup <- data.frame(
+#'   country = c("Kenya", "Uganda"),
+#'   district = c("Nairobi", "Kampala")
+#' )
+#' calculate_match_stats(
+#'   data, lookup, level0 = "country", level2 = "district"
+#' )
 #' @export
-calculate_match_stats <- function(data, lookup_data, level0 = NULL,
-                                  level1 = NULL, level2 = NULL,
-                                  level3 = NULL, level4 = NULL) {
-  # Normalize casing for case-insensitive comparisons
-  levels_vec <- c(level0, level1, level2, level3, level4)
-  levels_vec <- levels_vec[!vapply(levels_vec, is.null, logical(1))]
+calculate_match_stats <- function(
+  data,
+  lookup_data,
+  level0 = NULL,
+  level1 = NULL,
+  level2 = NULL,
+  level3 = NULL,
+  level4 = NULL
+) {
+  # normalize case
+  levels_vec <- c(level0, level1, level2, level3, level4) |>
+    (\(v) v[!vapply(v, is.null, logical(1))])()
 
   if (length(levels_vec) > 0) {
     for (lv in levels_vec) {
-      if (!is.null(lv) && lv %in% names(data)) {
+      if (lv %in% names(data)) {
         data[[lv]] <- tolower(as.character(data[[lv]]))
       }
-      if (!is.null(lv) && lv %in% names(lookup_data)) {
+      if (lv %in% names(lookup_data)) {
         lookup_data[[lv]] <- tolower(as.character(lookup_data[[lv]]))
       }
     }
   }
 
-  # Calculate unique matches for each admin level using hierarchical combinations
+  # helpers ---------------------------------------------------------------
+
+  compose_fields <- function(...) {
+    f <- c(...)
+    f[!vapply(f, is.null, logical(1))]
+  }
+
+  build_keys <- function(df, fields) {
+    if (length(fields) == 0) {
+      return(character(0))
+    }
+    combos <- get_hierarchical_combinations(df, fields)
+    if (nrow(combos) == 0) {
+      return(character(0))
+    }
+    if (length(fields) == 1) {
+      return(unique(combos[[fields]]))
+    }
+    unique(do.call(paste, c(combos[fields], sep = "_")))
+  }
+
+  resolve_label <- function(label, fallback) {
+    if (is.null(label) || is.na(label) || identical(label, "")) {
+      fallback
+    } else {
+      label
+    }
+  }
+
+  big_mark <- function(n) {
+    if (is.na(n)) "NA" else formatC(n, format = "d", big.mark = ",")
+  }
+
+  paint_matches <- function(matches, total) {
+    num <- big_mark(matches)
+    if (!is.na(matches) && !is.na(total) && matches < total) {
+      cli::col_red(num)
+    } else {
+      num
+    }
+  }
+
   results <- list()
 
-  # For level0, it's just the unique values
-  if (!is.null(level0)) {
-    data_combos <- get_hierarchical_combinations(data, level0)
-    lookup_combos <- get_hierarchical_combinations(lookup_data, level0)
-
-    total_level0 <- nrow(lookup_combos)
-    if (nrow(data_combos) > 0 && total_level0 > 0) {
-      matches_level0 <- length(
-        intersect(unique(data_combos[[level0]]), unique(lookup_combos[[level0]]))
-      )
-      results$level0 <- c("matches" = matches_level0, "total" = total_level0)
-    } else {
-      results$level0 <- c("matches" = 0, "total" = total_level0)
-    }
-  }
-
-  # For level1, it's country-province combinations
-  if (!is.null(level1) && !is.null(level0)) {
-    data_combos <- get_hierarchical_combinations(data, c(level0, level1))
-    lookup_combos <- get_hierarchical_combinations(lookup_data, c(level0, level1))
-
-    if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
-      # Create combined keys for matching
-      data_keys <- unique(paste(data_combos[[level0]], data_combos[[level1]], sep = "_"))
-      lookup_keys <- unique(paste(lookup_combos[[level0]], lookup_combos[[level1]], sep = "_"))
-      matches_level1 <- length(intersect(data_keys, lookup_keys))
-      results$level1 <- c("matches" = matches_level1, "total" = length(lookup_keys))
-    } else {
-      results$level1 <- c("matches" = 0, "total" = nrow(lookup_combos))
-    }
-  } else if (!is.null(level1)) {
-    # If level0 is not provided, just match level1 alone
-    data_combos <- get_hierarchical_combinations(data, level1)
-    lookup_combos <- get_hierarchical_combinations(lookup_data, level1)
-
-    total_level1 <- nrow(lookup_combos)
-    if (nrow(data_combos) > 0 && total_level1 > 0) {
-      matches_level1 <- length(
-        intersect(unique(data_combos[[level1]]), unique(lookup_combos[[level1]]))
-      )
-      results$level1 <- c("matches" = matches_level1, "total" = total_level1)
-    } else {
-      results$level1 <- c("matches" = 0, "total" = total_level1)
-    }
-  }
-
-  # For level2, it's country-province-district combinations
-  if (!is.null(level2)) {
-    # Build the hierarchy based on what's available
-    hierarchy <- c()
-    if (!is.null(level0)) hierarchy <- c(hierarchy, level0)
-    if (!is.null(level1)) hierarchy <- c(hierarchy, level1)
-    hierarchy <- c(hierarchy, level2)
-
-    data_combos <- get_hierarchical_combinations(data, hierarchy)
-    lookup_combos <- get_hierarchical_combinations(lookup_data, hierarchy)
-
-    if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
-      # Create combined keys for matching
-      data_keys <- unique(do.call(paste, c(data_combos[hierarchy], sep = "_")))
-      lookup_keys <- unique(do.call(paste, c(lookup_combos[hierarchy], sep = "_")))
-      matches_level2 <- length(intersect(data_keys, lookup_keys))
-      results$level2 <- c("matches" = matches_level2, "total" = length(lookup_keys))
-    } else {
-      results$level2 <- c("matches" = 0, "total" = nrow(lookup_combos))
-    }
-  }
-
-  # For level3, it's country-province-district-subdistrict combinations
-  if (!is.null(level3)) {
-    # Build the hierarchy based on what's available
-    hierarchy <- c()
-    if (!is.null(level0)) hierarchy <- c(hierarchy, level0)
-    if (!is.null(level1)) hierarchy <- c(hierarchy, level1)
-    if (!is.null(level2)) hierarchy <- c(hierarchy, level2)
-    hierarchy <- c(hierarchy, level3)
-
-    data_combos <- get_hierarchical_combinations(data, hierarchy)
-    lookup_combos <- get_hierarchical_combinations(lookup_data, hierarchy)
-
-    if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
-      # Create combined keys for matching
-      data_keys <- unique(do.call(paste, c(data_combos[hierarchy], sep = "_")))
-      lookup_keys <- unique(do.call(paste, c(lookup_combos[hierarchy], sep = "_")))
-      matches_level3 <- length(intersect(data_keys, lookup_keys))
-      results$level3 <- c("matches" = matches_level3, "total" = length(lookup_keys))
-    } else {
-      results$level3 <- c("matches" = 0, "total" = nrow(lookup_combos))
-    }
-  }
-
-  # For level4, it's the full hierarchy
-  if (!is.null(level4)) {
-    # Build the hierarchy based on what's available
-    hierarchy <- c()
-    if (!is.null(level0)) hierarchy <- c(hierarchy, level0)
-    if (!is.null(level1)) hierarchy <- c(hierarchy, level1)
-    if (!is.null(level2)) hierarchy <- c(hierarchy, level2)
-    if (!is.null(level3)) hierarchy <- c(hierarchy, level3)
-    hierarchy <- c(hierarchy, level4)
-
-    data_combos <- get_hierarchical_combinations(data, hierarchy)
-    lookup_combos <- get_hierarchical_combinations(lookup_data, hierarchy)
-
-    if (nrow(data_combos) > 0 && nrow(lookup_combos) > 0) {
-      # Create combined keys for matching
-      data_keys <- unique(do.call(paste, c(data_combos[hierarchy], sep = "_")))
-      lookup_keys <- unique(do.call(paste, c(lookup_combos[hierarchy], sep = "_")))
-      matches_level4 <- length(intersect(data_keys, lookup_keys))
-      results$level4 <- c("matches" = matches_level4, "total" = length(lookup_keys))
-    } else {
-      results$level4 <- c("matches" = 0, "total" = nrow(lookup_combos))
-    }
-  }
-
-  # Presenting the results using cli
-  cli::cli_alert_info("Match Summary:")
-  cli::cli_ul()
-
-  if (!is.null(level0)) {
-    cli::cli_li(
-      glue::glue(
-        "{level0} (level 0): {big_mark(results$level0['matches'])} ",
-        "out of {big_mark(results$level0['total'])} matched"
-      )
+  process_level <- function(level_key, level_num, fields, label) {
+    data_keys <- build_keys(data, fields)
+    lookup_keys <- build_keys(lookup_data, fields)
+    matches <- length(base::intersect(data_keys, lookup_keys))
+    results[[level_key]] <<- list(
+      label = resolve_label(label, level_key),
+      level_num = level_num,
+      matches = matches,
+      total_data = length(data_keys),
+      total_lookup = length(lookup_keys)
     )
   }
 
+  # compute per-level
+  if (!is.null(level0)) {
+    process_level("level0", 0L, compose_fields(level0), level0)
+  }
   if (!is.null(level1)) {
-    cli::cli_li(glue::glue(
-      "{level1} (level 1): {big_mark(results$level1['matches'])} ",
-      "out of {big_mark(results$level1['total'])} matched"
-    ))
+    f1 <- if (!is.null(level0)) {
+      compose_fields(level0, level1)
+    } else {
+      compose_fields(level1)
+    }
+    process_level("level1", 1L, f1, level1)
   }
-
   if (!is.null(level2)) {
-    cli::cli_li(
-      glue::glue(
-        "{level2} (level 2): {big_mark(results$level2['matches'])} ",
-        "out of {big_mark(results$level2['total'])} matched"
-      )
-    )
+    process_level("level2", 2L, compose_fields(level0, level1, level2), level2)
   }
-
   if (!is.null(level3)) {
-    cli::cli_li(
-      glue::glue(
-        "{level3} (level 3): {big_mark(results$level3['matches'])} ",
-        "out of {big_mark(results$level3['total'])} matched"
-      )
+    process_level(
+      "level3",
+      3L,
+      compose_fields(level0, level1, level2, level3),
+      level3
     )
   }
-
   if (!is.null(level4)) {
-    cli::cli_li(
-      glue::glue(
-        "{level4} (level 4): {big_mark(results$level4['matches'])} ",
-        "out of {big_mark(results$level4['total'])} matched"
-      )
+    process_level(
+      "level4",
+      4L,
+      compose_fields(level0, level1, level2, level3, level4),
+      level4
     )
   }
 
-  cli::cli_end()
-  invisible(NULL)
+  # enforce display order
+  ordered_keys <- c("level0", "level1", "level2", "level3", "level4")
+  rows <- results[ordered_keys]
+  rows <- rows[!vapply(rows, is.null, logical(1))]
+
+  # headers
+  left_hdr <- "Target data as base N"
+  right_hdr <- "Lookup data as base N"
+
+  build_left <- function(r) {
+    glue::glue(
+      "• {r$label} (level{r$level_num}): ",
+      "{paint_matches(r$matches, r$total_data)} out of ",
+      "{big_mark(r$total_data)} matched"
+    )
+  }
+  build_right <- function(r) {
+    glue::glue(
+      "• {r$label} (level{r$level_num}): ",
+      "{paint_matches(r$matches, r$total_lookup)} out of ",
+      "{big_mark(r$total_lookup)} matched"
+    )
+  }
+
+  left_lines <- if (length(rows)) {
+    vapply(rows, build_left, character(1))
+  } else {
+    character(0)
+  }
+  right_lines <- if (length(rows)) {
+    vapply(rows, build_right, character(1))
+  } else {
+    character(0)
+  }
+
+  # two columns
+  content_vec <- cli::ansi_columns(
+    c(
+      cli::col_cyan(left_hdr),
+      left_lines,
+      cli::col_cyan(right_hdr),
+      right_lines
+    ),
+    width = max(40L, cli::console_width() - 4L),
+    max_cols = 2,
+    fill = "col",
+    align = "left",
+    sep = "  "
+  )
+
+  cli::cli_h1(glue::glue("{cli::symbol$info} Match Summary"))
+
+  # compute completeness by side across all reported levels
+  # (complete = all matches equal denominators on that side)
+  target_complete <- length(rows) > 0 &&
+    all(vapply(
+      rows,
+      \(r) isTRUE(r$matches == r$total_data),
+      logical(1)
+    ))
+  lookup_complete <- length(rows) > 0 &&
+    all(vapply(
+      rows,
+      \(r) isTRUE(r$matches == r$total_lookup),
+      logical(1)
+    ))
+
+  # emit side-by-side summary message
+  if (target_complete && lookup_complete) {
+    # both sides perfect
+    cli::cli_alert_success(
+      "Hierarchies are aligned across data and lookup."
+    )
+  } else if (target_complete && !lookup_complete) {
+    # target perfect, lookup has extras
+    cli::cli_alert_info("Lookup has extra names not in data.")
+  } else if (!target_complete && lookup_complete) {
+    # lookup perfect, target has extras
+    cli::cli_alert_info("Data has names not in lookup.")
+  } else {
+    # both imperfect
+    cli::cli_alert_warning(
+      "Both sides have unmatched names; see per-level lines below"
+    )
+  }
+
+  # check and report missing names per provided level columns
+  # (counts of NA or empty-string values in each dataset)
+  if (length(levels_vec) > 0) {
+    # count missing in data
+    miss_data <- vapply(
+      levels_vec,
+      \(lv) {
+        if (lv %in% names(data)) {
+          sum(is.na(data[[lv]]) | data[[lv]] == "", na.rm = TRUE)
+        } else {
+          0L
+        }
+      },
+      integer(1)
+    )
+
+    # count missing in lookup
+    miss_lookup <- vapply(
+      levels_vec,
+      \(lv) {
+        if (lv %in% names(lookup_data)) {
+          sum(is.na(lookup_data[[lv]]) | lookup_data[[lv]] == "", na.rm = TRUE)
+        } else {
+          0L
+        }
+      },
+      integer(1)
+    )
+
+    any_missing <- any(miss_data > 0L | miss_lookup > 0L)
+
+    if (isTRUE(any_missing)) {
+      # header alert
+      cli::cli_alert_warning(
+        "Missing names detected in supplied levels (not included in N)."
+      )
+
+      # per-level report lines (only show sides with missing values)
+      for (i in seq_along(levels_vec)) {
+        msgs <- c()
+        if (miss_data[i] > 0L) {
+          msgs <- c(msgs, glue::glue("data = {miss_data[i]}"))
+        }
+        if (miss_lookup[i] > 0L) {
+          msgs <- c(msgs, glue::glue("lookup = {miss_lookup[i]}"))
+        }
+        if (length(msgs) > 0L) {
+          cli::cli_text(cli::col_silver(
+            glue::glue("- {levels_vec[i]}: {paste(msgs, collapse = ', ')}")
+          ))
+        }
+      }
+    }
+  }
+
+  # final box, no borders
+  cli::boxx(
+    content_vec,
+    padding = c(0, 1, 0, 1),
+    border_style = "none"
+  )
 }
 
 #' Format a single choice for display
