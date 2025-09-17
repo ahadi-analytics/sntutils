@@ -8,7 +8,9 @@ exp_names <- c(
   "core",
   # 1.1_foundational
   "admin_shp",
+  "physical_features",
   "hf",
+  "chw",
   "pop_national",
   "pop_worldpop",
   "cache",
@@ -57,6 +59,7 @@ testthat::test_that("create = TRUE makes the directories", {
 
   # spot-check a few deep dirs plus ensure all exist
   testthat::expect_true(fs::dir_exists(paths$admin_shp))
+  testthat::expect_true(fs::dir_exists(paths$chw))
   testthat::expect_true(fs::dir_exists(paths$pop_worldpop))
   testthat::expect_true(fs::dir_exists(paths$validation_plots))
   testthat::expect_true(all(fs::dir_exists(unlist(paths))))
@@ -69,6 +72,7 @@ testthat::test_that("create = FALSE does not create directories", {
   # Should *not* exist yet (function only returns paths)
   testthat::expect_false(fs::dir_exists(paths$validation_tables))
   testthat::expect_false(fs::dir_exists(paths$admin_shp))
+  testthat::expect_false(fs::dir_exists(paths$chw))
 
   # Creating afterwards should succeed
   fs::dir_create(paths$validation_tables, recurse = TRUE)
