@@ -1400,20 +1400,26 @@ prep_geonames <- function(target_df, lookup_df = NULL,
       paste0("The specified cache file '", cache_path, "' does not exist.")
     )
 
+    if (isTRUE(interactive)) {
     # Ask the user if they want to proceed and create a new cache file
-    user_input <- readline(
-      paste0(
-        "Are you aware that the cache file is missing?",
-        " Proceed to create a new one? (yes/no): "
+      user_input <- readline(
+        paste0(
+          "Are you aware that the cache file is missing?",
+          " Proceed to create a new one? (yes/no): "
+        )
       )
-    )
 
-    # Check the user's response
-    if (!(tolower(user_input) %in% c("yes", "y"))) {
-      cli::cli_alert_info("Exiting without creating a new cache file.")
-      # Exit the function or stop execution as appropriate
+      # Check the user's response
+      if (!(tolower(user_input) %in% c("yes", "y"))) {
+        cli::cli_alert_info("Exiting without creating a new cache file.")
+        # Exit the function or stop execution as appropriate
+      } else {
+        cli::cli_alert_info("Proceeding to create a new cache file...")
+      }
     } else {
-      cli::cli_alert_info("Proceeding to create a new cache file...")
+      cli::cli_alert_info(
+        "Non-interactive session detected; proceeding to create a new cache file."
+      )
     }
   }
 
