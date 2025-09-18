@@ -1029,9 +1029,7 @@ validate_process_spatial <- function(
 # @param fix_issues Logical, whether fixes were attempted
 # @return NULL (side effect: prints summary to console)
 .print_spatial_validation_summary <- function(results, fix_issues) {
-  issues_for_summary <- results$issues
-  hole_mask <- grepl("interior holes", issues_for_summary, ignore.case = TRUE)
-  issues_summary <- issues_for_summary[!hole_mask]
+  issues_summary <- results$issues
 
   if (length(issues_summary) == 0) {
     if (fix_issues) {
@@ -1061,20 +1059,23 @@ validate_process_spatial <- function(
     .print_spatial_fixed_actions(results$issues)
   }
 
-  # Report column dictionary
+ # Report column dictionary
+  if (!is.null(results$column_dictionary)) {
+    cli::cli_alert_info(
+      "All admin shapefiles are available in results$final_spat_vec"
+    )
+  }
+
+   # Report column dictionary
   if (!is.null(results$column_dictionary)) {
     cli::cli_alert_info(
       "Column dictionary available in results$column_dictionary"
     )
   }
 
-  # Report checks if any
-  if (!is.null(results$checks) && length(results$checks) > 0) {
+  if (!is.null(results$spatial_extent)) {
     cli::cli_alert_info(
-      paste0(
-        "Detailed checks available in results$checks ",
-        "({length(results$checks)} check{?s})"
-      )
+      "Spatial extent available in results$spatial_extent"
     )
   }
 
@@ -1084,11 +1085,25 @@ validate_process_spatial <- function(
     )
   }
 
-  if (!is.null(results$spatial_extent)) {
+    # Report checks if any
+  if (!is.null(results$checks) && length(results$checks) > 0) {
     cli::cli_alert_info(
-      "Spatial extent available in results$spatial_extent"
+      paste0(
+        "Detailed checks available in results$checks ",
+        "({length(results$checks)} check{?s})"
+      )
     )
   }
+
+  # Report column dictionary
+  if (!is.null(results$column_dictionary)) {
+    cli::cli_alert_info(
+      "Column dictionary available in results$column_dictionary"
+    )
+  }
+
+  cat("\n")
+
 }
 
 # Print actions taken during spatial fixes
@@ -1141,11 +1156,6 @@ validate_process_spatial <- function(
 
   if (length(fixed_actions) > 0) {
     cli::cli_h2("Fixed issues:")
-    if (length(hole_msgs) > 0) {
-      for (msg in unique(hole_msgs)) {
-        cli::cli_alert_warning(msg)
-      }
-    }
     for (action in fixed_actions) {
       cli::cli_alert_success(action)
     }
