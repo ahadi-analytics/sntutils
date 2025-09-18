@@ -88,7 +88,11 @@ validate_process_spatial <- function(
 
   # Convert input data to sf format with validation
   sf_data <- .prepare_spatial_sf_input(
-    shp, results, fix_issues, quiet, drop_z
+    shp,
+    results,
+    fix_issues,
+    quiet,
+    drop_z
   )
   results <- sf_data$results
   shp_clean <- sf_data$shp
@@ -100,26 +104,40 @@ validate_process_spatial <- function(
 
   # Validate admin columns
   admin_mapping <- .validate_admin_columns(
-    shp_clean, adm0_col, adm1_col, adm2_col, adm3_col, quiet
+    shp_clean,
+    adm0_col,
+    adm1_col,
+    adm2_col,
+    adm3_col,
+    quiet
   )
 
   # Handle CRS validation and transformation
   crs_result <- .validate_and_transform_spatial_crs(
-    shp_clean, geometry_crs, quiet
+    shp_clean,
+    geometry_crs,
+    quiet
   )
   results$issues <- c(results$issues, crs_result$issues)
   shp_clean <- crs_result$shp
 
   # Validate geometries
   geom_validation <- .validate_spatial_geometry(
-    shp_clean, results, fix_issues, quiet
+    shp_clean,
+    results,
+    fix_issues,
+    quiet
   )
   results <- geom_validation$results
   shp_clean <- geom_validation$shp
 
   # Handle duplicates
   duplicate_result <- .handle_spatial_duplicates(
-    shp_clean, admin_mapping, results, fix_issues, quiet
+    shp_clean,
+    admin_mapping,
+    results,
+    fix_issues,
+    quiet
   )
   results <- duplicate_result$results
   shp_clean <- duplicate_result$shp
@@ -127,8 +145,13 @@ validate_process_spatial <- function(
   # Standardize columns and create admin levels
   if (fix_issues && nrow(shp_clean) > 0) {
     results <- .standardize_spatial_output(
-      shp_clean, admin_mapping, original_input_cols, results,
-      duplicate_result, geometry_crs, quiet
+      shp_clean,
+      admin_mapping,
+      original_input_cols,
+      results,
+      duplicate_result,
+      geometry_crs,
+      quiet
     )
   }
 
@@ -153,12 +176,12 @@ validate_process_spatial <- function(
     user = get_user_identity(),
     issues = character(),
     final_spat_vec = list(),
+    geometry_types = NULL,
+    spatial_extent = NULL,
     checks = NULL,
     invalid_rows = NULL,
     duplicate_rows = NULL,
-    column_dictionary = NULL,
-    geometry_types = NULL,
-    spatial_extent = NULL
+    column_dictionary = NULL
   )
 }
 
@@ -169,8 +192,7 @@ validate_process_spatial <- function(
 # @param quiet Logical, whether to suppress progress messages
 # @param drop_z Logical, whether to drop Z/M coordinates before validation
 # @return List with sf object, updated results, and original column names
-.prepare_spatial_sf_input <- function(shp, results, fix_issues, quiet,
-                                      drop_z) {
+.prepare_spatial_sf_input <- function(shp, results, fix_issues, quiet, drop_z) {
   original_input_cols <- names(shp)
 
   # Try to coerce to sf if needed
@@ -227,8 +249,14 @@ validate_process_spatial <- function(
 # @param adm3_col Character, ADM3 column name (or NULL)
 # @param quiet Logical, whether to suppress progress messages
 # @return List mapping standard admin names to actual column names
-.validate_admin_columns <- function(shp_clean, adm0_col, adm1_col,
-                                    adm2_col, adm3_col, quiet) {
+.validate_admin_columns <- function(
+  shp_clean,
+  adm0_col,
+  adm1_col,
+  adm2_col,
+  adm3_col,
+  quiet
+) {
   available_cols <- names(shp_clean)
   admin_mapping <- list()
 
@@ -271,7 +299,9 @@ validate_process_spatial <- function(
 # @param quiet Logical, whether to suppress progress messages
 # @return List with issues detected and transformed shapefile
 .validate_and_transform_spatial_crs <- function(shp, geometry_crs, quiet) {
-  if (!quiet) cli::cli_progress_step("Checking CRS...")
+  if (!quiet) {
+    cli::cli_progress_step("Checking CRS...")
+  }
 
   issues <- character()
   crs_info <- sf::st_crs(shp)
@@ -283,8 +313,9 @@ validate_process_spatial <- function(
     bbox <- tryCatch(sf::st_bbox(shp), error = function(e) NULL)
 
     if (!is.null(bbox) && length(bbox) == 4) {
-      if (bbox[1] >= -180 && bbox[3] <= 180 &&
-          bbox[2] >= -90 && bbox[4] <= 90) {
+      if (
+        bbox[1] >= -180 && bbox[3] <= 180 && bbox[2] >= -90 && bbox[4] <= 90
+      ) {
         shp <- sf::st_set_crs(shp, 4326)
       }
     }
@@ -293,16 +324,20 @@ validate_process_spatial <- function(
   }
 
   # Transform to target CRS if needed
-  if (!is.na(sf::st_crs(shp)$epsg) &&
+  if (
+    !is.na(sf::st_crs(shp)$epsg) &&
       !is.na(geometry_crs) &&
-      sf::st_crs(shp)$epsg != geometry_crs) {
+      sf::st_crs(shp)$epsg != geometry_crs
+  ) {
     shp <- sf::st_transform(shp, geometry_crs)
     if (!quiet) {
       cli::cli_alert_info("Transformed geometries to EPSG:{geometry_crs}")
     }
   }
 
-  if (!quiet) cli::cli_progress_done()
+  if (!quiet) {
+    cli::cli_progress_done()
+  }
 
   list(issues = issues, shp = shp)
 }
@@ -313,8 +348,15 @@ validate_process_spatial <- function(
 # @param fix_issues Logical, whether to attempt automatic fixes
 # @param quiet Logical, whether to suppress progress messages
 # @return List with updated results and validated shapefile
-.validate_spatial_geometry <- function(shp, results, fix_issues, quiet) {
-  if (!quiet) cli::cli_progress_step("Validating geometries...")
+.validate_spatial_geometry <- function(
+  shp,
+  results,
+  fix_issues,
+  quiet
+) {
+  if (!quiet) {
+    cli::cli_progress_step("Validating geometries...")
+  }
 
   # Check for empty geometries
   empty_idx <- which(sf::st_is_empty(shp))
@@ -325,11 +367,14 @@ validate_process_spatial <- function(
       sprintf("%d empty geometries", length(empty_idx))
     )
     results$invalid_rows <- .append_spatial_invalid_rows(
-      results$invalid_rows, shp[empty_idx, ]
+      results$invalid_rows,
+      shp[empty_idx, ]
     )
 
     # Store for checks output
-    if (!exists("checks", results)) results$checks <- list()
+    if (!exists("checks", results)) {
+      results$checks <- list()
+    }
     results$checks$empty_geometries <- shp[empty_idx, ]
 
     if (fix_issues) {
@@ -347,20 +392,26 @@ validate_process_spatial <- function(
       sprintf("%d invalid geometries", length(invalid_idx))
     )
     results$invalid_rows <- .append_spatial_invalid_rows(
-      results$invalid_rows, shp[invalid_idx, ]
+      results$invalid_rows,
+      shp[invalid_idx, ]
     )
 
     # Store for checks output
-    if (!exists("checks", results)) results$checks <- list()
+    if (!exists("checks", results)) {
+      results$checks <- list()
+    }
     results$checks$invalid_geometries <- shp[invalid_idx, ]
 
     # Check for specific geometry issues
     if (length(invalid_idx) > 0) {
       # Check for self-intersections
-      self_intersect_idx <- tryCatch({
-        reason <- sf::st_is_valid(shp[invalid_idx, ], reason = TRUE)
-        which(grepl("self-intersection", reason, ignore.case = TRUE))
-      }, error = function(e) integer(0))
+      self_intersect_idx <- tryCatch(
+        {
+          reason <- sf::st_is_valid(shp[invalid_idx, ], reason = TRUE)
+          which(grepl("self-intersection", reason, ignore.case = TRUE))
+        },
+        error = function(e) integer(0)
+      )
 
       if (length(self_intersect_idx) > 0) {
         results$checks$self_intersecting <-
@@ -400,7 +451,9 @@ validate_process_spatial <- function(
       )
     )
 
-    if (!exists("checks", results)) results$checks <- list()
+    if (!exists("checks", results)) {
+      results$checks <- list()
+    }
     results$checks$geometries_with_holes <- shp[hole_idx, ]
 
     if (fix_issues) {
@@ -413,16 +466,15 @@ validate_process_spatial <- function(
         )
       }
       shp <- nngeo::st_remove_holes(shp)
-      if (!quiet) {
-        cli::cli_alert_info("Removed interior holes from geometries")
-      }
     }
   }
 
   # Check geometry types (for internal use only)
   geom_types <- unique(sf::st_geometry_type(shp))
 
-  if (!quiet) cli::cli_progress_done()
+  if (!quiet) {
+    cli::cli_progress_done()
+  }
 
   list(results = results, shp = shp)
 }
@@ -434,13 +486,20 @@ validate_process_spatial <- function(
 # @param fix_issues Logical, whether to remove duplicates
 # @param quiet Logical, whether to suppress progress messages
 # @return List with updated results, shapefile, and duplicate_info metadata
-.handle_spatial_duplicates <- function(shp, admin_mapping, results,
-                                       fix_issues, quiet) {
+.handle_spatial_duplicates <- function(
+  shp,
+  admin_mapping,
+  results,
+  fix_issues,
+  quiet
+) {
   if (nrow(shp) == 0) {
     return(list(results = results, shp = shp))
   }
 
-  if (!quiet) cli::cli_progress_step("Checking duplicates...")
+  if (!quiet) {
+    cli::cli_progress_step("Checking duplicates...")
+  }
 
   duplicate_info <- list(
     row_dups_idx = integer(0),
@@ -469,12 +528,15 @@ validate_process_spatial <- function(
   # Check for geometry-only duplicates if we have remaining rows
   if (nrow(shp) > 0) {
     # Use geometry hashes for efficient duplicate detection
-    geom_hashes <- tryCatch({
-      sntutils::vdigest(shp$geometry, algo = "xxhash64")
-    }, error = function(e) {
-      # If hashing fails, return NULL
-      NULL
-    })
+    geom_hashes <- tryCatch(
+      {
+        sntutils::vdigest(shp$geometry, algo = "xxhash64")
+      },
+      error = function(e) {
+        # If hashing fails, return NULL
+        NULL
+      }
+    )
 
     if (!is.null(geom_hashes)) {
       geom_dups_idx <- which(duplicated(geom_hashes))
@@ -504,13 +566,18 @@ validate_process_spatial <- function(
   }
 
   # Check for admin name + geometry duplicates
-  if (length(admin_mapping) > 0 && fix_issues && nrow(shp) > 0 &&
-      !is.null(geom_hashes)) {
+  if (
+    length(admin_mapping) > 0 &&
+      fix_issues &&
+      nrow(shp) > 0 &&
+      !is.null(geom_hashes)
+  ) {
     admin_cols <- names(shp)[names(shp) %in% unlist(admin_mapping)]
     if (length(admin_cols) > 0) {
       # Create composite key from admin columns and geometry hash
       admin_key <- apply(
-        shp[admin_cols], 1,
+        shp[admin_cols],
+        1,
         function(x) paste(x, collapse = "_")
       )
       admin_geom_key <- paste(admin_key, geom_hashes, sep = "||")
@@ -533,7 +600,9 @@ validate_process_spatial <- function(
     }
   }
 
-  if (!quiet) cli::cli_progress_done()
+  if (!quiet) {
+    cli::cli_progress_done()
+  }
 
   list(results = results, shp = shp, duplicate_info = duplicate_info)
 }
@@ -547,9 +616,15 @@ validate_process_spatial <- function(
 # @param geometry_crs Target CRS for output
 # @param quiet Logical, whether to suppress progress messages
 # @return Updated results list with final outputs and admin levels
-.standardize_spatial_output <- function(shp, admin_mapping, original_input_cols,
-                                        results, duplicate_result, geometry_crs,
-                                        quiet) {
+.standardize_spatial_output <- function(
+  shp,
+  admin_mapping,
+  original_input_cols,
+  results,
+  duplicate_result,
+  geometry_crs,
+  quiet
+) {
   if (!quiet) {
     cli::cli_progress_step("Standardizing admin columns...")
   }
@@ -577,9 +652,11 @@ validate_process_spatial <- function(
     .create_admin_aggregations(shp_std, admin_mapping, quiet)
 
   # remove holes across all admin levels when detected earlier
-  if (!is.null(results$checks) &&
+  if (
+    !is.null(results$checks) &&
       !is.null(results$checks$geometries_with_holes) &&
-      nrow(results$checks$geometries_with_holes) > 0) {
+      nrow(results$checks$geometries_with_holes) > 0
+  ) {
     results$final_spat_vec <- lapply(
       results$final_spat_vec,
       nngeo::st_remove_holes
@@ -588,15 +665,21 @@ validate_process_spatial <- function(
 
   # Create column dictionary
   results$column_dictionary <- .create_spatial_column_dictionary(
-    results$final_spat_vec, admin_mapping
+    results$final_spat_vec,
+    admin_mapping
   )
 
   # Create checks output
   results$checks <- .create_spatial_checks_output(
-    shp, shp_std, duplicate_result, results$checks
+    shp,
+    shp_std,
+    duplicate_result,
+    results$checks
   )
 
-  if (!quiet) cli::cli_progress_done()
+  if (!quiet) {
+    cli::cli_progress_done()
+  }
 
   results
 }
@@ -701,7 +784,8 @@ validate_process_spatial <- function(
 
   # Get highest admin level
   highest_level <- max(as.numeric(stringr::str_extract(
-    names(admin_mapping), "\\d"
+    names(admin_mapping),
+    "\\d"
   )))
 
   # Base level (finest resolution)
@@ -770,7 +854,9 @@ validate_process_spatial <- function(
     }
   }
 
-  if (!quiet) cli::cli_progress_done()
+  if (!quiet) {
+    cli::cli_progress_done()
+  }
 
   spat_vec
 }
@@ -840,11 +926,16 @@ validate_process_spatial <- function(
 
   # Custom sort to put admin columns in order
   col_order <- c(
-    "adm0", "adm0_guid",
-    "adm1", "adm1_guid",
-    "adm2", "adm2_guid",
-    "adm3", "adm3_guid",
-    "geometry_hash", "geometry"
+    "adm0",
+    "adm0_guid",
+    "adm1",
+    "adm1_guid",
+    "adm2",
+    "adm2_guid",
+    "adm3",
+    "adm3_guid",
+    "geometry_hash",
+    "geometry"
   )
 
   # Reorder based on predefined order
@@ -863,8 +954,12 @@ validate_process_spatial <- function(
 # @param duplicate_result List with duplicate detection metadata
 # @param existing_checks Existing checks from geometry validation
 # @return List of validation check results
-.create_spatial_checks_output <- function(shp_original, shp_final,
-                                          duplicate_result, existing_checks) {
+.create_spatial_checks_output <- function(
+  shp_original,
+  shp_final,
+  duplicate_result,
+  existing_checks
+) {
   checks <- if (!is.null(existing_checks)) existing_checks else list()
   duplicate_info <- duplicate_result$duplicate_info
 
@@ -898,11 +993,16 @@ validate_process_spatial <- function(
   }
 
   # Remove empty checks
-  checks <- Filter(function(x) {
-    (inherits(x, "sf") || inherits(x, "data.frame")) && nrow(x) > 0
-  }, checks)
+  checks <- Filter(
+    function(x) {
+      (inherits(x, "sf") || inherits(x, "data.frame")) && nrow(x) > 0
+    },
+    checks
+  )
 
-  if (length(checks) == 0) return(NULL)
+  if (length(checks) == 0) {
+    return(NULL)
+  }
 
   checks
 }
@@ -929,7 +1029,11 @@ validate_process_spatial <- function(
 # @param fix_issues Logical, whether fixes were attempted
 # @return NULL (side effect: prints summary to console)
 .print_spatial_validation_summary <- function(results, fix_issues) {
-  if (length(results$issues) == 0) {
+  issues_for_summary <- results$issues
+  hole_mask <- grepl("interior holes", issues_for_summary, ignore.case = TRUE)
+  issues_summary <- issues_for_summary[!hole_mask]
+
+  if (length(issues_summary) == 0) {
     if (fix_issues) {
       cli::cli_h2("Summary of Spatial Vector Validation and Cleaning")
       if (length(results$final_spat_vec) > 0) {
@@ -947,14 +1051,14 @@ validate_process_spatial <- function(
     }
   } else {
     cli::cli_h2("Issues found:")
-    for (issue in unique(results$issues)) {
+    for (issue in unique(issues_summary)) {
       cli::cli_alert_warning(issue)
     }
     cli::cli_text("")
+  }
 
-    if (fix_issues) {
-      .print_spatial_fixed_actions(results$issues)
-    }
+  if (fix_issues && length(results$issues) > 0) {
+    .print_spatial_fixed_actions(results$issues)
   }
 
   # Report column dictionary
@@ -985,7 +1089,6 @@ validate_process_spatial <- function(
       "Spatial extent available in results$spatial_extent"
     )
   }
-
 }
 
 # Print actions taken during spatial fixes
@@ -1009,7 +1112,9 @@ validate_process_spatial <- function(
   if (any(grepl("self-intersecting geometries", issues))) {
     fixed_actions <- c(fixed_actions, "Fixed self-intersecting geometries")
   }
-  if (any(grepl("interior holes", issues))) {
+  hole_msgs <- issues[grepl("interior holes", issues, ignore.case = TRUE)]
+
+  if (length(hole_msgs) > 0) {
     fixed_actions <- c(
       fixed_actions,
       "Removed interior holes from geometries"
@@ -1036,6 +1141,11 @@ validate_process_spatial <- function(
 
   if (length(fixed_actions) > 0) {
     cli::cli_h2("Fixed issues:")
+    if (length(hole_msgs) > 0) {
+      for (msg in unique(hole_msgs)) {
+        cli::cli_alert_warning(msg)
+      }
+    }
     for (action in fixed_actions) {
       cli::cli_alert_success(action)
     }
@@ -1048,7 +1158,9 @@ validate_process_spatial <- function(
 # @param new_rows New invalid rows (sf object) to append
 # @return Combined sf object or data.frame
 .append_spatial_invalid_rows <- function(existing, new_rows) {
-  if (is.null(existing)) return(new_rows)
+  if (is.null(existing)) {
+    return(new_rows)
+  }
 
   # Ensure both are sf objects or both are data.frames
   if (inherits(existing, "sf") && inherits(new_rows, "sf")) {
