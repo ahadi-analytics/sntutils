@@ -313,16 +313,18 @@ calculate_match_stats <- function(
   left_hdr <- "Target data as base N"
   right_hdr <- "Lookup data as base N"
 
+  bullet <- "\u2022"
+
   build_left <- function(r) {
     glue::glue(
-      "• {r$label} (level{r$level_num}): ",
+      "{bullet} {r$label} (level{r$level_num}): ",
       "{paint_matches(r$matches, r$total_data)} out of ",
       "{big_mark(r$total_data)} matched"
     )
   }
   build_right <- function(r) {
     glue::glue(
-      "• {r$label} (level{r$level_num}): ",
+      "{bullet} {r$label} (level{r$level_num}): ",
       "{paint_matches(r$matches, r$total_lookup)} out of ",
       "{big_mark(r$total_lookup)} matched"
     )
@@ -386,7 +388,7 @@ calculate_match_stats <- function(
   } else {
     # both imperfect
     cli::cli_alert_warning(
-      "Both sides have unmatched names; see per-level lines below"
+      "Both sides have unmatched names; see per-level lines below."
     )
   }
 
@@ -2188,9 +2190,9 @@ prep_geonames <- function(
 #' # Example lookup table
 #' adm1_lookup <- dplyr::tribble(
 #'   ~adm2, ~adm1,
-#'   "Boffa", "Boké",
-#'   "Boke", "Boké",
-#'   "Fria", "Boké"
+#'   "Boffa", "Bok\u00e9",
+#'   "Boke", "Bok\u00e9",
+#'   "Fria", "Bok\u00e9"
 #' )
 #'
 #' # Example dataset
