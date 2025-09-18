@@ -45,9 +45,9 @@ It allows for dynamic column names and lookup table structures.
 # Example lookup table
 adm1_lookup <- dplyr::tribble(
   ~adm2, ~adm1,
-  "Boffa", "Boké",
-  "Boke", "Boké",
-  "Fria", "Boké"
+  "Boffa", "Bok\u00e9",
+  "Boke", "Bok\u00e9",
+  "Fria", "Bok\u00e9"
 )
 
 # Example dataset

@@ -253,86 +253,114 @@ testthat::test_that("prep_geonames correctly processes admin names", {
   )
 })
 
-testthat::test_that("calculate_match_stats calculates correct matches for all levels", {
-  # Create test data frames
+testthat::test_that("helper captures cli output robustly", {
+  withr::local_options(cli.unicode = FALSE, cli.num_colors = 1)
+
+  # trivial function to emit a cli message
+  f <- function() {
+    cli::cli_h1(glue::glue("{cli::symbol$info} Match Summary"))
+    invisible(NULL)
+  }
+
+  out <- utils::capture.output(f(), type = "message") |>
+    cli::ansi_strip() |>
+    paste(collapse = "\n") |>
+    stringr::str_replace_all("\\s+", " ") |>
+    trimws()
+
+  testthat::expect_true(grepl("Match Summary", out))
+})
+
+# util: run, capture, normalize ------------------------------------------------
+norm_cli <- function(expr) {
+  withr::local_options(cli.unicode = FALSE, cli.num_colors = 1)
+  txt <- utils::capture.output(
+    withCallingHandlers(
+      expr,
+      message = function(m) {
+        cat(cli::ansi_strip(conditionMessage(m)), "\n")
+        invokeRestart("muffleMessage")
+      }
+    )
+  )
+  txt <- cli::ansi_strip(txt)
+  txt <- paste(txt, collapse = "\n")
+  txt <- gsub("\\s+", " ", txt)
+  trimws(txt)
+}
+
+expect_contains_all <- function(txt, patterns) {
+  purrr::walk(
+    patterns,
+    \(p) {
+      testthat::expect_true(
+        grepl(p, txt, perl = TRUE),
+        info = paste("pattern not found:", p, "\n\nActual:\n", txt)
+      )
+    }
+  )
+}
+
+# 1) both imperfect (baseline you showed) --------------------------------------
+testthat::test_that("prints warning and per-level counts when both sides have unmatched names", {
   data <- data.frame(
     country = c("USA", "Canada", "Mexico", "Brazil", "Colombia"),
     province = c("California", "Ontario", "Jalisco", "Sao Paulo", "Bogota"),
-    district = c("Los Angeles", "Toronto", "Guadalajara", "Sao Paulo City", "Bogota DC"),
+    district = c(
+      "Los Angeles",
+      "Toronto",
+      "Guadalajara",
+      "Sao Paulo City",
+      "Bogota DC"
+    ),
     subdistrict = c("Hollywood", "Downtown", "Centro", "Zona Sul", "Chapinero"),
-    settlement = c("West Hollywood", "Kensington", "Zapopan", "Ipanema", "Zona T"),
+    settlement = c(
+      "West Hollywood",
+      "Kensington",
+      "Zapopan",
+      "Ipanema",
+      "Zona T"
+    ),
     stringsAsFactors = FALSE
   )
 
-  lookup_data <- data.frame(
+  lookup <- data.frame(
     country = c("USA", "Canada", "France", "Brazil", "Germany"),
-    province = c("California", "Quebec", "Ile-de-France", "Sao Paulo", "Bavaria"),
-    district = c("Los Angeles", "Montreal", "Paris", "Sao Paulo City", "Munich"),
-    subdistrict = c("Hollywood", "Old Montreal", "Le Marais", "Zona Sul", "Altstadt"),
-    settlement = c("West Hollywood", "Mile End", "Saint-Germain", "Ipanema", "Marienplatz"),
+    province = c(
+      "California",
+      "Quebec",
+      "Ile-de-France",
+      "Sao Paulo",
+      "Bavaria"
+    ),
+    district = c(
+      "Los Angeles",
+      "Montreal",
+      "Paris",
+      "Sao Paulo City",
+      "Munich"
+    ),
+    subdistrict = c(
+      "Hollywood",
+      "Old Montreal",
+      "Le Marais",
+      "Zona Sul",
+      "Altstadt"
+    ),
+    settlement = c(
+      "West Hollywood",
+      "Mile End",
+      "Saint-Germain",
+      "Ipanema",
+      "Marienplatz"
+    ),
     stringsAsFactors = FALSE
   )
 
-  # Instead of testing cli output directly, verify the internal calculations
-  # Mock the cli functions to verify they're called with correct arguments
-  info_mock <- mockery::mock()
-  li_mock <- mockery::mock()
-  ul_mock <- mockery::mock()
-  end_mock <- mockery::mock()
-
-  mockery::stub(calculate_match_stats, "cli::cli_alert_info", info_mock)
-  mockery::stub(calculate_match_stats, "cli::cli_ul", ul_mock)
-  mockery::stub(calculate_match_stats, "cli::cli_li", li_mock)
-  mockery::stub(calculate_match_stats, "cli::cli_end", end_mock)
-
-  # Call the function
-  calculate_match_stats(
-    data,
-    lookup_data,
-    level0 = "country",
-    level1 = "province",
-    level2 = "district",
-    level3 = "subdistrict",
-    level4 = "settlement"
-  )
-
-  # Verify the mock was called with correct arguments
-  testthat::expect_equal(
-    mockery::mock_args(info_mock)[[1]][[1]], "Match Summary:"
-  )
-
-  # Verify the expected matches through calculation
-  level0_matches <- sum(
-    unique(data$country) %in% unique(lookup_data$country)
-  )
-  level1_matches <- sum(
-    unique(data$province) %in% unique(lookup_data$province)
-  )
-  level2_matches <- sum(
-    unique(data$district) %in% unique(lookup_data$district)
-  )
-  level3_matches <- sum(
-    unique(data$subdistrict) %in% unique(lookup_data$subdistrict)
-  )
-  level4_matches <- sum(
-    unique(data$settlement) %in% unique(lookup_data$settlement)
-  )
-
-  testthat::expect_equal(level0_matches, 3) # USA, Canada, Brazil
-  testthat::expect_equal(level1_matches, 2) # California, Sao Paulo
-  testthat::expect_equal(level2_matches, 2) # Los Angeles, Sao Paulo City
-  testthat::expect_equal(level3_matches, 2) # Hollywood, Zona Sul
-  testthat::expect_equal(level4_matches, 2) # West Hollywood, Ipanema
-
-  # Check that li_mock was called 5 times (once for each level)
-  # testthat::expect_equal(mockery::mock_call_count(li_mock), 5)
-
-  # Let's also directly test the function without mocking
-  # by checking if it runs without errors
-  testthat::expect_no_error(
+  printed <- norm_cli(
     calculate_match_stats(
-      data,
-      lookup_data,
+      data = data,
+      lookup_data = lookup,
       level0 = "country",
       level1 = "province",
       level2 = "district",
@@ -340,10 +368,212 @@ testthat::test_that("calculate_match_stats calculates correct matches for all le
       level4 = "settlement"
     )
   )
+
+  expect_contains_all(
+    printed,
+    c(
+      "Match Summary",
+      "Both sides have unmatched names",
+      "Target data as base N",
+      "Lookup data as base N",
+      "country \\(level0\\):\\s*3 out of 5 matched",
+      "province \\(level1\\):\\s*2 out of 5 matched",
+      "district \\(level2\\):\\s*2 out of 5 matched",
+      "subdistrict \\(level3\\):\\s*2 out of 5 matched",
+      "settlement \\(level4\\):\\s*2 out of 5 matched"
+    )
+  )
 })
 
+# 2) both perfect --------------------------------------------------------------
+testthat::test_that("emits success when hierarchies fully align", {
+  data <- data.frame(
+    country = c("Kenya", "Uganda"),
+    province = c("Nairobi", "Central"),
+    district = c("Westlands", "Kampala"),
+    stringsAsFactors = FALSE
+  )
+  lookup <- data
+
+  printed <- norm_cli(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup,
+      level0 = "country",
+      level1 = "province",
+      level2 = "district"
+    )
+  )
+
+  expect_contains_all(
+    printed,
+    c(
+      "Match Summary",
+      "Hierarchies are aligned across data and lookup.",
+      "country \\(level0\\):\\s*2 out of 2 matched",
+      "province \\(level1\\):\\s*2 out of 2 matched",
+      "district \\(level2\\):\\s*2 out of 2 matched"
+    )
+  )
+})
+
+# 3) target perfect, lookup has extras ----------------------------------------
+testthat::test_that("emits info when lookup has extra names not in data", {
+  data <- data.frame(
+    country = c("Kenya", "Uganda"),
+    district = c("Nairobi", "Kampala"),
+    stringsAsFactors = FALSE
+  )
+  lookup <- rbind(
+    data,
+    data.frame(
+      country = "Tanzania",
+      district = "Dar es Salaam",
+      stringsAsFactors = FALSE
+    )
+  )
+
+  printed <- norm_cli(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup,
+      level0 = "country",
+      level2 = "district"
+    )
+  )
+
+  expect_contains_all(
+    printed,
+    c(
+      "Match Summary",
+      "Lookup has extra names not in data.",
+      "country \\(level0\\):\\s*2 out of 2 matched", # target perfect
+      "district \\(level2\\):\\s*2 out of 2 matched" # lookup imperfect
+    )
+  )
+})
+
+# 4) lookup perfect, target has extras ----------------------------------------
+testthat::test_that("emits info when data has extra names not in lookup", {
+  lookup <- data.frame(
+    country = c("Kenya", "Uganda"),
+    district = c("Nairobi", "Kampala"),
+    stringsAsFactors = FALSE
+  )
+  data <- rbind(
+    lookup,
+    data.frame(
+      country = "Tanzania",
+      district = "Dar es Salaam",
+      stringsAsFactors = FALSE
+    )
+  )
+
+  printed <- norm_cli(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup,
+      level0 = "country",
+      level2 = "district"
+    )
+  )
+
+  expect_contains_all(
+    printed,
+    c(
+      "Match Summary",
+      "Data has names not in lookup.",
+      "country \\(level0\\):\\s*2 out of 3 matched", # target imperfect
+      "district \\(level2\\):\\s*2 out of 3 matched" # lookup perfect
+    )
+  )
+})
+
+# 5) missing names present (NA / empty) ---------------------------------------
+testthat::test_that("warns and reports counts when missing names are present", {
+  data <- data.frame(
+    country = c("Kenya", NA, "Uganda", ""),
+    district = c("Nairobi", "Kisumu", "", "Kampala"),
+    stringsAsFactors = FALSE
+  )
+  lookup <- data.frame(
+    country = c("Kenya", "Uganda", ""),
+    district = c("Nairobi", "Kampala", "Arusha"),
+    stringsAsFactors = FALSE
+  )
+
+  printed <- norm_cli(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup,
+      level0 = "country",
+      level2 = "district"
+    )
+  )
+
+  expect_contains_all(
+    printed,
+    c(
+      "Match Summary",
+      "Both sides have unmatched names; see per-level lines below.",
+      "Missing names detected in supplied levels \\(not included in N\\)\\.",
+      "- country: data = 2, lookup = 1",
+      "- district: data = 1",
+      "- country: .*?(data = \\d+|lookup = \\d+)",
+      "- district: .*?(data = \\d+|lookup = \\d+)"
+    )
+  )
+})
+
+# 6) no levels provided (edge behavior) ---------------------------------------
+testthat::test_that("handles no levels without error and prints summary", {
+  data <- data.frame(a = 1)
+  lookup <- data.frame(a = 1)
+
+  printed <- norm_cli(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup
+      # no level* args
+    )
+  )
+
+  # With no rows computed, function currently falls into the 'both imperfect'
+  # branch; at minimum ensure header is printed and no error occurs.
+  testthat::expect_true(grepl("Match Summary", printed))
+})
+
+# 7) unicode branch tolerance (optional) --------------------------------------
+testthat::test_that("tolerates unicode glyphs in local runs", {
+  withr::local_options(cli.unicode = TRUE, cli.num_colors = 1)
+
+  data <- data.frame(
+    country = c("Kenya", "Uganda"),
+    district = c("Nairobi", "Kampala")
+  )
+  lookup <- data
+
+  printed <- utils::capture.output(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup,
+      level0 = "country",
+      level2 = "district"
+    ),
+    type = "message"
+  ) |>
+    cli::ansi_strip() |>
+    paste(collapse = "\n")
+
+  # only assert on stable text so glyph choice doesn't matter
+  expect_contains_all(
+    printed,
+    c("Match Summary", "Hierarchies are aligned across data and lookup\\.")
+  )
+})
+
+
 testthat::test_that("calculate_match_stats handles empty data correctly", {
-  # Create empty data frames
   empty_data <- data.frame(
     country = character(0),
     province = character(0),
@@ -358,26 +588,27 @@ testthat::test_that("calculate_match_stats handles empty data correctly", {
     stringsAsFactors = FALSE
   )
 
-  # Mock cli functions
-  mockery::stub(calculate_match_stats, "cli::cli_alert_info", mockery::mock())
-  mockery::stub(calculate_match_stats, "cli::cli_ul", mockery::mock())
-  mockery::stub(calculate_match_stats, "cli::cli_li", mockery::mock())
-  mockery::stub(calculate_match_stats, "cli::cli_end", mockery::mock())
-
-  # Should not error with empty data
-  testthat::expect_no_error(
+  output <- capture.output(
     calculate_match_stats(
-      empty_data,
-      lookup_data,
+      data = empty_data,
+      lookup_data = lookup_data,
       level0 = "country",
       level1 = "province",
       level2 = "district"
     )
   )
+  output_stripped <- cli::ansi_strip(output)
+
+  testthat::expect_true(
+    any(grepl("country (level0): 0 out of 0 matched", output_stripped, fixed = TRUE))
+  )
+  testthat::expect_true(
+    any(grepl("district (level2): 0 out of 2 matched", output_stripped, fixed = TRUE))
+  )
 })
 
+
 testthat::test_that("calculate_match_stats ignores case in matches", {
-  # Create test data frames with different case
   data <- data.frame(
     country = c("USA", "canada", "mexico"),
     stringsAsFactors = FALSE
@@ -388,60 +619,18 @@ testthat::test_that("calculate_match_stats ignores case in matches", {
     stringsAsFactors = FALSE
   )
 
-  # Mock cli functions
-  mockery::stub(calculate_match_stats, "cli::cli_alert_info", mockery::mock())
-  mockery::stub(calculate_match_stats, "cli::cli_ul", mockery::mock())
-  mockery::stub(calculate_match_stats, "cli::cli_li", mockery::mock())
-  mockery::stub(calculate_match_stats, "cli::cli_end", mockery::mock())
-
-  # Extract results function (modified to make comparison case-insensitive)
-  extract_results_case_insensitive <- function() {
-    results <- NULL
-    mockery::stub(
-      calculate_match_stats, "cli::cli_alert_info", function(...) NULL
+  output <- capture.output(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup_data,
+      level0 = "country"
     )
-    mockery::stub(calculate_match_stats, "cli::cli_ul", function(...) NULL)
-    mockery::stub(calculate_match_stats, "cli::cli_li", function(...) NULL)
-    mockery::stub(calculate_match_stats, "cli::cli_end", function(...) NULL)
-
-    # Create modified version with case-insensitive comparison
-    modified_fn <- function(data, lookup_data, level0 = NULL,
-                            level1 = NULL, level2 = NULL,
-                            level3 = NULL, level4 = NULL) {
-      # Make data lowercase for case-insensitive comparison
-      if (!is.null(level0)) {
-        data[[level0]] <- tolower(data[[level0]])
-        lookup_data[[level0]] <- tolower(lookup_data[[level0]])
-      }
-
-      calculate_match_stats(
-        data,
-        lookup_data,
-        level0 = level0,
-        level1 = level1,
-        level2 = level2,
-        level3 = level3,
-        level4 = level4
-      )
-    }
-
-    # Call modified function
-    modified_fn(data, lookup_data, level0 = "country")
-
-    results
-  }
-
-  # Verify expected case-insensitive match counts
-  results_case_insensitive <- environment(
-    extract_results_case_insensitive
-  )$results
-
-  # Manual calculation for verification (case-insensitive)
-  expected_matches <- sum(
-    tolower(unique(data$country)) %in% tolower(unique(lookup_data$country))
   )
+  output_stripped <- cli::ansi_strip(output)
 
-  testthat::expect_equal(expected_matches, 2)
+  testthat::expect_true(
+    any(grepl("country (level0): 2 out of 3 matched", output_stripped, fixed = TRUE))
+  )
 })
 
 
