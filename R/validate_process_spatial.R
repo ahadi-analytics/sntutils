@@ -29,6 +29,8 @@
 #'   - `column_dictionary`: Data frame with column_name and description.
 #'   - `final_spat_vec`: List of admin-level aggregations
 #'     (adm0, adm1, adm2, adm3).
+#'   - `geometry_types`: Tibble summarizing geometry types and counts.
+#'   - `spatial_extent`: Named vector with xmin, ymin, xmax, ymax.
 #'
 #' @examples
 #' \dontrun{
@@ -149,7 +151,9 @@ validate_process_spatial <- function(
     checks = NULL,
     invalid_rows = NULL,
     duplicate_rows = NULL,
-    column_dictionary = NULL
+    column_dictionary = NULL,
+    geometry_types = NULL,
+    spatial_extent = NULL
   )
 }
 
@@ -491,6 +495,18 @@ validate_process_spatial <- function(
 
   # Create geometry hash and admin GUIDs
   shp_std <- .create_spatial_identifiers(shp_std, admin_mapping, quiet)
+
+  # Summarize geometry types and spatial extent for outputs
+  geom_counts <- base::table(
+    base::as.character(
+      sf::st_geometry_type(shp_std, by_geometry = TRUE)
+    )
+  )
+  results$geometry_types <- tibble::tibble(
+    geometry_type = base::names(geom_counts),
+    count = base::as.integer(geom_counts)
+  )
+  results$spatial_extent <- sf::st_bbox(shp_std)
 
   # Create admin level aggregations
   results$final_spat_vec <-
@@ -881,6 +897,18 @@ validate_process_spatial <- function(
         "Detailed checks available in results$checks ",
         "({length(results$checks)} check{?s})"
       )
+    )
+  }
+
+  if (!is.null(results$geometry_types)) {
+    cli::cli_alert_info(
+      "Geometry types table available in results$geometry_types"
+    )
+  }
+
+  if (!is.null(results$spatial_extent)) {
+    cli::cli_alert_info(
+      "Spatial extent available in results$spatial_extent"
     )
   }
 
