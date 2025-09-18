@@ -379,6 +379,46 @@ validate_process_spatial <- function(
     if (!quiet) cli::cli_alert_success("All geometries valid")
   }
 
+  # count and optionally remove interior holes per feature
+  geoms <- sf::st_geometry(shp)
+  hole_counts <- base::vapply(
+    geoms,
+    function(g) {
+      base::sum(base::lengths(sf::st_geometry(g))) -
+        base::length(sf::st_geometry(g))
+    },
+    integer(1)
+  )
+  hole_idx <- base::which(hole_counts > 0)
+
+  if (base::length(hole_idx) > 0) {
+    results$issues <- c(
+      results$issues,
+      sprintf(
+        "%d geometries with interior holes",
+        base::length(hole_idx)
+      )
+    )
+
+    if (!exists("checks", results)) results$checks <- list()
+    results$checks$geometries_with_holes <- shp[hole_idx, ]
+
+    if (fix_issues) {
+      if (!rlang::is_installed("nngeo")) {
+        cli::cli_abort(
+          c(
+            "Package 'nngeo' is required to remove interior holes.",
+            "i" = "Install nngeo or set fix_issues = FALSE."
+          )
+        )
+      }
+      shp <- nngeo::st_remove_holes(shp)
+      if (!quiet) {
+        cli::cli_alert_info("Removed interior holes from geometries")
+      }
+    }
+  }
+
   # Check geometry types (for internal use only)
   geom_types <- unique(sf::st_geometry_type(shp))
 
@@ -535,6 +575,16 @@ validate_process_spatial <- function(
   # Create admin level aggregations
   results$final_spat_vec <-
     .create_admin_aggregations(shp_std, admin_mapping, quiet)
+
+  # remove holes across all admin levels when detected earlier
+  if (!is.null(results$checks) &&
+      !is.null(results$checks$geometries_with_holes) &&
+      nrow(results$checks$geometries_with_holes) > 0) {
+    results$final_spat_vec <- lapply(
+      results$final_spat_vec,
+      nngeo::st_remove_holes
+    )
+  }
 
   # Create column dictionary
   results$column_dictionary <- .create_spatial_column_dictionary(
@@ -958,6 +1008,12 @@ validate_process_spatial <- function(
   }
   if (any(grepl("self-intersecting geometries", issues))) {
     fixed_actions <- c(fixed_actions, "Fixed self-intersecting geometries")
+  }
+  if (any(grepl("interior holes", issues))) {
+    fixed_actions <- c(
+      fixed_actions,
+      "Removed interior holes from geometries"
+    )
   }
   if (any(grepl("duplicate rows", issues))) {
     fixed_actions <- c(fixed_actions, "Removed duplicate rows")
