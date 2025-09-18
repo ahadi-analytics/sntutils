@@ -15,6 +15,8 @@
 #' @param geometry_crs Target CRS for output geometry (default EPSG:4326).
 #'   After CRS validation/fixes, geometries are transformed to this CRS
 #'   for subsequent processing and output.
+#' @param drop_z Logical, whether to drop Z/M coordinates before validation.
+#'   Defaults to TRUE to avoid s2 warnings for 2D processing.
 #'
 #' @return A list with validation results. Key elements:
 #'   - `issues`: Character vector of issues detected.
@@ -78,13 +80,16 @@ validate_process_spatial <- function(
   adm3_col = NULL,
   fix_issues = TRUE,
   quiet = FALSE,
-  geometry_crs = 4326
+  geometry_crs = 4326,
+  drop_z = TRUE
 ) {
   # Initialize results structure
   results <- .init_spatial_validation_results(name, fix_issues, quiet)
 
   # Convert input data to sf format with validation
-  sf_data <- .prepare_spatial_sf_input(shp, results, fix_issues, quiet)
+  sf_data <- .prepare_spatial_sf_input(
+    shp, results, fix_issues, quiet, drop_z
+  )
   results <- sf_data$results
   shp_clean <- sf_data$shp
   original_input_cols <- sf_data$original_cols
@@ -162,8 +167,10 @@ validate_process_spatial <- function(
 # @param results Results list to update with validation issues
 # @param fix_issues Logical, whether to attempt automatic fixes
 # @param quiet Logical, whether to suppress progress messages
+# @param drop_z Logical, whether to drop Z/M coordinates before validation
 # @return List with sf object, updated results, and original column names
-.prepare_spatial_sf_input <- function(shp, results, fix_issues, quiet) {
+.prepare_spatial_sf_input <- function(shp, results, fix_issues, quiet,
+                                      drop_z) {
   original_input_cols <- names(shp)
 
   # Try to coerce to sf if needed
@@ -183,6 +190,23 @@ validate_process_spatial <- function(
 
   n_rows <- nrow(shp)
   n_cols <- ncol(shp)
+
+  if (drop_z) {
+    # Drop Z/M coordinates because downstream s2 operations require 2D geometry
+    geom_classes <- base::vapply(
+      sf::st_geometry(shp),
+      function(geom) base::class(geom)[1],
+      character(1)
+    )
+    has_z <- base::any(geom_classes %in% c("XYZ", "XYZM"))
+    has_m <- base::any(geom_classes %in% c("XYM", "XYZM"))
+    if (has_z || has_m) {
+      if (!quiet) {
+        cli::cli_alert_info("Dropping Z/M geometry dimensions for validation")
+      }
+      shp <- sf::st_zm(shp, drop = TRUE, what = "ZM")
+    }
+  }
 
   if (!quiet) {
     cli::cli_alert_info("Processing {n_rows} rows, {n_cols} columns")
