@@ -13,7 +13,8 @@ validate_process_spatial(
   adm3_col = NULL,
   fix_issues = TRUE,
   quiet = FALSE,
-  geometry_crs = 4326
+  geometry_crs = 4326,
+  drop_z = TRUE
 )
 }
 \arguments{
@@ -36,6 +37,9 @@ validate_process_spatial(
 \item{geometry_crs}{Target CRS for output geometry (default EPSG:4326).
 After CRS validation/fixes, geometries are transformed to this CRS
 for subsequent processing and output.}
+
+\item{drop_z}{Logical, whether to drop Z/M coordinates before validation.
+Defaults to TRUE to avoid s2 warnings for 2D processing.}
 }
 \value{
 A list with validation results. Key elements:
@@ -52,6 +56,8 @@ shared geometry.
 \item \code{column_dictionary}: Data frame with column_name and description.
 \item \code{final_spat_vec}: List of admin-level aggregations
 (adm0, adm1, adm2, adm3).
+\item \code{geometry_types}: Tibble summarizing geometry types and counts.
+\item \code{spatial_extent}: Named vector with xmin, ymin, xmax, ymax.
 }
 }
 \description{
