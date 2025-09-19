@@ -90,6 +90,16 @@ globalVariables(
     ".facility",
     ".month",
     "activity_status",
-    "first_reporting_date"
+    "first_reporting_date",
+    "denominator",
+    "hf_lookup_matched",
+    "hf_lookup_raw",
+    "hf_lookup_raw_upper",
+    "hf_lookup_std",
+    "hf_target_raw",
+    "hf_target_raw_upper",
+    "hf_target_std",
+    "match_method",
+    "metric"
   )
 )
