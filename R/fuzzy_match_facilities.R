@@ -1,7 +1,3 @@
-# R/fuzzy_match_facilities.R
-# Runs the facility matching pipeline between target and lookup tables.
-# Exists to provide a single entry point for facility name matching workflows.
-# RELEVANT FILES: R/harmonize_admin_names.R,R/write_snt_data.R,R/read_snt_data.R
 #' Facility name matching across datasets (DHIS2 vs MFL)
 #'
 #' @description
