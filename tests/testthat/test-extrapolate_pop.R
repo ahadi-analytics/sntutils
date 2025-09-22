@@ -261,6 +261,36 @@ testthat::test_that("extrapolate_pop handles multiple extrapolation years", {
   }
 })
 
+testthat::test_that("extrapolate_pop extrapolates backward when needed", {
+  test_data <- tibble::tibble(
+    adm0 = "country_x",
+    adm1 = "region_a",
+    adm2 = "district_1",
+    adm3 = "district_1_subarea",
+    year = 2024,
+    total_pop = 1000
+  )
+
+  result <- extrapolate_pop(
+    data = test_data,
+    year_col = "year",
+    pop_col = "total_pop",
+    group_cols = c("adm0", "adm1", "adm2", "adm3"),
+    years_to_extrap = 2020:2023,
+    multiplier = 1.5
+  )
+
+  expected_years <- 2020:2024
+  result_years <- sort(unique(result$year))
+  testthat::expect_equal(result_years, expected_years)
+
+  ordered <- result |>
+    dplyr::arrange(year) |>
+    dplyr::pull(total_pop)
+
+  testthat::expect_equal(ordered, c(198, 297, 446, 669, 1000))
+})
+
 # test edge cases ----
 testthat::test_that("extrapolate_pop handles single year input", {
   test_data <- create_pop_test_data(years = 2020)
@@ -364,17 +394,17 @@ testthat::test_that("extrapolate_pop handles negative multiplier", {
 testthat::test_that("extrapolate_pop requires multiplier for unnamed years", {
   test_data <- create_pop_test_data()
 
-  result <- extrapolate_pop(
+  testthat::expect_error(
+    extrapolate_pop(
       data = test_data,
       year_col = "year",
       pop_col = "total_pop",
       group_cols = c("adm0", "adm1", "adm2", "adm3"),
       years_to_extrap = c(2021, 2022),
       multiplier = NULL
-    )
-
-  testthat::expect_true(
-    any(is.na(result$total_pop))
+    ),
+    "`multiplier` must be provided when `years_to_extrap` is unnamed.",
+    fixed = TRUE
   )
 })
 
@@ -435,8 +465,12 @@ testthat::test_that("extrapolate_pop rounds population values", {
     multiplier = 1.33 # will create decimals
   )
 
-  # all values should be integers
-  testthat::expect_true(all(result$total_pop == round(result$total_pop)))
+  # extrapolated values should be integers
+  new_values <- result |>
+    dplyr::filter(year == 2021) |>
+    dplyr::pull(total_pop)
+
+  testthat::expect_true(all(new_values == round(new_values)))
 })
 
 testthat::test_that("extrapolate_pop maintains proper grouping", {
