@@ -2,7 +2,7 @@
 % Please edit documentation in R/extrapolate_pop.R
 \name{extrapolate_pop}
 \alias{extrapolate_pop}
-\title{Extrapolate Population Estimates for Future Years}
+\title{Extrapolate Population Estimates for Target Years}
 \usage{
 extrapolate_pop(
   data,
@@ -37,10 +37,10 @@ A data frame with updated population estimates for the specified
 years.
 }
 \description{
-Fills missing population values for specified future years by applying
-a multiplier to the previous year's population estimate, grouped by location.
-Supports applying the same multiplier to all years or custom multipliers per
-year. Automatically expands data to a full year range.
+Fills missing population values for specified years by applying a multiplier
+to the nearest available year within each location group.
+Supports extending forward beyond the latest data or backward before the
+earliest data. Automatically expands data to a full year range.
 }
 \examples{
 
@@ -74,6 +74,22 @@ extrapolate_pop(
   pop_col = "total_pop",
   group_cols = c("adm0", "adm1", "adm2", "adm3"),
   years_to_extrap = c(`2021` = 1.5, `2022` = 1.3)
+)
+
+# Example with backward extrapolation from a single year
+backward_data <- tibble::tibble(
+  adm0 = "COUNTRYX",
+  year = 2024,
+  total_pop = 5000
+)
+
+extrapolate_pop(
+  data = backward_data,
+  year_col = "year",
+  pop_col = "total_pop",
+  group_cols = "adm0",
+  years_to_extrap = 2020:2023,
+  multiplier = 1.2
 )
 
 }
