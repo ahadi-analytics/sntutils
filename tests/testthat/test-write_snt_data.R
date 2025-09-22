@@ -175,6 +175,34 @@ testthat::test_that("xlsx writes when openxlsx is available", {
   testthat::expect_true(fs::file_exists(res$path[[1]]))
 })
 
+testthat::test_that(
+  "longitude columns stay numeric in excel export",
+  {
+    testthat::skip_if_not(has_pkg("openxlsx"))
+    testthat::skip_if_not(has_writer("xlsx"))
+
+    tmp <- withr::local_tempdir()
+    df <- tibble::tibble(
+      lon = c(0, 1.222, 35.5),
+      lat = c(-0.5, 0.2, 1.1)
+    )
+
+    res <- write_snt_data(
+      obj = df,
+      path = tmp,
+      data_name = "coords",
+      file_formats = "xlsx",
+      include_date = FALSE,
+      overwrite = TRUE,
+      quiet = TRUE
+    )
+
+    testthat::expect_true(res$ok[[1]])
+    read_back <- openxlsx::read.xlsx(res$path[[1]])
+    testthat::expect_equal(read_back$lon, df$lon)
+  }
+)
+
 # parquet/feather --------------------------------------------------------------
 
 testthat::test_that("parquet writes when arrow is available", {
