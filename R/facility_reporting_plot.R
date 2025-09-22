@@ -1,8 +1,3 @@
-# R/facility_reporting_plot.R
-# build monthly facility reporting activity heatmap
-# helps teams quickly assess facility engagement over time
-# RELEVANT FILES:R/reporting_rate.R,R/consistency_check.R,R/utils.R
-
 #' Plot monthly reporting activity by health facility
 #'
 #' Builds a balanced monthly panel, flags reporting on key indicators,
