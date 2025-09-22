@@ -1,7 +1,3 @@
-# R/standardize_names.R
-# helper utilities for name normalization across the package
-# supports consistent cleaning of admin and facility strings
-# RELEVANT FILES:R/harmonize_admin_names.R,tests/testthat/test-standardize_names.R
 #' Standardize name-like strings with optional steps
 #'
 #' Applies a sequence of standardization steps to a vector of names. Each step
