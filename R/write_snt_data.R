@@ -309,27 +309,11 @@
           numeric_cols <- numeric_cols[!year_mask]
 
           if (base::length(numeric_cols) > 0L) {
-            numeric_data <- data[numeric_cols]
             col_names_lower <- base::tolower(base::names(data)[numeric_cols])
-            percent_name_mask <- base::grepl(
+            percent_mask <- base::grepl(
               pattern = "percent|pct|%",
               x = col_names_lower
             )
-            percent_value_mask <- base::vapply(
-              X = numeric_data,
-              FUN = function(col) {
-                clean <- col[!base::is.na(col)]
-                if (base::length(clean) == 0L) {
-                  return(FALSE)
-                }
-                max_abs <- base::max(base::abs(clean))
-                min_abs <- base::min(base::abs(clean))
-                (min_abs >= 0 && max_abs <= 1) ||
-                  (min_abs >= 0 && max_abs <= 100 && min_abs < 1)
-              },
-              FUN.VALUE = base::logical(1)
-            )
-            percent_mask <- percent_name_mask | percent_value_mask
             percent_cols <- numeric_cols[percent_mask]
             if (base::length(percent_cols) > 0L) {
               for (col_idx in percent_cols) {
