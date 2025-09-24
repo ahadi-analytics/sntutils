@@ -35,7 +35,7 @@
   }
 
   file_formats <- tolower(file_formats)
-  ok_fmts <- c("rds", "csv", "tsv", "xlsx", "parquet", "feather", "qs2")
+  ok_fmts <- c("rds", "csv", "tsv", "xlsx", "parquet", "feather", "qs2", "geojson")
   bad <- setdiff(file_formats, ok_fmts)
   if (length(bad) > 0) {
     cli::cli_abort(c(
@@ -685,6 +685,17 @@
       }
       arrow::write_feather(x, path, ...)
       path
+    },
+
+    geojson = function(x, path, ...) {
+      if (!requireNamespace("sf", quietly = TRUE)) {
+        cli::cli_abort("Install 'sf' for GeoJSON output.")
+      }
+      if (!inherits(x, "sf")) {
+        cli::cli_abort("GeoJSON format requires an 'sf' object with geometry.")
+      }
+      sf::st_write(x, path, driver = "GeoJSON", delete_dsn = TRUE, quiet = TRUE, ...)
+      path
     }
   )
 }
@@ -838,6 +849,11 @@
     },
     xlsx = if (requireNamespace("openxlsx", quietly = TRUE)) {
       try(openxlsx::read.xlsx(path), silent = TRUE)
+    } else {
+      try("error", silent = TRUE)
+    },
+    geojson = if (requireNamespace("sf", quietly = TRUE)) {
+      try(sf::st_read(path, quiet = TRUE), silent = TRUE)
     } else {
       try("error", silent = TRUE)
     },
