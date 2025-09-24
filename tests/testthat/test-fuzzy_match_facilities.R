@@ -93,7 +93,7 @@ testthat::test_that("fuzzy_match_facilities handles full pipeline options", {
     match_method == "fuzzy"
   )
   testthat::expect_true(
-    base::all(stringr::str_detect(fuzzy_row$hf_lookup_matched[1], "Eastside"))
+    base::all(stringr::str_detect(fuzzy_row$hf_mfl[1], "Eastside"))
   )
 
   missing_row <- dplyr::filter(
