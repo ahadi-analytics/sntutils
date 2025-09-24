@@ -263,7 +263,7 @@ fuzzy_match_facilities <- function(
       hf_target_std = hf_target_std,
       match_method = "unmatched",
       match_pct = 0L,
-      hf_lookup_matched = NA_character_
+      hf_mfl = NA_character_
     )
 
   missing_rows <- if (
@@ -277,7 +277,7 @@ fuzzy_match_facilities <- function(
         hf_target_std = NA_character_,
         match_method = "missing_name",
         match_pct = 0L,
-        hf_lookup_matched = NA_character_
+        hf_mfl = NA_character_
       )
   } else {
     tibble::tibble()
@@ -312,7 +312,7 @@ fuzzy_match_facilities <- function(
       dplyr::ungroup()
     join_keys <- c(
       stats::setNames(admin_cols, admin_cols),
-      hf_lookup_matched = "hf_lookup_raw"
+      hf_mfl = "hf_lookup_raw"
     )
     results <- results |>
       dplyr::left_join(
@@ -328,7 +328,7 @@ fuzzy_match_facilities <- function(
       .keep_all = TRUE
     ) |>
     dplyr::select(
-      dplyr::all_of(unique(c(uid_col, "hf_lookup_matched", lookup_cols)))
+      dplyr::all_of(unique(c(uid_col, "hf_mfl", lookup_cols)))
     )
 
   target_augmented <- target_df |>
@@ -561,7 +561,7 @@ fuzzy_match_facilities <- function(
       hf_target_std,
       match_method = "exact_admin",
       match_pct = score_exact,
-      hf_lookup_matched = hf_lookup_raw
+      hf_mfl = hf_lookup_raw
     )
 }
 
@@ -690,7 +690,7 @@ fuzzy_match_facilities <- function(
       geo_out |>
         dplyr::select(
           !!uid_col := .data[[uid_col]],
-          hf_lookup_matched = .data[["hf"]] # lookup-side name from geo_out
+          hf_mfl = .data[["hf"]] # lookup-side name from geo_out
         ),
       by = uid_col
     ) |>
@@ -702,7 +702,7 @@ fuzzy_match_facilities <- function(
       hf_target_std,
       match_method = "interactive",
       match_pct = score_interactive,
-      hf_lookup_matched
+      hf_mfl
     ) |>
     dplyr::distinct(.data[[uid_col]], .keep_all = TRUE)
 
@@ -747,7 +747,7 @@ fuzzy_match_facilities <- function(
       hf_target_std,
       match_method = "standardization",
       match_pct = score_standardization,
-      hf_lookup_matched = hf_lookup_raw
+      hf_mfl = hf_lookup_raw
     )
 }
 
@@ -900,7 +900,7 @@ fuzzy_match_facilities <- function(
       tibble::tibble(
         match_method = "fuzzy",
         match_pct = base::as.integer(base::round(best_score[keep], 0)),
-        hf_lookup_matched = cands$hf_lookup_raw[best_idx[keep]]
+        hf_mfl = cands$hf_lookup_raw[best_idx[keep]]
       )
     )
 }
@@ -925,10 +925,10 @@ fuzzy_match_facilities <- function(
     dplyr::distinct(dplyr::across(dplyr::all_of(admin_cols)), hf_lookup_raw)
 
   matched_keys <- results |>
-    dplyr::filter(!base::is.na(hf_lookup_matched)) |>
+    dplyr::filter(!base::is.na(hf_mfl)) |>
     dplyr::distinct(
       dplyr::across(dplyr::all_of(admin_cols)),
-      hf_lookup_raw = hf_lookup_matched
+      hf_lookup_raw = hf_mfl
     )
 
   mfl_only <- lookup_keys |>
