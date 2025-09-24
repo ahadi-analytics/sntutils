@@ -93,6 +93,26 @@ read <- function(file_path, ...) {
         "Please install it: install.packages('qs2')."
       )
     )
+  } else if (file_ext == "parquet") {
+    if (!requireNamespace("arrow", quietly = TRUE)) {
+      stop(
+        paste0(
+          "Reading '.parquet' requires the 'arrow' package. ",
+          "Please install it: install.packages('arrow')."
+        )
+      )
+    }
+    arrow::read_parquet(file_path, ...)
+  } else if (file_ext == "feather") {
+    if (!requireNamespace("arrow", quietly = TRUE)) {
+      stop(
+        paste0(
+          "Reading '.feather' requires the 'arrow' package. ",
+          "Please install it: install.packages('arrow')."
+        )
+      )
+    }
+    arrow::read_feather(file_path, ...)
   } else if (file_ext %in% c("shp", "json", "geojson")) { # for shapefiles
     sf::read_sf(file_path, ...)
   } else {

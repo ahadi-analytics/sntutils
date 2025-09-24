@@ -99,6 +99,26 @@ write <- function(data, file_path, ...) {
         "Please install it: install.packages('qs2')."
       )
     )
+  } else if (file_ext == "parquet") {
+    if (!requireNamespace("arrow", quietly = TRUE)) {
+      stop("Writing '.parquet' requires the 'arrow' package. ",
+           "Please install it: install.packages('arrow').")
+    }
+    # Handle sf objects by dropping geometry
+    if (inherits(data, "sf")) {
+      data <- sf::st_drop_geometry(data)
+    }
+    arrow::write_parquet(data, file_path, ...)
+  } else if (file_ext == "feather") {
+    if (!requireNamespace("arrow", quietly = TRUE)) {
+      stop("Writing '.feather' requires the 'arrow' package. ",
+           "Please install it: install.packages('arrow').")
+    }
+    # Handle sf objects by dropping geometry
+    if (inherits(data, "sf")) {
+      data <- sf::st_drop_geometry(data)
+    }
+    arrow::write_feather(data, file_path, ...)
   } else if (file_ext %in% "shp") { # shp shapefiles
     sf::write_sf(data, file_path, ...)
   } else if (file_ext %in% c("json", "geojson")) { # json shapefiles
