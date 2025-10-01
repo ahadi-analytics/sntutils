@@ -21,8 +21,45 @@ ensure_pngquant <- function(verbosity = FALSE) {
     return(normalizePath(env_path))
   }
 
-  # 2) on PATH already
-  on_path <- Sys.which("pngquant")
+  # 2) on PATH already - try multiple detection methods
+  # Try Sys.which() first, but handle potential failures
+  on_path <- tryCatch(
+    {
+      result <- Sys.which("pngquant")
+      if (nzchar(result)) result else ""
+    },
+    error = function(e) ""
+  )
+
+  # If Sys.which() failed or returned empty, try 'which' command directly
+  if (!is_exec(on_path)) {
+    on_path <- tryCatch(
+      {
+        result <- system("which pngquant 2>/dev/null", intern = TRUE)
+        if (length(result) > 0 && nzchar(result[1])) result[1] else ""
+      },
+      error = function(e) "",
+      warning = function(w) ""
+    )
+  }
+
+  # If still not found, check common installation paths
+  if (!is_exec(on_path)) {
+    common_paths <- c(
+      "/usr/local/bin/pngquant",
+      "/usr/bin/pngquant",
+      "/opt/homebrew/bin/pngquant",  # Apple Silicon Macs
+      "/opt/local/bin/pngquant"       # MacPorts
+    )
+
+    for (path in common_paths) {
+      if (is_exec(path)) {
+        on_path <- path
+        break
+      }
+    }
+  }
+
   if (is_exec(on_path)) {
     return(normalizePath(on_path))
   }
