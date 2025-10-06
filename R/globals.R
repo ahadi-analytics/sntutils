@@ -100,6 +100,15 @@ globalVariables(
     "hf_target_raw_upper",
     "hf_target_std",
     "match_method",
-    "metric"
+    "metric",
+    "variable",
+    "value",
+    "units",
+    "date",
+    "lon",
+    "lat",
+    "lon_idx",
+    "lat_idx",
+    "time_idx"
   )
 )
