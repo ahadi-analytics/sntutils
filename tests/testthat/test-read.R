@@ -13,7 +13,9 @@ testthat::test_that("Function imports supported file formats correctly", {
   # Loop through each supported format and test importing the file
   for (format in supported_formats) {
     file <- paste0("test_data.", format)
-    file_path <- file.path("inst", "extdata", file)
+    # Use system.file to find the correct path
+    extdata_path <- system.file("extdata", package = "sntutils")
+    file_path <- file.path(extdata_path, file)
 
     # Skip if file doesn't exist
     if (!file.exists(file_path)) {
