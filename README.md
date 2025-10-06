@@ -26,7 +26,7 @@ functions in this version of `sntutils`:
 |                               | `reporting_rate_plot()`          | Visualizes reporting/missing rates by two variables                                        |
 | **Outlier Detection**         | `detect_outliers()`              | Flags outliers in a numeric column using mean ± 3 SD, Hampel, and Tukey’s IQR methods      |
 |                               | `outlier_plot()`                 | Generates time‐series plots of flagged outliers (faceted by admin area, colored by method) |
-| **Consistency Checks**        | `consistency_check()`            | Identifies inconsistencies between two variables in a data vis plotting                    |
+| **Consistency Checks**        | `consistency_check()`            | Validates logical coherence in malaria care cascade (inputs ≥ outputs)                     |
 | **Translation**               | `translate_text()`               | Translates text with persistent file cache                                                 |
 |                               | `translate_text_vec()`           | Vectorized version of `translate_text` function                                            |
 |                               | `translate_yearmon()`            | Converts date to yearmon format with month names in multiple langs                         |
@@ -588,34 +588,53 @@ reporting_rate_plot(
 
 ![](man/figures-readme/reporting-rate-plot-scenario3-output-1.png)
 
-### Consistencty Check
+### Consistency Check
 
-The `consistency_check()` function identifies and visualizes
-inconsistencies between two variables such as the test and confirmed
-cases, useful for data quality assessment.
+The `consistency_check()` function identifies and visualizes logical
+inconsistencies in malaria surveillance data by validating that
+upstream events (inputs) are greater than or equal to downstream
+events (outputs) in the care cascade. This is useful for data quality
+assessment.
+
+Common validation checks include:
+
+- All outpatients ≥ suspected malaria
+- Malaria tests ≥ confirmed cases
+- Confirmed cases ≥ cases treated
+- All admissions ≥ malaria admissions
+- Malaria admissions ≥ malaria deaths
 
 ```r
-# Check consistency between tests and cases
+# Check consistency between tests (inputs) and confirmed cases
+# (outputs)
 consistency_check(
   sl_dhis2,
-  tests = c("test"),
-  cases = c("conf")
+  inputs = c("test"),
+  outputs = c("conf")
 )
 
-# save the plot
+# Save the plot
 consistency_check(
   sl_dhis2,
-  tests = c("test"),
-  cases = c("conf")
+  inputs = c("test"),
+  outputs = c("conf"),
   save_plot = TRUE,
   plot_path = "plots/consistency_check_plots"
 )
 
-# with translated labels in (French)
+# With translated labels (French)
 consistency_check(
   sl_dhis2,
-  tests = c("test"),
-  cases = c("conf"),
+  inputs = c("test"),
+  outputs = c("conf"),
+  target_language = "fr"
+)
+
+# Multiple cascade validations at once
+consistency_check(
+  sl_dhis2,
+  inputs = c("test", "conf", "alladm"),
+  outputs = c("conf", "maltreat", "maladm"),
   target_language = "fr"
 )
 ```
