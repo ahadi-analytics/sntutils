@@ -78,6 +78,7 @@ testthat::test_that("get_era5_variable_mapping returns comprehensive mapping", {
 testthat::test_that("detect_country_from_bbox works with valid packages", {
   testthat::skip_if_not_installed("rnaturalearth")
   testthat::skip_if_not_installed("sf")
+  testthat::skip_if_not_installed("rnaturalearthdata")
 
   # Rwanda bbox
   rwanda_bbox <- c(29.0, -2.9, 30.9, -1.0)
