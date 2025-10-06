@@ -22,6 +22,10 @@ NULL, extracts all variables.}
 
 \item{country}{Character. Optional country name to use instead of
 auto-detection.}
+
+\item{convert_units}{Logical. If \code{TRUE} (default), automatically
+convert units: Kelvin to Celsius for temperature, meters to
+millimeters for precipitation.}
 }
 \value{
 A tibble with columns:

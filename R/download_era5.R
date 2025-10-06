@@ -5,6 +5,8 @@
 #' the dataset code, descriptive label, CDS identifier, and common
 #' variables.
 #'
+#' @importFrom utils head tail
+#'
 #' @return A tibble with columns:
 #'   \describe{
 #'     \item{dataset}{Machine-readable dataset code (e.g.,
@@ -785,6 +787,9 @@ download_era5 <- function(
 #'   ymax)` for country detection.
 #' @param country Character. Optional country name to use instead of
 #'   auto-detection.
+#' @param convert_units Logical. If `TRUE` (default), automatically
+#'   convert units: Kelvin to Celsius for temperature, meters to
+#'   millimeters for precipitation.
 #'
 #' @return A tibble with columns:
 #'   \describe{
@@ -1038,7 +1043,7 @@ read_era5 <- function(
             # Update units for converted values
             units == "K" &
               grepl("temperature", variable, ignore.case = TRUE) ~
-              "°C",
+              "\u00B0C",
             units == "m" &
               grepl("precipitation|rain", variable, ignore.case = TRUE) ~
               "mm",
@@ -1051,7 +1056,7 @@ read_era5 <- function(
 
   cli::cli_alert_success("Extracted {nrow(results)} records")
   if (convert_units) {
-    cli::cli_alert_info("Units converted: K → °C, m → mm")
+    cli::cli_alert_info("Units converted: K -> \u00B0C, m -> mm")
   }
 
   return(results)
@@ -1292,8 +1297,8 @@ get_era5_metadata <- function(nc_file) {
       long_name = long_name,
       standard_name = attrs$standard_name %||% NA,
       units = var_obj$units,
-      dimensions = paste(names(var_obj$dim), collapse = " × "),
-      shape = paste(sapply(var_obj$dim, function(d) d$len), collapse = " × "),
+      dimensions = paste(names(var_obj$dim), collapse = " x "),
+      shape = paste(sapply(var_obj$dim, function(d) d$len), collapse = " x "),
       grib_short_name = attrs$GRIB_shortName %||% NA,
       grib_param_id = attrs$GRIB_paramId %||% NA,
       grib_type_of_level = attrs$GRIB_typeOfLevel %||% NA,
@@ -1386,13 +1391,13 @@ print_era5_metadata <- function(metadata) {
 
   # Spatial Information
   cli::cli_h2("Spatial Information")
-  cli::cli_alert_info("Resolution: {metadata$resolution$lon_degrees}° × {metadata$resolution$lat_degrees}° (~{metadata$resolution$lon_km} × {metadata$resolution$lat_km} km)")
+  cli::cli_alert_info("Resolution: {metadata$resolution$lon_degrees}\u00B0 x {metadata$resolution$lat_degrees}\u00B0 (~{metadata$resolution$lon_km} x {metadata$resolution$lat_km} km)")
   cli::cli_alert_info("Extent: Lon [{metadata$extent$lon_min}, {metadata$extent$lon_max}], Lat [{metadata$extent$lat_min}, {metadata$extent$lat_max}]")
   cli::cli_alert_info("Grid points: {metadata$summary$total_cells} cells")
 
   if (!is.null(metadata$grib_metadata$spatial_resolution)) {
     grib_res <- metadata$grib_metadata$spatial_resolution
-    cli::cli_alert_info("Grid size: {grib_res$nx_points} × {grib_res$ny_points} (lon × lat)")
+    cli::cli_alert_info("Grid size: {grib_res$nx_points} x {grib_res$ny_points} (lon x lat)")
   }
 
   # Dimensions
@@ -1412,8 +1417,8 @@ print_era5_metadata <- function(metadata) {
 
     if (!is.null(grib$spatial_extent)) {
       cli::cli_h3("Spatial Extent (GRIB)")
-      cli::cli_li("Latitude: {grib$spatial_extent$lat_first}° to {grib$spatial_extent$lat_last}°")
-      cli::cli_li("Longitude: {grib$spatial_extent$lon_first}° to {grib$spatial_extent$lon_last}°")
+      cli::cli_li("Latitude: {grib$spatial_extent$lat_first}\u00B0 to {grib$spatial_extent$lat_last}\u00B0")
+      cli::cli_li("Longitude: {grib$spatial_extent$lon_first}\u00B0 to {grib$spatial_extent$lon_last}\u00B0")
     }
 
     if (!is.null(grib$scan_mode)) {
@@ -1628,7 +1633,7 @@ migrate_era5_filenames <- function(dir = "era5_data", dry_run = TRUE) {
   if (nrow(to_rename) > 0) {
     cli::cli_h2("Files to Rename")
     for (i in 1:nrow(to_rename)) {
-      cli::cli_li("{to_rename$old_file[i]} → {to_rename$new_file[i]}")
+      cli::cli_li("{to_rename$old_file[i]} -> {to_rename$new_file[i]}")
     }
 
     # Perform rename if not dry run
