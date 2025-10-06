@@ -1,3 +1,156 @@
+#' Classify health facility activity status by reporting behaviour
+#'
+#' Builds a balanced monthly panel for all facilities and months, flags
+#' reporting on key indicators, and classifies each facility-month into an
+#' activity status: "Active Reporting", "Active Facility - Not Reporting",
+#' or "Inactive Facility".
+#'
+#' @param data Data frame containing routine health facility records.
+#' @param hf_col Character. Column storing health facility identifiers.
+#' @param date_col Character. Column storing observation dates. Defaults to
+#'   "date".
+#' @param key_indicators Character vector with columns defining reporting
+#'   activity. Defaults to `c("test", "pres", "conf")`.
+#'
+#' @return Data frame with original columns plus:
+#'   \describe{
+#'     \item{reported_any}{Logical. TRUE if any key indicator was reported
+#'       that month.}
+#'     \item{first_reporting_date}{Date. First month the facility reported
+#'       any key indicator.}
+#'     \item{has_ever_reported}{Logical. TRUE if facility has reported at
+#'       least once up to this month.}
+#'     \item{activity_status}{Factor. One of "Active Reporting",
+#'       "Active Facility - Not Reporting", or "Inactive Facility".}
+#'   }
+#'
+#' @details
+#' Activity status logic:
+#' \itemize{
+#'   \item **Active Reporting**: Facility reported at least one key indicator
+#'     in that month.
+#'   \item **Active Facility - Not Reporting**: Facility has reported before
+#'     but did not report in that month.
+#'   \item **Inactive Facility**: Facility has never reported any key indicator.
+#' }
+#'
+#' @examples
+#' toy_data <- tibble::tibble(
+#'   hf_uid = rep(c("HF1", "HF2"), each = 4),
+#'   date = rep(
+#'     base::seq.Date(
+#'       base::as.Date("2024-01-01"),
+#'       by = "month",
+#'       length.out = 4
+#'     ),
+#'     times = 2
+#'   ),
+#'   test = c(NA, 1, 2, NA, NA, NA, 3, 4),
+#'   pres = c(0, 2, NA, 1, NA, 1, 2, 3),
+#'   conf = c(0, NA, 1, 0, NA, NA, 1, 2)
+#' )
+#'
+#' classified <- classify_facility_activity(
+#'   data = toy_data,
+#'   hf_col = "hf_uid",
+#'   key_indicators = c("test", "pres", "conf")
+#' )
+#'
+#' table(classified$activity_status)
+#' @export
+classify_facility_activity <- function(
+  data,
+  hf_col,
+  date_col = "date",
+  key_indicators = c("test", "pres", "conf")
+) {
+  if (!base::is.data.frame(data)) {
+    cli::cli_abort("`data` must be a data.frame.")
+  }
+
+  required_cols <- base::c(hf_col, date_col, key_indicators)
+  missing_cols <- base::setdiff(required_cols, base::names(data))
+  if (base::length(missing_cols) > 0L) {
+    cli::cli_abort("missing required columns: {missing_cols}")
+  }
+
+  if (base::all(base::is.na(data[[date_col]]))) {
+    cli::cli_abort("`{date_col}` cannot be entirely missing.")
+  }
+
+  data <- data |>
+    dplyr::mutate(
+      !!rlang::sym(date_col) := lubridate::floor_date(
+        base::as.Date(.data[[date_col]]),
+        unit = "month"
+      )
+    )
+
+  if (base::all(base::is.na(data[[date_col]]))) {
+    cli::cli_abort("Unable to derive month floor from `{date_col}`.")
+  }
+
+  facility_ids <- base::unique(data[[hf_col]])
+  date_min <- base::min(data[[date_col]], na.rm = TRUE)
+  date_max <- base::max(data[[date_col]], na.rm = TRUE)
+
+  month_sequence <- base::seq(date_min, date_max, by = "month")
+
+  complete_panel <- tidyr::expand_grid(
+    .facility = facility_ids,
+    .month = month_sequence
+  ) |>
+    dplyr::rename(
+      !!rlang::sym(hf_col) := .facility,
+      !!rlang::sym(date_col) := .month
+    )
+
+  filtered_source <- data |>
+    dplyr::select(dplyr::all_of(required_cols))
+
+  balanced_panel <- complete_panel |>
+    dplyr::left_join(filtered_source, by = c(hf_col, date_col))
+
+  flagged_panel <- balanced_panel |>
+    dplyr::mutate(
+      reported_any = dplyr::if_any(
+        dplyr::all_of(key_indicators),
+        ~ !base::is.na(.x)
+      )
+    )
+
+  first_reporting <- flagged_panel |>
+    dplyr::filter(reported_any) |>
+    dplyr::group_by(.data[[hf_col]]) |>
+    dplyr::summarise(
+      first_reporting_date = base::min(.data[[date_col]], na.rm = TRUE),
+      .groups = "drop"
+    )
+
+  routine_reporting <- flagged_panel |>
+    dplyr::left_join(first_reporting, by = hf_col) |>
+    dplyr::group_by(.data[[hf_col]]) |>
+    dplyr::mutate(
+      has_ever_reported = dplyr::cumany(reported_any),
+      activity_status = dplyr::case_when(
+        reported_any ~ "Active Reporting",
+        has_ever_reported ~ "Active Facility - Not Reporting",
+        TRUE ~ "Inactive Facility"
+      ),
+      activity_status = base::factor(
+        activity_status,
+        levels = c(
+          "Active Reporting",
+          "Active Facility - Not Reporting",
+          "Inactive Facility"
+        )
+      )
+    ) |>
+    dplyr::ungroup()
+
+  routine_reporting
+}
+
 #' Plot monthly reporting activity by health facility
 #'
 #' Builds a balanced monthly panel, flags reporting on key indicators,
@@ -162,63 +315,12 @@ facility_reporting_plot <- function(
     "Inactive Facility -> never reported any key indicator"
   )
 
-  facility_ids <- base::unique(data[[hf_col]])
-  date_min <- base::min(data[[date_col]], na.rm = TRUE)
-  date_max <- base::max(data[[date_col]], na.rm = TRUE)
-
-  month_sequence <- base::seq(date_min, date_max, by = "month")
-
-  complete_panel <- tidyr::expand_grid(
-    .facility = facility_ids,
-    .month = month_sequence
-  ) |>
-    dplyr::rename(
-      !!rlang::sym(hf_col) := .facility,
-      !!rlang::sym(date_col) := .month
-    )
-
-  filtered_source <- data |>
-    dplyr::select(dplyr::all_of(required_cols))
-
-  balanced_panel <- complete_panel |>
-    dplyr::left_join(filtered_source, by = c(hf_col, date_col))
-
-  flagged_panel <- balanced_panel |>
-    dplyr::mutate(
-      reported_any = dplyr::if_any(
-        dplyr::all_of(key_indicators),
-        ~ !base::is.na(.x)
-      )
-    )
-
-  first_reporting <- flagged_panel |>
-    dplyr::filter(reported_any) |>
-    dplyr::group_by(.data[[hf_col]]) |>
-    dplyr::summarise(
-      first_reporting_date = base::min(.data[[date_col]], na.rm = TRUE),
-      .groups = "drop"
-    )
-
-  routine_reporting <- flagged_panel |>
-    dplyr::left_join(first_reporting, by = hf_col) |>
-    dplyr::group_by(.data[[hf_col]]) |>
-    dplyr::mutate(
-      has_ever_reported = dplyr::cumany(reported_any),
-      activity_status = dplyr::case_when(
-        reported_any ~ "Active Reporting",
-        has_ever_reported ~ "Active Facility - Not Reporting",
-        TRUE ~ "Inactive Facility"
-      ),
-      activity_status = base::factor(
-        activity_status,
-        levels = c(
-          "Active Reporting",
-          "Active Facility - Not Reporting",
-          "Inactive Facility"
-        )
-      )
-    ) |>
-    dplyr::ungroup()
+  routine_reporting <- classify_facility_activity(
+    data = data,
+    hf_col = hf_col,
+    date_col = date_col,
+    key_indicators = key_indicators
+  )
 
   facilities_in_plot <- dplyr::n_distinct(routine_reporting[[hf_col]])
   subtitle_text <- base::paste(subtitle_lines, collapse = "\n")
