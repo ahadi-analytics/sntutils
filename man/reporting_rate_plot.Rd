@@ -13,6 +13,11 @@ reporting_rate_plot(
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   use_reprate = TRUE,
   full_range = TRUE,
+  weighting = FALSE,
+  weight_var = NULL,
+  weight_window = 12,
+  exclude_current_x = TRUE,
+  cold_start = "median_within_y",
   target_language = "en",
   source_language = "en",
   lang_cache_path = tempdir(),
@@ -54,6 +59,21 @@ Defaults to TRUE}
 \item{full_range}{A logical value. If TRUE, the fill scale will use the full
 range from 0 to 100. If FALSE, the fill scale will use the range of values
 present in the data. Defaults to TRUE.}
+
+\item{weighting}{Logical. If TRUE, calculate weighted reporting rates based on
+facility size. Defaults to FALSE.}
+
+\item{weight_var}{Character. Column name containing the weight variable
+(e.g., "allout" for outpatient volume). Required if weighting = TRUE.}
+
+\item{weight_window}{Integer. Number of periods for rolling weight calculation.
+Defaults to 12.}
+
+\item{exclude_current_x}{Logical. If TRUE, exclude current period from weight
+calculation. Defaults to TRUE.}
+
+\item{cold_start}{Character. Method for handling initial periods:
+"median_within_y" (default) or "median_global".}
 
 \item{target_language}{A character string specifying the language for plot
 labels. Defaults to "en" (English). Use ISO 639-1 language codes.}

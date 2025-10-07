@@ -12,7 +12,12 @@ prepare_plot_data(
   by_facility = FALSE,
   hf_col = NULL,
   use_reprate = TRUE,
-  key_indicators = c("allout", "conf", "test", "treat", "pres")
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  weighting = FALSE,
+  weight_var = NULL,
+  weight_window = 12,
+  exclude_current_x = TRUE,
+  cold_start = "median_within_y"
 )
 }
 \arguments{

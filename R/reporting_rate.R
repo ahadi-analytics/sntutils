@@ -1,3 +1,12 @@
+# utils::globalVariables declarations for NSE columns
+utils::globalVariables(
+  c(
+    "typical_size", "cold_start_value", "weight", "weight_sum",
+    "is_cold_start", "n_cold_start", "prop_cold_start",
+    "reported_any_var", "w_den", "w_num", "reprate_w", "missrate_w"
+  )
+)
+
 #' Calculate reporting/missing rate and proportion of reporting facilities
 #'
 #' This function calculates reporting metrics for health facility data across
@@ -28,9 +37,84 @@
 #' @param key_indicators Optional. Character vector of indicators used to define
 #'   facility activity in scenario 1. Defaults to
 #'   `c("allout", "conf", "test", "treat", "pres")`.
+#' @param weighting Logical. If TRUE, compute weighted reporting metrics using
+#'   facility size as weights.
+#' @param weight_var Character. Column used as proxy for facility size when
+#'   weighting is TRUE.
+#' @param weight_window Integer. Number of periods used to compute the rolling
+#'   typical size for weights.
+#' @param exclude_current_x Logical. If TRUE, exclude the current period when
+#'   averaging weights.
+#' @param cold_start Character. Strategy for filling weights when history is
+#'   insufficient. Either "median_within_y" or "median_global".
+#' @param weighting Logical. Whether to use weighted reporting rates. When TRUE,
+#'   facilities are weighted by their typical size, giving more importance to
+#'   larger facilities in the overall reporting rate calculation. This provides
+#'   a volume-adjusted measure of data completeness. Default is FALSE.
+#' @param weight_var Character. Name of the variable to use as proxy for
+#'   facility size (e.g., "allout" for total outpatients, "test" for tests done).
+#'   This should be a count variable that reflects facility activity/size.
+#'   If NULL and weighting is TRUE, will auto-select from allout, test, conf
+#'   (in that order).
+#' @param weight_window Integer. Number of periods for rolling window to
+#'   calculate typical facility size. A facility's weight is based on its
+#'   average size over the past weight_window periods. Larger windows provide
+#'   more stable weights but may miss recent changes. Default is 12.
+#' @param exclude_current_x Logical. Whether to exclude current period when
+#'   calculating weights. If TRUE, prevents current reporting from influencing
+#'   its own weight (avoids circularity). Default is TRUE.
+#' @param cold_start Character. Method for handling facilities with insufficient
+#'   history (< weight_window periods). Options:
+#'   - "median_within_y" (default): Uses median size of facilities within the
+#'     same y_var group (e.g., same district)
+#'   - "median_global": Uses median size across all facilities
 #'
 #' @return A tibble with the number of reporting (`rep`) and expected (`exp`)
 #' facilities or records, and the computed `reprate` and `missrate`.
+#'
+#' If weighting is TRUE, additional columns are included:
+#' - `reprate_w`: Weighted reporting rate (0-1)
+#' - `missrate_w`: Weighted missing rate (0-1)
+#' - `avg_<weight_var>`: Average raw value of the weight variable (e.g., avg_allout)
+#' - `min_<weight_var>`: Minimum raw value of the weight variable
+#' - `max_<weight_var>`: Maximum raw value of the weight variable
+#'
+#' @details
+#' ## Weighted Reporting Rate Calculation
+#'
+#' When `weighting = TRUE`, the function calculates volume-adjusted reporting
+#' rates that give more importance to larger facilities. This is useful when
+#' you want the overall reporting rate to reflect the proportion of patient
+#' visits or services covered rather than just the proportion of facilities.
+#'
+#' The weighting algorithm works as follows:
+#'
+#' 1. **Calculate typical facility size**: For each facility, compute the
+#'    rolling mean of `weight_var` over the past `weight_window` periods.
+#'    This represents the facility's typical size/volume.
+#'
+#' 2. **Handle cold starts**: For facilities with insufficient history:
+#'    - If `cold_start = "median_within_y"`: Use the median typical size
+#'      of facilities in the same group (y_var)
+#'    - If `cold_start = "median_global"`: Use the overall median typical size
+#'
+#' 3. **Normalize weights**: Within each time period and group, weights are
+#'    normalized to sum to 1. This ensures that larger facilities get
+#'    proportionally more weight.
+#'
+#' 4. **Calculate weighted rates**:
+#'    - `reprate_w = sum(weight * reported) / sum(weight)`
+#'    - `missrate_w = 1 - reprate_w`
+#'
+#' ## Example Interpretation
+#'
+#' If a district has 10 facilities where:
+#' - 3 large facilities (80% of patient volume) all report
+#' - 7 small facilities (20% of patient volume) with only 4 reporting
+#'
+#' Then:
+#' - Unweighted reporting rate = 7/10 = 70%
+#' - Weighted reporting rate ≈ 84% (reflecting that most patient volume is covered)
 #'
 #' @examples
 #' hf_data <- data.frame(
@@ -79,6 +163,61 @@
 #'   vars_of_interest = c("conf"),
 #'   x_var = "month"
 #' )
+#'
+#' # Example with weighted reporting rate
+#' # Create data with facilities of different sizes
+#' weighted_data <- data.frame(
+#'   month = rep(1:6, each = 5),
+#'   district = rep("A", 30),
+#'   hf_id = rep(c("Large1", "Large2", "Small1", "Small2", "Small3"), 6),
+#'   # Large facilities see ~1000 patients, small ones ~100
+#'   allout = c(
+#'     # Month 1-3: Historical data for weight calculation
+#'     1050, 980, 95, 110, 105,  # Month 1
+#'     1100, 1020, 100, 98, 112,  # Month 2
+#'     990, 1080, 105, 102, 108,  # Month 3
+#'     # Month 4-6: Current periods
+#'     1070, 1050, 98, 105, 110,  # Month 4
+#'     1020, 990, 102, 108, 95,   # Month 5
+#'     1100, 1030, 110, 100, 105  # Month 6
+#'   ),
+#'   # Reporting pattern: large facilities always report, small ones sporadic
+#'   malaria = c(
+#'     # Month 1-3
+#'     50, 48, 5, NA, 6,    # Month 1
+#'     55, 51, NA, 4, NA,   # Month 2
+#'     49, 54, 6, NA, 5,    # Month 3
+#'     # Month 4-6
+#'     52, 53, NA, NA, 6,   # Month 4
+#'     51, 49, 5, 6, NA,    # Month 5
+#'     54, 52, NA, 5, NA    # Month 6
+#'   )
+#' )
+#'
+#' # Compare unweighted vs weighted reporting rates
+#' unweighted_result <- calculate_reporting_metrics(
+#'   data = weighted_data,
+#'   vars_of_interest = "malaria",
+#'   x_var = "month",
+#'   y_var = "district",
+#'   hf_col = "hf_id",
+#'   weighting = FALSE
+#' )
+#'
+#' weighted_result <- calculate_reporting_metrics(
+#'   data = weighted_data,
+#'   vars_of_interest = "malaria",
+#'   x_var = "month",
+#'   y_var = "district",
+#'   hf_col = "hf_id",
+#'   weighting = TRUE,
+#'   weight_var = "allout",
+#'   weight_window = 3,
+#'   exclude_current_x = TRUE
+#' )
+#'
+#' # Unweighted: counts facilities equally (e.g., 3/5 = 60%)
+#' # Weighted: reflects patient volume covered (e.g., ~88% if large facilities report)
 #' @export
 calculate_reporting_metrics <- function(
   data,
@@ -86,9 +225,17 @@ calculate_reporting_metrics <- function(
   x_var,
   y_var = NULL,
   hf_col = NULL,
-  key_indicators = c("allout", "conf", "test", "treat", "pres")
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  weighting = FALSE,
+  weight_var = NULL,
+  weight_window = 12,
+  exclude_current_x = TRUE,
+  cold_start = "median_within_y"
 ) {
   # ensure_packages("dtplyr")
+  if (weighting && !requireNamespace("slider", quietly = TRUE)) {
+    cli::cli_abort("'slider' package is required when weighting = TRUE")
+  }
 
   if (!is.data.frame(data)) {
     cli::cli_abort(c(
@@ -133,12 +280,166 @@ calculate_reporting_metrics <- function(
     ))
   }
 
+  # Validate weighting parameters
+  if (weighting) {
+    if (is.null(hf_col)) {
+      cli::cli_abort(c(
+        "!" = "hf_col is required when weighting is TRUE",
+        "i" = "Weights need facility-level data"
+      ))
+    }
+
+    # Auto-select weight_var if not provided
+    if (is.null(weight_var)) {
+      weight_var_candidates <- c("allout", "test", "conf")
+      weight_var <- weight_var_candidates[weight_var_candidates %in% names(data)][1]
+      if (is.na(weight_var)) {
+        cli::cli_abort(c(
+          "!" = "No suitable weight_var found in data",
+          "i" = "Tried: allout, test, conf. Specify weight_var manually."
+        ))
+      }
+      cli::cli_inform(c(
+        "i" = "Auto-selected weight_var: {weight_var}"
+      ))
+    } else if (!(weight_var %in% names(data))) {
+      cli::cli_abort(c(
+        "!" = "weight_var '{weight_var}' not found in data"
+      ))
+    }
+
+    if (!cold_start %in% c("median_within_y", "median_global")) {
+      cli::cli_abort(c(
+        "!" = "cold_start must be 'median_within_y' or 'median_global'"
+      ))
+    }
+  }
+
+
   calculate_rates <- function(df) {
     df |>
       dplyr::mutate(
-        reprate = (rep / exp),
-        missrate = ((exp - rep) / exp)
+        reprate = dplyr::if_else(exp > 0, rep / exp, NA_real_),
+        missrate = dplyr::if_else(!is.na(reprate), 1 - reprate, NA_real_)
       )
+  }
+
+  # Build weight data if weighting is enabled
+  weight_data <- NULL
+  if (weighting) {
+    # Order data by x_var for rolling calculations
+    data <- data |> dplyr::arrange(.data[[x_var]], .data[[hf_col]])
+
+    # Calculate rolling mean for each facility
+    weight_data <- data |>
+      dplyr::group_by(.data[[hf_col]]) |>
+      dplyr::arrange(.data[[x_var]]) |>
+      dplyr::mutate(
+        # Calculate rolling mean excluding current if specified
+        # With .after = -1, window size = .before exactly (excludes current observation)
+        typical_size = if (exclude_current_x) {
+          slider::slide_dbl(
+            .data[[weight_var]],
+            base::mean,
+            na.rm = TRUE,
+            .before = weight_window,
+            .after = -1,
+            .complete = FALSE
+          )
+        } else {
+          slider::slide_dbl(
+            .data[[weight_var]],
+            base::mean,
+            na.rm = TRUE,
+            .before = weight_window - 1,
+            .complete = FALSE
+          )
+        }
+      ) |>
+      dplyr::ungroup()
+
+    # Mark cold starts before filling NAs
+    weight_data <- weight_data |>
+      dplyr::mutate(is_cold_start = is.na(typical_size))
+
+    # Handle cold starts
+    if (cold_start == "median_within_y" && !is.null(y_var)) {
+      cold_start_values <- weight_data |>
+        dplyr::filter(!is.na(typical_size)) |>
+        dplyr::group_by(.data[[y_var]]) |>
+        dplyr::summarise(
+          cold_start_value = stats::median(typical_size, na.rm = TRUE),
+          .groups = "drop"
+        )
+
+      # Calculate global median as fallback for y-groups with all cold starts
+      global_median <- stats::median(weight_data$typical_size[!weight_data$is_cold_start], na.rm = TRUE)
+
+      weight_data <- weight_data |>
+        dplyr::left_join(cold_start_values, by = y_var) |>
+        dplyr::mutate(
+          typical_size = dplyr::coalesce(typical_size, cold_start_value, global_median)
+        )
+    } else {
+      # Global median
+      global_median <- stats::median(weight_data$typical_size[!weight_data$is_cold_start], na.rm = TRUE)
+      weight_data <- weight_data |>
+        dplyr::mutate(
+          typical_size = dplyr::coalesce(typical_size, global_median)
+        )
+    }
+
+    # Normalize weights within each period and group
+    group_vars <- c(x_var)
+    if (!is.null(y_var)) {
+      group_vars <- c(group_vars, y_var)
+    }
+
+    weight_data <- weight_data |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(group_vars))) |>
+      dplyr::mutate(
+        weight = typical_size / sum(typical_size, na.rm = TRUE),
+        weight = dplyr::if_else(is.na(weight) | is.infinite(weight), 0, weight)
+      ) |>
+      dplyr::ungroup()
+
+    # QA check: weights should sum to 1
+    weight_check <- weight_data |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(group_vars))) |>
+      dplyr::summarise(
+        weight_sum = sum(weight, na.rm = TRUE),
+        .groups = "drop"
+      ) |>
+      dplyr::filter(abs(weight_sum - 1) > 1e-6)
+
+    if (nrow(weight_check) > 0) {
+      cli::cli_warn(c(
+        "!" = "Weights do not sum to 1 in {nrow(weight_check)} groups",
+        "i" = "Check data quality and weight calculations"
+      ))
+    }
+
+    # Check cold start proportion
+    cold_start_check <- weight_data |>
+      dplyr::group_by(.data[[x_var]]) |>
+      dplyr::summarise(
+        n_total = dplyr::n(),
+        n_cold_start = sum(is_cold_start),
+        prop_cold_start = n_cold_start / n_total,
+        .groups = "drop"
+      ) |>
+      dplyr::filter(prop_cold_start > 0.25)
+
+    if (nrow(cold_start_check) > 0) {
+      cli::cli_warn(c(
+        "!" = ">25% cold starts in {nrow(cold_start_check)} periods",
+        "i" = "Consider adjusting weight_window or data range"
+      ))
+    }
+
+    # Select only needed columns for joining
+    weight_data <- weight_data |>
+      dplyr::select(dplyr::all_of(c(hf_col, x_var, y_var, "weight", "typical_size")))
   }
 
   if (!is.null(hf_col) && !is.null(key_indicators)) {
@@ -167,18 +468,56 @@ calculate_reporting_metrics <- function(
       dplyr::mutate(include_in_denom = first_report_month <= .data[[x_var]])
 
     # Aggregate
-    result <- data |>
-      dplyr::filter(include_in_denom) |>
-      dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var)))) |>
-      dplyr::summarise(
-        rep = sum(dplyr::if_any(dplyr::all_of(vars_of_interest), ~ !is.na(.x))),
-        exp = dplyr::n_distinct(.data[[hf_col]]),
-        .groups = "drop"
-      ) |>
-      dplyr::mutate(
-        reprate = (rep / exp),
-        missrate = 1 - reprate
-      )
+    if (weighting && !is.null(weight_data)) {
+      # Join with weight data
+      data_with_weights <- data |>
+        dplyr::filter(include_in_denom) |>
+        dplyr::left_join(
+          weight_data,
+          by = dplyr::join_by(!!!rlang::syms(c(x_var, y_var, hf_col)))
+        ) |>
+        dplyr::mutate(
+          reported_any_var = dplyr::if_any(dplyr::all_of(vars_of_interest), ~ !is.na(.x))
+        )
+
+      result <- data_with_weights |>
+        dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var)))) |>
+        dplyr::summarise(
+          rep = sum(reported_any_var),
+          exp = dplyr::n_distinct(.data[[hf_col]]),
+          w_num = sum(weight * reported_any_var, na.rm = TRUE),
+          w_den = sum(weight, na.rm = TRUE),
+          reprate_w = dplyr::if_else(w_den > 0, w_num / w_den, NA_real_),
+          missrate_w = dplyr::if_else(!is.na(reprate_w), 1 - reprate_w, NA_real_),
+          # Add raw weight_var statistics
+          !!paste0("avg_", weight_var) := base::mean(.data[[weight_var]], na.rm = TRUE),
+          !!paste0("min_", weight_var) := min(.data[[weight_var]], na.rm = TRUE),
+          !!paste0("max_", weight_var) := max(.data[[weight_var]], na.rm = TRUE),
+          .groups = "drop"
+        ) |>
+        dplyr::mutate(
+          reprate = dplyr::if_else(exp > 0, rep / exp, NA_real_),
+          missrate = dplyr::if_else(!is.na(reprate), 1 - reprate, NA_real_)
+        ) |>
+        dplyr::select(
+          dplyr::all_of(c(x_var, y_var)),
+          rep, exp, reprate, missrate,
+          reprate_w, missrate_w,
+          dplyr::starts_with("avg_"),
+          dplyr::starts_with("min_"),
+          dplyr::starts_with("max_")
+        )
+    } else {
+      result <- data |>
+        dplyr::filter(include_in_denom) |>
+        dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var)))) |>
+        dplyr::summarise(
+          rep = sum(dplyr::if_any(dplyr::all_of(vars_of_interest), ~ !is.na(.x))),
+          exp = dplyr::n_distinct(.data[[hf_col]]),
+          .groups = "drop"
+        ) |>
+        calculate_rates()
+    }
   } else if (!is.null(y_var)) {
     long_data <- data |>
       dplyr::select(
@@ -327,7 +666,12 @@ prepare_plot_data <- function(
   by_facility = FALSE,
   hf_col = NULL,
   use_reprate = TRUE,
-  key_indicators = c("allout", "conf", "test", "treat", "pres")
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  weighting = FALSE,
+  weight_var = NULL,
+  weight_window = 12,
+  exclude_current_x = TRUE,
+  cold_start = "median_within_y"
 ) {
 
   # Input validation
@@ -388,16 +732,33 @@ prepare_plot_data <- function(
   }
 
   # Determine fill variable and labels based on
-  # reporting/missing rate choice
-  fill_var <- if (use_reprate) {
-    "reprate"
+  # reporting/missing rate choice and weighting
+  if (weighting) {
+    fill_var <- if (use_reprate) {
+      "reprate_w"
+    } else {
+      "missrate_w"
+    }
   } else {
-    "missrate"
+    fill_var <- if (use_reprate) {
+      "reprate"
+    } else {
+      "missrate"
+    }
   }
+
   fill_label <- if (use_reprate) {
-    "Reporting rate (%)"
+    if (weighting) {
+      "Weighted reporting rate (%)"
+    } else {
+      "Reporting rate (%)"
+    }
   } else {
-    "Missing rate (%)"
+    if (weighting) {
+      "Weighted missing rate (%)"
+    } else {
+      "Missing rate (%)"
+    }
   }
   y_axis_label <- if (!is.null(y_var)) {
     tools::toTitleCase(y_var)
@@ -437,14 +798,23 @@ prepare_plot_data <- function(
     x_var = x_var,
     y_var = y_var,
     hf_col = if (by_facility) hf_col else NULL,
-    key_indicators = key_indicators
+    key_indicators = key_indicators,
+    weighting = weighting,
+    weight_var = weight_var,
+    weight_window = weight_window,
+    exclude_current_x = exclude_current_x,
+    cold_start = cold_start
   )
 
   # Convert rates to percentages for plotting
   plot_data <- plot_data |>
     dplyr::mutate(
       reprate = reprate * 100,
-      missrate = missrate * 100
+      missrate = missrate * 100,
+      dplyr::across(
+        dplyr::matches("reprate_w|missrate_w"),
+        ~ .x * 100
+      )
     )
 
   list(
@@ -487,6 +857,16 @@ prepare_plot_data <- function(
 #' @param full_range A logical value. If TRUE, the fill scale will use the full
 #'   range from 0 to 100. If FALSE, the fill scale will use the range of values
 #'   present in the data. Defaults to TRUE.
+#' @param weighting Logical. If TRUE, calculate weighted reporting rates based on
+#'   facility size. Defaults to FALSE.
+#' @param weight_var Character. Column name containing the weight variable
+#'   (e.g., "allout" for outpatient volume). Required if weighting = TRUE.
+#' @param weight_window Integer. Number of periods for rolling weight calculation.
+#'   Defaults to 12.
+#' @param exclude_current_x Logical. If TRUE, exclude current period from weight
+#'   calculation. Defaults to TRUE.
+#' @param cold_start Character. Method for handling initial periods:
+#'   "median_within_y" (default) or "median_global".
 #' @param target_language A character string specifying the language for plot
 #'   labels. Defaults to "en" (English). Use ISO 639-1 language codes.
 #' @param source_language Source language code. If NULL, auto-detection is used.
@@ -503,13 +883,13 @@ prepare_plot_data <- function(
 #'   (brute-force) to 10 (fastest). Default is 1.
 #' @param compression_verbose Logical. Controls output verbosity.
 #'   FALSE = silent, TRUE = verbose. Defaults to TRUE.
-#' @param plot_scale Numeric. Scaling factor for saved plots. Values > 1 
+#' @param plot_scale Numeric. Scaling factor for saved plots. Values > 1
 #'   increase size, < 1 decrease size. Default is 1.
 #' @param plot_width Numeric. Width of saved plot in inches. If NULL (default),
 #'   width is calculated automatically based on data.
 #' @param plot_height Numeric. Height of saved plot in inches. If NULL (default),
 #'   height is calculated automatically based on data.
-#' @param plot_dpi Numeric. Resolution of saved plot in dots per inch. 
+#' @param plot_dpi Numeric. Resolution of saved plot in dots per inch.
 #'   Default is 300.
 #' @param show_plot Logical. If FALSE, the plot is returned invisibly (not displayed).
 #'   Useful when only saving plots. Default is TRUE.
@@ -567,6 +947,11 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                                   "pres"),
                                 use_reprate = TRUE,
                                 full_range = TRUE,
+                                weighting = FALSE,
+                                weight_var = NULL,
+                                weight_window = 12,
+                                exclude_current_x = TRUE,
+                                cold_start = "median_within_y",
                                 target_language = "en",
                                 source_language = "en",
                                 lang_cache_path = tempdir(),
@@ -628,7 +1013,12 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     by_facility = scenario == "facility",
     hf_col = hf_col,
     use_reprate = use_reprate,
-    key_indicators = key_indicators
+    key_indicators = key_indicators,
+    weighting = weighting,
+    weight_var = weight_var,
+    weight_window = weight_window,
+    exclude_current_x = exclude_current_x,
+    cold_start = cold_start
   )
 
   # Extract prepared data components
@@ -828,6 +1218,12 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
                        y_axis_label, common_elements, target_language = "en",
                        source_language = "en",
                        lang_cache_path = tempdir()) {
+  vars_label <- if (length(vars_of_interest) <= 5) {
+    paste(vars_of_interest, collapse = ", ")
+  } else {
+    "multiple variables"
+  }
+
   # Create plot with grouping variable on y-axis
   plot <- ggplot2::ggplot(
     plot_data,
@@ -841,7 +1237,7 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
     ggplot2::labs(
       title = paste0(
         title_prefix,
-        " ", tolower(vars_of_interest), " by ",
+        " ", vars_label, " by ",
         tolower(x_var), " and ", tolower(y_var)
       ),
       x = "",
@@ -882,13 +1278,13 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
 #'   Defaults to TRUE
 #' @param save_title_prefix A string prefix for the plot title and filename.
 #'   If NULL, a default prefix will be used based on the visualization type.
-#' @param plot_scale Numeric. Scaling factor for saved plots. Values > 1 
+#' @param plot_scale Numeric. Scaling factor for saved plots. Values > 1
 #'   increase size, < 1 decrease size. Default is 1.
 #' @param plot_width Numeric. Width of saved plot in inches. If NULL (default),
 #'   width is calculated based on content.
 #' @param plot_height Numeric. Height of saved plot in inches. If NULL (default),
 #'   height is calculated based on content.
-#' @param plot_dpi Numeric. Resolution of saved plot in dots per inch. 
+#' @param plot_dpi Numeric. Resolution of saved plot in dots per inch.
 #'   Default is 300.
 #'
 #' @return Invisible path to the saved file
