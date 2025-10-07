@@ -623,7 +623,7 @@ testthat::test_that("reporting_rate_plot handles language parameter", {
 
   testthat::expect_equal(
     p2$labels$fill,
-    "Taux de déclaration (%)"
+    "Taux de rapport (%)"
   )
 
   testthat::expect_equal(

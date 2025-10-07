@@ -170,10 +170,8 @@ classify_facility_activity <- function(
 #' @param source_language Source language for labels. Defaults to "en".
 #' @param lang_cache_path Path used to cache translations. Defaults to
 #'   `base::tempdir()`.
-#' @param save_plot Logical. If TRUE (or `plot_path` supplied), save the plot.
-#'   Defaults to FALSE.
-#' @param plot_path Path to directory for saving plot output. Required when
-#'   saving.
+#' @param plot_path Path to directory for saving plot output. If NULL (default),
+#'   plot is not saved.
 #' @param compress_image Logical. Compress PNG using `compress_png()` after
 #'   saving. Defaults to FALSE.
 #' @param image_overwrite Logical. Overwrite an existing file when TRUE.
@@ -182,6 +180,17 @@ classify_facility_activity <- function(
 #'   Defaults to 1.
 #' @param compression_verbose Logical. Emit compression progress when TRUE.
 #'   Defaults to TRUE.
+#' @param plot_scale Numeric. Scaling factor for saved plots. Values > 1
+#'   increase size, < 1 decrease size. Default is 0.75.
+#' @param plot_width Numeric. Width of saved plot in inches. Default is 20.
+#' @param plot_height Numeric. Height of saved plot in inches. Default is 15.
+#' @param plot_dpi Numeric. Resolution of saved plot in dots per inch.
+#'   Default is 300.
+#' @param show_plot Logical. If FALSE, the plot is returned invisibly (not
+#'   displayed). Useful when only saving plots. Default is TRUE.
+#' @param include_never_reported Logical. If TRUE, includes facilities that
+#'   have never reported in the plot. If FALSE (default), only shows
+#'   facilities that have reported at least once.
 #'
 #' @return A ggplot object visualising facility reporting activity.
 #' @examples
@@ -215,12 +224,17 @@ facility_reporting_plot <- function(
   target_language = "en",
   source_language = "en",
   lang_cache_path = base::tempdir(),
-  save_plot = FALSE,
   plot_path = NULL,
   compress_image = FALSE,
   image_overwrite = TRUE,
   compression_speed = 1,
-  compression_verbose = TRUE
+  compression_verbose = TRUE,
+  plot_scale = 0.75,
+  plot_width = 20,
+  plot_height = 15,
+  plot_dpi = 300,
+  show_plot = TRUE,
+  include_never_reported = FALSE
 ) {
   ensure_packages(c("ggtext", "scales"))
 
@@ -306,6 +320,7 @@ facility_reporting_plot <- function(
   )
   legend_title_prefix <- "Reported any key indicator"
   legend_labels <- names(status_colours)
+
   subtitle_lines <- c(
     "Active Reporting -> reported at least one key indicator",
     paste(
@@ -322,12 +337,44 @@ facility_reporting_plot <- function(
     key_indicators = key_indicators
   )
 
-  facilities_in_plot <- dplyr::n_distinct(routine_reporting[[hf_col]])
+  # Count never-reported facilities after creating routine_reporting
+  never_reported_count <- routine_reporting |>
+    dplyr::filter(base::is.na(first_reporting_date)) |>
+    dplyr::pull(.data[[hf_col]]) |>
+    dplyr::n_distinct()
+
+  # Add never reported summary if there are any
+  if (never_reported_count > 0) {
+    never_reported_line <- glue::glue(
+      "{scales::comma(never_reported_count)} facilities never reported ",
+      "at least one of the key indicators"
+    )
+    subtitle_lines <- c(subtitle_lines, "", never_reported_line)
+  }
+
+  # Count facilities based on include_never_reported parameter
+  if (include_never_reported) {
+    facilities_shown <- dplyr::n_distinct(routine_reporting[[hf_col]])
+    plot_title <- glue::glue(
+      "Monthly reporting activity by health facility",
+      " (n = {scales::comma(facilities_shown)})"
+    )
+  } else {
+    facilities_shown <- routine_reporting |>
+      dplyr::filter(!base::is.na(first_reporting_date)) |>
+      dplyr::pull(.data[[hf_col]]) |>
+      dplyr::n_distinct()
+
+    total_facilities <- dplyr::n_distinct(routine_reporting[[hf_col]])
+
+    plot_title <- glue::glue(
+      "Monthly reporting activity by health facility",
+      " (n = {scales::comma(facilities_shown)} shown, ",
+      "{scales::comma(total_facilities)} total)"
+    )
+  }
+
   subtitle_text <- base::paste(subtitle_lines, collapse = "\n")
-  plot_title <- glue::glue(
-    "Monthly reporting activity by health facility",
-    " (n = {scales::comma(facilities_in_plot)})"
-  )
   should_translate <- target_language != "en"
   if (should_translate) {
     ensure_packages("gtranslate")
@@ -348,34 +395,126 @@ facility_reporting_plot <- function(
     legend_title <- glue::glue(
       "{legend_title_prefix} ({base::toString(key_indicators)})"
     )
-    subtitle_lines <- vapply(
-      subtitle_lines,
-      translate_text,
-      character(1),
-      target_language = target_language,
-      source_language = source_language,
-      cache_path = lang_cache_path
-    )
+    # Translate subtitle lines, handling the never reported line specially
+    if (never_reported_count > 0) {
+      # Translate all but the last line (which is the never reported summary)
+      base_lines <- subtitle_lines[1:(length(subtitle_lines) - 2)]
+      translated_base <- vapply(
+        base_lines,
+        translate_text,
+        character(1),
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+
+      # Translate the never reported text preserving number formatting
+      facilities_text <- translate_text(
+        "facilities never reported at least one of the key indicators",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      never_reported_translated <- glue::glue(
+        "{scales::comma(never_reported_count)} {facilities_text}"
+      )
+
+      subtitle_lines <- c(translated_base, "", never_reported_translated)
+    } else {
+      subtitle_lines <- vapply(
+        subtitle_lines,
+        translate_text,
+        character(1),
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+    }
     subtitle_lines <- gsub("\n", " ", subtitle_lines)
     subtitle_text <- base::paste(subtitle_lines, collapse = "\n")
-    plot_title <- translate_text(
-      plot_title,
+
+    # Translate title parts separately to preserve number formatting
+    title_base <- translate_text(
+      "Monthly reporting activity by health facility",
       target_language = target_language,
       source_language = source_language,
       cache_path = lang_cache_path
     )
+
+    if (include_never_reported) {
+      plot_title <- glue::glue(
+        "{title_base}",
+        " (n = {scales::comma(facilities_shown)})"
+      )
+    } else {
+      shown_text <- translate_text(
+        "shown",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      total_text <- translate_text(
+        "total",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      plot_title <- glue::glue(
+        "{title_base}",
+        " (n = {scales::comma(facilities_shown)} {shown_text}, ",
+        "{scales::comma(total_facilities)} {total_text})"
+      )
+    }
   }
   legend_title <- glue::glue(
     "{legend_title_prefix} ({base::toString(key_indicators)})"
   )
-  facility_order <- routine_reporting |>
-    dplyr::filter(!base::is.na(first_reporting_date)) |>
-    dplyr::distinct(.data[[hf_col]], first_reporting_date) |>
-    dplyr::arrange(first_reporting_date) |>
-    dplyr::pull(.data[[hf_col]])
 
-  plot_object <- routine_reporting |>
-    dplyr::filter(!base::is.na(first_reporting_date)) |>
+  if (include_never_reported) {
+    # First get facilities that have reported, ordered by first reporting date
+    facilities_reported <- routine_reporting |>
+      dplyr::filter(!base::is.na(first_reporting_date)) |>
+      dplyr::distinct(.data[[hf_col]], first_reporting_date) |>
+      dplyr::arrange(first_reporting_date) |>
+      dplyr::pull(.data[[hf_col]])
+
+    # Then get facilities that have never reported
+    facilities_never_reported <- routine_reporting |>
+      dplyr::filter(base::is.na(first_reporting_date)) |>
+      dplyr::distinct(.data[[hf_col]]) |>
+      dplyr::pull(.data[[hf_col]])
+
+    # Combine: reported facilities first, then never reported
+    facility_order <- c(facilities_reported, facilities_never_reported)
+  } else {
+    # Original behavior: only facilities that have reported
+    facility_order <- routine_reporting |>
+      dplyr::filter(!base::is.na(first_reporting_date)) |>
+      dplyr::distinct(.data[[hf_col]], first_reporting_date) |>
+      dplyr::arrange(first_reporting_date) |>
+      dplyr::pull(.data[[hf_col]])
+  }
+
+  # Calculate y-axis breaks
+  n_facilities <- length(facility_order)
+  if (n_facilities > 0) {
+    y_breaks <- c(1, ceiling(n_facilities/2), n_facilities)
+    # Keep 1-based indexing to match the title count and format with big_mark
+    y_labels <- vapply(y_breaks, function(x) big_mark(x), character(1))
+  } else {
+    y_breaks <- NULL
+    y_labels <- NULL
+  }
+
+  # Filter data based on include_never_reported parameter
+  plot_data <- if (include_never_reported) {
+    routine_reporting
+  } else {
+    routine_reporting |>
+      dplyr::filter(!base::is.na(first_reporting_date))
+  }
+
+  plot_object <- plot_data |>
     ggplot2::ggplot(
       ggplot2::aes(
         x = .data[[date_col]],
@@ -400,9 +539,18 @@ facility_reporting_plot <- function(
     ) +
     ggplot2::labs(
       x = "",
-      y = NULL,
+      y = if (should_translate) {
+        paste0(translate_text(
+          "HF Number",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        ), "\n")
+      } else {
+        "HF Number\n"
+      },
       title = plot_title,
-      subtitle = subtitle_text
+      subtitle = paste0(subtitle_text, "\n")
     ) +
     ggplot2::theme_minimal(base_family = "sans") +
     ggplot2::guides(
@@ -413,7 +561,7 @@ facility_reporting_plot <- function(
       )
     ) +
     ggplot2::theme(
-      axis.text.y = ggplot2::element_blank(),
+      axis.text.y = ggplot2::element_text(size = 8),
       axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
       axis.line = ggplot2::element_line(color = "black", linewidth = 0.5),
       legend.position = "bottom",
@@ -421,12 +569,16 @@ facility_reporting_plot <- function(
       legend.box = "vertical"
     )
 
-  should_save <- isTRUE(save_plot) || !base::is.null(plot_path)
-  if (should_save) {
-    if (base::is.null(plot_path)) {
-      cli::cli_abort("Provide `plot_path` when requesting plot saving.")
-    }
+  # Add y-axis scale if we have facilities
+  if (!is.null(y_breaks) && n_facilities > 0) {
+    plot_object <- plot_object +
+      ggplot2::scale_y_discrete(
+        breaks = facility_order[y_breaks],
+        labels = y_labels
+      )
+  }
 
+  if (!base::is.null(plot_path)) {
     if (!fs::dir_exists(plot_path)) {
       ok <- try(fs::dir_create(plot_path, recurse = TRUE), silent = TRUE)
       if (inherits(ok, "try-error") || !fs::dir_exists(plot_path)) {
@@ -434,26 +586,20 @@ facility_reporting_plot <- function(
       }
     }
 
-    plotted_months <- routine_reporting |>
-      dplyr::filter(!base::is.na(first_reporting_date)) |>
-      dplyr::distinct(.data[[date_col]]) |>
-      base::nrow()
-    plotted_facilities <- facilities_in_plot
-
-    width <- base::max(8, plotted_months * 0.35)
-    height <- base::max(6, plotted_facilities * 0.15)
+    # Use the provided dimensions (no auto-calculation)
 
     file_name <- glue::glue(
-      "facility_reporting_{palette}_{format(Sys.Date(), '%Y-%m-%d')}.png"
+      "facility_reporting_{palette}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
     )
     file_path <- fs::path(plot_path, file_name)
 
     ggplot2::ggsave(
       filename = file_path,
       plot = plot_object,
-      width = width,
-      height = height,
-      dpi = 300,
+      width = plot_width,
+      height = plot_height,
+      dpi = plot_dpi,
+      scale = plot_scale,
       limitsize = FALSE
     )
 
@@ -465,7 +611,37 @@ facility_reporting_plot <- function(
         verbosity = compression_verbose
       )
     }
+
+    # Success message with shortened path
+    success_msg <- if (should_translate) {
+      translate_text(
+        "Plot saved to:",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+    } else {
+      "Plot saved to:"
+    }
+
+    # Show only relative path from current directory if it's a subdirectory
+    display_path <- file_path
+    if (startsWith(as.character(file_path), getwd())) {
+      display_path <- sub(
+        paste0("^", getwd(), "/"), "",
+        as.character(file_path)
+      )
+    } else if (grepl("03_outputs", as.character(file_path))) {
+      # Extract from 03_outputs onward if present
+      display_path <- sub(".*/(03_outputs/.*)", "\\1", as.character(file_path))
+    }
+    cli::cli_alert_success(paste(success_msg, display_path))
   }
 
-  plot_object
+  # Return invisibly if show_plot is FALSE
+  if (show_plot) {
+    return(plot_object)
+  } else {
+    return(invisible(plot_object))
+  }
 }
