@@ -21,6 +21,11 @@ reporting_rate_plot(
   image_overwrite = TRUE,
   compression_speed = 1,
   compression_verbose = TRUE,
+  plot_scale = 1,
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_dpi = 300,
+  show_plot = TRUE,
   y_axis_label = NULL
 )
 }
@@ -74,11 +79,26 @@ Defaults to TRUE.}
 \item{compression_verbose}{Logical. Controls output verbosity.
 FALSE = silent, TRUE = verbose. Defaults to TRUE.}
 
+\item{plot_scale}{Numeric. Scaling factor for saved plots. Values > 1
+increase size, < 1 decrease size. Default is 1.}
+
+\item{plot_width}{Numeric. Width of saved plot in inches. If NULL (default),
+width is calculated automatically based on data.}
+
+\item{plot_height}{Numeric. Height of saved plot in inches. If NULL (default),
+height is calculated automatically based on data.}
+
+\item{plot_dpi}{Numeric. Resolution of saved plot in dots per inch.
+Default is 300.}
+
+\item{show_plot}{Logical. If FALSE, the plot is returned invisibly (not displayed).
+Useful when only saving plots. Default is TRUE.}
+
 \item{y_axis_label}{Optional character string for y-axis label. If NULL,
 defaults to y_var name or "Variable" for variable scenario.}
 }
 \value{
-A ggplot2 object
+A ggplot2 object. When show_plot is FALSE, returns invisibly.
 }
 \description{
 This function visualizes the proportion of missing data or reporting rate for

@@ -243,7 +243,6 @@ test_that("facility_reporting_plot can save and compress", {
     date_col = "date",
     key_indicators = c("test", "pres", "conf"),
     palette = "classic",
-    save_plot = TRUE,
     plot_path = tmp_dir,
     compress_image = FALSE
   )

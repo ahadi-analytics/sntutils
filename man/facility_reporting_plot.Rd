@@ -13,12 +13,17 @@ facility_reporting_plot(
   target_language = "en",
   source_language = "en",
   lang_cache_path = base::tempdir(),
-  save_plot = FALSE,
   plot_path = NULL,
   compress_image = FALSE,
   image_overwrite = TRUE,
   compression_speed = 1,
-  compression_verbose = TRUE
+  compression_verbose = TRUE,
+  plot_scale = 0.75,
+  plot_width = 20,
+  plot_height = 15,
+  plot_dpi = 300,
+  show_plot = TRUE,
+  include_never_reported = FALSE
 )
 }
 \arguments{
@@ -43,11 +48,8 @@ activity. Defaults to \code{c("test", "pres", "conf")}.}
 \item{lang_cache_path}{Path used to cache translations. Defaults to
 \code{base::tempdir()}.}
 
-\item{save_plot}{Logical. If TRUE (or \code{plot_path} supplied), save the plot.
-Defaults to FALSE.}
-
-\item{plot_path}{Path to directory for saving plot output. Required when
-saving.}
+\item{plot_path}{Path to directory for saving plot output. If NULL (default),
+plot is not saved.}
 
 \item{compress_image}{Logical. Compress PNG using \code{compress_png()} after
 saving. Defaults to FALSE.}
@@ -60,6 +62,23 @@ Defaults to 1.}
 
 \item{compression_verbose}{Logical. Emit compression progress when TRUE.
 Defaults to TRUE.}
+
+\item{plot_scale}{Numeric. Scaling factor for saved plots. Values > 1
+increase size, < 1 decrease size. Default is 0.75.}
+
+\item{plot_width}{Numeric. Width of saved plot in inches. Default is 20.}
+
+\item{plot_height}{Numeric. Height of saved plot in inches. Default is 15.}
+
+\item{plot_dpi}{Numeric. Resolution of saved plot in dots per inch.
+Default is 300.}
+
+\item{show_plot}{Logical. If FALSE, the plot is returned invisibly (not
+displayed). Useful when only saving plots. Default is TRUE.}
+
+\item{include_never_reported}{Logical. If TRUE, includes facilities that
+have never reported in the plot. If FALSE (default), only shows
+facilities that have reported at least once.}
 }
 \value{
 A ggplot object visualising facility reporting activity.

@@ -882,6 +882,14 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
 #'   Defaults to TRUE
 #' @param save_title_prefix A string prefix for the plot title and filename.
 #'   If NULL, a default prefix will be used based on the visualization type.
+#' @param plot_scale Numeric. Scaling factor for saved plots. Values > 1 
+#'   increase size, < 1 decrease size. Default is 1.
+#' @param plot_width Numeric. Width of saved plot in inches. If NULL (default),
+#'   width is calculated based on content.
+#' @param plot_height Numeric. Height of saved plot in inches. If NULL (default),
+#'   height is calculated based on content.
+#' @param plot_dpi Numeric. Resolution of saved plot in dots per inch. 
+#'   Default is 300.
 #'
 #' @return Invisible path to the saved file
 save_single_plot <- function(plot, plot_data, plot_path,
