@@ -175,6 +175,8 @@ detect_outliers <- function(
 #'   "mean" (Mean method)
 #'   (default: c("iqr", "median", "mean"))
 #' @param iqr_multiplier Multiplier for IQR method (default: 1.5)
+#' @param year_breaks Numeric value specifying the interval for x-axis breaks
+#'   (default: 2). For example, 2 shows every 2nd year/month, 3 shows every 3rd.
 #'
 #' @return A list of ggplot objects, one for each outlier detection method
 #'
@@ -204,7 +206,8 @@ outlier_plot <- function(
     yearmon = "yearmon",
     year = "year",
     methods = c("iqr", "median", "mean"),
-    iqr_multiplier = 1.5
+    iqr_multiplier = 1.5,
+    year_breaks = 2
 ) {
   # Create outlier columns for each method
   outlier_cols <- paste0("outlier_flag_", methods)
@@ -289,7 +292,8 @@ outlier_plot <- function(
         values = c("normal value" = "grey", "outlier" = "red")
       ) +
       ggplot2::labs(
-        title = glue::glue("{method_name2} Outlier Detection for `{column}`"),
+        title = glue::glue(
+          "{method_name2} Outlier Detection for <b>`{column}`</b>"),
         subtitle = glue::glue(
           "There were {outliers_n}/{total_outliers}",
           "<b style='color:red;font-weight:bold'> outliers</b> detected"
@@ -304,7 +308,12 @@ outlier_plot <- function(
         labeller = ggplot2::labeller(!!adm2 := facet_labels)
       ) +
       ggplot2::scale_x_discrete(
-        breaks = function(x) x[seq(1, length(x), by = 2)]
+        breaks = function(x) x[seq(1, length(x), by = year_breaks)]
+      ) +
+      ggplot2::scale_y_continuous(
+        labels = scales::label_number(
+          scale_cut = scales::cut_short_scale()
+        )
       ) +
       ggplot2::theme_minimal() +
       ggplot2::theme(
@@ -317,6 +326,7 @@ outlier_plot <- function(
         ),
         legend.text = ggplot2::element_text(size = 8),
         legend.title = ggplot2::element_text(size = 9, face = "bold"),
+        plot.title = ggtext::element_markdown(),
         plot.subtitle = ggtext::element_markdown()
       ) +
       ggplot2::guides(
