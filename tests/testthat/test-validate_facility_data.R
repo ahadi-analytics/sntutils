@@ -585,3 +585,107 @@ testthat::test_that("summary percentages are correctly calculated", {
     sub(".*\\.", "", pct_strings)
   ) <= 2))
 })
+
+# test language translation --------------------------------------------------
+
+testthat::test_that("validate_facility_data handles language translation", {
+  # Skip if translation fails (e.g., no internet)
+  testthat::skip_if_not(
+    tryCatch({
+      sntutils::translate_text("test", target_language = "fr")
+      TRUE
+    }, error = function(e) FALSE),
+    "Translation service not available"
+  )
+  
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+  temp_dir <- tempdir()
+  temp_file <- file.path(temp_dir, "test_validation")
+  
+  # Test with French translation
+  result <- sntutils::validate_facility_data(
+    data = data,
+    verbose = FALSE,
+    save_results = TRUE,
+    output_path = temp_dir,
+    output_name = "test_validation",
+    output_formats = "xlsx",
+    target_language = "fr",
+    source_language = "en"
+  )
+  
+  # Check that file was created
+  xlsx_files <- list.files(temp_dir, pattern = "test_validation.*\\.xlsx$", full.names = TRUE)
+  testthat::expect_true(length(xlsx_files) > 0)
+  
+  # Clean up
+  unlink(xlsx_files)
+})
+
+testthat::test_that("validate_facility_data translation converts column names correctly", {
+  # Mock translation function for testing
+  mock_translate <- function(text, target_language, source_language, cache_path) {
+    if (text == "Summary") return("Résumé")
+    if (text == "Missing values") return("Valeurs manquantes")
+    if (text == "Issues found") return("Problèmes trouvés")
+    if (text == "N missing") return("N manquant")
+    if (text == "Column type") return("Type de colonne")
+    if (text == "Core ID") return("ID principal")
+    if (text == "Indicator") return("Indicateur")
+    if (text == "column(s)") return("colonne(s)")
+    if (text == "set(s)") return("ensemble(s)")
+    if (text == "pair(s)") return("paire(s)")
+    return(text)
+  }
+  
+  # Create minimal test results
+  test_results <- list(
+    Summary = tibble::tibble(
+      check = c("Missing values (Core IDs)", "Duplicate records"),
+      issues_found = c("2 column(s)", "3 set(s)"),
+      total_records = c("10 column(s)", "100"),
+      percent = c(20, 3)
+    ),
+    `Missing values` = tibble::tibble(
+      variable = c("adm2", "conf"),
+      n_missing = c(5, 10),
+      total = c(100, 100),
+      percent_missing = c(5, 10),
+      column_type = c("Core ID", "Indicator")
+    )
+  )
+  
+  # Mock the translate_text function
+  with_mocked_bindings(
+    translate_text = mock_translate,
+    {
+      # Call the internal translation function
+      translated <- sntutils:::`.translate_results`(
+        results = test_results,
+        target_language = "fr",
+        source_language = "en",
+        cache_path = tempdir()
+      )
+      
+      # Check sheet names are translated
+      testthat::expect_true("Résumé" %in% names(translated))
+      testthat::expect_true("Valeurs manquantes" %in% names(translated))
+      
+      # Check column names don't have dots
+      summary_cols <- names(translated[["Résumé"]])
+      testthat::expect_false(any(grepl("\\.", summary_cols)))
+      
+      missing_cols <- names(translated[["Valeurs manquantes"]])
+      testthat::expect_false(any(grepl("\\.", missing_cols)))
+      
+      # Check specific translations in data
+      testthat::expect_true(any(grepl("colonne\\(s\\)", translated[["Résumé"]]$`Problèmes trouvés`)))
+      testthat::expect_true(any(grepl("ensemble\\(s\\)", translated[["Résumé"]]$`Problèmes trouvés`)))
+      
+      # Check Core ID and Indicator translations
+      testthat::expect_true("ID principal" %in% translated[["Valeurs manquantes"]]$`Type de colonne`)
+      testthat::expect_true("Indicateur" %in% translated[["Valeurs manquantes"]]$`Type de colonne`)
+    },
+    .package = "sntutils"
+  )
+})
