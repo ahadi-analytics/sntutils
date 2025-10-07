@@ -38,7 +38,7 @@ create_test_data <- function(n = 100) {
 testthat::test_that("detect_outliers returns correct structure", {
   test_data <- create_test_data()
 
-  result <- detect_outliers(
+  result <- sntutils::detect_outliers(
     data = test_data,
     column = "confirmed_cases"
   )
@@ -56,9 +56,9 @@ testthat::test_that("detect_outliers returns correct structure", {
     "year",
     "column_name",
     "value",
-    "outliers_mean",
-    "outliers_median",
-    "outliers_iqr",
+    "outlier_flag_mean",
+    "outlier_flag_median",
+    "outlier_flag_iqr",
     "mean_lower_bound",
     "mean_upper_bound",
     "median_lower_bound",
@@ -80,7 +80,7 @@ testthat::test_that("detect_outliers handles missing columns", {
     dplyr::select(-adm1)
 
   testthat::expect_error(
-    detect_outliers(
+    sntutils::detect_outliers(
       data = test_data_incomplete,
       column = "confirmed_cases"
     ),
@@ -91,7 +91,7 @@ testthat::test_that("detect_outliers handles missing columns", {
 testthat::test_that("detect_outliers handles non-numeric columns", {
   test_data <- create_test_data()
 
-  result <- detect_outliers(
+  result <- sntutils::detect_outliers(
     data = test_data,
     column = "text_column"
   )
@@ -102,7 +102,7 @@ testthat::test_that("detect_outliers handles non-numeric columns", {
 testthat::test_that("detect_outliers handles na values correctly", {
   test_data <- create_test_data()
 
-  result <- detect_outliers(
+  result <- sntutils::detect_outliers(
     data = test_data,
     column = "cases_with_na"
   )
@@ -123,7 +123,7 @@ testthat::test_that("detect_outliers calculates statistics correctly", {
     test_values = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 100) # 100 is clear outlier
   )
 
-  result <- detect_outliers(
+  result <- sntutils::detect_outliers(
     data = simple_data,
     column = "test_values"
   )
@@ -133,8 +133,8 @@ testthat::test_that("detect_outliers calculates statistics correctly", {
     dplyr::filter(value == 100)
 
   testthat::expect_equal(nrow(outlier_row), 1)
-  testthat::expect_equal(outlier_row$outliers_iqr, "outlier")
-  testthat::expect_equal(outlier_row$outliers_mean, "normal value")
+  testthat::expect_equal(outlier_row$outlier_flag_iqr, "outlier")
+  testthat::expect_equal(outlier_row$outlier_flag_mean, "normal value")
 
   # check bounds are calculated
   testthat::expect_true(all(!is.na(result$iqr_lower_bound)))
@@ -146,21 +146,21 @@ testthat::test_that("detect_outliers calculates statistics correctly", {
 testthat::test_that("detect_outliers custom iqr_multiplier works", {
   test_data <- create_test_data()
 
-  result_default <- detect_outliers(
+  result_default <- sntutils::detect_outliers(
     data = test_data,
     column = "confirmed_cases",
     iqr_multiplier = 1.5
   )
 
-  result_strict <- detect_outliers(
+  result_strict <- sntutils::detect_outliers(
     data = test_data,
     column = "confirmed_cases",
     iqr_multiplier = 3.0
   )
 
   # stricter multiplier should detect fewer outliers
-  outliers_default <- sum(result_default$outliers_iqr == "outlier")
-  outliers_strict <- sum(result_strict$outliers_iqr == "outlier")
+  outliers_default <- sum(result_default$outlier_flag_iqr == "outlier")
+  outliers_strict <- sum(result_strict$outlier_flag_iqr == "outlier")
 
   testthat::expect_gte(outliers_default, outliers_strict)
 })
@@ -175,7 +175,7 @@ testthat::test_that("detect_outliers custom column names work", {
       yr = year
     )
 
-  result <- detect_outliers(
+  result <- sntutils::detect_outliers(
     data = test_data,
     column = "confirmed_cases",
     record_id = "custom_id",
@@ -205,7 +205,7 @@ testthat::test_that("detect_outliers grouping works correctly", {
     )
   )
 
-  result <- detect_outliers(
+  result <- sntutils::detect_outliers(
     data = grouped_data,
     column = "test_values"
   )
@@ -228,7 +228,7 @@ testthat::test_that("detect_outliers grouping works correctly", {
 testthat::test_that("outlier_plot returns correct structure", {
   test_data <- create_test_data()
 
-  result <- outlier_plot(
+  result <- sntutils::outlier_plot(
     data = test_data,
     column = "confirmed_cases",
     methods = c("iqr", "mean")
@@ -245,7 +245,7 @@ testthat::test_that("outlier_plot returns correct structure", {
 testthat::test_that("outlier_plot handles single method", {
   test_data <- create_test_data()
 
-  result <- outlier_plot(
+  result <- sntutils::outlier_plot(
     data = test_data,
     column = "confirmed_cases",
     methods = "iqr"
@@ -260,7 +260,7 @@ testthat::test_that("outlier_plot handles single method", {
 testthat::test_that("outlier_plot handles all methods", {
   test_data <- create_test_data()
 
-  result <- outlier_plot(
+  result <- sntutils::outlier_plot(
     data = test_data,
     column = "confirmed_cases",
     methods = c("iqr", "median", "mean")
@@ -278,7 +278,7 @@ testthat::test_that("outlier_plot handles custom parameters", {
       district = adm2
     )
 
-  result <- outlier_plot(
+  result <- sntutils::outlier_plot(
     data = test_data,
     column = "confirmed_cases",
     record_id = "custom_id",
@@ -306,7 +306,7 @@ testthat::test_that("outlier_plot filters na and zero values", {
 
   # should not error and should filter out zeros
   testthat::expect_no_error({
-    result <- outlier_plot(
+    result <- sntutils::outlier_plot(
       data = test_data_with_zeros,
       column = "confirmed_cases",
       methods = "iqr"
@@ -327,7 +327,7 @@ testthat::test_that("detect_outliers handles empty data", {
     test_values = numeric(0)
   )
 
-  result <- detect_outliers(
+  result <- sntutils::detect_outliers(
     data = empty_data,
     column = "test_values"
   )
@@ -346,13 +346,13 @@ testthat::test_that("detect_outliers handles single row", {
     test_values = 100
   )
 
-  result <- detect_outliers(
+  result <- sntutils::detect_outliers(
     data = single_row,
     column = "test_values"
   )
 
   testthat::expect_equal(nrow(result), 1)
-  testthat::expect_equal(result$outliers_iqr, "normal value")
+  testthat::expect_equal(result$outlier_flag_iqr, "normal value")
 })
 
 testthat::test_that("detect_outliers handles all same values", {
@@ -365,22 +365,22 @@ testthat::test_that("detect_outliers handles all same values", {
     test_values = rep(50, 10)
   )
 
-  result <- detect_outliers(
+  result <- sntutils::detect_outliers(
     data = same_values,
     column = "test_values"
   )
 
   # all values should be classified as normal
-  testthat::expect_true(all(result$outliers_iqr == "normal value"))
-  testthat::expect_true(all(result$outliers_mean == "normal value"))
-  testthat::expect_true(all(result$outliers_median == "normal value"))
+  testthat::expect_true(all(result$outlier_flag_iqr == "normal value"))
+  testthat::expect_true(all(result$outlier_flag_mean == "normal value"))
+  testthat::expect_true(all(result$outlier_flag_median == "normal value"))
 })
 
 testthat::test_that("functions handle invalid column names gracefully", {
   test_data <- create_test_data()
 
   testthat::expect_error(
-    detect_outliers(
+    sntutils::detect_outliers(
       data = test_data,
       column = "nonexistent_column"
     ),
@@ -393,7 +393,7 @@ testthat::test_that("detect_outliers preserves data integrity", {
   test_data <- create_test_data()
   original_rows <- nrow(test_data)
 
-  result <- detect_outliers(
+  result <- sntutils::detect_outliers(
     data = test_data,
     column = "confirmed_cases"
   )
@@ -415,7 +415,7 @@ testthat::test_that("detect_outliers preserves data integrity", {
 testthat::test_that("outlier detection methods are consistent", {
   test_data <- create_test_data()
 
-  result <- detect_outliers(
+  result <- sntutils::detect_outliers(
     data = test_data,
     column = "confirmed_cases"
   )
@@ -423,9 +423,9 @@ testthat::test_that("outlier detection methods are consistent", {
   # each outlier classification should be either "outlier" or "normal value"
   valid_values <- c("outlier", "normal value")
 
-  testthat::expect_true(all(result$outliers_iqr %in% valid_values))
-  testthat::expect_true(all(result$outliers_mean %in% valid_values))
-  testthat::expect_true(all(result$outliers_median %in% valid_values))
+  testthat::expect_true(all(result$outlier_flag_iqr %in% valid_values))
+  testthat::expect_true(all(result$outlier_flag_mean %in% valid_values))
+  testthat::expect_true(all(result$outlier_flag_median %in% valid_values))
 
   # bounds should be properly ordered
   testthat::expect_true(all(result$iqr_lower_bound <= result$iqr_upper_bound))
@@ -442,7 +442,7 @@ testthat::test_that("detect_outliers and outlier_plot work together", {
   test_data <- create_test_data()
 
   # run detect_outliers first
-  outliers <- detect_outliers(
+  outliers <- sntutils::detect_outliers(
     data = test_data,
     column = "confirmed_cases"
   )
@@ -450,7 +450,7 @@ testthat::test_that("detect_outliers and outlier_plot work together", {
   testthat::expect_s3_class(outliers, "data.frame")
 
   # then run outlier_plot
-  plots <- outlier_plot(
+  plots <- sntutils::outlier_plot(
     data = test_data,
     column = "confirmed_cases",
     methods = c("iqr", "mean")
@@ -463,10 +463,10 @@ testthat::test_that("detect_outliers and outlier_plot work together", {
   testthat::expect_no_error({
     combined_workflow <- test_data |>
       {
-        \(x) detect_outliers(x, "confirmed_cases")
+        \(x) sntutils::detect_outliers(x, "confirmed_cases")
       }() |>
       {
-        \(x) outlier_plot(test_data, "confirmed_cases", methods = "iqr")
+        \(x) sntutils::outlier_plot(test_data, "confirmed_cases", methods = "iqr")
       }()
   })
 })
