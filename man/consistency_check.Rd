@@ -10,7 +10,6 @@ consistency_check(
   outputs = NULL,
   tests = NULL,
   cases = NULL,
-  save_plot = FALSE,
   plot_path = NULL,
   target_language = "en",
   source_language = "en",
@@ -18,7 +17,12 @@ consistency_check(
   compress_image = FALSE,
   image_overwrite = TRUE,
   compression_speed = 1,
-  compression_verbose = TRUE
+  compression_verbose = TRUE,
+  plot_scale = 1,
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_dpi = 300,
+  show_plot = TRUE
 )
 }
 \arguments{
@@ -40,11 +44,8 @@ vector specifying the column names for the test data.}
 \item{cases}{\strong{\link{Deprecated}} Use \code{outputs} instead. A character
 vector specifying the column names for the case data.}
 
-\item{save_plot}{Logical. If TRUE, the plot will be saved to disk.
-Default is FALSE.}
-
 \item{plot_path}{Character. Directory path where the plot should be
-saved. Required if save_plot is TRUE. Default is NULL.}
+saved. If NULL (default), plot is not saved.}
 
 \item{target_language}{A character string specifying the language for
 plot labels. Defaults to "en" (English). Use ISO 639-1 language
@@ -66,6 +67,21 @@ overwritten. Default is TRUE.}
 
 \item{compression_verbose}{Logical. If TRUE, compression details will
 be printed. Default is TRUE.}
+
+\item{plot_scale}{Numeric. Scaling factor for saved plots. Values > 1
+increase size, < 1 decrease size. Default is 1.}
+
+\item{plot_width}{Numeric. Width of saved plot in inches. If NULL (default),
+width is calculated based on number of variables.}
+
+\item{plot_height}{Numeric. Height of saved plot in inches. If NULL (default),
+height is calculated based on number of variables.}
+
+\item{plot_dpi}{Numeric. Resolution of saved plot in dots per inch.
+Default is 300.}
+
+\item{show_plot}{Logical. If FALSE, the plot is returned invisibly (not displayed).
+Useful when only saving plots. Default is TRUE.}
 }
 \value{
 A ggplot2 object showing the consistency between the number of
@@ -147,7 +163,6 @@ consistency_check(
   fake_epi_df_togo,
   inputs = c("malaria_tests", "all_outpatients"),
   outputs = c("malaria_cases", "suspected_malaria"),
-  save_plot = TRUE,
   plot_path = tempdir()
 )
 
