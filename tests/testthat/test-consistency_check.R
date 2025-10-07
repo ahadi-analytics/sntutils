@@ -102,6 +102,7 @@ suppressMessages(
       testthat::expect_s3_class(multi_result, "ggplot")
 
       # 7. Test saving functionality
+      # Note: save_plot parameter removed - plots save when plot_path provided
       # Create a temporary file path
       temp_dir <- tempdir()
 
@@ -111,7 +112,6 @@ suppressMessages(
         inputs = inputs_pass,
         outputs = outputs_pass,
         target_language = "fr",
-        save_plot = TRUE,
         plot_path = temp_dir
       )
 
@@ -141,24 +141,12 @@ suppressMessages(
       save_dir_result <- consistency_check(dummy_data,
         inputs = inputs_pass,
         outputs = outputs_pass,
-        save_plot = TRUE,
         plot_path = temp_file3
       )
 
       testthat::expect_true(file.exists(temp_file3))
 
-      # 9. Test error when save_plot is TRUE but plot_path is NULL
-      testthat::expect_error(
-        consistency_check(dummy_data,
-          inputs = inputs_pass,
-          outputs = outputs_pass,
-          save_plot = TRUE,
-          plot_path = NULL
-        ),
-        "plot_path must be provided when save_plot is TRUE."
-      )
-
-      # 10. Test backward compatibility with deprecated parameters
+      # 9. Test backward compatibility with deprecated parameters
       # Suppress deprecation warnings for these tests
       suppressWarnings({
         # Test deprecated 'tests' and 'cases' parameters still work

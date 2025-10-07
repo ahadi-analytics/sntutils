@@ -51,10 +51,8 @@
 #'   vector specifying the column names for the test data.
 #' @param cases \strong{[Deprecated]} Use `outputs` instead. A character
 #'   vector specifying the column names for the case data.
-#' @param save_plot Logical. If TRUE, the plot will be saved to disk.
-#'   Default is FALSE.
 #' @param plot_path Character. Directory path where the plot should be
-#'   saved. Required if save_plot is TRUE. Default is NULL.
+#'   saved. If NULL (default), plot is not saved.
 #' @param target_language A character string specifying the language for
 #'   plot labels. Defaults to "en" (English). Use ISO 639-1 language
 #'   codes.
@@ -69,6 +67,16 @@
 #'   (1=slow/high compression). Default is 1.
 #' @param compression_verbose Logical. If TRUE, compression details will
 #'   be printed. Default is TRUE.
+#' @param plot_scale Numeric. Scaling factor for saved plots. Values > 1 
+#'   increase size, < 1 decrease size. Default is 1.
+#' @param plot_width Numeric. Width of saved plot in inches. If NULL (default),
+#'   width is calculated based on number of variables.
+#' @param plot_height Numeric. Height of saved plot in inches. If NULL (default),
+#'   height is calculated based on number of variables.
+#' @param plot_dpi Numeric. Resolution of saved plot in dots per inch. 
+#'   Default is 300.
+#' @param show_plot Logical. If FALSE, the plot is returned invisibly (not displayed).
+#'   Useful when only saving plots. Default is TRUE.
 #'
 #' @return A ggplot2 object showing the consistency between the number of
 #'   inputs and outputs. The x-axis represents the outputs, and the y-axis
@@ -110,7 +118,6 @@
 #'   fake_epi_df_togo,
 #'   inputs = c("malaria_tests", "all_outpatients"),
 #'   outputs = c("malaria_cases", "suspected_malaria"),
-#'   save_plot = TRUE,
 #'   plot_path = tempdir()
 #' )
 #'
@@ -136,7 +143,6 @@ consistency_check <- function(data,
                               outputs = NULL,
                               tests = NULL,
                               cases = NULL,
-                              save_plot = FALSE,
                               plot_path = NULL,
                               target_language = "en",
                               source_language = "en",
@@ -144,7 +150,12 @@ consistency_check <- function(data,
                               compress_image = FALSE,
                               image_overwrite = TRUE,
                               compression_speed = 1,
-                              compression_verbose = TRUE) {
+                              compression_verbose = TRUE,
+                              plot_scale = 1,
+                              plot_width = NULL,
+                              plot_height = NULL,
+                              plot_dpi = 300,
+                              show_plot = TRUE) {
 
   # Ensure relevant packages are installed
   ensure_packages(c("ggtext", "scales"))
@@ -183,13 +194,6 @@ consistency_check <- function(data,
     ))
   }
 
-  # Check if plot_path is provided when save_plot is TRUE
-  if (save_plot && is.null(plot_path)) {
-    cli::cli_abort(c(
-      "!" = "plot_path must be provided when save_plot is TRUE.",
-      "i" = "Run `rlang::last_trace()` to see where the error occurred."
-    ))
-  }
 
   # Initialize a data frame to store results
   results <- data.frame(
@@ -289,7 +293,7 @@ consistency_check <- function(data,
     ggplot2::facet_wrap(~comparison, scales = "free") +
     ggplot2::labs(
       x = "Reported events (input)",
-      y = "Recorded outcomes (output)",
+      y = "Recorded outcomes (output)\n",
       title = paste0(
         "<span style = 'font-size:10pt'><b style='color:#526A83'>",
         "Consistency Check</b>: Comparing the number of inputs ",
@@ -324,12 +328,12 @@ consistency_check <- function(data,
       )
     ) +
     ggplot2::scale_x_continuous(
-      labels = scales::comma_format(big.mark = ","),
+      labels = scales::label_number(scale_cut = scales::cut_short_scale()),
       limits = c(0, NA),
       expand = c(0, 0)
     ) +
     ggplot2::scale_y_continuous(
-      labels = scales::comma_format(big.mark = ","),
+      labels = scales::label_number(scale_cut = scales::cut_short_scale()),
       limits = c(0, NA),
       expand = c(0, 0)
     )
@@ -345,7 +349,7 @@ consistency_check <- function(data,
   }
 
   # Save the plot if requested
-  if (save_plot) {
+  if (!is.null(plot_path)) {
     # Get common translated terms for filenames
     translated_terms <- get_translated_terms(
       target_language = target_language,
@@ -373,15 +377,28 @@ consistency_check <- function(data,
       "{paste(inputs[0:3], collapse = '_')}_vs_",
       "{paste(outputs[0:3], collapse = '_')}_",
       "{translated_terms$year_range}_",
-      "{format(Sys.Date(), '%Y-%m-%d')}.png"
+      "v{format(Sys.Date(), '%Y-%m-%d')}.png"
     ) |> stringr::str_remove_all("_NA")
 
     full_path <- file.path(plot_path, basename)
 
-    # Calculate dimensions based on number of input variables
-    n_vars <- length(inputs)
-    width <- min(10, max(6, n_vars * 3))
-    height <- min(8, max(4, n_vars * 2))
+    # Calculate dimensions or use provided values
+    if (is.null(plot_width) || is.null(plot_height)) {
+      n_vars <- length(inputs)
+      if (is.null(plot_width)) {
+        width <- min(10, max(6, n_vars * 3))
+      } else {
+        width <- plot_width
+      }
+      if (is.null(plot_height)) {
+        height <- min(8, max(4, n_vars * 2))
+      } else {
+        height <- plot_height
+      }
+    } else {
+      width <- plot_width
+      height <- plot_height
+    }
 
     # Try to save the plot
     tryCatch(
@@ -391,7 +408,8 @@ consistency_check <- function(data,
           plot = plot,
           width = width,
           height = height,
-          dpi = 300
+          dpi = plot_dpi,
+          scale = plot_scale
         )
 
         # Close device to prevent warnings
@@ -415,7 +433,16 @@ consistency_check <- function(data,
           source_language = source_language,
           cache_path = lang_cache_path
         )
-        cli::cli_alert_success(paste(success_msg, full_path))
+        
+        # Show only relative path from current directory if it's a subdirectory
+        display_path <- full_path
+        if (startsWith(full_path, getwd())) {
+          display_path <- sub(paste0("^", getwd(), "/"), "", full_path)
+        } else if (grepl("03_outputs", full_path)) {
+          # Extract from 03_outputs onward if present
+          display_path <- sub(".*/(03_outputs/.*)", "\\1", full_path)
+        }
+        cli::cli_alert_success(paste(success_msg, display_path))
       },
       error = function(e) {
         # Close device on error
@@ -427,5 +454,10 @@ consistency_check <- function(data,
     )
   }
 
-  plot
+  # Return invisibly if show_plot is FALSE
+  if (show_plot) {
+    return(plot)
+  } else {
+    return(invisible(plot))
+  }
 }
