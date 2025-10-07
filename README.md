@@ -24,7 +24,7 @@ functions in this version of `sntutils`:
 | **Data Extraction**           | `process_raster_collection()`    | Extract values from multiple rasters against ashapefile                                    |
 | **Reporting Rate Checks**     | `calculate_reporting_metrics()`  | Aggregates facility reporting/missing rates over time and space                            |
 |                               | `reporting_rate_plot()`          | Visualizes reporting/missing rates by two variables                                        |
-| **Outlier Detection**         | `detect_outliers()`              | Flags outliers in a numeric column using mean ± 3 SD, Hampel, and Tukey’s IQR methods      |
+| **Outlier Detection**         | `detect_outliers()`              | Flags outliers in a numeric column using mean ± 3 SD, Median, and Tukey’s IQR methods      |
 |                               | `outlier_plot()`                 | Generates time‐series plots of flagged outliers (faceted by admin area, colored by method) |
 | **Consistency Checks**        | `consistency_check()`            | Validates logical coherence in malaria care cascade (inputs ≥ outputs)                     |
 | **Translation**               | `translate_text()`               | Translates text with persistent file cache                                                 |
@@ -647,7 +647,7 @@ The `detect_outliers()` function helps identify unusual values in
 numeric variables using three complementary statistical methods:
 
 - Mean ± 3 SD (parametric approach)
-- Hampel Identifier (median ± 15 × MAD, robust to extreme values)
+- Median Identifier (median ± 15 × MAD, robust to extreme values)
 - Tukey’s Fences (based on IQR, with adjustable sensitivity)
 
 Outliers are assessed within groups defined by administrative area
@@ -674,7 +674,7 @@ outlier_results <- detect_outliers(
 The `detect_outliers()` function returns a table with outlier results
 for each row in your dataset. The key columns of interest are record_id,
 the value being checked, and the method-specific flags: outliers_iqr,
-outliers_halper, and outliers_moyenne. Each method marks the value as
+outliers_median, and outliers_mean. Each method marks the value as
 either “outlier” or “normal value”. You can join this output back to
 your original data using record_id to flag values for review or action.
 
@@ -683,13 +683,13 @@ outlier_results |>
     dplyr::select(
         record_id, value,
         outliers_iqr,
-        outliers_halper,
-        outliers_moyenne) |>
+        outliers_median,
+        outliers_mean) |>
     tail()
 ```
 
     # A tibble: 6 × 5
-      record_id value outliers_iqr outliers_halper outliers_moyenne
+      record_id value outliers_iqr outliers_median outliers_mean
       <chr>     <dbl> <chr>        <chr>           <chr>
     1 e8947016    321 normal value normal value    normal value
     2 28b6ea90    353 normal value normal value    normal value
@@ -716,7 +716,7 @@ plots <- sntutils::outlier_plot(
   adm1 = "adm1",
   adm2 = "adm2",
   yearmon = "year_mon",
-  methods = c("iqr", "halper", "moyenne")
+  methods = c("iqr", "median", "mean")
 )
 ```
 
@@ -728,18 +728,18 @@ plots$iqr
 
 ![Outlier Plot1](man/figures-readme/outlier_plot.png)
 
-_Halper method_
+Median method
 
 ```r
-plots$halper
+plots$median
 ```
 
 ![Outlier Plot1](man/figures-readme/outlier_plot2.png)
 
-_Moyenne method_
+Mean method
 
 ```r
-plots$moyenne
+plots$mean
 ```
 
 ![Outlier Plot1](man/figures-readme/outlier_plot3.png)

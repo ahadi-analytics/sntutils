@@ -46,15 +46,15 @@ classification information containing:
 \item record_id: Identifier for each record
 \item column_name: The name of the analyzed column
 \item value: The value in the specified column
-\item outliers_moyenne: Identifies outliers using mean ± 3 standard deviations
-\item outliers_halper: Identifies outliers using Hampel identifier
+\item outlier_flag_mean: Identifies outliers using mean ± 3 standard deviations
+\item outlier_flag_median: Identifies outliers using Median identifier
 (median ± 15*MAD)
-\item outliers_iqr: Identifies outliers using Tukey's fences
+\item outlier_flag_iqr: Identifies outliers using Tukey's fences
 (Q1/Q3 ± custom*IQR)
-\item moyenne_lower_bound: Lower bound for mean-based detection
-\item moyenne_upper_bound: Upper bound for mean-based detection
-\item hampel_lower_bound: Lower bound for Hampel identifier
-\item hampel_upper_bound: Upper bound for Hampel identifier
+\item mean_lower_bound: Lower bound for mean-based detection
+\item mean_upper_bound: Upper bound for mean-based detection
+\item median_lower_bound: Lower bound for Median identifier
+\item median_upper_bound: Upper bound for Median identifier
 \item iqr_lower_bound: Lower bound for IQR-based detection
 \item iqr_upper_bound: Upper bound for IQR-based detection
 \item iqr_value: The calculated IQR value
@@ -62,13 +62,13 @@ classification information containing:
 }
 \description{
 This function identifies outliers in a specified numeric column using three
-different statistical approaches: parametric (mean ± 3SD), Hampel identifier
+different statistical approaches: parametric (mean ± 3SD), Median identifier
 (median ± 15 * MAD), and Tukey's fences (quartiles ± custom IQR).
 }
 \details{
 The function groups data by administrative units (adm1, adm2), health
 facility (hf), and year before calculating statistics. Each method has
-different sensitivity to outliers, with the Hampel identifier being more
+different sensitivity to outliers, with the Median identifier being more
 robust against extreme values.
 
 \strong{About \code{iqr_multiplier}:}

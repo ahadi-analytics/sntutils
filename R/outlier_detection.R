@@ -2,7 +2,7 @@
 #'
 #' @description
 #' This function identifies outliers in a specified numeric column using three
-#' different statistical approaches: parametric (mean ± 3SD), Hampel identifier
+#' different statistical approaches: parametric (mean ± 3SD), Median identifier
 #' (median ± 15 * MAD), and Tukey's fences (quartiles ± custom IQR).
 #'
 #' @param data A data frame containing the data to analyze
@@ -26,15 +26,15 @@
 #'    - record_id: Identifier for each record
 #'    - column_name: The name of the analyzed column
 #'    - value: The value in the specified column
-#'    - outliers_moyenne: Identifies outliers using mean ± 3 standard deviations
-#'    - outliers_halper: Identifies outliers using Hampel identifier
+#'    - outlier_flag_mean: Identifies outliers using mean ± 3 standard deviations
+#'    - outlier_flag_median: Identifies outliers using Median identifier
 #'      (median ± 15*MAD)
-#'    - outliers_iqr: Identifies outliers using Tukey's fences
+#'    - outlier_flag_iqr: Identifies outliers using Tukey's fences
 #'      (Q1/Q3 ± custom*IQR)
-#'    - moyenne_lower_bound: Lower bound for mean-based detection
-#'    - moyenne_upper_bound: Upper bound for mean-based detection
-#'    - hampel_lower_bound: Lower bound for Hampel identifier
-#'    - hampel_upper_bound: Upper bound for Hampel identifier
+#'    - mean_lower_bound: Lower bound for mean-based detection
+#'    - mean_upper_bound: Upper bound for mean-based detection
+#'    - median_lower_bound: Lower bound for Median identifier
+#'    - median_upper_bound: Upper bound for Median identifier
 #'    - iqr_lower_bound: Lower bound for IQR-based detection
 #'    - iqr_upper_bound: Upper bound for IQR-based detection
 #'    - iqr_value: The calculated IQR value
@@ -42,7 +42,7 @@
 #' @details
 #' The function groups data by administrative units (adm1, adm2), health
 #' facility (hf), and year before calculating statistics. Each method has
-#' different sensitivity to outliers, with the Hampel identifier being more
+#' different sensitivity to outliers, with the Median identifier being more
 #' robust against extreme values.
 #'
 #' **About `iqr_multiplier`:**
@@ -91,7 +91,7 @@ detect_outliers <- function(
     dplyr::group_by(.data[[adm1]], .data[[adm2]], .data[[year]]) |>
     # Calculate statistics
     dplyr::mutate(
-      moyenne = ceiling(mean(.data[[column]], na.rm = TRUE)),
+      mean = ceiling(mean(.data[[column]], na.rm = TRUE)),
       sd = ceiling(stats::sd(.data[[column]], na.rm = TRUE)),
       median = ceiling(stats::median(.data[[column]], na.rm = TRUE)),
       median_absolute = ceiling(stats::mad(
@@ -102,27 +102,27 @@ detect_outliers <- function(
       q1 = as.numeric(stats::quantile(.data[[column]], 0.25, na.rm = TRUE)),
       q3 = as.numeric(stats::quantile(.data[[column]], 0.75, na.rm = TRUE)),
       iqr = q3 - q1,
-      # Calculate bounds
-      moyenne_lower_bound = moyenne - 3 * sd,
-      moyenne_upper_bound = moyenne + 3 * sd,
-      hampel_lower_bound = median - 15 * median_absolute,
-      hampel_upper_bound = median + 15 * median_absolute,
-      iqr_lower_bound = q1 - iqr_multiplier * iqr,
+      # Calculate bounds (floor lower bounds at 0 for count data)
+      mean_lower_bound = base::pmax(0, mean - 3 * sd),
+      mean_upper_bound = mean + 3 * sd,
+      median_lower_bound = base::pmax(0, median - 15 * median_absolute),
+      median_upper_bound = median + 15 * median_absolute,
+      iqr_lower_bound = base::pmax(0, q1 - iqr_multiplier * iqr),
       iqr_upper_bound = q3 + iqr_multiplier * iqr,
       # Classify outliers
-      outliers_moyenne = dplyr::if_else(
-        .data[[column]] < moyenne_lower_bound |
-          .data[[column]] > moyenne_upper_bound,
+      outlier_flag_mean = dplyr::if_else(
+        .data[[column]] < mean_lower_bound |
+          .data[[column]] > mean_upper_bound,
         "outlier",
         "normal value"
       ),
-      outliers_halper = dplyr::if_else(
-        .data[[column]] < hampel_lower_bound |
-          .data[[column]] > hampel_upper_bound,
+      outlier_flag_median = dplyr::if_else(
+        .data[[column]] < median_lower_bound |
+          .data[[column]] > median_upper_bound,
         "outlier",
         "normal value"
       ),
-      outliers_iqr = dplyr::if_else(
+      outlier_flag_iqr = dplyr::if_else(
         .data[[column]] < iqr_lower_bound |
           .data[[column]] > iqr_upper_bound,
         "outlier",
@@ -142,13 +142,13 @@ detect_outliers <- function(
         year,
         "column_name",
         "value",
-        "outliers_moyenne",
-        "outliers_halper",
-        "outliers_iqr",
-        "moyenne_lower_bound",
-        "moyenne_upper_bound",
-        "hampel_lower_bound",
-        "hampel_upper_bound",
+        "outlier_flag_mean",
+        "outlier_flag_median",
+        "outlier_flag_iqr",
+        "mean_lower_bound",
+        "mean_upper_bound",
+        "median_lower_bound",
+        "median_upper_bound",
         "iqr_lower_bound",
         "iqr_upper_bound",
         "iqr"
@@ -171,9 +171,9 @@ detect_outliers <- function(
 #' @param year Name of year column (default: "year")
 #' @param methods Vector of outlier detection methods to use:
 #'   "iqr" (Interquartile Range),
-#'   "halper" (Halper method),
-#'   "moyenne" (Moyenne method)
-#'   (default: c("iqr", "halper", "moyenne"))
+#'   "median" (Median method),
+#'   "mean" (Mean method)
+#'   (default: c("iqr", "median", "mean"))
 #' @param iqr_multiplier Multiplier for IQR method (default: 1.5)
 #'
 #' @return A list of ggplot objects, one for each outlier detection method
@@ -190,7 +190,7 @@ detect_outliers <- function(
 #'   data = my_data,
 #'   column = "price",
 #'   record_id = "id",
-#'   methods = c("iqr", "halper")
+#'   methods = c("iqr", "median")
 #' )
 #' }
 #' @export
@@ -203,11 +203,11 @@ outlier_plot <- function(
     record_id = "record_id",
     yearmon = "yearmon",
     year = "year",
-    methods = c("iqr", "halper", "moyenne"),
+    methods = c("iqr", "median", "mean"),
     iqr_multiplier = 1.5
 ) {
   # Create outlier columns for each method
-  outlier_cols <- paste0("outliers_", methods)
+  outlier_cols <- paste0("outlier_flag_", methods)
 
   outlier_df <- detect_outliers(
     data,
@@ -226,7 +226,7 @@ outlier_plot <- function(
       outlier_df |>
         dplyr::select(
           dplyr::all_of(record_id),
-          dplyr::starts_with("outliers_")
+          dplyr::starts_with("outlier_flag_")
         ),
       by = record_id
     )
@@ -262,12 +262,12 @@ outlier_plot <- function(
     )
     total_outliers <- sntutils::big_mark(nrow(data_out))
 
-    method_name <- gsub("outliers_", "", outlier_col)
+    method_name <- gsub("outlier_flag_", "", outlier_col)
     method_name2 <- switch(
       method_name,
       "iqr" = glue::glue("IQR (multiplier = {iqr_multiplier})"),
-      "halper" = "Halper",
-      "moyenne" = "Moyenne"
+      "median" = "Median",
+      "mean" = "Mean"
     )
     cli::cli_inform(
       glue::glue(

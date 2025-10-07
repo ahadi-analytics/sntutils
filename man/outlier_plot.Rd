@@ -13,7 +13,7 @@ outlier_plot(
   record_id = "record_id",
   yearmon = "yearmon",
   year = "year",
-  methods = c("iqr", "halper", "moyenne"),
+  methods = c("iqr", "median", "mean"),
   iqr_multiplier = 1.5
 )
 }
@@ -36,9 +36,9 @@ outlier_plot(
 
 \item{methods}{Vector of outlier detection methods to use:
 "iqr" (Interquartile Range),
-"halper" (Halper method),
-"moyenne" (Moyenne method)
-(default: c("iqr", "halper", "moyenne"))}
+"median" (Median method),
+"mean" (Mean method)
+(default: c("iqr", "median", "mean"))}
 
 \item{iqr_multiplier}{Multiplier for IQR method (default: 1.5)}
 }
@@ -61,7 +61,7 @@ plots <- outlier_plot(
   data = my_data,
   column = "price",
   record_id = "id",
-  methods = c("iqr", "halper")
+  methods = c("iqr", "median")
 )
 }
 }
