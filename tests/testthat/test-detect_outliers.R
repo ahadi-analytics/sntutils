@@ -56,13 +56,13 @@ testthat::test_that("detect_outliers returns correct structure", {
     "year",
     "column_name",
     "value",
-    "outliers_moyenne",
-    "outliers_halper",
+    "outliers_mean",
+    "outliers_median",
     "outliers_iqr",
-    "moyenne_lower_bound",
-    "moyenne_upper_bound",
-    "hampel_lower_bound",
-    "hampel_upper_bound",
+    "mean_lower_bound",
+    "mean_upper_bound",
+    "median_lower_bound",
+    "median_upper_bound",
     "iqr_lower_bound",
     "iqr_upper_bound",
     "iqr"
@@ -134,13 +134,13 @@ testthat::test_that("detect_outliers calculates statistics correctly", {
 
   testthat::expect_equal(nrow(outlier_row), 1)
   testthat::expect_equal(outlier_row$outliers_iqr, "outlier")
-  testthat::expect_equal(outlier_row$outliers_moyenne, "normal value")
+  testthat::expect_equal(outlier_row$outliers_mean, "normal value")
 
   # check bounds are calculated
   testthat::expect_true(all(!is.na(result$iqr_lower_bound)))
   testthat::expect_true(all(!is.na(result$iqr_upper_bound)))
-  testthat::expect_true(all(!is.na(result$moyenne_lower_bound)))
-  testthat::expect_true(all(!is.na(result$moyenne_upper_bound)))
+  testthat::expect_true(all(!is.na(result$mean_lower_bound)))
+  testthat::expect_true(all(!is.na(result$mean_upper_bound)))
 })
 
 testthat::test_that("detect_outliers custom iqr_multiplier works", {
@@ -231,12 +231,12 @@ testthat::test_that("outlier_plot returns correct structure", {
   result <- outlier_plot(
     data = test_data,
     column = "confirmed_cases",
-    methods = c("iqr", "moyenne")
+    methods = c("iqr", "mean")
   )
 
   testthat::expect_type(result, "list")
   testthat::expect_equal(length(result), 2)
-  testthat::expect_true(all(c("iqr", "moyenne") %in% names(result)))
+  testthat::expect_true(all(c("iqr", "mean") %in% names(result)))
 
   # check each plot is a ggplot object
   purrr::walk(result, ~ testthat::expect_s3_class(.x, "ggplot"))
@@ -263,11 +263,11 @@ testthat::test_that("outlier_plot handles all methods", {
   result <- outlier_plot(
     data = test_data,
     column = "confirmed_cases",
-    methods = c("iqr", "halper", "moyenne")
+    methods = c("iqr", "median", "mean")
   )
 
   testthat::expect_equal(length(result), 3)
-  testthat::expect_true(all(c("iqr", "halper", "moyenne") %in% names(result)))
+  testthat::expect_true(all(c("iqr", "median", "mean") %in% names(result)))
 })
 
 testthat::test_that("outlier_plot handles custom parameters", {
@@ -372,8 +372,8 @@ testthat::test_that("detect_outliers handles all same values", {
 
   # all values should be classified as normal
   testthat::expect_true(all(result$outliers_iqr == "normal value"))
-  testthat::expect_true(all(result$outliers_moyenne == "normal value"))
-  testthat::expect_true(all(result$outliers_halper == "normal value"))
+  testthat::expect_true(all(result$outliers_mean == "normal value"))
+  testthat::expect_true(all(result$outliers_median == "normal value"))
 })
 
 testthat::test_that("functions handle invalid column names gracefully", {
@@ -424,16 +424,16 @@ testthat::test_that("outlier detection methods are consistent", {
   valid_values <- c("outlier", "normal value")
 
   testthat::expect_true(all(result$outliers_iqr %in% valid_values))
-  testthat::expect_true(all(result$outliers_moyenne %in% valid_values))
-  testthat::expect_true(all(result$outliers_halper %in% valid_values))
+  testthat::expect_true(all(result$outliers_mean %in% valid_values))
+  testthat::expect_true(all(result$outliers_median %in% valid_values))
 
   # bounds should be properly ordered
   testthat::expect_true(all(result$iqr_lower_bound <= result$iqr_upper_bound))
   testthat::expect_true(
-    all(result$moyenne_lower_bound <= result$moyenne_upper_bound)
+    all(result$mean_lower_bound <= result$mean_upper_bound)
   )
   testthat::expect_true(
-    all(result$hampel_lower_bound <= result$hampel_upper_bound)
+    all(result$median_lower_bound <= result$median_upper_bound)
   )
 })
 
@@ -453,7 +453,7 @@ testthat::test_that("detect_outliers and outlier_plot work together", {
   plots <- outlier_plot(
     data = test_data,
     column = "confirmed_cases",
-    methods = c("iqr", "moyenne")
+    methods = c("iqr", "mean")
   )
 
   testthat::expect_type(plots, "list")
