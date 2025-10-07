@@ -101,14 +101,14 @@ detect_outliers <- function(
       )),
       q1 = as.numeric(stats::quantile(.data[[column]], 0.25, na.rm = TRUE)),
       q3 = as.numeric(stats::quantile(.data[[column]], 0.75, na.rm = TRUE)),
-      iqr = q3 - q1,
+      iqr = base::round(q3 - q1),
       # Calculate bounds (floor lower bounds at 0 for count data)
       mean_lower_bound = base::pmax(0, mean - 3 * sd),
       mean_upper_bound = mean + 3 * sd,
       median_lower_bound = base::pmax(0, median - 15 * median_absolute),
       median_upper_bound = median + 15 * median_absolute,
-      iqr_lower_bound = base::pmax(0, q1 - iqr_multiplier * iqr),
-      iqr_upper_bound = q3 + iqr_multiplier * iqr,
+      iqr_lower_bound = base::round(base::pmax(0, q1 - iqr_multiplier * iqr)),
+      iqr_upper_bound = base::round(q3 + iqr_multiplier * iqr),
       # Classify outliers
       outlier_flag_mean = dplyr::if_else(
         .data[[column]] < mean_lower_bound |
