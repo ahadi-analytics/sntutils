@@ -938,10 +938,10 @@ validate_facility_data <- function(
   snake_to_sentence <- function(x) {
     # Replace underscores with spaces
     x <- base::gsub("_", " ", x)
-    # Replace dots with spaces  
+    # Replace dots with spaces
     x <- base::gsub("\\.", " ", x)
     # Capitalize first letter
-    x <- base::paste0(base::toupper(base::substr(x, 1, 1)), 
+    x <- base::paste0(base::toupper(base::substr(x, 1, 1)),
                       base::substr(x, 2, base::nchar(x)))
     x
   }
@@ -962,10 +962,10 @@ validate_facility_data <- function(
     translated_names <- base::sapply(col_names, tr)
     translated_names <- base::gsub("\\.", " ", translated_names)
     base::names(out[[sum_name]]) <- translated_names
-    
+
     # Translate check values
     out[[sum_name]][[1]] <- base::sapply(out[[sum_name]][[1]], tr)
-    
+
     # Translate specific terms in issues_found and total_records columns
     # Look for column by position (2nd column is issues_found, 3rd is total_records)
     if (base::ncol(out[[sum_name]]) >= 2) {
@@ -977,7 +977,7 @@ validate_facility_data <- function(
         x
       })
     }
-    
+
     if (base::ncol(out[[sum_name]]) >= 3) {
       # Translate column(s), set(s), pair(s) in total_records column
       out[[sum_name]][[3]] <- base::sapply(out[[sum_name]][[3]], function(x) {
@@ -999,7 +999,7 @@ validate_facility_data <- function(
     translated_names <- base::sapply(col_names, tr)
     translated_names <- base::gsub("\\.", " ", translated_names)
     base::names(out[[mv_name]]) <- translated_names
-    
+
     # Translate Core ID and Indicator in column_type
     type_col <- base::which(base::grepl("type", base::tolower(base::names(out[[mv_name]]))))
     if (base::length(type_col) > 0) {
@@ -1013,17 +1013,17 @@ validate_facility_data <- function(
 
   # Filter out empty tabs (except Summary)
   filtered_out <- base::list()
-  
+
   for (nm in base::names(out)) {
     # Always keep Summary
     if (nm == tr("Summary") || nm == "Summary") {
       filtered_out[[nm]] <- out[[nm]]
       next
     }
-    
+
     # Check if tab has content
     content <- out[[nm]]
-    
+
     if (!base::is.null(content)) {
       # For data frames/tibbles, check if they have rows
       if (base::is.data.frame(content) && base::nrow(content) > 0) {
@@ -1033,7 +1033,7 @@ validate_facility_data <- function(
       else if (base::is.list(content) && !base::is.data.frame(content)) {
         has_content <- FALSE
         for (item in content) {
-          if (!base::is.null(item) && 
+          if (!base::is.null(item) &&
               ((base::is.data.frame(item) && base::nrow(item) > 0) ||
                (base::is.list(item) && base::length(item) > 0))) {
             has_content <- TRUE
@@ -1105,9 +1105,6 @@ validate_facility_data <- function(
         include_date = TRUE,
         quiet = !verbose
       )
-      if (verbose) {
-        cli::cli_alert_success("Validation results saved to: {output_path}")
-      }
     },
     error = function(e) {
       cli::cli_alert_danger("Failed to save validation results: {e$message}")
