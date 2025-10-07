@@ -14,7 +14,8 @@ outlier_plot(
   yearmon = "yearmon",
   year = "year",
   methods = c("iqr", "median", "mean"),
-  iqr_multiplier = 1.5
+  iqr_multiplier = 1.5,
+  year_breaks = 2
 )
 }
 \arguments{
@@ -41,6 +42,9 @@ outlier_plot(
 (default: c("iqr", "median", "mean"))}
 
 \item{iqr_multiplier}{Multiplier for IQR method (default: 1.5)}
+
+\item{year_breaks}{Numeric value specifying the interval for x-axis breaks
+(default: 2). For example, 2 shows every 2nd year/month, 3 shows every 3rd.}
 }
 \value{
 A list of ggplot objects, one for each outlier detection method
