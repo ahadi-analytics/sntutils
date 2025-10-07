@@ -167,7 +167,7 @@ detect_outliers <- function(
 #' @param adm1 Name of administrative level 1 column (default: "adm1")
 #' @param adm2 Name of administrative level 2 column (default: "adm2")
 #' @param record_id Name of unique record ID column (default: "record_id")
-#' @param yearmon Name of year-month date column (default: "yearmon_date")
+#' @param yearmon Name of year-month date column (default: "yearmon")
 #' @param year Name of year column (default: "year")
 #' @param methods Vector of outlier detection methods to use:
 #'   "iqr" (Interquartile Range),
@@ -177,9 +177,38 @@ detect_outliers <- function(
 #' @param iqr_multiplier Multiplier for IQR method (default: 1.5)
 #' @param year_breaks Numeric value specifying the interval for x-axis breaks
 #'   (default: 2). For example, 2 shows every 2nd year/month, 3 shows every 3rd.
+#' @param compare_periods Logical. If TRUE, creates comparison plots between
+#'   different time periods (default: FALSE)
+#' @param target_language Character string specifying the language for plot
+#'   labels. Defaults to "en" (English). Use ISO 639-1 language codes.
+#' @param source_language Source language code. If NULL, auto-detection is used.
+#'   Defaults to NULL.
+#' @param lang_cache_path Path to directory for storing translation cache.
+#'   Defaults to tempdir().
+#' @param plot_path Character string specifying the path where plots should
+#'   be saved. If NULL (default), plots are not saved.
+#' @param compress_image Logical. If TRUE, will compress the saved plot.
+#'   Defaults to FALSE
+#' @param image_overwrite Logical. If TRUE, will overwrite existing files.
+#'   Defaults to TRUE.
+#' @param compression_speed Integer. Speed/quality trade-off from 1
+#'   (brute-force) to 10 (fastest). Default is 1.
+#' @param compression_verbose Logical. Controls output verbosity.
+#'   FALSE = silent, TRUE = verbose. Defaults to TRUE.
+#' @param plot_scale Numeric. Scaling factor for saved plots. Values > 1 
+#'   increase size, < 1 decrease size. Default is 1.
+#' @param plot_width Numeric. Width of saved plot in inches. If NULL (default),
+#'   width is calculated based on number of facets.
+#' @param plot_height Numeric. Height of saved plot in inches. If NULL (default),
+#'   height is calculated based on number of facets.
+#' @param plot_dpi Numeric. Resolution of saved plot in dots per inch. 
+#'   Default is 300.
+#' @param show_plot Logical. If FALSE, the plot is returned invisibly (not displayed).
+#'   Useful when only saving plots. Default is TRUE.
 #'
 #' @return If a single method is specified, returns a ggplot object. If multiple
 #'   methods are specified, returns a list of ggplot objects named by method.
+#'   When show_plot is FALSE, returns invisibly.
 #'
 #' @details
 #' The function creates scatter plots showing outliers detected by different
@@ -208,7 +237,21 @@ outlier_plot <- function(
     year = "year",
     methods = c("iqr", "median", "mean"),
     iqr_multiplier = 1.5,
-    year_breaks = 2
+    year_breaks = 2,
+    compare_periods = FALSE,
+    target_language = "en",
+    source_language = "en",
+    lang_cache_path = tempdir(),
+    plot_path = NULL,
+    compress_image = FALSE,
+    image_overwrite = TRUE,
+    compression_speed = 1,
+    compression_verbose = TRUE,
+    plot_scale = 1,
+    plot_width = NULL,
+    plot_height = NULL,
+    plot_dpi = 300,
+    show_plot = TRUE
 ) {
   # Create outlier columns for each method
   outlier_cols <- paste0("outlier_flag_", methods)
@@ -247,15 +290,12 @@ outlier_plot <- function(
         .groups = "drop"
       ) |>
       dplyr::mutate(
-        n_outlier = sntutils::big_mark(n_outlier),
+        pct_outlier = round(100 * n_outlier / n_total, 1),
+        n_outlier_fmt = sntutils::big_mark(n_outlier),
         n_total_fmt = sntutils::big_mark(n_total),
-        pct_outlier = round(
-          100 * as.numeric(n_outlier) / as.numeric(n_total),
-          1
-        ),
         adm2_value = .data[[adm2]],
         label = glue::glue(
-          "{adm2_value}\nOutliers: {pct_outlier}% ({n_outlier}/{n_total_fmt})"
+          "{adm2_value}\nOutliers: {pct_outlier}% ({n_outlier_fmt}/{n_total_fmt})"
         )
       )
 
@@ -281,6 +321,80 @@ outlier_plot <- function(
       )
     )
 
+    # Prepare labels for translation
+    # Keep column name as-is, translate other parts
+    if (target_language != "en") {
+      # Translate individual components
+      outlier_detection_text <- translate_text(
+        "Outlier Detection for",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      title_text <- glue::glue(
+        "{method_name2} {outlier_detection_text} <b>{column}</b>"
+      )
+      
+      # Translate only the word "outliers" for subtitle
+      outliers_word <- translate_text(
+        "outliers",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      detected_word <- translate_text(
+        "detected",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      there_were <- translate_text(
+        "There were",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      subtitle_text <- glue::glue(
+        "{there_were} {outliers_n}/{total_outliers}",
+        " <b style='color:red;font-weight:bold'>{outliers_word}</b> {detected_word}"
+      )
+      
+      x_label <- if (yearmon == "yearmon") {
+        translate_text(
+          "Year-Month",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+      } else {
+        yearmon
+      }
+      y_label <- translate_text(
+        "Value",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      color_label <- translate_text(
+        "Outlier Classification",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+    } else {
+      # English version
+      title_text <- glue::glue(
+        "{method_name2} Outlier Detection for <b>{column}</b>"
+      )
+      subtitle_text <- glue::glue(
+        "There were {outliers_n}/{total_outliers}",
+        " <b style='color:red;font-weight:bold'>outliers</b> detected"
+      )
+      x_label <- if (yearmon == "yearmon") "Year-Month" else yearmon
+      y_label <- "Value"
+      color_label <- "Outlier Classification"
+    }
+
     p <- ggplot2::ggplot(data_out) +
       ggplot2::geom_point(
         ggplot2::aes(
@@ -293,15 +407,11 @@ outlier_plot <- function(
         values = c("normal value" = "grey", "outlier" = "red")
       ) +
       ggplot2::labs(
-        title = glue::glue(
-          "{method_name2} Outlier Detection for <b>{column}</b>"),
-        subtitle = glue::glue(
-          "There were {outliers_n}/{total_outliers}",
-          "<b style='color:red;font-weight:bold'> outliers</b> detected"
-        ),
-        x = "\nYear-Month",
-        y = "Value\n",
-        color = "Outlier Classification"
+        title = title_text,
+        subtitle = subtitle_text,
+        x = paste0("\n", x_label),
+        y = paste0(y_label, "\n"),
+        color = color_label
       ) +
       ggplot2::facet_wrap(
         stats::as.formula(paste("~", adm2)),
@@ -341,12 +451,190 @@ outlier_plot <- function(
       )
 
     res[[method_name]] <- p
+
+    # Save plot if path is provided
+    if (!is.null(plot_path)) {
+      .save_outlier_plot(
+        plot = p,
+        plot_path = plot_path,
+        method_name = method_name,
+        column = column,
+        yearmon = yearmon,
+        adm_level = adm2,
+        data = data,
+        target_language = target_language,
+        source_language = source_language,
+        lang_cache_path = lang_cache_path,
+        compress_image = compress_image,
+        image_overwrite = image_overwrite,
+        compression_speed = compression_speed,
+        compression_verbose = compression_verbose,
+        plot_scale = plot_scale,
+        plot_width = plot_width,
+        plot_height = plot_height,
+        plot_dpi = plot_dpi
+      )
+    }
   }
 
   # Return single plot if only one method, otherwise return list
-  if (length(methods) == 1) {
-    return(res[[1]])
+  result <- if (length(methods) == 1) {
+    res[[1]]
   } else {
-    return(res)
+    res
   }
+  
+  # Return invisibly if show_plot is FALSE
+  if (show_plot) {
+    return(result)
+  } else {
+    return(invisible(result))
+  }
+}
+
+#' Save outlier plot with appropriate naming
+#'
+#' @noRd
+.save_outlier_plot <- function(plot, plot_path, method_name, column, yearmon,
+                              adm_level, data, target_language = "en",
+                              source_language = "en",
+                              lang_cache_path = tempdir(),
+                              compress_image = FALSE,
+                              image_overwrite = TRUE,
+                              compression_speed = 1,
+                              compression_verbose = TRUE,
+                              plot_scale = 1,
+                              plot_width = NULL,
+                              plot_height = NULL,
+                              plot_dpi = 300) {
+  # Helper function to handle translation without messages
+  .translate_quiet <- function(text) {
+    if (target_language != source_language) {
+      suppressMessages(
+        translate_text(
+          text,
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+      )
+    } else {
+      text
+    }
+  }
+  
+  # Create directory if it doesn't exist
+  if (!dir.exists(plot_path)) {
+    dir_created <- dir.create(plot_path, recursive = TRUE, showWarnings = FALSE)
+    if (!dir_created) {
+      cli::cli_warn("Could not create directory: {plot_path}")
+      return(invisible(NULL))
+    }
+  }
+
+  # Translate terms for filename
+  # Translate "outlier plot" as two separate words for better translation
+  outlier_tr <- .translate_quiet("outlier") |>
+    tolower()
+  plot_tr <- .translate_quiet("plot") |>
+    tolower()
+  outlier_plot_tr <- paste(outlier_tr, plot_tr, sep = "_")
+
+  method_tr <- .translate_quiet(method_name) |>
+    tolower()
+
+  for_tr <- .translate_quiet("for")
+
+  by_tr <- .translate_quiet("by")
+
+  # Translate yearmon label
+  yearmon_label <- if (yearmon == "yearmon") {
+    .translate_quiet("year_month") |>
+      tolower() |>
+      gsub(" ", "_", x = _)
+  } else {
+    yearmon
+  }
+
+  adm_level_tr <- .translate_quiet(adm_level) |>
+    tolower() |>
+    gsub(" ", "_", x = _)
+
+  # Get year range
+  year_range <- if (!is.null(data$year) && length(unique(data$year)) > 1) {
+    glue::glue("{min(data$year, na.rm = TRUE)}-{max(data$year, na.rm = TRUE)}")
+  } else if (!is.null(data$year)) {
+    as.character(min(data$year, na.rm = TRUE))
+  } else {
+    format(Sys.Date(), "%Y")
+  }
+
+  # Construct filename
+  save_path <- glue::glue(
+    "{outlier_plot_tr}_{method_tr}_{for_tr}_{column}_{by_tr}_",
+    "{yearmon_label}_&_{adm_level_tr}_{year_range}_",
+    "v{format(Sys.Date(), '%Y-%m-%d')}.png"
+  )
+
+  full_path <- file.path(plot_path, save_path)
+
+  # Calculate dimensions based on facets or use provided values
+  n_facets <- length(unique(data[[adm_level]]))
+  if (is.null(plot_width)) {
+    width <- max(10, min(20, n_facets * 3))
+  } else {
+    width <- plot_width
+  }
+  
+  if (is.null(plot_height)) {
+    height <- max(8, min(15, ceiling(n_facets / 3) * 4))
+  } else {
+    height <- plot_height
+  }
+
+  # Try to save the plot
+  tryCatch({
+    ggplot2::ggsave(
+      filename = full_path,
+      plot = plot,
+      width = width,
+      height = height,
+      dpi = plot_dpi,
+      scale = plot_scale
+    )
+
+    # Close device to prevent warnings
+    if (grDevices::dev.cur() > 1) {
+      grDevices::dev.off()
+    }
+
+    # Compress if requested
+    if (compress_image && file.exists(full_path)) {
+      compress_png(
+        full_path,
+        verbosity = compression_verbose,
+        speed = compression_speed,
+        png_overwrite = image_overwrite
+      )
+    }
+
+    success_msg <- .translate_quiet("Plot saved to:")
+    # Show only relative path from current directory if it's a subdirectory
+    display_path <- full_path
+    if (startsWith(full_path, getwd())) {
+      display_path <- sub(paste0("^", getwd(), "/"), "", full_path)
+    } else if (grepl("03_outputs", full_path)) {
+      # Extract from 03_outputs onward if present
+      display_path <- sub(".*/(03_outputs/.*)", "\\1", full_path)
+    }
+    cli::cli_alert_success(paste(success_msg, display_path))
+  }, error = function(e) {
+    # Close device on error
+    if (grDevices::dev.cur() > 1) {
+      grDevices::dev.off()
+    }
+    cli::cli_warn("Failed to save plot to {full_path}: {e$message}")
+  })
+
+  invisible(full_path)
 }
