@@ -291,6 +291,32 @@ testthat::test_that("outlier_plot handles custom parameters", {
   testthat::expect_s3_class(result$iqr, "ggplot")
 })
 
+testthat::test_that("outlier_plot handles year_breaks parameter", {
+  test_data <- create_test_data()
+
+  # test with default year_breaks
+  result_default <- sntutils::outlier_plot(
+    data = test_data,
+    column = "confirmed_cases",
+    methods = "iqr"
+  )
+
+  # test with custom year_breaks
+  result_custom <- sntutils::outlier_plot(
+    data = test_data,
+    column = "confirmed_cases",
+    methods = "iqr",
+    year_breaks = 4
+  )
+
+  testthat::expect_s3_class(result_default$iqr, "ggplot")
+  testthat::expect_s3_class(result_custom$iqr, "ggplot")
+  
+  # both should be valid ggplot objects
+  testthat::expect_no_error(ggplot2::ggplot_build(result_default$iqr))
+  testthat::expect_no_error(ggplot2::ggplot_build(result_custom$iqr))
+})
+
 testthat::test_that("outlier_plot filters na and zero values", {
   test_data <- create_test_data()
 
