@@ -15,7 +15,21 @@ outlier_plot(
   year = "year",
   methods = c("iqr", "median", "mean"),
   iqr_multiplier = 1.5,
-  year_breaks = 2
+  year_breaks = 2,
+  compare_periods = FALSE,
+  target_language = "en",
+  source_language = "en",
+  lang_cache_path = tempdir(),
+  plot_path = NULL,
+  compress_image = FALSE,
+  image_overwrite = TRUE,
+  compression_speed = 1,
+  compression_verbose = TRUE,
+  plot_scale = 1,
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_dpi = 300,
+  show_plot = TRUE
 )
 }
 \arguments{
@@ -31,7 +45,7 @@ outlier_plot(
 
 \item{record_id}{Name of unique record ID column (default: "record_id")}
 
-\item{yearmon}{Name of year-month date column (default: "yearmon_date")}
+\item{yearmon}{Name of year-month date column (default: "yearmon")}
 
 \item{year}{Name of year column (default: "year")}
 
@@ -45,9 +59,53 @@ outlier_plot(
 
 \item{year_breaks}{Numeric value specifying the interval for x-axis breaks
 (default: 2). For example, 2 shows every 2nd year/month, 3 shows every 3rd.}
+
+\item{compare_periods}{Logical. If TRUE, creates comparison plots between
+different time periods (default: FALSE)}
+
+\item{target_language}{Character string specifying the language for plot
+labels. Defaults to "en" (English). Use ISO 639-1 language codes.}
+
+\item{source_language}{Source language code. If NULL, auto-detection is used.
+Defaults to NULL.}
+
+\item{lang_cache_path}{Path to directory for storing translation cache.
+Defaults to tempdir().}
+
+\item{plot_path}{Character string specifying the path where plots should
+be saved. If NULL (default), plots are not saved.}
+
+\item{compress_image}{Logical. If TRUE, will compress the saved plot.
+Defaults to FALSE}
+
+\item{image_overwrite}{Logical. If TRUE, will overwrite existing files.
+Defaults to TRUE.}
+
+\item{compression_speed}{Integer. Speed/quality trade-off from 1
+(brute-force) to 10 (fastest). Default is 1.}
+
+\item{compression_verbose}{Logical. Controls output verbosity.
+FALSE = silent, TRUE = verbose. Defaults to TRUE.}
+
+\item{plot_scale}{Numeric. Scaling factor for saved plots. Values > 1
+increase size, < 1 decrease size. Default is 1.}
+
+\item{plot_width}{Numeric. Width of saved plot in inches. If NULL (default),
+width is calculated based on number of facets.}
+
+\item{plot_height}{Numeric. Height of saved plot in inches. If NULL (default),
+height is calculated based on number of facets.}
+
+\item{plot_dpi}{Numeric. Resolution of saved plot in dots per inch.
+Default is 300.}
+
+\item{show_plot}{Logical. If FALSE, the plot is returned invisibly (not displayed).
+Useful when only saving plots. Default is TRUE.}
 }
 \value{
-A list of ggplot objects, one for each outlier detection method
+If a single method is specified, returns a ggplot object. If multiple
+methods are specified, returns a list of ggplot objects named by method.
+When show_plot is FALSE, returns invisibly.
 }
 \description{
 This function creates plots to visualize outliers in data using multiple

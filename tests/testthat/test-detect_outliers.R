@@ -251,10 +251,8 @@ testthat::test_that("outlier_plot handles single method", {
     methods = "iqr"
   )
 
-  testthat::expect_type(result, "list")
-  testthat::expect_equal(length(result), 1)
-  testthat::expect_true("iqr" %in% names(result))
-  testthat::expect_s3_class(result$iqr, "ggplot")
+  # Since only one method, should return a single plot object
+  testthat::expect_s3_class(result, "ggplot")
 })
 
 testthat::test_that("outlier_plot handles all methods", {
@@ -288,7 +286,7 @@ testthat::test_that("outlier_plot handles custom parameters", {
     iqr_multiplier = 2.0
   )
 
-  testthat::expect_s3_class(result$iqr, "ggplot")
+  testthat::expect_s3_class(result, "ggplot")
 })
 
 testthat::test_that("outlier_plot handles year_breaks parameter", {
@@ -309,12 +307,12 @@ testthat::test_that("outlier_plot handles year_breaks parameter", {
     year_breaks = 4
   )
 
-  testthat::expect_s3_class(result_default$iqr, "ggplot")
-  testthat::expect_s3_class(result_custom$iqr, "ggplot")
+  testthat::expect_s3_class(result_default, "ggplot")
+  testthat::expect_s3_class(result_custom, "ggplot")
   
   # both should be valid ggplot objects
-  testthat::expect_no_error(ggplot2::ggplot_build(result_default$iqr))
-  testthat::expect_no_error(ggplot2::ggplot_build(result_custom$iqr))
+  testthat::expect_no_error(ggplot2::ggplot_build(result_default))
+  testthat::expect_no_error(ggplot2::ggplot_build(result_custom))
 })
 
 testthat::test_that("outlier_plot filters na and zero values", {
@@ -339,7 +337,152 @@ testthat::test_that("outlier_plot filters na and zero values", {
     )
   })
 
-  testthat::expect_s3_class(result$iqr, "ggplot")
+  testthat::expect_s3_class(result, "ggplot")
+})
+
+testthat::test_that("outlier_plot saves plots when plot_path is provided", {
+  test_data <- create_test_data()
+  temp_dir <- tempfile("outlier_plots_")
+  dir.create(temp_dir)
+  on.exit(unlink(temp_dir, recursive = TRUE))
+  
+  # Test saving a single method plot
+  result <- sntutils::outlier_plot(
+    data = test_data,
+    column = "confirmed_cases",
+    methods = "iqr",
+    plot_path = temp_dir
+  )
+  
+  # Check that plot was saved
+  saved_files <- list.files(temp_dir, pattern = "\\.png$", full.names = TRUE)
+  testthat::expect_equal(length(saved_files), 1)
+  testthat::expect_true(file.exists(saved_files[1]))
+  
+  # Test saving multiple method plots
+  temp_dir2 <- tempfile("outlier_plots_multi_")
+  dir.create(temp_dir2)
+  on.exit(unlink(temp_dir2, recursive = TRUE), add = TRUE)
+  
+  result_multi <- sntutils::outlier_plot(
+    data = test_data,
+    column = "confirmed_cases",
+    methods = c("iqr", "median", "mean"),
+    plot_path = temp_dir2
+  )
+  
+  # Check that all plots were saved
+  saved_files2 <- list.files(temp_dir2, pattern = "\\.png$", full.names = TRUE)
+  testthat::expect_equal(length(saved_files2), 3)
+})
+
+testthat::test_that("outlier_plot handles translation parameters", {
+  test_data <- create_test_data()
+  
+  # Test with default English
+  result_en <- sntutils::outlier_plot(
+    data = test_data,
+    column = "confirmed_cases",
+    methods = "iqr",
+    target_language = "en"
+  )
+  
+  testthat::expect_s3_class(result_en, "ggplot")
+  
+  # Test plot builds without error
+  testthat::expect_no_error(ggplot2::ggplot_build(result_en))
+})
+
+testthat::test_that("outlier_plot handles compression parameters", {
+  test_data <- create_test_data()
+  temp_dir <- tempfile("outlier_compress_")
+  dir.create(temp_dir)
+  on.exit(unlink(temp_dir, recursive = TRUE))
+  
+  # Test with compression disabled
+  result <- sntutils::outlier_plot(
+    data = test_data,
+    column = "confirmed_cases",
+    methods = "iqr",
+    plot_path = temp_dir,
+    compress_image = FALSE,
+    compression_verbose = FALSE
+  )
+  
+  saved_files <- list.files(temp_dir, pattern = "\\.png$", full.names = TRUE)
+  testthat::expect_equal(length(saved_files), 1)
+})
+
+testthat::test_that("outlier_plot generates correct filename format", {
+  test_data <- create_test_data()
+  temp_dir <- tempfile("outlier_filename_")
+  dir.create(temp_dir)
+  on.exit(unlink(temp_dir, recursive = TRUE))
+  
+  result <- sntutils::outlier_plot(
+    data = test_data,
+    column = "confirmed_cases",
+    methods = "median",
+    plot_path = temp_dir
+  )
+  
+  saved_files <- list.files(temp_dir, full.names = FALSE)
+  testthat::expect_equal(length(saved_files), 1)
+  
+  # Check filename contains expected components
+  filename <- saved_files[1]
+  testthat::expect_match(filename, "outlier_plot")
+  testthat::expect_match(filename, "median")
+  testthat::expect_match(filename, "confirmed_cases")
+  testthat::expect_match(filename, "year_month")
+  testthat::expect_match(filename, "v[0-9]{4}-[0-9]{2}-[0-9]{2}\\.png$") # Check for v prefix before date
+})
+
+testthat::test_that("outlier_plot handles custom plot dimensions", {
+  test_data <- create_test_data()
+  temp_dir <- tempfile("outlier_dimensions_")
+  dir.create(temp_dir)
+  on.exit(unlink(temp_dir, recursive = TRUE))
+  
+  # Test with custom dimensions
+  result <- sntutils::outlier_plot(
+    data = test_data,
+    column = "confirmed_cases",
+    methods = "iqr",
+    plot_path = temp_dir,
+    plot_scale = 1.5,
+    plot_width = 15,
+    plot_height = 10,
+    plot_dpi = 600
+  )
+  
+  # Check that plot was saved
+  saved_files <- list.files(temp_dir, pattern = "\\.png$", full.names = TRUE)
+  testthat::expect_equal(length(saved_files), 1)
+  testthat::expect_true(file.exists(saved_files[1]))
+  
+  # File should exist and be larger due to higher DPI and scale
+  file_size <- file.info(saved_files[1])$size
+  testthat::expect_gt(file_size, 0)
+})
+
+testthat::test_that("outlier_plot uses automatic dimensions when not specified", {
+  test_data <- create_test_data()
+  temp_dir <- tempfile("outlier_auto_dim_")
+  dir.create(temp_dir)
+  on.exit(unlink(temp_dir, recursive = TRUE))
+  
+  # Test without specifying dimensions
+  result <- sntutils::outlier_plot(
+    data = test_data,
+    column = "confirmed_cases",
+    methods = "mean",
+    plot_path = temp_dir
+  )
+  
+  saved_files <- list.files(temp_dir, pattern = "\\.png$", full.names = TRUE)
+  testthat::expect_equal(length(saved_files), 1)
+  testthat::expect_true(file.exists(saved_files[1]))
 })
 
 # edge cases and error handling ----
