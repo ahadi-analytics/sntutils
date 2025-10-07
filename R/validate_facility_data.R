@@ -934,6 +934,18 @@ validate_facility_data <- function(
     translated
   }
 
+  # helper to convert snake_case to Sentence case
+  snake_to_sentence <- function(x) {
+    # Replace underscores with spaces
+    x <- base::gsub("_", " ", x)
+    # Replace dots with spaces  
+    x <- base::gsub("\\.", " ", x)
+    # Capitalize first letter
+    x <- base::paste0(base::toupper(base::substr(x, 1, 1)), 
+                      base::substr(x, 2, base::nchar(x)))
+    x
+  }
+
   # copy to modify
   out <- results
 
@@ -943,18 +955,101 @@ validate_facility_data <- function(
   # translate Summary headers and "check" values
   sum_name <- tr("Summary")
   if (!base::is.null(out[[sum_name]])) {
-    base::names(out[[sum_name]]) <- base::sapply(base::names(out[[sum_name]]), tr)
+    # Convert column names to sentence case before translation
+    col_names <- base::names(out[[sum_name]])
+    col_names <- base::sapply(col_names, snake_to_sentence)
+    # Translate column names and replace dots with spaces
+    translated_names <- base::sapply(col_names, tr)
+    translated_names <- base::gsub("\\.", " ", translated_names)
+    base::names(out[[sum_name]]) <- translated_names
+    
+    # Translate check values
     out[[sum_name]][[1]] <- base::sapply(out[[sum_name]][[1]], tr)
+    
+    # Translate specific terms in issues_found and total_records columns
+    issues_col <- base::which(base::grepl("issues", base::tolower(base::names(out[[sum_name]]))))
+    if (base::length(issues_col) > 0) {
+      out[[sum_name]][[issues_col]] <- base::sapply(out[[sum_name]][[issues_col]], function(x) {
+        # Translate column(s), set(s), pair(s)
+        x <- base::gsub("column\\(s\\)", tr("column(s)"), x)
+        x <- base::gsub("set\\(s\\)", tr("set(s)"), x)
+        x <- base::gsub("pair\\(s\\)", tr("pair(s)"), x)
+        x
+      })
+    }
+    
+    total_col <- base::which(base::grepl("total", base::tolower(base::names(out[[sum_name]]))))
+    if (base::length(total_col) > 0) {
+      out[[sum_name]][[total_col]] <- base::sapply(out[[sum_name]][[total_col]], function(x) {
+        # Translate column(s), set(s), pair(s)
+        x <- base::gsub("column\\(s\\)", tr("column(s)"), x)
+        x <- base::gsub("set\\(s\\)", tr("set(s)"), x)
+        x <- base::gsub("pair\\(s\\)", tr("pair(s)"), x)
+        x
+      })
+    }
   }
 
   # translate Missing values headers
   mv_name <- tr("Missing values")
   if (!base::is.null(out[[mv_name]])) {
-    base::names(out[[mv_name]]) <- base::sapply(base::names(out[[mv_name]]), tr)
+    # Convert column names to sentence case before translation
+    col_names <- base::names(out[[mv_name]])
+    col_names <- base::sapply(col_names, snake_to_sentence)
+    # Translate column names and replace dots with spaces
+    translated_names <- base::sapply(col_names, tr)
+    translated_names <- base::gsub("\\.", " ", translated_names)
+    base::names(out[[mv_name]]) <- translated_names
+    
+    # Translate Core ID and Indicator in column_type
+    type_col <- base::which(base::grepl("type", base::tolower(base::names(out[[mv_name]]))))
+    if (base::length(type_col) > 0) {
+      out[[mv_name]][[type_col]] <- base::sapply(out[[mv_name]][[type_col]], function(x) {
+        if (x == "Core ID") return(tr("Core ID"))
+        if (x == "Indicator") return(tr("Indicator"))
+        return(x)
+      })
+    }
+  }
+
+  # Filter out empty tabs (except Summary)
+  filtered_out <- base::list()
+  
+  for (nm in base::names(out)) {
+    # Always keep Summary
+    if (nm == tr("Summary") || nm == "Summary") {
+      filtered_out[[nm]] <- out[[nm]]
+      next
+    }
+    
+    # Check if tab has content
+    content <- out[[nm]]
+    
+    if (!base::is.null(content)) {
+      # For data frames/tibbles, check if they have rows
+      if (base::is.data.frame(content) && base::nrow(content) > 0) {
+        filtered_out[[nm]] <- content
+      }
+      # For lists (like Consistency failures), check if any element has content
+      else if (base::is.list(content) && !base::is.data.frame(content)) {
+        has_content <- FALSE
+        for (item in content) {
+          if (!base::is.null(item) && 
+              ((base::is.data.frame(item) && base::nrow(item) > 0) ||
+               (base::is.list(item) && base::length(item) > 0))) {
+            has_content <- TRUE
+            break
+          }
+        }
+        if (has_content) {
+          filtered_out[[nm]] <- content
+        }
+      }
+    }
   }
 
   # utf8 enforce
-  .ensure_utf8(out)
+  .ensure_utf8(filtered_out)
 }
 
 #' Ensure UTF-8 in character data recursively
