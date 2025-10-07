@@ -178,7 +178,8 @@ detect_outliers <- function(
 #' @param year_breaks Numeric value specifying the interval for x-axis breaks
 #'   (default: 2). For example, 2 shows every 2nd year/month, 3 shows every 3rd.
 #'
-#' @return A list of ggplot objects, one for each outlier detection method
+#' @return If a single method is specified, returns a ggplot object. If multiple
+#'   methods are specified, returns a list of ggplot objects named by method.
 #'
 #' @details
 #' The function creates scatter plots showing outliers detected by different
@@ -276,7 +277,7 @@ outlier_plot <- function(
       glue::glue(
         "Method: {method_name2}\n",
         "There were {outliers_n}/",
-        "{total_outliers} outliers detected for the `{column}` variable"
+        "{total_outliers} outliers detected for the {column} variable"
       )
     )
 
@@ -293,7 +294,7 @@ outlier_plot <- function(
       ) +
       ggplot2::labs(
         title = glue::glue(
-          "{method_name2} Outlier Detection for <b>`{column}`</b>"),
+          "{method_name2} Outlier Detection for <b>{column}</b>"),
         subtitle = glue::glue(
           "There were {outliers_n}/{total_outliers}",
           "<b style='color:red;font-weight:bold'> outliers</b> detected"
@@ -342,5 +343,10 @@ outlier_plot <- function(
     res[[method_name]] <- p
   }
 
-  return(res)
+  # Return single plot if only one method, otherwise return list
+  if (length(methods) == 1) {
+    return(res[[1]])
+  } else {
+    return(res)
+  }
 }
