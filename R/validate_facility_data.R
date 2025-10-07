@@ -967,10 +967,10 @@ validate_facility_data <- function(
     out[[sum_name]][[1]] <- base::sapply(out[[sum_name]][[1]], tr)
     
     # Translate specific terms in issues_found and total_records columns
-    issues_col <- base::which(base::grepl("issues", base::tolower(base::names(out[[sum_name]]))))
-    if (base::length(issues_col) > 0) {
-      out[[sum_name]][[issues_col]] <- base::sapply(out[[sum_name]][[issues_col]], function(x) {
-        # Translate column(s), set(s), pair(s)
+    # Look for column by position (2nd column is issues_found, 3rd is total_records)
+    if (base::ncol(out[[sum_name]]) >= 2) {
+      # Translate column(s), set(s), pair(s) in issues_found column
+      out[[sum_name]][[2]] <- base::sapply(out[[sum_name]][[2]], function(x) {
         x <- base::gsub("column\\(s\\)", tr("column(s)"), x)
         x <- base::gsub("set\\(s\\)", tr("set(s)"), x)
         x <- base::gsub("pair\\(s\\)", tr("pair(s)"), x)
@@ -978,10 +978,9 @@ validate_facility_data <- function(
       })
     }
     
-    total_col <- base::which(base::grepl("total", base::tolower(base::names(out[[sum_name]]))))
-    if (base::length(total_col) > 0) {
-      out[[sum_name]][[total_col]] <- base::sapply(out[[sum_name]][[total_col]], function(x) {
-        # Translate column(s), set(s), pair(s)
+    if (base::ncol(out[[sum_name]]) >= 3) {
+      # Translate column(s), set(s), pair(s) in total_records column
+      out[[sum_name]][[3]] <- base::sapply(out[[sum_name]][[3]], function(x) {
         x <- base::gsub("column\\(s\\)", tr("column(s)"), x)
         x <- base::gsub("set\\(s\\)", tr("set(s)"), x)
         x <- base::gsub("pair\\(s\\)", tr("pair(s)"), x)

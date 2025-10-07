@@ -1235,7 +1235,6 @@ create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
     ggplot2::guides(
       fill = ggplot2::guide_colorbar(
         title.position = "top",
-        nrow = 1,
         label.position = "bottom",
         direction = "horizontal",
         barheight = ggplot2::unit(0.3, "cm"),
