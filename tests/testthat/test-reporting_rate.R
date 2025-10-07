@@ -528,19 +528,10 @@ testthat::test_that("reporting_rate_plot validates inputs correctly", {
     regexp = "Only one variable can be used"
   )
 
-  # Test save_plot requires plot_path
-  testthat::expect_error(
-    reporting_rate_plot(
-      data = hf_data,
-      x_var = "month",
-      vars_of_interest = "malaria",
-      save_plot = TRUE
-    ),
-    regexp = "plot_path"
-  )
 })
 
 testthat::test_that("reporting_rate_plot saves plots correctly", {
+  # Note: save_plot parameter removed - plots save when plot_path provided
   # Skip if not interactive or in CI environment
   testthat::skip_if(!interactive() && !identical(Sys.getenv("CI"), "true"))
   # Skip if gtranslate not available
@@ -569,7 +560,6 @@ testthat::test_that("reporting_rate_plot saves plots correctly", {
       data = hf_data,
       x_var = "month",
       vars_of_interest = "malaria",
-      save_plot = TRUE,
       plot_path = temp_dir,
       compress_image = FALSE
     )

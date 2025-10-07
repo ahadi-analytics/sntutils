@@ -16,7 +16,6 @@ reporting_rate_plot(
   target_language = "en",
   source_language = "en",
   lang_cache_path = tempdir(),
-  save_plot = FALSE,
   plot_path = NULL,
   compress_image = FALSE,
   image_overwrite = TRUE,
@@ -60,11 +59,8 @@ Defaults to NULL.}
 \item{lang_cache_path}{Path to directory for storing translation cache.
 Defaults to tempdir().}
 
-\item{save_plot}{A logical value. If TRUE, the plot will be saved to the
-specified path. Defaults to FALSE.}
-
 \item{plot_path}{A character string specifying the path where the plot should
-be saved. Required if save_plot is TRUE.}
+be saved. If NULL (default), plot is not saved.}
 
 \item{compress_image}{Logical. If TRUE, will compress the saved plot.
 Defaults to FALSE}

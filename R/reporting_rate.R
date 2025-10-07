@@ -493,10 +493,8 @@ prepare_plot_data <- function(
 #'   Defaults to NULL.
 #' @param lang_cache_path Path to directory for storing translation cache.
 #'   Defaults to tempdir().
-#' @param save_plot A logical value. If TRUE, the plot will be saved to the
-#'   specified path. Defaults to FALSE.
 #' @param plot_path A character string specifying the path where the plot should
-#'   be saved. Required if save_plot is TRUE.
+#'   be saved. If NULL (default), plot is not saved.
 #' @param compress_image Logical. If TRUE, will compress the saved plot.
 #'   Defaults to FALSE
 #' @param image_overwrite Logical. If TRUE, will overwrite existing files.
@@ -505,9 +503,19 @@ prepare_plot_data <- function(
 #'   (brute-force) to 10 (fastest). Default is 1.
 #' @param compression_verbose Logical. Controls output verbosity.
 #'   FALSE = silent, TRUE = verbose. Defaults to TRUE.
+#' @param plot_scale Numeric. Scaling factor for saved plots. Values > 1 
+#'   increase size, < 1 decrease size. Default is 1.
+#' @param plot_width Numeric. Width of saved plot in inches. If NULL (default),
+#'   width is calculated automatically based on data.
+#' @param plot_height Numeric. Height of saved plot in inches. If NULL (default),
+#'   height is calculated automatically based on data.
+#' @param plot_dpi Numeric. Resolution of saved plot in dots per inch. 
+#'   Default is 300.
+#' @param show_plot Logical. If FALSE, the plot is returned invisibly (not displayed).
+#'   Useful when only saving plots. Default is TRUE.
 #' @param y_axis_label Optional character string for y-axis label. If NULL,
 #'   defaults to y_var name or "Variable" for variable scenario.
-#' @return A ggplot2 object
+#' @return A ggplot2 object. When show_plot is FALSE, returns invisibly.
 #' @examples
 #' # Sample data
 #' hf_data <- data.frame(
@@ -562,12 +570,16 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 target_language = "en",
                                 source_language = "en",
                                 lang_cache_path = tempdir(),
-                                save_plot = FALSE,
                                 plot_path = NULL,
                                 compress_image = FALSE,
                                 image_overwrite = TRUE,
                                 compression_speed = 1,
                                 compression_verbose = TRUE,
+                                plot_scale = 1,
+                                plot_width = NULL,
+                                plot_height = NULL,
+                                plot_dpi = 300,
+                                show_plot = TRUE,
                                 y_axis_label = NULL) {
   # Input validation
   if (is.null(x_var) || !x_var %in% names(data)) {
@@ -577,12 +589,6 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     ))
   }
 
-  if (save_plot && is.null(plot_path)) {
-    cli::cli_abort(c(
-      "!" = "When 'save_plot' is TRUE, 'plot_path' must be provided.",
-      "i" = "Run `rlang::last_trace()` to see where the error occurred."
-    ))
-  }
 
   # Determine the scenario based on input parameters
   scenario <- if (!is.null(hf_col)) {
@@ -701,7 +707,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
   )
 
   # Save plot if requested
-  if (save_plot) {
+  if (!is.null(plot_path)) {
     compression_options <- list(
       compress_image = compress_image,
       compression_verbose = compression_verbose,
@@ -723,11 +729,20 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       data = data,
       compression_options = compression_options,
       use_reprate = use_reprate,
-      save_title_prefix = save_title_prefix
+      save_title_prefix = save_title_prefix,
+      plot_scale = plot_scale,
+      plot_width = plot_width,
+      plot_height = plot_height,
+      plot_dpi = plot_dpi
     )
   }
 
-  plot
+  # Return invisibly if show_plot is FALSE
+  if (show_plot) {
+    return(plot)
+  } else {
+    return(invisible(plot))
+  }
 }
 
 #' Calculate and visualize reporting rates
@@ -876,7 +891,11 @@ save_single_plot <- function(plot, plot_data, plot_path,
                              source_language = "en",
                              lang_cache_path = tempdir(),
                              data, compression_options,
-                             use_reprate, save_title_prefix) {
+                             use_reprate, save_title_prefix,
+                             plot_scale = 1,
+                             plot_width = NULL,
+                             plot_height = NULL,
+                             plot_dpi = 300) {
   # Create directory if it doesn't exist
   if (!dir.exists(plot_path)) {
     dir_created <- dir.create(plot_path,
@@ -935,13 +954,20 @@ save_single_plot <- function(plot, plot_data, plot_path,
     "{translated_terms$prefix}_{translated_terms$for_word}_",
     "{vars_of_interest_str}_{translated_terms$by_word}_",
     "{tolower(translated_terms$x_title)}{y_var_part}_",
-    "{translated_terms$year_range}_{format(Sys.Date(), '%Y-%m-%d')}.png"
+    "{translated_terms$year_range}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
   )
 
   full_path <- file.path(plot_path, save_path)
 
-  # Calculate dimensions
-  dims <- calculate_plot_dimensions(plot_data, x_var, y_var)
+  # Calculate dimensions or use provided values
+  if (is.null(plot_width) || is.null(plot_height)) {
+    dims <- calculate_plot_dimensions(plot_data, x_var, y_var)
+    width <- if (is.null(plot_width)) dims$width else plot_width
+    height <- if (is.null(plot_height)) dims$height else plot_height
+  } else {
+    width <- plot_width
+    height <- plot_height
+  }
 
   # Try to save the plot
   tryCatch(
@@ -949,9 +975,10 @@ save_single_plot <- function(plot, plot_data, plot_path,
       ggplot2::ggsave(
         filename = full_path,
         plot = plot,
-        width = dims$width,
-        height = dims$height,
-        dpi = 300
+        width = width,
+        height = height,
+        dpi = plot_dpi,
+        scale = plot_scale
       )
 
       # Close device to prevent warnings
@@ -975,7 +1002,15 @@ save_single_plot <- function(plot, plot_data, plot_path,
         source_language = source_language,
         cache_path = lang_cache_path
       )
-      cli::cli_alert_success(paste(success_msg, full_path))
+      # Show only relative path from current directory if it's a subdirectory
+      display_path <- full_path
+      if (startsWith(full_path, getwd())) {
+        display_path <- sub(paste0("^", getwd(), "/"), "", full_path)
+      } else if (grepl("03_outputs", full_path)) {
+        # Extract from 03_outputs onward if present
+        display_path <- sub(".*/(03_outputs/.*)", "\\1", full_path)
+      }
+      cli::cli_alert_success(paste(success_msg, display_path))
     },
     error = function(e) {
       # Close device on error
