@@ -120,6 +120,12 @@ globalVariables(
     "n_missing",
     "total",
     "percent_missing",
-    "column_type"
+    "column_type",
+    "activeness_category",
+    "has_activeness_data",
+    "has_data",
+    "periods_with_data",
+    "reporting_rate",
+    "total_periods"
   )
 )

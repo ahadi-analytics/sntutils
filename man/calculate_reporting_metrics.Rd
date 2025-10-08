@@ -141,7 +141,7 @@ If a district has 10 facilities where:
 Then:
 \itemize{
 \item Unweighted reporting rate = 7/10 = 70\%
-\item Weighted reporting rate ≈ 84\% (reflecting that most patient volume is covered)
+\item Weighted reporting rate \u2248 84\% (reflecting that most patient volume is covered)
 }
 }
 }
@@ -168,7 +168,7 @@ hf_data <- data.frame(
 )
 
 # Scenario 1: Proportion of active facilities reporting
-# any data
+# any data
 calculate_reporting_metrics(
   data = hf_data,
   vars_of_interest = c("conf"),

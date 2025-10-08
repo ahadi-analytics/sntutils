@@ -230,7 +230,7 @@ facility_reporting_plot <- function(
   compression_speed = 1,
   compression_verbose = TRUE,
   plot_scale = 0.75,
-  plot_width = 20,
+  plot_width = 22,
   plot_height = 15,
   plot_dpi = 300,
   show_plot = TRUE,
@@ -579,6 +579,13 @@ facility_reporting_plot <- function(
   }
 
   if (!base::is.null(plot_path)) {
+    make_slug <- function(text) {
+      cleaned <- tolower(text)
+      cleaned <- gsub("[^[:alnum:]]+", "_", cleaned)
+      cleaned <- gsub("_+", "_", cleaned)
+      gsub("^_+|_+$", "", cleaned)
+    }
+
     if (!fs::dir_exists(plot_path)) {
       ok <- try(fs::dir_create(plot_path, recurse = TRUE), silent = TRUE)
       if (inherits(ok, "try-error") || !fs::dir_exists(plot_path)) {
@@ -586,10 +593,40 @@ facility_reporting_plot <- function(
       }
     }
 
-    # Use the provided dimensions (no auto-calculation)
+    file_start <- format(base::min(data[[date_col]], na.rm = TRUE), "%Y-%m")
+    file_end <- format(base::max(data[[date_col]], na.rm = TRUE), "%Y-%m")
+    connector_word <- if (should_translate) {
+      translate_text(
+        "to",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+    } else {
+      "to"
+    }
+
+    date_range_text <- if (identical(file_start, file_end)) {
+      file_start
+    } else {
+      glue::glue("{file_start} {connector_word} {file_end}")
+    }
+
+    base_label <- "Health facility activeness status"
+    if (should_translate) {
+      base_label <- translate_text(
+        base_label,
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+    }
+
+    file_base <- make_slug(base_label)
+    date_range_slug <- make_slug(date_range_text)
 
     file_name <- glue::glue(
-      "facility_reporting_{palette}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
+      "{file_base}_{date_range_slug}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
     )
     file_path <- fs::path(plot_path, file_name)
 

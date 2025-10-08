@@ -11,6 +11,7 @@ variables_plot(
   fill_var,
   fill_label,
   title_prefix,
+  subtitle = NULL,
   common_elements,
   target_language = "en",
   source_language = "en",
@@ -30,6 +31,8 @@ variables_plot(
 
 \item{title_prefix}{Title prefix based on whether showing reporting or
 missing rates}
+
+\item{subtitle}{Optional subtitle text to display under the title. Default NULL.}
 
 \item{common_elements}{Common ggplot elements to apply to all plots}
 
