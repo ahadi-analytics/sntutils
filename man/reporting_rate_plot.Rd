@@ -10,17 +10,27 @@ reporting_rate_plot(
   y_var = NULL,
   vars_of_interest = NULL,
   hf_col = NULL,
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
   use_reprate = TRUE,
   full_range = TRUE,
+  weighting = FALSE,
+  weight_var = NULL,
+  weight_window = 12,
+  exclude_current_x = TRUE,
+  cold_start = "median_within_y",
   target_language = "en",
   source_language = "en",
   lang_cache_path = tempdir(),
-  save_plot = FALSE,
   plot_path = NULL,
-  compress_image = TRUE,
+  compress_image = FALSE,
   image_overwrite = TRUE,
   compression_speed = 1,
   compression_verbose = TRUE,
+  plot_scale = 1,
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_dpi = 300,
+  show_plot = TRUE,
   y_axis_label = NULL
 )
 }
@@ -38,6 +48,10 @@ to be visualized in 'data'. If NULL, all variables except 'x_var' and
 
 \item{hf_col}{Facility variable name if needed}
 
+\item{key_indicators}{Optional. Character vector of indicators used to define
+facility activity in scenario 1. Defaults to
+\code{c("allout", "conf", "test", "treat", "pres")}.}
+
 \item{use_reprate}{A logical value. If TRUE, the reporting rate is
 visualized; otherwise, the proportion of missing data is visualized.
 Defaults to TRUE}
@@ -45,6 +59,21 @@ Defaults to TRUE}
 \item{full_range}{A logical value. If TRUE, the fill scale will use the full
 range from 0 to 100. If FALSE, the fill scale will use the range of values
 present in the data. Defaults to TRUE.}
+
+\item{weighting}{Logical. If TRUE, calculate weighted reporting rates based on
+facility size. Defaults to FALSE.}
+
+\item{weight_var}{Character. Column name containing the weight variable
+(e.g., "allout" for outpatient volume). Required if weighting = TRUE.}
+
+\item{weight_window}{Integer. Number of periods for rolling weight calculation.
+Defaults to 12.}
+
+\item{exclude_current_x}{Logical. If TRUE, exclude current period from weight
+calculation. Defaults to TRUE.}
+
+\item{cold_start}{Character. Method for handling initial periods:
+"median_within_y" (default) or "median_global".}
 
 \item{target_language}{A character string specifying the language for plot
 labels. Defaults to "en" (English). Use ISO 639-1 language codes.}
@@ -55,14 +84,11 @@ Defaults to NULL.}
 \item{lang_cache_path}{Path to directory for storing translation cache.
 Defaults to tempdir().}
 
-\item{save_plot}{A logical value. If TRUE, the plot will be saved to the
-specified path. Defaults to FALSE.}
-
 \item{plot_path}{A character string specifying the path where the plot should
-be saved. Required if save_plot is TRUE.}
+be saved. If NULL (default), plot is not saved.}
 
 \item{compress_image}{Logical. If TRUE, will compress the saved plot.
-Defaults to TRUE.}
+Defaults to FALSE}
 
 \item{image_overwrite}{Logical. If TRUE, will overwrite existing files.
 Defaults to TRUE.}
@@ -73,11 +99,26 @@ Defaults to TRUE.}
 \item{compression_verbose}{Logical. Controls output verbosity.
 FALSE = silent, TRUE = verbose. Defaults to TRUE.}
 
+\item{plot_scale}{Numeric. Scaling factor for saved plots. Values > 1
+increase size, < 1 decrease size. Default is 1.}
+
+\item{plot_width}{Numeric. Width of saved plot in inches. If NULL (default),
+width is calculated automatically based on data.}
+
+\item{plot_height}{Numeric. Height of saved plot in inches. If NULL (default),
+height is calculated automatically based on data.}
+
+\item{plot_dpi}{Numeric. Resolution of saved plot in dots per inch.
+Default is 300.}
+
+\item{show_plot}{Logical. If FALSE, the plot is returned invisibly (not displayed).
+Useful when only saving plots. Default is TRUE.}
+
 \item{y_axis_label}{Optional character string for y-axis label. If NULL,
 defaults to y_var name or "Variable" for variable scenario.}
 }
 \value{
-A ggplot2 object
+A ggplot2 object. When show_plot is FALSE, returns invisibly.
 }
 \description{
 This function visualizes the proportion of missing data or reporting rate for

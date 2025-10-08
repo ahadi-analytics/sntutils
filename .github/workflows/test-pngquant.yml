@@ -1,0 +1,85 @@
+name: test-pngquant-download
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/test-pngquant.yml"
+      - "R/**"
+      - "DESCRIPTION"
+      - "NAMESPACE"
+
+jobs:
+  pngquant-test:
+    name: ${{ matrix.os }} | pngquant test (repo functions)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix: { os: [windows-latest, macos-latest, ubuntu-latest] }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@v2
+        with: { r-version: "release" }
+
+      - name: Install R dependencies (cli)
+        uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: any::cli
+          needs: check
+
+      # OS package managers for non-Windows
+      - name: Install pngquant on Ubuntu (apt)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pngquant
+
+      - name: Install pngquant on macOS (brew)
+        if: runner.os == 'macOS'
+        run: brew install pngquant
+
+      - name: Run pngquant test using repo functions
+        shell: Rscript {0}
+        run: |
+          # source your R/ functions (ensure_pngquant, find_pngquant, compress_png, etc.)
+          r_files <- list.files("R", pattern = "\\.R$", full.names = TRUE)
+          invisible(lapply(r_files, function(f) sys.source(f, envir = .GlobalEnv)))
+
+          if (!exists("find_pngquant", mode = "function")) stop("find_pngquant() not found")
+          if (!exists("compress_png", mode = "function"))  stop("compress_png() not found")
+
+          # resolve pngquant via your logic (Windows auto-zip; others on PATH)
+          exe <- find_pngquant(verbosity = TRUE)
+          if (is.null(exe) || !nzchar(exe) || !file.exists(exe)) {
+            cli::cli_abort("pngquant was not resolved by find_pngquant()")
+          }
+
+          # create a PNG to compress
+          png_path <- file.path(tempdir(), "gha_test_plot.png")
+          grDevices::png(png_path, width = 1200, height = 800, res = 144)
+          oldpar <- graphics::par(mar = c(4, 4, 1, 1)); on.exit(graphics::par(oldpar), add = TRUE)
+          graphics::plot(1:100, (1:100)^0.5, type = "l")
+          grDevices::dev.off()
+          if (!file.exists(png_path)) cli::cli_abort("Failed to create test PNG.")
+
+          # run your end-to-end compressor on the single file
+          init <- file.info(png_path)$size
+          res  <- compress_png(path = png_path, png_overwrite = TRUE, speed = 3, verbosity = TRUE)
+
+          # re-check size after your function runs
+          final <- file.info(png_path)$size
+          saved <- init - final
+          pct   <- round(100 * saved / init, 2)
+
+          cli::cli_h2("Compression result (repo functions)")
+          cli::cli_alert_info(paste("Initial:", init, "bytes"))
+          cli::cli_alert_info(paste("Final  :", final, "bytes"))
+          cli::cli_alert_success(paste0("Saved :", saved, " bytes (", pct, "%)"))
+
+          # assertions: file exists and did not grow
+          if (!file.exists(png_path)) cli::cli_abort("Output PNG missing.")
+          if (final > init) cli::cli_abort("Compressed file is larger than the original.")
