@@ -618,12 +618,12 @@ testthat::test_that("reporting_rate_plot handles language parameter", {
 
   testthat::expect_equal(
     p2$labels$title,
-    "Taux De Déclaration Du Paludisme Par Mois et District"
+    "Taux de rapport du paludisme par mois et district"
   )
 
   testthat::expect_equal(
     p2$labels$fill,
-    "Taux de rapport (%)"
+    "Taux de Rapport (%)"
   )
 
   testthat::expect_equal(
