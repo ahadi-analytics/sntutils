@@ -1,6 +1,15 @@
 #' Validate health facility data comprehensively
+#' Global variables for R CMD check
 #'
-#' @description
+#' @name global_vars
+#' @keywords internal
+#' @noRd
+utils::globalVariables(c(
+  "has_activeness_data", "periods_with_data", "total_periods",
+  "activeness_category", "reporting_rate", "has_data"
+))
+
+#'
 #' Orchestrates a suite of validation checks on routine HF data. It standardizes
 #' column resolution, selects indicators, runs missing/duplicate/future/logic/
 #' outlier checks, compiles a summary, and optionally translates and saves.
@@ -24,6 +33,12 @@
 #' @param check_future_dates logical. Default TRUE.
 #' @param check_duplicates logical. Default TRUE.
 #' @param check_outliers logical. Default TRUE.
+#' @param check_facility_activeness logical. Check facility activeness. Default TRUE.
+#' @param hf_name_col character. Facility name column. Default "hf".
+#' @param hf_uid_col character. Facility UID column. Default "hf_uid".
+#' @param key_indicators character|NULL. Key indicators for activeness check.
+#'   If NULL, uses all indicators. Default NULL.
+#' @param min_reporting_rate numeric. Minimum reporting rate threshold. Default 0.5.
 #' @param outlier_methods character. Any of c("iqr","median","mean").
 #' @param iqr_multiplier numeric. Default 1.5.
 #' @param save_results logical. Save outputs. Default FALSE.
@@ -40,17 +55,18 @@
 #'
 #' @return invisible named list with elements:
 #'   Summary, Missing values, Duplicate records, Future dates,
-#'   Consistency failures, Consistency details, Outliers
+#'   Consistency failures, Consistency details, Outliers,
+#'   Facility activeness over time, Facility activeness summary
 #'
 #' @examples
 #' \dontrun{
-#' validate_facility_data(
+#' validate_routine_hf_data(
 #'   data = dhis2_data,
 #'   indicators = c("conf","test","susp","maltreat")
 #' )
 #' }
 #' @export
-validate_facility_data <- function(
+validate_routine_hf_data <- function(
   data,
   id_col = "record_id",
   facility_col = "hf_id",
@@ -66,11 +82,16 @@ validate_facility_data <- function(
   check_future_dates = TRUE,
   check_duplicates = TRUE,
   check_outliers = TRUE,
+  check_facility_activeness = TRUE,
+  hf_name_col = "hf",
+  hf_uid_col = "hf_uid",
+  key_indicators = NULL,
+  min_reporting_rate = 0.5,
   outlier_methods = c("iqr", "median", "mean"),
   iqr_multiplier = 1.5,
   save_results = FALSE,
   output_path = NULL,
-  output_name = "validation_routine_data_results",
+  output_name = "validation_of_hf_routine_data",
   output_formats = c("xlsx", "rds"),
   verbose = TRUE,
   target_language = "en",
@@ -134,7 +155,9 @@ validate_facility_data <- function(
     "Future dates" = NULL,
     "Consistency failures" = base::list(),
     "Consistency details" = NULL,
-    "Outliers" = NULL
+    "Outliers" = NULL,
+    "HF activeness detail" = NULL,
+    "HF activeness summary" = NULL
   )
 
   # check 1: missing values
@@ -197,6 +220,27 @@ validate_facility_data <- function(
     )
     results[["Outliers"]] <- out$combined
     results$Summary <- dplyr::bind_rows(results$Summary, out$summary_row)
+  }
+
+  # check 6: facility activeness
+  if (check_facility_activeness) {
+    act <- .check_facility_activeness(
+      data = data,
+      id_col = cols$id_col,
+      facility_col = cols$facility_col,
+      date_col = cols$date_col,
+      hf_name_col = hf_name_col,
+      hf_uid_col = hf_uid_col,
+      yearmon_col = cols$yearmon_col,
+      admin_cols = cols$admin_cols,
+      indicators = indicators_use,
+      key_indicators = key_indicators,
+      min_reporting_rate = min_reporting_rate,
+      verbose = verbose
+    )
+    results[["HF activeness detail"]] <- act$activeness_over_time
+    results[["HF activeness summary"]] <- act$activeness_summary
+    results$Summary <- dplyr::bind_rows(results$Summary, act$summary_row)
   }
 
   # final summary print
@@ -588,8 +632,7 @@ validate_facility_data <- function(
     cli::cli_h2("Check 2: Duplicate Records")
     if (n_dup_rows > 0) {
       cli::cli_alert_warning(
-        "{sntutils::big_mark(n_dup_rows)} duplicate record(s) found across ",
-        "{sntutils::big_mark(n_dup_ids)} unique ID(s)"
+        "{sntutils::big_mark(n_dup_rows)} duplicate record(s) found across {sntutils::big_mark(n_dup_ids)} unique ID(s)"
       )
     } else {
       cli::cli_alert_success("No duplicate records found")
@@ -666,6 +709,9 @@ validate_facility_data <- function(
 #' @keywords internal
 #' @noRd
 .check_consistency <- function(data, core_id_cols, pairs, verbose) {
+  # print header first
+  if (verbose) cli::cli_h2("Check 4: Logical Consistency")
+
   # counters
   pairs_with_fail <- 0L
   total_pair_types <- 0L
@@ -749,8 +795,6 @@ validate_facility_data <- function(
   }
 
   # summary row
-  if (verbose) cli::cli_h2("Check 4: Logical Consistency")
-
   row <- tibble::tibble(
     check = "Logical consistency",
     issues_found = base::paste(sntutils::big_mark(pairs_with_fail), "pair(s)"),
@@ -1109,5 +1153,191 @@ validate_facility_data <- function(
     error = function(e) {
       cli::cli_alert_danger("Failed to save validation results: {e$message}")
     }
+  )
+}
+
+#' Check facility activeness and reporting patterns (tabular version of facility_reporting_plot)
+#'
+#' @keywords internal
+#' @noRd
+.check_facility_activeness <- function(data,
+                                       id_col,
+                                       facility_col,
+                                       date_col,
+                                       hf_name_col,
+                                       hf_uid_col,
+                                       yearmon_col,
+                                       admin_cols,
+                                       indicators,
+                                       key_indicators,
+                                       min_reporting_rate,
+                                       verbose) {
+  # check if required columns exist
+  required_cols <- c(hf_name_col, hf_uid_col)
+  present_cols <- required_cols[required_cols %in% base::names(data)]
+
+  if (base::length(present_cols) == 0) {
+    if (verbose) {
+      cli::cli_h2("Check 6: Facility Activeness")
+      cli::cli_warn("Required columns ({hf_name_col}, {hf_uid_col}) not found. Skipping facility activeness check.")
+    }
+    row <- tibble::tibble(
+      check = "HF Activeness",
+      issues_found = "No data (0% active, 0% inactive)",
+      total_records = "0",
+      percent = 0
+    )
+    return(base::list(
+      activeness_over_time = NULL,
+      activeness_summary = NULL,
+      summary_row = row
+    ))
+  }
+
+  if (verbose) cli::cli_h2("Check 6: Facility Activeness")
+
+  # prepare admin columns that exist
+  admin_present <- admin_cols[admin_cols %in% base::names(data)]
+
+  # determine which indicators to use for activeness
+  activeness_indicators <- if (!base::is.null(key_indicators)) {
+    key_indicators[key_indicators %in% base::names(data)]
+  } else {
+    indicators
+  }
+
+  if (base::length(activeness_indicators) == 0) {
+    if (verbose) {
+      cli::cli_warn("No valid indicators found for activeness check. Skipping.")
+    }
+    row <- tibble::tibble(
+      check = "HF Activeness",
+      issues_found = "No indicators (0% active, 0% inactive)",
+      total_records = "0",
+      percent = 0
+    )
+    return(base::list(
+      activeness_over_time = NULL,
+      activeness_summary = NULL,
+      summary_row = row
+    ))
+  }
+
+  # build overall facility activeness summary first (more efficient)
+  facility_summary <- data |>
+    dplyr::mutate(
+      has_activeness_data = dplyr::if_any(dplyr::all_of(activeness_indicators), ~ !base::is.na(.x))
+    ) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(c(present_cols, admin_present)))) |>
+    dplyr::summarise(
+      total_periods = dplyr::n(),
+      periods_with_data = base::sum(has_activeness_data),
+      reporting_rate = periods_with_data / total_periods,
+      first_reported = if (date_col %in% base::names(data)) {
+        if (base::any(has_activeness_data)) {
+          base::min(.data[[date_col]][has_activeness_data], na.rm = TRUE)
+        } else {
+          as.Date(NA)
+        }
+      } else {
+        if (base::any(has_activeness_data)) {
+          base::min(base::as.character(.data[[yearmon_col]])[has_activeness_data], na.rm = TRUE)
+        } else {
+          NA_character_
+        }
+      },
+      last_reported = if (date_col %in% base::names(data)) {
+        if (base::any(has_activeness_data)) {
+          base::max(.data[[date_col]][has_activeness_data], na.rm = TRUE)
+        } else {
+          as.Date(NA)
+        }
+      } else {
+        if (base::any(has_activeness_data)) {
+          base::max(base::as.character(.data[[yearmon_col]])[has_activeness_data], na.rm = TRUE)
+        } else {
+          NA_character_
+        }
+      },
+      .groups = "drop"
+    ) |>
+    dplyr::mutate(
+      activeness_category = dplyr::case_when(
+        reporting_rate == 0 ~ "never_reported",
+        reporting_rate < min_reporting_rate ~ "low_reporting",
+        reporting_rate < 0.8 ~ "moderate_reporting",
+        TRUE ~ "high_reporting"
+      )
+    ) |>
+    dplyr::arrange(activeness_category, dplyr::desc(reporting_rate)) |>
+    sntutils::auto_parse_types()
+
+  # identify problematic facilities (never reported or low reporting) for focused over-time table
+  problematic_facilities <- facility_summary |>
+    dplyr::filter(activeness_category %in% c("never_reported", "low_reporting")) |>
+    dplyr::select(dplyr::all_of(present_cols))
+
+  # build focused facility activeness over time table (only problematic facilities)
+  if (base::nrow(problematic_facilities) > 0) {
+    activeness_over_time <- data |>
+      dplyr::semi_join(problematic_facilities, by = present_cols) |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(c(present_cols, admin_present, yearmon_col)))) |>
+      dplyr::summarise(
+        has_data = base::any(dplyr::if_any(dplyr::all_of(activeness_indicators), ~ !base::is.na(.x))),
+        reporting_status = dplyr::if_else(has_data, "reported", "not_reported"),
+        .groups = "drop"
+      ) |>
+      dplyr::arrange(dplyr::across(dplyr::all_of(c(present_cols, yearmon_col)))) |>
+      sntutils::auto_parse_types()
+  } else {
+    activeness_over_time <- NULL
+  }
+
+  # calculate summary statistics
+  n_total <- base::nrow(facility_summary)
+  n_never_reported <- base::sum(facility_summary$activeness_category == "never_reported")
+  n_low_reporting <- base::sum(facility_summary$activeness_category == "low_reporting")
+  n_moderate_reporting <- base::sum(facility_summary$activeness_category == "moderate_reporting")
+  n_high_reporting <- base::sum(facility_summary$activeness_category == "high_reporting")
+
+  # calculate percentages
+  pct_never <- base::round(n_never_reported / n_total * 100, 1)
+  pct_low <- base::round(n_low_reporting / n_total * 100, 1)
+  pct_moderate <- base::round(n_moderate_reporting / n_total * 100, 1)
+  pct_high <- base::round(n_high_reporting / n_total * 100, 1)
+  pct_active <- base::round((n_total - n_never_reported) / n_total * 100, 1)
+
+  # CLI messages
+  if (verbose) {
+    if (n_never_reported > 0) {
+      cli::cli_alert_warning("{sntutils::big_mark(n_never_reported)} facility(ies) never reported ({pct_never}%)")
+    }
+    if (n_low_reporting > 0) {
+      cli::cli_alert_info("{sntutils::big_mark(n_low_reporting)} facility(ies) with low reporting ({pct_low}%)")
+    }
+    if (n_moderate_reporting > 0) {
+      cli::cli_alert_info("{sntutils::big_mark(n_moderate_reporting)} facility(ies) with moderate reporting ({pct_moderate}%)")
+    }
+    if (n_high_reporting > 0) {
+      cli::cli_alert_success("{sntutils::big_mark(n_high_reporting)} facility(ies) with high reporting ({pct_high}%)")
+    }
+
+    # summary message
+    active_count <- n_total - n_never_reported
+    cli::cli_alert_info("Overall: {sntutils::big_mark(active_count)} active ({pct_active}%) vs {sntutils::big_mark(n_never_reported)} inactive ({pct_never}%)")
+  }
+
+  # summary row with proportions
+  row <- tibble::tibble(
+    check = "HF Activeness",
+    issues_found = base::paste0(pct_active, "% active, ", pct_never, "% inactive"),
+    total_records = base::as.character(n_total),
+    percent = pct_never
+  )
+
+  base::list(
+    activeness_over_time = activeness_over_time,
+    activeness_summary = facility_summary,
+    summary_row = row
   )
 }

@@ -139,7 +139,7 @@ utils::globalVariables(
 #' )
 #'
 #' # Scenario 1: Proportion of active facilities reporting
-#' # any data
+#' # any data
 #' calculate_reporting_metrics(
 #'   data = hf_data,
 #'   vars_of_interest = c("conf"),
@@ -1185,7 +1185,6 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
 #' @param fill_label Label for the fill scale
 #' @param title_prefix Title prefix based on whether showing reporting or
 #'    missing rates
-#' @param subtitle Optional subtitle text to display under the title. Default NULL.
 #' @param common_elements Common ggplot elements to apply to all plots
 #' @param target_language Language code for labels (ISO 639-1), defaults to "en"
 #' @param source_language Source language code, defaults to NULL
@@ -1245,7 +1244,6 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
 #' @param fill_label Label for the fill scale
 #' @param title_prefix Title prefix based on whether showing reporting or
 #'    missing rates
-#' @param subtitle Optional subtitle text to display under the title. Default NULL.
 #' @param y_axis_label Label for the y-axis
 #' @param common_elements Common ggplot elements to apply to all plots
 #' @param target_language Language code for labels (ISO 639-1)

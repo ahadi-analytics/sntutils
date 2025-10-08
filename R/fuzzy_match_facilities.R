@@ -784,7 +784,7 @@ fuzzy_match_facilities <- function(
     ) |>
     dplyr::select(
       dplyr::all_of(admin_cols),
-      !!uid_col := .data[[uid_col]],
+      dplyr::all_of(uid_col),
       hf_target_raw,
       hf_target_std,
       hf_lookup_raw,
