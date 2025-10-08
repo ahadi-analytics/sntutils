@@ -1,12 +1,3 @@
-# utils::globalVariables declarations for NSE columns
-utils::globalVariables(
-  c(
-    "typical_size", "cold_start_value", "weight", "weight_sum",
-    "is_cold_start", "n_cold_start", "prop_cold_start",
-    "reported_any_var", "w_den", "w_num", "reprate_w", "missrate_w"
-  )
-)
-
 #' Calculate reporting/missing rate and proportion of reporting facilities
 #'
 #' This function calculates reporting metrics for health facility data across
@@ -1194,7 +1185,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
 #' @return A ggplot2 object
 variables_plot <- function(plot_data, x_var, vars_of_interest,
                            fill_var, fill_label, title_prefix,
-                           subtitle = NULL, common_elements, 
+                           subtitle = NULL, common_elements,
                            target_language = "en", source_language = "en",
                            lang_cache_path = tempdir()) {
   # Create plot with variables on y-axis
@@ -1255,7 +1246,7 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
 #' @return A ggplot2 object
 group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
                        fill_var, fill_label, title_prefix,
-                       subtitle = NULL, y_axis_label, common_elements, 
+                       subtitle = NULL, y_axis_label, common_elements,
                        target_language = "en", source_language = "en",
                        lang_cache_path = tempdir()) {
   vars_label <- if (length(vars_of_interest) <= 5) {
@@ -1382,16 +1373,16 @@ save_single_plot <- function(plot, plot_data, plot_path,
 
   # Simplify vars_of_interest for filename if there are too many
   vars_of_interest_str <- if (length(vars_of_interest) > 3) {
-    translate_text(
+    translated_str <- translate_text(
       "multiple variables",
       target_language = target_language,
       source_language = source_language,
       cache_path = lang_cache_path
-    ) |>
-      tolower() |>
-      gsub(" ", "_", x = _)
+    )
+    translated_str <- tolower(translated_str)
+    gsub(" ", "_", translated_str)
   } else {
-    translated_terms$vars_of_interest_str |> tolower()
+    tolower(translated_terms$vars_of_interest_str)
   }
 
   # Construct filename
@@ -1526,9 +1517,9 @@ get_translated_terms <- function(target_language, source_language,
     target_language = target_language,
     source_language = source_language,
     cache_path = lang_cache_path
-  ) |>
-    tolower() |>
-    gsub(" ", "_", x = _)
+  )
+  save_title_prefix_tr <- tolower(save_title_prefix_tr)
+  save_title_prefix_tr <- gsub(" ", "_", save_title_prefix_tr)
 
   # Format x_var for title
   x_title <- if (x_var == "yearmon") "year and month" else x_var
@@ -1537,9 +1528,9 @@ get_translated_terms <- function(target_language, source_language,
     target_language = target_language,
     source_language = source_language,
     cache_path = lang_cache_path
-  ) |>
-    tolower() |>
-    gsub(" ", "_", x = _)
+  )
+  x_title <- tolower(x_title)
+  x_title <- gsub(" ", "_", x_title)
 
   # Translate common words
   for_word <- translate_text(
