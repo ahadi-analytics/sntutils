@@ -183,15 +183,9 @@ translate_text <- function(text,
   if (any(cache_match)) {
     match_idx <- which(cache_match)[1]
     cached_text <- as.character(cache$text[match_idx])
-    # when EN -> FR, enforce french acronyms even for old cache entries
     if (tolower(target_language) == "fr") {
-      enf <- base::get0(".enforce_fr_acronyms_in_french", mode = "function")
-      fixed <- if (base::is.function(enf)) enf(cached_text) else cached_text
-      if (!identical(fixed, cached_text)) {
-        cache$text[match_idx] <- fixed
-        saveRDS(cache, cache_file)
-        return(as.character(fixed))
-      }
+      cached_text <- .apply_fr_translation_fixups(cached_text)
+      cache$text[match_idx] <- cached_text
     }
     saveRDS(cache, cache_file)
     return(as.character(cached_text))
@@ -236,12 +230,13 @@ translate_text <- function(text,
     }
   )
 
+  if (length(result) == 0 || all(is.na(result))) {
+    result <- text
+  }
+
   # for EN -> FR, enforce acronyms on fresh results as well
   if (tolower(target_language) == "fr") {
-    enf <- base::get0(".enforce_fr_acronyms_in_french", mode = "function")
-    if (base::is.function(enf)) {
-      result <- enf(result)
-    }
+    result <- .apply_fr_translation_fixups(result)
   }
 
   # Cache if successful
@@ -413,7 +408,24 @@ french_malaria_acronyms <- function() {
   map_tbl <- french_malaria_acronyms()
   out <- base::as.character(text)
 
-  # iterate rows and replace
+  # First handle reporting rate terms before malaria acronyms
+  # Handle "weighted reporting rate" first (before generic "reporting rate")
+  out <- base::gsub(
+    "(?i)weighted\\s+reporting\\s+rate(s?)",
+    "taux de rapport pondéré",
+    out,
+    perl = TRUE
+  )
+  
+  # Then handle generic "reporting rate"
+  out <- base::gsub(
+    "(?i)reporting\\s+rate(s?)",
+    "taux de rapport",
+    out,
+    perl = TRUE
+  )
+
+  # iterate rows and replace malaria acronyms
   for (i in base::seq_len(nrow(map_tbl))) {
     fr_acr <- map_tbl$preferred_french_acronym[[i]]
     if (!base::nzchar(fr_acr)) next
@@ -436,5 +448,121 @@ french_malaria_acronyms <- function() {
     }
   }
 
+  out
+}
+
+# internal: apply french-specific translation fixups
+# ensures cached and fresh translations share the same conventions
+# @noRd
+.apply_fr_translation_fixups <- function(text) {
+  out <- text
+  if (!base::is.character(out)) {
+    out <- base::as.character(out)
+  }
+  na_mask <- base::is.na(out)
+  fixers <- list(
+    base::get0(".enforce_fr_acronyms_in_french", mode = "function"),
+    .enforce_fr_reporting_terms
+  )
+
+  for (fn in fixers) {
+    if (base::is.function(fn)) {
+      out <- fn(out)
+    }
+  }
+
+  out[na_mask] <- NA_character_
+
+  out
+}
+
+# internal: enforce consistent french phrasing for reporting metrics
+# @noRd
+.enforce_fr_reporting_terms <- function(text) {
+  out <- base::as.character(text)
+
+  # Handle weighted reporting rate FIRST (before generic reporting rate)
+  out <- base::gsub(
+    "(?i)weighted\\s+reporting\\s+rate(s?)",
+    "taux de rapport pondéré",
+    out,
+    perl = TRUE
+  )
+
+  # Then handle generic reporting rate
+  out <- base::gsub(
+    "(?i)reporting\\s+rate(s?)",
+    "taux de rapport",
+    out,
+    perl = TRUE
+  )
+
+  out <- base::gsub(
+    "(?i)taux[\\s_]+(de|du|d['’])?[\\s_]*d[ée]claration(s?)",
+    "taux de rapport",
+    out,
+    perl = TRUE
+  )
+
+  out <- base::gsub(
+    "(?i)taux_de_d[ée]claration(s?)",
+    "taux de rapport",
+    out,
+    perl = TRUE
+  )
+
+  out <- base::gsub(
+    "(?i)taux\\s+(de|du|d['’]|the)\\s+rapportage(s?)",
+    "taux de rapport",
+    out,
+    perl = TRUE
+  )
+
+  out <- base::gsub(
+    "(?i)taux\\s+de\\s+rapportage\\s+pondérés?",
+    "taux de rapport pondéré",
+    out,
+    perl = TRUE
+  )
+
+  out <- base::gsub(
+    "(?i)taux_de_rapportage_pondérés?",
+    "taux de rapport pondéré",
+    out,
+    perl = TRUE
+  )
+
+  # Also catch simple underscore patterns
+  out <- base::gsub(
+    "(?i)taux_de_rapportage",
+    "taux de rapport",
+    out,
+    perl = TRUE
+  )
+
+  # Also handle "taux de rapport" with underscores that might be malformed
+  out <- base::gsub(
+    "(?i)taux_de_rapport(?!age)",
+    "taux de rapport",
+    out,
+    perl = TRUE
+  )
+
+
+
+  out <- base::gsub("D['’]", "d'", out, perl = TRUE)
+
+  # Lowercase French articles (de, du) unless at start of string
+  # Handle " De " → " de " (not at start of string)
+  out <- base::gsub("(?<!^)\\s+De\\s+", " de ", out, perl = TRUE)
+  
+  # Handle " Du " → " du " (not at start of string)
+  out <- base::gsub("(?<!^)\\s+Du\\s+", " du ", out, perl = TRUE)
+  
+  # Handle "_De_" and "_De " in filenames → "_de_" and "_de "
+  out <- base::gsub("_De([\\s_])", "_de\\1", out, perl = TRUE)
+  
+  # Handle "_Du_" and "_Du " in filenames → "_du_" and "_du "
+  out <- base::gsub("_Du([\\s_])", "_du\\1", out, perl = TRUE)
   out
 }
