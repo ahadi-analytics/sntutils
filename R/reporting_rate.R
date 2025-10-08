@@ -518,6 +518,9 @@ calculate_reporting_metrics <- function(
         cols = dplyr::all_of(vars_of_interest),
         names_to = "variable",
         values_to = "value"
+      ) |>
+      dplyr::mutate(
+        variable = factor(variable, levels = rev(vars_of_interest))
       )
 
     result <- long_data |>
@@ -550,6 +553,9 @@ calculate_reporting_metrics <- function(
         cols = dplyr::all_of(vars_of_interest),
         names_to = "variable",
         values_to = "value"
+      ) |>
+      dplyr::mutate(
+        variable = factor(variable, levels = rev(vars_of_interest))
       )
 
     result <- long_data |>
@@ -1609,9 +1615,6 @@ translate_plot_labels <- function(plot, target_language,
           source_language = source_language,
           cache_path = lang_cache_path
         )
-
-        # Convert title to sentence case
-        orig_title <- tools::toTitleCase(tolower(orig_title))
 
         plot_labs[[lab_name]] <- gsub(
           "\\*\\*\\s+(.*?)\\s+\\*\\*", "**\\1**",
