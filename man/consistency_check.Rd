@@ -188,7 +188,7 @@ consistency_check(
   facet_by = "year"
 )
 
-# Example 6: Facet by administrative unit (single pair only)  
+# Example 6: Facet by administrative unit (single pair only)
 consistency_check(
   fake_epi_df_togo,
   inputs = c("test"),
