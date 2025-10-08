@@ -162,3 +162,154 @@ median2 <- function(x) {
 #' vdigest(as.character(iris$Species))
 #' @export
 vdigest <- Vectorize(digest::digest)
+
+#' Smart row-wise sum with missing data handling and type preservation
+#'
+#' Computes the row-wise sum across multiple input vectors, while allowing
+#' control over how many non-missing values must be present for a valid
+#' result. If the number of non-`NA` values in a row is below `min_present`,
+#' the result is set to `NA` of the appropriate type.
+#'
+#' The return type matches the inputs:
+#' - If all inputs are integer vectors, the result is an integer vector
+#'   with `NA_integer_` where insufficient data are present.
+#' - Otherwise, the result is a numeric (double) vector with `NA_real_`
+#'   where insufficient data are present.
+#'
+#' @param ... Numeric or integer vectors of equal length to be summed row-wise.
+#' @param min_present Integer. Minimum number of non-`NA` values required per
+#'   row to return a sum. Rows with fewer than `min_present` non-`NA` values
+#'   return `NA_integer_` if all inputs are integer, otherwise `NA_real_`.
+#' @param .keep_zero_as_zero Logical. Currently unused, reserved for future
+#'   development. Defaults to `TRUE`.
+#'
+#' @return An integer or numeric vector of row-wise sums, depending on the input
+#'   types, with appropriate `NA` values where insufficient data are present.
+#'
+#' @examples
+#' # all integer inputs -> integer output
+#' x <- c(1L, 2L, NA_integer_)
+#' y <- c(3L, NA_integer_, 4L)
+#' fallback_row_sum(x, y)
+#' typeof(fallback_row_sum(x, y))  # "integer"
+#'
+#' # mixed integer and numeric inputs -> numeric output
+#' z <- c(1, 2, NA)
+#' fallback_row_sum(x, z)
+#' typeof(fallback_row_sum(x, z))  # "double"
+#'
+#' # using min_present to control NA behaviour
+#' fallback_row_sum(c(1, NA), c(2, NA), min_present = 1)
+#'
+#' @export
+fallback_row_sum <- function(..., min_present = 1, .keep_zero_as_zero = TRUE) {
+  args <- list(...)
+  all_int <- all(vapply(args, is.integer, logical(1)))
+
+  vars_matrix <- cbind(...)
+  valid_count <- rowSums(!is.na(vars_matrix))
+  raw_sum <- rowSums(vars_matrix, na.rm = TRUE)
+
+  if (all_int) {
+    out <- ifelse(valid_count >= min_present, raw_sum, NA_integer_)
+    return(as.integer(out))
+  } else {
+    out <- ifelse(valid_count >= min_present, raw_sum, NA_real_)
+    return(out)
+  }
+}
+
+#' Fallback Absolute Difference Between Two Vectors (type-preserving)
+#'
+#' Computes the difference between two numeric or integer vectors element-wise.
+#' If both values are present, returns \code{pmax(abs(col1 - col2), minimum)}.
+#' If only one value is present, returns the non-missing value or \code{minimum},
+#' whichever is greater. If both are missing, returns \code{NA} of the
+#' appropriate type.
+#'
+#' The return type matches the inputs:
+#' - If both inputs are integer vectors (and `minimum` is an integer scalar),
+#'   the result is integer with `NA_integer_` where both are missing.
+#' - Otherwise, the result is numeric (double) with `NA_real_` where both
+#'   are missing.
+#'
+#' @param col1 Numeric or integer vector. First input column.
+#' @param col2 Numeric or integer vector. Second input column.
+#' @param minimum Numeric or integer scalar. Minimum allowable value for the
+#'   result (default is `0`).
+#'
+#' @return An integer or numeric vector with the same length as the inputs.
+#'   Each element is:
+#'   \itemize{
+#'     \item the absolute difference between \code{col1} and \code{col2}, if
+#'       both are non-missing,
+#'     \item the non-missing value if only one is present,
+#'     \item `NA_integer_` or `NA_real_` if both are missing.
+#'   }
+#'   In all cases, the result is constrained to be no less than `minimum`.
+#'
+#' @examples
+#' fallback_diff(5, 3)        # 2
+#' fallback_diff(NA, 4)       # 4
+#' fallback_diff(7, NA)       # 7
+#' fallback_diff(4, 9)        # 0
+#' fallback_diff(NA, NA)      # NA_real_
+#'
+#' xi <- c(5L, NA, 7L)
+#' yi <- c(3L, 4L, NA_integer_)
+#' fallback_diff(xi, yi)      # integer output
+#'
+#' @export
+fallback_diff <- function(col1, col2, minimum = 0) {
+  both_int <- is.integer(col1) && is.integer(col2)
+
+  res <- dplyr::case_when(
+    is.na(col1) & is.na(col2) ~ if (both_int) NA_integer_ else NA_real_,
+    is.na(col1) ~ pmax(col2, minimum, na.rm = TRUE),
+    is.na(col2) ~ pmax(col1, minimum, na.rm = TRUE),
+    TRUE ~ pmax(abs(col1 - col2), minimum)
+  )
+
+  if (both_int) {
+    return(as.integer(res))
+  }
+  res
+}
+
+# /R/safe_sum.R
+# Internal helper: row-safe sum for grouped aggregation
+# Provides NA-aware sum: returns NA if all values are NA; otherwise sums with NA as 0
+# RELEVANT FILES:R/utils.R, R/reporting_rate.R, R/build_dictionary.R
+
+#' Row-safe sum for grouped aggregation
+#'
+#' Returns `NA_real_` if all values are `NA`; otherwise returns the sum with
+#' missing values treated as zero.
+#'
+#' This is useful in `dplyr::summarise()` calls where you want a sum that
+#' respects full-missing groups by yielding `NA_real_`, and otherwise sums while
+#' ignoring `NA`s.
+#'
+#' @param x A numeric vector.
+#'
+#' @return A single numeric value: `NA_real_` if all values in `x` are missing,
+#'   otherwise the numeric sum with `NA`s ignored.
+#'
+#' @examples
+#' # All missing -> NA
+#' sntutils:::`safe_sum`(c(NA, NA))
+#'
+#' # Mixed missing -> sum of non-missing
+#' sntutils:::`safe_sum`(c(1, NA, 2))
+#'
+#' # No missing -> normal sum
+#' sntutils:::`safe_sum`(c(1, 2, 3))
+#'
+#' @keywords internal
+#' @export
+safe_sum <- function(x) {
+  n_ok <- sum(!is.na(x))
+  s <- sum(x, na.rm = TRUE)
+  if (n_ok == 0) return(NA_real_)
+  s
+}

@@ -253,86 +253,114 @@ testthat::test_that("prep_geonames correctly processes admin names", {
   )
 })
 
-testthat::test_that("calculate_match_stats calculates correct matches for all levels", {
-  # Create test data frames
+testthat::test_that("helper captures cli output robustly", {
+  withr::local_options(cli.unicode = FALSE, cli.num_colors = 1)
+
+  # trivial function to emit a cli message
+  f <- function() {
+    cli::cli_h1(glue::glue("{cli::symbol$info} Match Summary"))
+    invisible(NULL)
+  }
+
+  out <- utils::capture.output(f(), type = "message") |>
+    cli::ansi_strip() |>
+    paste(collapse = "\n") |>
+    stringr::str_replace_all("\\s+", " ") |>
+    trimws()
+
+  testthat::expect_true(grepl("Match Summary", out))
+})
+
+# util: run, capture, normalize ------------------------------------------------
+norm_cli <- function(expr) {
+  withr::local_options(cli.unicode = FALSE, cli.num_colors = 1)
+  txt <- utils::capture.output(
+    withCallingHandlers(
+      expr,
+      message = function(m) {
+        cat(cli::ansi_strip(conditionMessage(m)), "\n")
+        invokeRestart("muffleMessage")
+      }
+    )
+  )
+  txt <- cli::ansi_strip(txt)
+  txt <- paste(txt, collapse = "\n")
+  txt <- gsub("\\s+", " ", txt)
+  trimws(txt)
+}
+
+expect_contains_all <- function(txt, patterns) {
+  purrr::walk(
+    patterns,
+    \(p) {
+      testthat::expect_true(
+        grepl(p, txt, perl = TRUE),
+        info = paste("pattern not found:", p, "\n\nActual:\n", txt)
+      )
+    }
+  )
+}
+
+# 1) both imperfect (baseline you showed) --------------------------------------
+testthat::test_that("prints warning and per-level counts when both sides have unmatched names", {
   data <- data.frame(
     country = c("USA", "Canada", "Mexico", "Brazil", "Colombia"),
     province = c("California", "Ontario", "Jalisco", "Sao Paulo", "Bogota"),
-    district = c("Los Angeles", "Toronto", "Guadalajara", "Sao Paulo City", "Bogota DC"),
+    district = c(
+      "Los Angeles",
+      "Toronto",
+      "Guadalajara",
+      "Sao Paulo City",
+      "Bogota DC"
+    ),
     subdistrict = c("Hollywood", "Downtown", "Centro", "Zona Sul", "Chapinero"),
-    settlement = c("West Hollywood", "Kensington", "Zapopan", "Ipanema", "Zona T"),
+    settlement = c(
+      "West Hollywood",
+      "Kensington",
+      "Zapopan",
+      "Ipanema",
+      "Zona T"
+    ),
     stringsAsFactors = FALSE
   )
 
-  lookup_data <- data.frame(
+  lookup <- data.frame(
     country = c("USA", "Canada", "France", "Brazil", "Germany"),
-    province = c("California", "Quebec", "Ile-de-France", "Sao Paulo", "Bavaria"),
-    district = c("Los Angeles", "Montreal", "Paris", "Sao Paulo City", "Munich"),
-    subdistrict = c("Hollywood", "Old Montreal", "Le Marais", "Zona Sul", "Altstadt"),
-    settlement = c("West Hollywood", "Mile End", "Saint-Germain", "Ipanema", "Marienplatz"),
+    province = c(
+      "California",
+      "Quebec",
+      "Ile-de-France",
+      "Sao Paulo",
+      "Bavaria"
+    ),
+    district = c(
+      "Los Angeles",
+      "Montreal",
+      "Paris",
+      "Sao Paulo City",
+      "Munich"
+    ),
+    subdistrict = c(
+      "Hollywood",
+      "Old Montreal",
+      "Le Marais",
+      "Zona Sul",
+      "Altstadt"
+    ),
+    settlement = c(
+      "West Hollywood",
+      "Mile End",
+      "Saint-Germain",
+      "Ipanema",
+      "Marienplatz"
+    ),
     stringsAsFactors = FALSE
   )
 
-  # Instead of testing cli output directly, verify the internal calculations
-  # Mock the cli functions to verify they're called with correct arguments
-  info_mock <- mockery::mock()
-  li_mock <- mockery::mock()
-  ul_mock <- mockery::mock()
-  end_mock <- mockery::mock()
-
-  mockery::stub(calculate_match_stats, "cli::cli_alert_info", info_mock)
-  mockery::stub(calculate_match_stats, "cli::cli_ul", ul_mock)
-  mockery::stub(calculate_match_stats, "cli::cli_li", li_mock)
-  mockery::stub(calculate_match_stats, "cli::cli_end", end_mock)
-
-  # Call the function
-  calculate_match_stats(
-    data,
-    lookup_data,
-    level0 = "country",
-    level1 = "province",
-    level2 = "district",
-    level3 = "subdistrict",
-    level4 = "settlement"
-  )
-
-  # Verify the mock was called with correct arguments
-  testthat::expect_equal(
-    mockery::mock_args(info_mock)[[1]][[1]], "Match Summary:"
-  )
-
-  # Verify the expected matches through calculation
-  level0_matches <- sum(
-    unique(data$country) %in% unique(lookup_data$country)
-  )
-  level1_matches <- sum(
-    unique(data$province) %in% unique(lookup_data$province)
-  )
-  level2_matches <- sum(
-    unique(data$district) %in% unique(lookup_data$district)
-  )
-  level3_matches <- sum(
-    unique(data$subdistrict) %in% unique(lookup_data$subdistrict)
-  )
-  level4_matches <- sum(
-    unique(data$settlement) %in% unique(lookup_data$settlement)
-  )
-
-  testthat::expect_equal(level0_matches, 3) # USA, Canada, Brazil
-  testthat::expect_equal(level1_matches, 2) # California, Sao Paulo
-  testthat::expect_equal(level2_matches, 2) # Los Angeles, Sao Paulo City
-  testthat::expect_equal(level3_matches, 2) # Hollywood, Zona Sul
-  testthat::expect_equal(level4_matches, 2) # West Hollywood, Ipanema
-
-  # Check that li_mock was called 5 times (once for each level)
-  # testthat::expect_equal(mockery::mock_call_count(li_mock), 5)
-
-  # Let's also directly test the function without mocking
-  # by checking if it runs without errors
-  testthat::expect_no_error(
+  printed <- norm_cli(
     calculate_match_stats(
-      data,
-      lookup_data,
+      data = data,
+      lookup_data = lookup,
       level0 = "country",
       level1 = "province",
       level2 = "district",
@@ -340,10 +368,212 @@ testthat::test_that("calculate_match_stats calculates correct matches for all le
       level4 = "settlement"
     )
   )
+
+  expect_contains_all(
+    printed,
+    c(
+      "Match Summary",
+      "Both sides have unmatched names",
+      "Target data as base N",
+      "Lookup data as base N",
+      "country \\(level0\\):\\s*3 out of 5 matched",
+      "province \\(level1\\):\\s*2 out of 5 matched",
+      "district \\(level2\\):\\s*2 out of 5 matched",
+      "subdistrict \\(level3\\):\\s*2 out of 5 matched",
+      "settlement \\(level4\\):\\s*2 out of 5 matched"
+    )
+  )
 })
 
+# 2) both perfect --------------------------------------------------------------
+testthat::test_that("emits success when hierarchies fully align", {
+  data <- data.frame(
+    country = c("Kenya", "Uganda"),
+    province = c("Nairobi", "Central"),
+    district = c("Westlands", "Kampala"),
+    stringsAsFactors = FALSE
+  )
+  lookup <- data
+
+  printed <- norm_cli(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup,
+      level0 = "country",
+      level1 = "province",
+      level2 = "district"
+    )
+  )
+
+  expect_contains_all(
+    printed,
+    c(
+      "Match Summary",
+      "Hierarchies are aligned across data and lookup.",
+      "country \\(level0\\):\\s*2 out of 2 matched",
+      "province \\(level1\\):\\s*2 out of 2 matched",
+      "district \\(level2\\):\\s*2 out of 2 matched"
+    )
+  )
+})
+
+# 3) target perfect, lookup has extras ----------------------------------------
+testthat::test_that("emits info when lookup has extra names not in data", {
+  data <- data.frame(
+    country = c("Kenya", "Uganda"),
+    district = c("Nairobi", "Kampala"),
+    stringsAsFactors = FALSE
+  )
+  lookup <- rbind(
+    data,
+    data.frame(
+      country = "Tanzania",
+      district = "Dar es Salaam",
+      stringsAsFactors = FALSE
+    )
+  )
+
+  printed <- norm_cli(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup,
+      level0 = "country",
+      level2 = "district"
+    )
+  )
+
+  expect_contains_all(
+    printed,
+    c(
+      "Match Summary",
+      "Lookup has extra names not in data.",
+      "country \\(level0\\):\\s*2 out of 2 matched", # target perfect
+      "district \\(level2\\):\\s*2 out of 2 matched" # lookup imperfect
+    )
+  )
+})
+
+# 4) lookup perfect, target has extras ----------------------------------------
+testthat::test_that("emits info when data has extra names not in lookup", {
+  lookup <- data.frame(
+    country = c("Kenya", "Uganda"),
+    district = c("Nairobi", "Kampala"),
+    stringsAsFactors = FALSE
+  )
+  data <- rbind(
+    lookup,
+    data.frame(
+      country = "Tanzania",
+      district = "Dar es Salaam",
+      stringsAsFactors = FALSE
+    )
+  )
+
+  printed <- norm_cli(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup,
+      level0 = "country",
+      level2 = "district"
+    )
+  )
+
+  expect_contains_all(
+    printed,
+    c(
+      "Match Summary",
+      "Data has names not in lookup.",
+      "country \\(level0\\):\\s*2 out of 3 matched", # target imperfect
+      "district \\(level2\\):\\s*2 out of 3 matched" # lookup perfect
+    )
+  )
+})
+
+# 5) missing names present (NA / empty) ---------------------------------------
+testthat::test_that("warns and reports counts when missing names are present", {
+  data <- data.frame(
+    country = c("Kenya", NA, "Uganda", ""),
+    district = c("Nairobi", "Kisumu", "", "Kampala"),
+    stringsAsFactors = FALSE
+  )
+  lookup <- data.frame(
+    country = c("Kenya", "Uganda", ""),
+    district = c("Nairobi", "Kampala", "Arusha"),
+    stringsAsFactors = FALSE
+  )
+
+  printed <- norm_cli(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup,
+      level0 = "country",
+      level2 = "district"
+    )
+  )
+
+  expect_contains_all(
+    printed,
+    c(
+      "Match Summary",
+      "Both sides have unmatched names; see per-level lines below.",
+      "Missing names detected in supplied levels \\(not included in N\\)\\.",
+      "- country: data = 2, lookup = 1",
+      "- district: data = 1",
+      "- country: .*?(data = \\d+|lookup = \\d+)",
+      "- district: .*?(data = \\d+|lookup = \\d+)"
+    )
+  )
+})
+
+# 6) no levels provided (edge behavior) ---------------------------------------
+testthat::test_that("handles no levels without error and prints summary", {
+  data <- data.frame(a = 1)
+  lookup <- data.frame(a = 1)
+
+  printed <- norm_cli(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup
+      # no level* args
+    )
+  )
+
+  # With no rows computed, function currently falls into the 'both imperfect'
+  # branch; at minimum ensure header is printed and no error occurs.
+  testthat::expect_true(grepl("Match Summary", printed))
+})
+
+# 7) unicode branch tolerance (optional) --------------------------------------
+testthat::test_that("tolerates unicode glyphs in local runs", {
+  withr::local_options(cli.unicode = TRUE, cli.num_colors = 1)
+
+  data <- data.frame(
+    country = c("Kenya", "Uganda"),
+    district = c("Nairobi", "Kampala")
+  )
+  lookup <- data
+
+  printed <- utils::capture.output(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup,
+      level0 = "country",
+      level2 = "district"
+    ),
+    type = "message"
+  ) |>
+    cli::ansi_strip() |>
+    paste(collapse = "\n")
+
+  # only assert on stable text so glyph choice doesn't matter
+  expect_contains_all(
+    printed,
+    c("Match Summary", "Hierarchies are aligned across data and lookup\\.")
+  )
+})
+
+
 testthat::test_that("calculate_match_stats handles empty data correctly", {
-  # Create empty data frames
   empty_data <- data.frame(
     country = character(0),
     province = character(0),
@@ -358,26 +588,27 @@ testthat::test_that("calculate_match_stats handles empty data correctly", {
     stringsAsFactors = FALSE
   )
 
-  # Mock cli functions
-  mockery::stub(calculate_match_stats, "cli::cli_alert_info", mockery::mock())
-  mockery::stub(calculate_match_stats, "cli::cli_ul", mockery::mock())
-  mockery::stub(calculate_match_stats, "cli::cli_li", mockery::mock())
-  mockery::stub(calculate_match_stats, "cli::cli_end", mockery::mock())
-
-  # Should not error with empty data
-  testthat::expect_no_error(
+  output <- capture.output(
     calculate_match_stats(
-      empty_data,
-      lookup_data,
+      data = empty_data,
+      lookup_data = lookup_data,
       level0 = "country",
       level1 = "province",
       level2 = "district"
     )
   )
+  output_stripped <- cli::ansi_strip(output)
+
+  testthat::expect_true(
+    any(grepl("country (level0): 0 out of 0 matched", output_stripped, fixed = TRUE))
+  )
+  testthat::expect_true(
+    any(grepl("district (level2): 0 out of 2 matched", output_stripped, fixed = TRUE))
+  )
 })
 
+
 testthat::test_that("calculate_match_stats ignores case in matches", {
-  # Create test data frames with different case
   data <- data.frame(
     country = c("USA", "canada", "mexico"),
     stringsAsFactors = FALSE
@@ -388,60 +619,18 @@ testthat::test_that("calculate_match_stats ignores case in matches", {
     stringsAsFactors = FALSE
   )
 
-  # Mock cli functions
-  mockery::stub(calculate_match_stats, "cli::cli_alert_info", mockery::mock())
-  mockery::stub(calculate_match_stats, "cli::cli_ul", mockery::mock())
-  mockery::stub(calculate_match_stats, "cli::cli_li", mockery::mock())
-  mockery::stub(calculate_match_stats, "cli::cli_end", mockery::mock())
-
-  # Extract results function (modified to make comparison case-insensitive)
-  extract_results_case_insensitive <- function() {
-    results <- NULL
-    mockery::stub(
-      calculate_match_stats, "cli::cli_alert_info", function(...) NULL
+  output <- capture.output(
+    calculate_match_stats(
+      data = data,
+      lookup_data = lookup_data,
+      level0 = "country"
     )
-    mockery::stub(calculate_match_stats, "cli::cli_ul", function(...) NULL)
-    mockery::stub(calculate_match_stats, "cli::cli_li", function(...) NULL)
-    mockery::stub(calculate_match_stats, "cli::cli_end", function(...) NULL)
-
-    # Create modified version with case-insensitive comparison
-    modified_fn <- function(data, lookup_data, level0 = NULL,
-                            level1 = NULL, level2 = NULL,
-                            level3 = NULL, level4 = NULL) {
-      # Make data lowercase for case-insensitive comparison
-      if (!is.null(level0)) {
-        data[[level0]] <- tolower(data[[level0]])
-        lookup_data[[level0]] <- tolower(lookup_data[[level0]])
-      }
-
-      calculate_match_stats(
-        data,
-        lookup_data,
-        level0 = level0,
-        level1 = level1,
-        level2 = level2,
-        level3 = level3,
-        level4 = level4
-      )
-    }
-
-    # Call modified function
-    modified_fn(data, lookup_data, level0 = "country")
-
-    return(results)
-  }
-
-  # Verify expected case-insensitive match counts
-  results_case_insensitive <- environment(
-    extract_results_case_insensitive
-  )$results
-
-  # Manual calculation for verification (case-insensitive)
-  expected_matches <- sum(
-    tolower(unique(data$country)) %in% tolower(unique(lookup_data$country))
   )
+  output_stripped <- cli::ansi_strip(output)
 
-  testthat::expect_equal(expected_matches, 2)
+  testthat::expect_true(
+    any(grepl("country (level0): 2 out of 3 matched", output_stripped, fixed = TRUE))
+  )
 })
 
 
@@ -823,7 +1012,6 @@ testthat::test_that(
       levels = c("country", "province", "district"),
       level = "province",
       clear_console = FALSE,
-      stratify = TRUE,
       max_options = 10
     )
 
@@ -871,7 +1059,6 @@ testthat::test_that("handle_user_interaction handles manual entry", {
     levels = c("country", "province", "district"),
     level = "district",
     clear_console = FALSE,
-    stratify = TRUE,
     max_options = 10
   )
 
@@ -925,7 +1112,6 @@ testthat::test_that("handle_user_interaction processes multiple selections", {
     levels = c("country", "province", "district"),
     level = "district",
     clear_console = FALSE,
-    stratify = TRUE,
     max_options = 10
   )
 
@@ -968,7 +1154,6 @@ testthat::test_that("handle_user_interaction handles 'Save and exit' action", {
     levels = c("country", "province", "district", "subdistrict", "settlement"),
     level = "settlement",
     clear_console = FALSE,
-    stratify = TRUE,
     max_options = 10
   )
 
@@ -1011,8 +1196,7 @@ testthat::test_that(
       levels = c("country", "province"),
       level = "country",
       clear_console = FALSE,
-      stratify = TRUE,
-      max_options = 10
+        max_options = 10
     )
 
     # Verify result is NULL when exiting without saving
@@ -1063,7 +1247,6 @@ testthat::test_that("handle_user_interaction handles 'Go Back' action", {
     levels = c("country", "province", "district", "subdistrict"),
     level = "subdistrict",
     clear_console = FALSE,
-    stratify = TRUE,
     max_options = 10
   )
 
@@ -1082,9 +1265,9 @@ testthat::test_that("handle_user_interaction handles 'Go Back' action", {
 testthat::test_that("handle_user_interaction handles empty choices", {
   # Create test data
   test_data <- data.frame(
-    name_to_match = c("country1"),
-    matched_names = c("Country One"),
-    long_geo = c("country1"),
+    name_to_match = "country1",
+    matched_names = "Country One",
+    long_geo = "country1",
     stringsAsFactors = FALSE
   )
 
@@ -1113,7 +1296,6 @@ testthat::test_that("handle_user_interaction handles empty choices", {
     levels = c("country", "province"),
     level = "country",
     clear_console = FALSE,
-    stratify = FALSE,
     max_options = 10
   )
 
@@ -1292,8 +1474,7 @@ testthat::test_that(
       lookup_df = lookup_df,
       level0 = "country",
       level1 = "province",
-      interactive = FALSE,
-      stratify = TRUE
+      interactive = FALSE
     )
 
     # Verify result contains all original rows and didn't change anything
@@ -1346,9 +1527,9 @@ testthat::test_that(
   {
     # Test error when specifying levels out of order
     target_df <- data.frame(
-      country = c("ANGOLA"),
-      province = c("CABINDA"),
-      district = c("BUCO-ZAU"),
+      country = "ANGOLA",
+      province = "CABINDA",
+      district = "BUCO-ZAU",
       stringsAsFactors = FALSE
     )
 
@@ -1357,8 +1538,7 @@ testthat::test_that(
       prep_geonames(
         target_df = target_df,
         level2 = "district", # Missing level0 and level1
-        interactive = FALSE,
-        stratify = TRUE
+        interactive = FALSE
       ),
       "You cannot specify level2 without both level0 and level1"
     )
@@ -1368,8 +1548,7 @@ testthat::test_that(
       prep_geonames(
         target_df = target_df,
         level1 = "province", # Missing level0
-        interactive = FALSE,
-        stratify = TRUE
+        interactive = FALSE
       ),
       "You cannot specify level1 without level0"
     )
@@ -1378,7 +1557,7 @@ testthat::test_that(
 
 testthat::test_that("prep_geonames handles empty lookup_df properly", {
   target_df <- data.frame(
-    country = c("ANGOLA"),
+    country = "ANGOLA",
     stringsAsFactors = FALSE
   )
 
@@ -1435,7 +1614,7 @@ testthat::test_that("prep_geonames handles case conversion correctly", {
 testthat::test_that("prep_geonames handles cache path correctly", {
   # Test with non-existent cache path
   target_df <- data.frame(
-    country = c("ANGOLA"),
+    country = "ANGOLA",
     stringsAsFactors = FALSE
   )
 
@@ -1531,7 +1710,7 @@ testthat::test_that("prep_geonames can be run non-interactively", {
     prep_geonames, "construct_geo_names",
     function(df, ...) {
       df$long_geo <- paste(df$country, df$province, sep = "_")
-      return(df)
+      df
     }
   )
 
@@ -1608,4 +1787,300 @@ testthat::test_that("impute_higher_admin works correctly", {
   )
 
   testthat::expect_equal(result_complex$region_code, c("BK", "BK", "Unknown"))
+})
+
+# Tests for unmatched_export_path feature
+testthat::test_that("unmatched_export_path exports unmatched data correctly", {
+  # Create test data with some unmatched values
+  test_target <- data.frame(
+    country = c("KENYA", "KENYA", "KENYA", "TANZANIA"),
+    province = c("NAIROBI", "COAST", "UNKNOWN_PROVINCE", "DAR"),
+    district = c("WESTLANDS", "MOMBASA", "UNKNOWN_DISTRICT", "ILALA"),
+    stringsAsFactors = FALSE
+  )
+
+  test_lookup <- data.frame(
+    country = c("KENYA", "KENYA"),
+    province = c("NAIROBI", "COAST"),
+    district = c("WESTLANDS", "MOMBASA"),
+    stringsAsFactors = FALSE
+  )
+
+  # Test CSV export
+  csv_path <- tempfile(fileext = ".csv")
+
+  result <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "country",
+    level1 = "province",
+    level2 = "district",
+    interactive = FALSE,
+    unmatched_export_path = csv_path
+  )
+
+  # Check that file was created
+  testthat::expect_true(file.exists(csv_path))
+
+  # Read and check the exported data
+  exported_data <- read.csv(csv_path, stringsAsFactors = FALSE)
+
+  # Check structure
+  testthat::expect_true("unmatched_column" %in% names(exported_data))
+  testthat::expect_true("country" %in% names(exported_data))
+  testthat::expect_true("province" %in% names(exported_data))
+  testthat::expect_true("district" %in% names(exported_data))
+  testthat::expect_true("target_data" %in% names(exported_data))
+  testthat::expect_true("lookup_data" %in% names(exported_data))
+  testthat::expect_true("created_time" %in% names(exported_data))
+  testthat::expect_true("name_of_creator" %in% names(exported_data))
+
+  # Check that unmatched values are present
+  testthat::expect_true("UNKNOWN_PROVINCE" %in% exported_data$province ||
+                       "UNKNOWN_DISTRICT" %in% exported_data$district ||
+                       "TANZANIA" %in% exported_data$country)
+
+  # Clean up
+  unlink(csv_path)
+})
+
+testthat::test_that("unmatched_export_path works with RDS format", {
+  test_target <- data.frame(
+    adm0 = c("COUNTRY_A", "COUNTRY_B"),
+    adm1 = c("REGION_1", "REGION_2"),
+    stringsAsFactors = FALSE
+  )
+
+  test_lookup <- data.frame(
+    adm0 = c("COUNTRY_A"),
+    adm1 = c("REGION_1"),
+    stringsAsFactors = FALSE
+  )
+
+  # Test RDS export
+  rds_path <- tempfile(fileext = ".rds")
+
+  result <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "adm0",
+    level1 = "adm1",
+    interactive = FALSE,
+    unmatched_export_path = rds_path
+  )
+
+  # Check that RDS file was created
+  testthat::expect_true(file.exists(rds_path))
+
+  # Read the RDS file
+  exported_rds <- readRDS(rds_path)
+
+  # Check that it's a data frame with expected structure
+  testthat::expect_s3_class(exported_rds, "data.frame")
+  testthat::expect_true("unmatched_column" %in% names(exported_rds))
+
+  # Check that unmatched_column identifies the most granular level
+  testthat::expect_equal(unique(exported_rds$unmatched_column), "adm1")
+
+  # Clean up
+  unlink(rds_path)
+})
+
+testthat::test_that("unmatched_export_path identifies correct unmatched column", {
+  # Test with health facility data (level4)
+  test_target <- data.frame(
+    country = c("KENYA", "KENYA"),
+    province = c("NAIROBI", "NAIROBI"),
+    district = c("WESTLANDS", "WESTLANDS"),
+    facility = c("HOSP_A", "HOSP_B"),
+    stringsAsFactors = FALSE
+  )
+
+  test_lookup <- data.frame(
+    country = c("KENYA"),
+    province = c("NAIROBI"),
+    district = c("WESTLANDS"),
+    facility = c("HOSP_A"),
+    stringsAsFactors = FALSE
+  )
+
+  csv_path <- tempfile(fileext = ".csv")
+
+  result <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "country",
+    level1 = "province",
+    level2 = "district",
+    level4 = "facility",  # Note: using level4 for health facilities
+    interactive = FALSE,
+    unmatched_export_path = csv_path
+  )
+
+  exported_data <- read.csv(csv_path, stringsAsFactors = FALSE)
+
+  # Should identify "facility" as the unmatched column
+  testthat::expect_equal(unique(exported_data$unmatched_column), "facility")
+  testthat::expect_true("HOSP_B" %in% exported_data$facility)
+
+  # Clean up
+  unlink(csv_path)
+})
+
+# Tests for preserve_case feature
+testthat::test_that("preserve_case preserves original case from lookup data", {
+  # Create test data with uppercase
+  test_target <- data.frame(
+    country = c("KENYA", "KENYA", "UGANDA"),
+    province = c("NAIROBI", "COAST", "KAMPALA"),
+    stringsAsFactors = FALSE
+  )
+
+  # Lookup data with mixed case
+  test_lookup <- data.frame(
+    country = c("Kenya", "Kenya", "Uganda"),
+    province = c("Nairobi", "Coast", "Kampala"),
+    stringsAsFactors = FALSE
+  )
+
+  # Test with preserve_case = FALSE (default)
+  result_uppercase <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "country",
+    level1 = "province",
+    interactive = FALSE,
+    preserve_case = FALSE
+  )
+
+  # Should return uppercase
+  testthat::expect_equal(result_uppercase$country[1], "KENYA")
+  testthat::expect_equal(result_uppercase$province[1], "NAIROBI")
+
+  # Test with preserve_case = TRUE
+  result_preserved <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "country",
+    level1 = "province",
+    interactive = FALSE,
+    preserve_case = TRUE
+  )
+
+  # Should return original case from lookup
+  testthat::expect_equal(result_preserved$country[1], "Kenya")
+  testthat::expect_equal(result_preserved$province[1], "Nairobi")
+})
+
+testthat::test_that("preserve_case works with all administrative levels", {
+  test_target <- data.frame(
+    level0 = c("COUNTRY_A"),
+    level1 = c("REGION_A"),
+    level2 = c("DISTRICT_A"),
+    level3 = c("SUBDISTRICT_A"),
+    level4 = c("FACILITY_A"),
+    stringsAsFactors = FALSE
+  )
+
+  test_lookup <- data.frame(
+    level0 = c("Country_A"),
+    level1 = c("Region_A"),
+    level2 = c("District_A"),
+    level3 = c("SubDistrict_A"),
+    level4 = c("Facility_A"),
+    stringsAsFactors = FALSE
+  )
+
+  result <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "level0",
+    level1 = "level1",
+    level2 = "level2",
+    level3 = "level3",
+    level4 = "level4",
+    interactive = FALSE,
+    preserve_case = TRUE
+  )
+
+  # Check all levels preserve case
+  testthat::expect_equal(result$level0[1], "Country_A")
+  testthat::expect_equal(result$level1[1], "Region_A")
+  testthat::expect_equal(result$level2[1], "District_A")
+  testthat::expect_equal(result$level3[1], "SubDistrict_A")
+  testthat::expect_equal(result$level4[1], "Facility_A")
+})
+
+testthat::test_that("preserve_case handles partial matches correctly", {
+  test_target <- data.frame(
+    country = c("KENYA", "TANZANIA", "UNKNOWN_COUNTRY"),
+    province = c("NAIROBI", "DAR ES SALAAM", "UNKNOWN_PROVINCE"),
+    stringsAsFactors = FALSE
+  )
+
+  test_lookup <- data.frame(
+    country = c("Kenya", "Tanzania"),
+    province = c("Nairobi", "Dar es Salaam"),
+    stringsAsFactors = FALSE
+  )
+
+  result <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "country",
+    level1 = "province",
+    interactive = FALSE,
+    preserve_case = TRUE
+  )
+
+  # Matched values should have preserved case
+  testthat::expect_equal(result$country[1], "Kenya")
+  testthat::expect_equal(result$province[2], "Dar es Salaam")
+
+  # Unmatched values should remain as they were (uppercase)
+  testthat::expect_equal(result$country[3], "UNKNOWN_COUNTRY")
+  testthat::expect_equal(result$province[3], "UNKNOWN_PROVINCE")
+})
+
+testthat::test_that("both features work together correctly", {
+  # Test that preserve_case and unmatched_export_path work together
+  test_target <- data.frame(
+    adm0 = c("SIERRA LEONE", "SIERRA LEONE"),
+    adm1 = c("WESTERN", "UNKNOWN"),
+    adm2 = c("BO", "UNKNOWN_DISTRICT"),
+    stringsAsFactors = FALSE
+  )
+
+  test_lookup <- data.frame(
+    adm0 = c("Sierra Leone"),
+    adm1 = c("Western"),
+    adm2 = c("Bo"),
+    stringsAsFactors = FALSE
+  )
+
+  csv_path <- tempfile(fileext = ".csv")
+
+  result <- prep_geonames(
+    test_target,
+    lookup_df = test_lookup,
+    level0 = "adm0",
+    level1 = "adm1",
+    level2 = "adm2",
+    interactive = FALSE,
+    preserve_case = TRUE,
+    unmatched_export_path = csv_path
+  )
+
+  # Check preserved case for matched values
+  testthat::expect_equal(result$adm0[1], "Sierra Leone")
+  testthat::expect_equal(result$adm1[1], "Western")
+  testthat::expect_equal(result$adm2[1], "Bo")
+
+  # Check that unmatched data was exported
+  testthat::expect_true(file.exists(csv_path))
+  exported_data <- read.csv(csv_path, stringsAsFactors = FALSE)
+  testthat::expect_true(nrow(exported_data) > 0)
+
+  # Clean up
+  unlink(csv_path)
 })

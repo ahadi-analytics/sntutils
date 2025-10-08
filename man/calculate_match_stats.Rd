@@ -2,7 +2,7 @@
 % Please edit documentation in R/harmonize_admin_names.R
 \name{calculate_match_stats}
 \alias{calculate_match_stats}
-\title{Calculate and Report Geo-naming Match Statistics}
+\title{Calculate and report geo-naming match statistics}
 \usage{
 calculate_match_stats(
   data,
@@ -15,38 +15,60 @@ calculate_match_stats(
 )
 }
 \arguments{
-\item{data}{A dataframe containing the target data to be matched.}
+\item{data}{A data frame containing the target data to be matched.}
 
-\item{lookup_data}{A dataframe serving as the reference for matching.}
+\item{lookup_data}{A data frame serving as the reference for matching.}
 
-\item{level0}{level0 col name (country) in both 'data' and 'lookup_data'.}
+\item{level0}{Column name (country) present in both \code{data} and \code{lookup_data}.}
 
-\item{level1}{level1 col name (province/state/region) in both 'data' and
-'lookup_data'.}
+\item{level1}{Column name (province/state/region) present in both datasets.}
 
-\item{level2}{level2 col name (district) in both 'data' and 'lookup_data'.}
+\item{level2}{Column name (district) present in both datasets.}
 
-\item{level3}{level3 col name (subdistrict) in both 'data' and 'lookup_data'.}
+\item{level3}{Column name (subdistrict) present in both datasets.}
 
-\item{level4}{level4 col name (settlements) in both 'data' and 'lookup_data'.}
+\item{level4}{Column name (settlement) present in both datasets.}
 }
 \value{
-Invisible NULL. The primary purpose of this function is to reporting
-match stats rather than return a value.
+Invisibly returns \code{NULL}. Output is produced via \code{cli} messages.
 }
 \description{
-Compares entries in a given dataset against a lookup dataset across specified
-admn levels (e.g., countries, (province/state/region), districts,
-subdistricts, settlements) to calculate and report match statistics.
+Compares entries in a dataset against a lookup across specified admin levels
+(e.g., country, province/state/region, district, subdistrict, settlement)
+and reports match statistics to the console.
 }
 \details{
-Calculates unique matches across administrative levels, reports
-match and mismatch counts.
+\itemize{
+\item Input columns supplied via \verb{level*} are normalized to lower case before
+matching.
+\item \emph{Base N} for each side is the count of \strong{unique hierarchical names}
+formed from the supplied levels (e.g., \code{level0_level1_...}). Per-level
+rows show matches out of each side's Base N.
+\item Console output includes:
+\enumerate{
+\item a two-column summary (Target vs Lookup as base N),
+\item side-level completeness messages (success/info/warning),
+\item a per-level report of \strong{missing names} (NA or empty strings) on
+either side. These missing names are \strong{not included in N} only if the
+implementation drops them before counting (see Note below).
+}
+}
+}
+\note{
+If you want missing names (NA/empty) \strong{excluded from Base N}, ensure the
+key-building step drops them before counting (see example patch below).
 }
 \examples{
-# calculate_match_stats(
-#      my_data, my_lookup, "country", "province", "district", "subdistrict",
-#      settlements)
-
+# minimal runnable example (toy data)
+data <- data.frame(
+  country = c("Kenya", "Kenya", "Uganda"),
+  district = c("Nairobi", "Kisumu", "Kampala")
+)
+lookup <- data.frame(
+  country = c("Kenya", "Uganda"),
+  district = c("Nairobi", "Kampala")
+)
+calculate_match_stats(
+  data, lookup, level0 = "country", level2 = "district"
+)
 }
-\keyword{internal}

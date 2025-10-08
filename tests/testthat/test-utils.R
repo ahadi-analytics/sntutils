@@ -20,7 +20,7 @@ testthat::test_that(
     mockery::stub(ensure_packages, "requireNamespace", function(pkg, ...) FALSE)
     mockery::stub(ensure_packages, "cli::cli_alert_success", function(...) NULL)
 
-    missing_pkgs <- c("crayon")
+    missing_pkgs <- "crayon"
     suppressMessages(
       testthat::expect_invisible(ensure_packages(missing_pkgs)))
   }
@@ -34,7 +34,7 @@ testthat::test_that(
     mockery::stub(ensure_packages, "requireNamespace", function(pkg, ...) FALSE)
     mockery::stub(ensure_packages, "cli::cli_alert_warning", function(...) NULL)
 
-    missing_pkgs <- c("pillar")
+    missing_pkgs <- "pillar"
     suppressMessages(
       testthat::expect_invisible(ensure_packages(missing_pkgs)
       )
@@ -208,4 +208,157 @@ testthat::test_that("vdigest works with factors and converts correctly", {
 
   testthat::expect_type(result, "character")
   testthat::expect_length(result, 3)
+})
+
+testthat::test_that("fallback_row_sum computes row-wise sums correctly and preserves type", {
+  # basic row-wise sum (numeric input -> numeric output)
+  v1 <- c(1, 2, 3)
+  v2 <- c(4, 5, 6)
+  out_num <- fallback_row_sum(v1, v2)
+  testthat::expect_equal(out_num, c(5, 7, 9))
+  testthat::expect_true(is.double(out_num))
+
+  # with NA values and default min_present = 1 (numeric)
+  v1 <- c(1, NA, 3)
+  v2 <- c(2, 4, NA)
+  out_num2 <- fallback_row_sum(v1, v2)
+  testthat::expect_equal(out_num2, c(3, 4, 3))
+  testthat::expect_true(is.double(out_num2))
+
+  # with min_present = 2 (requires both present) -> numeric NA_real_
+  out_num3 <- fallback_row_sum(v1, v2, min_present = 2)
+  testthat::expect_equal(out_num3, c(3, NA_real_, NA_real_))
+  testthat::expect_true(is.double(out_num3))
+  testthat::expect_true(is.na(out_num3[2]))
+  testthat::expect_identical(typeof(out_num3[2]), "double")
+
+  # all NA row check stays NA with correct type
+  v1 <- c(1, NA, 3)
+  v2 <- c(2, NA, 4)
+  out_num4 <- fallback_row_sum(v1, v2, min_present = 2)
+  testthat::expect_true(is.na(out_num4[2]))
+  testthat::expect_identical(typeof(out_num4[2]), "double")
+
+  # with three vectors (numeric)
+  v3 <- c(1, 1, 1)
+  out_num5 <- fallback_row_sum(v1, v2, v3)
+  testthat::expect_equal(out_num5, c(4, 1, 8))
+  testthat::expect_true(is.double(out_num5))
+
+  # all NA values -> all NA_real_
+  v1_all_na <- c(NA_real_, NA_real_)
+  v2_all_na <- c(NA_real_, NA_real_)
+  out_all_na <- fallback_row_sum(v1_all_na, v2_all_na)
+  testthat::expect_true(all(is.na(out_all_na)))
+  testthat::expect_true(is.double(out_all_na))
+
+  # single vector passthrough (numeric)
+  out_single <- fallback_row_sum(c(1, 2, 3))
+  testthat::expect_equal(out_single, c(1, 2, 3))
+  testthat::expect_true(is.double(out_single))
+
+  # with zeros (numeric)
+  v1 <- c(0, 0, 5)
+  v2 <- c(0, 3, 0)
+  out_zero <- fallback_row_sum(v1, v2)
+  testthat::expect_equal(out_zero, c(0, 3, 5))
+  testthat::expect_true(is.double(out_zero))
+
+  # --- type preservation checks ---
+
+  # all integer inputs -> integer output and NA_integer_
+  xi <- c(1L, 2L, NA_integer_)
+  yi <- c(3L, NA_integer_, 4L)
+  out_int <- fallback_row_sum(xi, yi)
+  testthat::expect_equal(out_int, c(4L, 2, 4))
+  testthat::expect_true(is.integer(out_int))
+  testthat::expect_identical(typeof(out_int[2]), "integer")
+
+  # all integer with min_present = 2
+  out_int2 <- fallback_row_sum(xi, yi, min_present = 2)
+  testthat::expect_equal(out_int2, c(4L, NA_integer_, NA_integer_))
+  testthat::expect_true(is.integer(out_int2))
+
+  # mixed integer + numeric -> numeric output and NA_real_
+  zi <- c(1, 2, NA_real_)
+  out_mixed <- fallback_row_sum(xi, zi)
+  testthat::expect_equal(out_mixed, c(2, 4, NA_real_))
+  testthat::expect_true(is.double(out_mixed))
+  testthat::expect_identical(typeof(out_mixed[3]), "double")
+})
+
+testthat::test_that(
+  "fallback_diff computes absolute differences correctly and preserves type", {
+  # basic numeric cases -> numeric output
+  out_num <- fallback_diff(5, 3)
+  testthat::expect_equal(out_num, 2)
+  testthat::expect_true(is.double(out_num))
+
+  testthat::expect_equal(fallback_diff(3, 5), 2)
+  testthat::expect_equal(fallback_diff(10, 10), 0)
+
+  # with one NA value -> numeric
+  testthat::expect_equal(fallback_diff(NA, 4), 4)
+  testthat::expect_equal(fallback_diff(7, NA), 7)
+
+  # both NA -> NA_real_
+  out_na <- fallback_diff(NA, NA)
+  testthat::expect_true(is.na(out_na))
+  testthat::expect_identical(typeof(out_na), "double")
+
+  # minimum parameter respected (numeric)
+  testthat::expect_equal(fallback_diff(2, 3, minimum = 5), 5)
+  testthat::expect_equal(fallback_diff(NA, 2, minimum = 5), 5)
+  testthat::expect_equal(fallback_diff(3, NA, minimum = 1), 3)
+
+  # vectorised behaviour
+  col1 <- c(5, NA, 7, 4, NA)
+  col2 <- c(3, 4, NA, 9, NA)
+  expected <- c(2, 4, 7, 5, NA_real_) # note abs + min=0 default
+  out_vec <- fallback_diff(col1, col2)
+  testthat::expect_equal(out_vec, expected)
+  testthat::expect_true(is.double(out_vec))
+
+  # negative differences (should be absolute)
+  testthat::expect_equal(fallback_diff(-5, 3), 8)
+  testthat::expect_equal(fallback_diff(3, -5), 8)
+
+  # --- integer cases ---
+
+  xi <- c(5L, NA_integer_, 7L, 4L, NA_integer_)
+  yi <- c(3L, 4L, NA_integer_, 9L, NA_integer_)
+  out_int <- fallback_diff(xi, yi)
+  expected_int <- c(2L, 4L, 7L, 5L, NA_integer_)
+  testthat::expect_equal(out_int, expected_int)
+  testthat::expect_true(is.integer(out_int))
+
+  # both NA -> NA_integer_
+  out_int_na <- fallback_diff(NA_integer_, NA_integer_)
+  testthat::expect_true(is.na(out_int_na))
+  testthat::expect_identical(typeof(out_int_na), "integer")
+
+  # integer with minimum > 0
+  testthat::expect_equal(fallback_diff(2L, 3L, minimum = 5L), 5L)
+  testthat::expect_true(is.integer(fallback_diff(2L, 3L, minimum = 5L)))
+})
+
+testthat::test_that("safe_sum returns NA when all values are NA", {
+  x <- c(NA_real_, NA_real_)
+  testthat::expect_true(is.na(safe_sum(x)))
+})
+
+testthat::test_that("safe_sum sums non-missing values and ignores NAs", {
+  x <- c(1, NA, 2, NA, 3)
+  testthat::expect_equal(safe_sum(x), 6)
+})
+
+testthat::test_that("safe_sum handles zeros and negatives", {
+  testthat::expect_equal(safe_sum(c(0, 0, NA)), 0)
+  testthat::expect_equal(safe_sum(c(-2, NA, 5)), 3)
+})
+
+testthat::test_that("safe_sum works with integer input and returns numeric", {
+  res <- safe_sum(c(1L, 2L, NA_integer_))
+  testthat::expect_type(res, "integer")
+  testthat::expect_equal(res, 3)
 })

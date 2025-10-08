@@ -18,7 +18,11 @@ save_single_plot(
   data,
   compression_options,
   use_reprate,
-  save_title_prefix
+  save_title_prefix,
+  plot_scale = 1,
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_dpi = 300
 )
 }
 \arguments{
@@ -53,6 +57,18 @@ Defaults to TRUE}
 
 \item{save_title_prefix}{A string prefix for the plot title and filename.
 If NULL, a default prefix will be used based on the visualization type.}
+
+\item{plot_scale}{Numeric. Scaling factor for saved plots. Values > 1
+increase size, < 1 decrease size. Default is 1.}
+
+\item{plot_width}{Numeric. Width of saved plot in inches. If NULL (default),
+width is calculated based on content.}
+
+\item{plot_height}{Numeric. Height of saved plot in inches. If NULL (default),
+height is calculated based on content.}
+
+\item{plot_dpi}{Numeric. Resolution of saved plot in dots per inch.
+Default is 300.}
 }
 \value{
 Invisible path to the saved file

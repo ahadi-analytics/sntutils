@@ -6,69 +6,132 @@
 \usage{
 consistency_check(
   data,
-  tests,
-  cases,
-  save_plot = FALSE,
+  inputs = NULL,
+  outputs = NULL,
+  tests = NULL,
+  cases = NULL,
   plot_path = NULL,
   target_language = "en",
   source_language = "en",
   lang_cache_path = tempdir(),
-  compress_image = TRUE,
+  compress_image = FALSE,
   image_overwrite = TRUE,
   compression_speed = 1,
-  compression_verbose = TRUE
+  compression_verbose = TRUE,
+  plot_scale = 1,
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_dpi = 300,
+  show_plot = TRUE
 )
 }
 \arguments{
-\item{data}{A data frame containing the test and case data.}
+\item{data}{A data frame containing the input and output data.}
 
-\item{tests}{A character vector specifying the column names for the test
-data.}
+\item{inputs}{A character vector specifying the column names for the
+input data (e.g., malaria tests, all outpatients, suspected cases).
+These represent upstream events in the care cascade.}
 
-\item{cases}{A character vector specifying the column names for the case
-data. The length of 'tests' and 'cases' must be the same, and each element
-in 'tests' corresponds to an element in 'cases'.}
+\item{outputs}{A character vector specifying the column names for the
+output data (e.g., confirmed cases, malaria admissions, malaria
+deaths). These represent downstream events in the care cascade. The
+length of 'inputs' and 'outputs' must be the same, and each element
+in 'inputs' corresponds to an element in 'outputs'.}
 
-\item{save_plot}{Logical. If TRUE, the plot will be saved to disk. Default
-is FALSE.}
+\item{tests}{\strong{\link{Deprecated}} Use \code{inputs} instead. A character
+vector specifying the column names for the test data.}
 
-\item{plot_path}{Character. Directory path where the plot should be saved.
-Required if save_plot is TRUE. Default is NULL.}
+\item{cases}{\strong{\link{Deprecated}} Use \code{outputs} instead. A character
+vector specifying the column names for the case data.}
 
-\item{target_language}{A character string specifying the language for plot
-labels. Defaults to "en" (English). Use ISO 639-1 language codes.}
+\item{plot_path}{Character. Directory path where the plot should be
+saved. If NULL (default), plot is not saved.}
+
+\item{target_language}{A character string specifying the language for
+plot labels. Defaults to "en" (English). Use ISO 639-1 language
+codes.}
 
 \item{source_language}{Source language code, defaults to "en"}
 
-\item{lang_cache_path}{Path for translation cache, defaults to tempdir()}
+\item{lang_cache_path}{Path for translation cache, defaults to
+tempdir()}
 
-\item{compress_image}{Logical. If TRUE, the saved image will be compressed.
-Default is TRUE.}
+\item{compress_image}{Logical. If TRUE, the saved image will be
+compressed. Default is FALSE}
 
-\item{image_overwrite}{Logical. If TRUE, existing image will be overwritten.
-Default is TRUE.}
+\item{image_overwrite}{Logical. If TRUE, existing image will be
+overwritten. Default is TRUE.}
 
 \item{compression_speed}{Integer from 1-10. Speed of compression
 (1=slow/high compression). Default is 1.}
 
-\item{compression_verbose}{Logical. If TRUE, compression details will be
-printed. Default is TRUE.}
+\item{compression_verbose}{Logical. If TRUE, compression details will
+be printed. Default is TRUE.}
+
+\item{plot_scale}{Numeric. Scaling factor for saved plots. Values > 1
+increase size, < 1 decrease size. Default is 1.}
+
+\item{plot_width}{Numeric. Width of saved plot in inches. If NULL (default),
+width is calculated based on number of variables.}
+
+\item{plot_height}{Numeric. Height of saved plot in inches. If NULL (default),
+height is calculated based on number of variables.}
+
+\item{plot_dpi}{Numeric. Resolution of saved plot in dots per inch.
+Default is 300.}
+
+\item{show_plot}{Logical. If FALSE, the plot is returned invisibly (not displayed).
+Useful when only saving plots. Default is TRUE.}
 }
 \value{
-A \code{\link[=ggplot2]{ggplot2::ggplot()}} object showing
-the consistency between the number of tests and cases. The x-axis
-represents the cases, and the y-axis represents the tests. Each facet
-represents a disease, and the diagonal line shows where the number of
-tests equals the number of cases.
+A ggplot2 object showing the consistency between the number of
+inputs and outputs. The x-axis represents the outputs, and the y-axis
+represents the inputs. Each facet represents a variable pair, and the
+diagonal line shows where the number of inputs equals the number of
+outputs.
 }
 \description{
-This function performs a consistency check to ensure that the number of tests
-is greater than the number of cases for given columns in a dataset. It
-returns a \code{\link[=ggplot2]{ggplot2}} object visualizing the results.
+This function performs logical consistency checks to ensure that the
+number of inputs is greater than or equal to the number of outputs for
+given columns in a dataset. It returns a ggplot2 object visualizing the
+results and alerts the user to any inconsistencies where outputs exceed
+inputs.
+}
+\details{
+For malaria surveillance data, this function validates the logical
+coherence of the care cascade by ensuring upstream events (inputs) are
+≥ downstream events (outputs). Common malaria data validation checks
+include:
+
+\strong{Common malaria variable definitions:}
+\itemize{
+\item \code{allout} = all outpatients
+\item \code{susp} = suspected malaria cases
+\item \code{test} = malaria tests (or tested for malaria)
+\item \code{conf} = confirmed malaria cases
+\item \code{maltreat} = malaria cases treated
+\item \code{alladm} = all admissions (all hospital admissions)
+\item \code{maladm} = malaria admissions (hospital admissions for
+malaria)
+\item \code{alldth} = all deaths (total deaths)
+\item \code{maldth} = malaria deaths
+}
+
+\strong{Typical logical validation checks:}
+\itemize{
+\item susp vs test: suspected malaria ≥ malaria tests
+\item allout vs susp: all outpatients ≥ suspected malaria
+\item allout vs test: all outpatients ≥ malaria tests
+\item test vs conf: malaria tests ≥ confirmed malaria cases
+\item conf vs maltreat: confirmed malaria cases ≥ malaria treated
+\item alladm vs maladm: all admissions ≥ malaria admissions
+\item alldth vs maldth: all deaths ≥ malaria deaths
+\item maladm vs maldth: malaria admissions ≥ malaria deaths
+}
 }
 \examples{
-# check the consistency between malaria tests and cases
-
+# Basic consistency checks for malaria surveillance data
+\dontrun{
 # get path
 path <- system.file(
   "extdata",
@@ -77,21 +140,46 @@ path <- system.file(
 )
 
 # get example data
-fake_epi_df_togo <- read(path)
+fake_epi_df_togo <- sntutils::read(path)
 
+# Example 1: Check test-to-confirmation cascade
+# Validates: malaria tests ≥ confirmed malaria cases
 consistency_check(
   fake_epi_df_togo,
-  tests = c("malaria_tests", "cholera_tests"),
-  cases = c("malaria_cases", "cholera_cases")
+  inputs = c("malaria_tests"),
+  outputs = c("malaria_cases")
 )
 
-# Save the plot
+# Example 2: Multiple validation checks at once
+# Checks common malaria care cascade validations
 consistency_check(
   fake_epi_df_togo,
-  tests = c("malaria_tests", "cholera_tests"),
-  cases = c("malaria_cases", "cholera_cases"),
-  save_plot = TRUE,
+  inputs = c("test", "allout", "conf", "alladm", "alldth", "maladm"),
+  outputs = c("conf", "susp", "maltreat", "maladm", "maldth", "maldth")
+)
+
+# Example 3: Save the plot to disk
+consistency_check(
+  fake_epi_df_togo,
+  inputs = c("malaria_tests", "all_outpatients"),
+  outputs = c("malaria_cases", "suspected_malaria"),
   plot_path = tempdir()
 )
+
+# Example 4: Validate with multiple diseases
+consistency_check(
+  fake_epi_df_togo,
+  inputs = c("malaria_tests", "cholera_tests"),
+  outputs = c("malaria_cases", "cholera_cases")
+)
+
+# Old syntax (deprecated but still supported for backward
+# compatibility)
+consistency_check(
+  fake_epi_df_togo,
+  tests = c("malaria_tests"),
+  cases = c("malaria_cases")
+)
+}
 
 }

@@ -18,6 +18,10 @@ testthat::test_that("export function works correctly", {
 
     # Supported formats
     formats <- c("csv", "tsv", "xlsx", "rds", "dta")
+    if (requireNamespace("qs2", quietly = TRUE)) {
+      # Test only .qs2 using the qs2 backend
+      formats <- c(formats, "qs2")
+    }
 
     for (format in formats) {
       # Define file path
@@ -74,4 +78,3 @@ testthat::test_that("export function works correctly", {
   })
 
 })
-

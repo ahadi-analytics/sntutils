@@ -9,84 +9,242 @@ calculate_reporting_metrics(
   vars_of_interest,
   x_var,
   y_var = NULL,
-  hf_col = NULL
+  hf_col = NULL,
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  weighting = FALSE,
+  weight_var = NULL,
+  weight_window = 12,
+  exclude_current_x = TRUE,
+  cold_start = "median_within_y"
 )
 }
 \arguments{
-\item{data}{A data frame containing health facility data}
+\item{data}{A data frame containing health facility data.}
 
 \item{vars_of_interest}{Character vector of variable names to assess
-reporting.}
+reporting (used for numerator).}
 
-\item{x_var}{Character. Name of first grouping variable (e.g. time period)}
+\item{x_var}{Character. Name of the primary grouping variable (e.g., time
+period).}
 
-\item{y_var}{Character. Name of second grouping variable (e.g. district);
-can be NULL}
+\item{y_var}{Character. Optional. Name of the second grouping variable
+(e.g., district). Required for scenarios 1 and 3.}
 
-\item{hf_col}{Character. Name of column containing unique health facility
-IDs; required only for facility-level}
+\item{hf_col}{Character. Name of the column containing unique health facility
+IDs. Required only for scenario 1.}
+
+\item{key_indicators}{Optional. Character vector of indicators used to define
+facility activity in scenario 1. Defaults to
+\code{c("allout", "conf", "test", "treat", "pres")}.}
+
+\item{weighting}{Logical. Whether to use weighted reporting rates. When TRUE,
+facilities are weighted by their typical size, giving more importance to
+larger facilities in the overall reporting rate calculation. This provides
+a volume-adjusted measure of data completeness. Default is FALSE.}
+
+\item{weight_var}{Character. Name of the variable to use as proxy for
+facility size (e.g., "allout" for total outpatients, "test" for tests done).
+This should be a count variable that reflects facility activity/size.
+If NULL and weighting is TRUE, will auto-select from allout, test, conf
+(in that order).}
+
+\item{weight_window}{Integer. Number of periods for rolling window to
+calculate typical facility size. A facility's weight is based on its
+average size over the past weight_window periods. Larger windows provide
+more stable weights but may miss recent changes. Default is 12.}
+
+\item{exclude_current_x}{Logical. Whether to exclude current period when
+calculating weights. If TRUE, prevents current reporting from influencing
+its own weight (avoids circularity). Default is TRUE.}
+
+\item{cold_start}{Character. Method for handling facilities with insufficient
+history (< weight_window periods). Options:
+\itemize{
+\item "median_within_y" (default): Uses median size of facilities within the
+same y_var group (e.g., same district)
+\item "median_global": Uses median size across all facilities
+}}
 }
 \value{
-A tibble with calculated rates depending on Scenario
+A tibble with the number of reporting (\code{rep}) and expected (\code{exp})
+facilities or records, and the computed \code{reprate} and \code{missrate}.
+
+If weighting is TRUE, additional columns are included:
+\itemize{
+\item \code{reprate_w}: Weighted reporting rate (0-1)
+\item \code{missrate_w}: Weighted missing rate (0-1)
+\item \verb{avg_<weight_var>}: Average raw value of the weight variable (e.g., avg_allout)
+\item \verb{min_<weight_var>}: Minimum raw value of the weight variable
+\item \verb{max_<weight_var>}: Maximum raw value of the weight variable
+}
 }
 \description{
-This function calculates reporting metrics for health facility data:
-\enumerate{
-\item Scenario 1: reporting rate by (x_var, y_var) — how often values appear in
-a group (all vars_of_interest)
-\item Scenario 2: reporting rate of variables over time (x_var only)
-\item Scenario 3: proportion of health facilities in y_var that reported any
-value
-}
+This function calculates reporting metrics for health facility data across
+three common scenarios:
 }
 \details{
-Note: All Scenarios treat 0 values as NA to ensure consistent reporting
-metrics
+\enumerate{
+\item \strong{Proportion of facilities reporting any data}
+\itemize{
+\item Calculates the proportion of active facilities (as defined by reporting
+on \code{key_indicators}) that reported at least one of the
+\code{vars_of_interest} in a given period and group.
+}
+\item \strong{Reporting rate by group (x_var, y_var)}
+\itemize{
+\item Computes reporting/missing rates for each variable in
+\code{vars_of_interest}, grouped by \code{x_var} and \code{y_var}.
+}
+\item \strong{Reporting trends over time (x_var only)}
+\itemize{
+\item Computes reporting/missing rates for each variable over time
+(x_var only).
+}
+}
+\subsection{Weighted Reporting Rate Calculation}{
+
+When \code{weighting = TRUE}, the function calculates volume-adjusted reporting
+rates that give more importance to larger facilities. This is useful when
+you want the overall reporting rate to reflect the proportion of patient
+visits or services covered rather than just the proportion of facilities.
+
+The weighting algorithm works as follows:
+\enumerate{
+\item \strong{Calculate typical facility size}: For each facility, compute the
+rolling mean of \code{weight_var} over the past \code{weight_window} periods.
+This represents the facility's typical size/volume.
+\item \strong{Handle cold starts}: For facilities with insufficient history:
+\itemize{
+\item If \code{cold_start = "median_within_y"}: Use the median typical size
+of facilities in the same group (y_var)
+\item If \code{cold_start = "median_global"}: Use the overall median typical size
+}
+\item \strong{Normalize weights}: Within each time period and group, weights are
+normalized to sum to 1. This ensures that larger facilities get
+proportionally more weight.
+\item \strong{Calculate weighted rates}:
+\itemize{
+\item \code{reprate_w = sum(weight * reported) / sum(weight)}
+\item \code{missrate_w = 1 - reprate_w}
+}
+}
+}
+
+\subsection{Example Interpretation}{
+
+If a district has 10 facilities where:
+\itemize{
+\item 3 large facilities (80\% of patient volume) all report
+\item 7 small facilities (20\% of patient volume) with only 4 reporting
+}
+
+Then:
+\itemize{
+\item Unweighted reporting rate = 7/10 = 70\%
+\item Weighted reporting rate \u2248 84\% (reflecting that most patient volume is covered)
+}
+}
 }
 \examples{
-# Sample data
 hf_data <- data.frame(
   month = rep(c("Jan", "Feb", "Mar"), each = 10),
   district = rep(c("North", "South"), each = 5, times = 3),
   facility_id = rep(1:5, times = 6),
-  malaria = c(
+  conf = c(
     10, 0, 15, NA, 8, 12, 0, NA, 7, 9,
     11, 0, 14, 6, NA, 13, 8, 10, 0, 12,
     9, 7, 0, 11, 14, 8, NA, 12, 10, 15
   ),
-  pneumonia = c(
+  pres = c(
+    5, 0, NA, 7, 3, 6, 0, 4, NA, 2,
+    8, 0, 6, NA, 4, 7, 3, 0, 5, 6,
+    4, 0, 7, 5, NA, 6, 0, 8, 4, 3
+  ),
+  allout = c(
     5, 0, NA, 7, 3, 6, 0, 4, NA, 2,
     8, 0, 6, NA, 4, 7, 3, 0, 5, 6,
     4, 0, 7, 5, NA, 6, 0, 8, 4, 3
   )
 )
 
-# Scenario 1: Reporting rate by district and month for each variable
+# Scenario 1: Proportion of active facilities reporting
+# any data
 calculate_reporting_metrics(
   data = hf_data,
-  vars_of_interest = c("malaria", "pneumonia"),
+  vars_of_interest = c("conf"),
+  x_var = "month",
+  y_var = "district",
+  hf_col = "facility_id",
+  key_indicators = c("allout", "conf", "pres")
+)
+
+# Scenario 2: Reporting rate by month and district
+calculate_reporting_metrics(
+  data = hf_data,
+  vars_of_interest = c("conf"),
   x_var = "month",
   y_var = "district"
 )
-# Result shows reporting rate for each variable by district and month
 
-# Scenario 2: Reporting rate of variables over time (months only)
+# Scenario 3: Reporting trends over time
 calculate_reporting_metrics(
   data = hf_data,
-  vars_of_interest = c("malaria", "pneumonia"),
+  vars_of_interest = c("conf"),
   x_var = "month"
 )
-# Result shows reporting/missing rates for each variable by month
 
-# Scenario 3: Proportion of facilities in each district reporting any data
-# by month
-calculate_reporting_metrics(
-  data = hf_data,
-  vars_of_interest = c("malaria", "pneumonia"),
+# Example with weighted reporting rate
+# Create data with facilities of different sizes
+weighted_data <- data.frame(
+  month = rep(1:6, each = 5),
+  district = rep("A", 30),
+  hf_id = rep(c("Large1", "Large2", "Small1", "Small2", "Small3"), 6),
+  # Large facilities see ~1000 patients, small ones ~100
+  allout = c(
+    # Month 1-3: Historical data for weight calculation
+    1050, 980, 95, 110, 105,  # Month 1
+    1100, 1020, 100, 98, 112,  # Month 2
+    990, 1080, 105, 102, 108,  # Month 3
+    # Month 4-6: Current periods
+    1070, 1050, 98, 105, 110,  # Month 4
+    1020, 990, 102, 108, 95,   # Month 5
+    1100, 1030, 110, 100, 105  # Month 6
+  ),
+  # Reporting pattern: large facilities always report, small ones sporadic
+  malaria = c(
+    # Month 1-3
+    50, 48, 5, NA, 6,    # Month 1
+    55, 51, NA, 4, NA,   # Month 2
+    49, 54, 6, NA, 5,    # Month 3
+    # Month 4-6
+    52, 53, NA, NA, 6,   # Month 4
+    51, 49, 5, 6, NA,    # Month 5
+    54, 52, NA, 5, NA    # Month 6
+  )
+)
+
+# Compare unweighted vs weighted reporting rates
+unweighted_result <- calculate_reporting_metrics(
+  data = weighted_data,
+  vars_of_interest = "malaria",
   x_var = "month",
   y_var = "district",
-  hf_col = "facility_id"
+  hf_col = "hf_id",
+  weighting = FALSE
 )
-# Result shows proportion of facilities that reported
-# any data by district and month
+
+weighted_result <- calculate_reporting_metrics(
+  data = weighted_data,
+  vars_of_interest = "malaria",
+  x_var = "month",
+  y_var = "district",
+  hf_col = "hf_id",
+  weighting = TRUE,
+  weight_var = "allout",
+  weight_window = 3,
+  exclude_current_x = TRUE
+)
+
+# Unweighted: counts facilities equally (e.g., 3/5 = 60\%)
+# Weighted: reflects patient volume covered (e.g., ~88\% if large facilities report)
 }
