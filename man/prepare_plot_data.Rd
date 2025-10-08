@@ -11,7 +11,13 @@ prepare_plot_data(
   vars_of_interest,
   by_facility = FALSE,
   hf_col = NULL,
-  use_reprate = TRUE
+  use_reprate = TRUE,
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  weighting = FALSE,
+  weight_var = NULL,
+  weight_window = 12,
+  exclude_current_x = TRUE,
+  cold_start = "median_within_y"
 )
 }
 \arguments{
@@ -30,6 +36,28 @@ if by_facility)}
 
 \item{use_reprate}{Logical. If TRUE, return reporting rate. Else, missing
 rate}
+
+\item{key_indicators}{Optional. Character vector of indicators used to define
+facility activity in scenario 1. Defaults to
+\code{c("allout", "conf", "test", "treat", "pres")}.}
+
+\item{weighting}{Logical. Whether to use weighted reporting rates. When TRUE,
+facilities are weighted by their typical size, giving more importance to
+larger facilities in the overall reporting rate calculation. Default is FALSE.}
+
+\item{weight_var}{Character. Name of the variable to use as proxy for
+facility size (e.g., "allout" for total outpatients). Required when
+weighting is TRUE. Default is NULL.}
+
+\item{weight_window}{Integer. Number of periods for rolling window to
+calculate typical facility size. Default is 12.}
+
+\item{exclude_current_x}{Logical. Whether to exclude current period when
+calculating weights. If TRUE, prevents current reporting from influencing
+its own weight. Default is TRUE.}
+
+\item{cold_start}{Character. Method for handling facilities with insufficient
+history. Options: "median_within_y" (default) or "median_global".}
 }
 \value{
 A list with plot_data and plotting metadata

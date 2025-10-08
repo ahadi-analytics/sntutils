@@ -1,30 +1,26 @@
 Package: sntutils
 Type: Package
-Title: Utility Functions for Data Preparation and Analysis in Subnational 
+Title: Utility Functions for Data Preparation and Analysis in Subnational
     Tailoring of Malaria Interventions (SNT)
-Version: 1.4.0
+Version: 1.6.4
 Authors@R: c(
     person("Mohamed A.", "Yusuf",
            role = c("aut", "cre"),
            email = "moyusuf@who.who",
            comment = c(ORCID = "0000-0002-9339-4613",
                       second_email = "mohamedayusuf87@gmail.com")))
-Description: A helper package for the Subnational Tailoring (SNT) process which
-    includes a number of utility functions to help users with data cleaning,
-    management, visualization, and analysis.
+Description: A helper package for the Subnational Tailoring (SNT) process which includes a number of utility functions to help users with data cleaning, management, visualization, and analysis.
 License: CC BY 4.0
 URL: https://github.com/ahadi-analytics/sntutils
 BugReports: https://github.com/ahadi-analytics/sntutils/issues
 Depends:
-    R (>= 3.5.0)
+    R (>= 4.2.0)
 Imports:
-    data.table (>= 1.9.8),
     cli,
     foreach,
     rio,
     rlang,
     sf,
-    archive,
     crayon,
     dplyr,
     filelock,
@@ -34,7 +30,16 @@ Imports:
     stringdist,
     stringr,
     tidyr,
-    ggplot2
+    ggplot2,
+    digest,
+    exactextractr,
+    terra,
+    tibble,
+    matrixStats,
+    tools,
+    fs,
+    readr,
+    forcats
 Suggests:
     ggtext,
     scales,
@@ -46,9 +51,29 @@ Suggests:
     progress,
     readxl,
     curl,
-    digest,
     stringi,
-    zoo
+    zoo,
+    R.utils,
+    rvest,
+    xml2,
+    here,
+    httr2,
+    raster,
+    jsonlite,
+    qs2,
+    shadowtext,
+    slider,
+    archive,
+    parzer,
+    openxlsx,
+    arrow,
+    vctrs,
+    nngeo,
+    rprojroot,
+    ecmwfr,
+    ncdf4,
+    rnaturalearth,
+    lifecycle
 Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true

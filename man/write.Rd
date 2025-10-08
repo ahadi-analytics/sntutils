@@ -21,8 +21,10 @@ No return value, called for side effects.
 }
 \description{
 This function provides a unified interface for saving data to various
-file formats supported by the \code{\link[=rio]{rio::export()}}
-function. The format is automatically detected from the file extension to
+file formats supported by the \code{rio::export}
+function. Additionally, it supports fast binary format \code{.qs2}
+via the optional \code{qs2} package.
+The format is automatically detected from the file extension to
 simplify the saving process.
 }
 \examples{
@@ -40,7 +42,9 @@ write(mtcars, file_path = file.path(tmpdir, "file.xlsx"))
 write(mtcars, file_path = file.path(tmpdir, "file.dta"))
 
 # Save an RDS file
-#write(mtcars, file_path = file.path(tmpdir, "file.rds"))
+# write(mtcars, file_path = file.path(tmpdir, "file.rds"))
+
+# Save a qs2 file (requires 'qs2')
 
 # Save an RData file
 write(list(mtcars = mtcars, iris = iris),
@@ -53,13 +57,9 @@ my_shp <-  sf::st_sfc(
     cbind(mtcars[1, ]) |>
     sf::st_as_sf(crs = sf::st_crs(4326))
 
-# save an RDS file
+# save a shapefile
 # write(my_shp, file_path = file.path(tmpdir, "file.shp"))
 
 # Remove the temporary directory and its contents
 unlink(tmpdir, recursive = TRUE)
-}
-\seealso{
-\code{\link[=rio]{rio::import()}} and
-\code{\link[=sf]{sf::read_sf()}},  which this function is based on.
 }

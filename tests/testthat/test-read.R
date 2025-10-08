@@ -13,7 +13,9 @@ testthat::test_that("Function imports supported file formats correctly", {
   # Loop through each supported format and test importing the file
   for (format in supported_formats) {
     file <- paste0("test_data.", format)
-    file_path <- file.path("inst", "extdata", file)
+    # Use system.file to find the correct path
+    extdata_path <- system.file("extdata", package = "sntutils")
+    file_path <- file.path(extdata_path, file)
 
     # Skip if file doesn't exist
     if (!file.exists(file_path)) {
@@ -64,6 +66,27 @@ testthat::test_that("Function imports supported file formats correctly", {
       )
     }
   }
+})
+
+
+# 1b. Test for qs2 when qs2 is installed
+testthat::test_that("Function imports qs2 when backend available", {
+  if (!requireNamespace("qs2", quietly = TRUE)) {
+    testthat::skip("'qs2' not installed")
+  }
+
+  # Use existing CSV as source data
+  path <- system.file("extdata", package = "sntutils")
+  src <- file.path(path, "test_data.csv")
+  src_df <- sntutils::read(src)
+
+  # Write to temporary qs2 file using sntutils::write (qs2 backend)
+  tmp_qs2 <- tempfile(fileext = ".qs2")
+  sntutils::write(src_df, tmp_qs2)
+
+  # Read back with sntutils::read and compare
+  out_qs2 <- sntutils::read(tmp_qs2)
+  testthat::expect_identical(out_qs2, src_df)
 })
 
 
