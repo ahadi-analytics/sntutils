@@ -1616,6 +1616,12 @@ translate_plot_labels <- function(plot, target_language,
           cache_path = lang_cache_path
         )
 
+        # Apply title case - capitalize first letter
+        orig_title <- paste0(
+          toupper(substring(orig_title, 1, 1)),
+          substring(orig_title, 2)
+        )
+
         plot_labs[[lab_name]] <- gsub(
           "\\*\\*\\s+(.*?)\\s+\\*\\*", "**\\1**",
           orig_title
@@ -1626,12 +1632,23 @@ translate_plot_labels <- function(plot, target_language,
         # Do nothing - keep subtitle as is
       } else {
         # Standard translation for other labels
-        plot_labs[[lab_name]] <- translate_text(
+        translated_text <- translate_text(
           plot_labs[[lab_name]],
           target_language = target_language,
           source_language = source_language,
           cache_path = lang_cache_path
         )
+        
+        # Apply title case for fill label (legend title)
+        if (lab_name == "fill") {
+          # Convert first letter to uppercase
+          translated_text <- paste0(
+            toupper(substring(translated_text, 1, 1)),
+            substring(translated_text, 2)
+          )
+        }
+        
+        plot_labs[[lab_name]] <- translated_text
       }
     }
   }
