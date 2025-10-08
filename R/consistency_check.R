@@ -67,18 +67,18 @@
 #'   (1=slow/high compression). Default is 1.
 #' @param compression_verbose Logical. If TRUE, compression details will
 #'   be printed. Default is TRUE.
-#' @param plot_scale Numeric. Scaling factor for saved plots. Values > 1 
+#' @param plot_scale Numeric. Scaling factor for saved plots. Values > 1
 #'   increase size, < 1 decrease size. Default is 1.
 #' @param plot_width Numeric. Width of saved plot in inches. If NULL (default),
 #'   width is calculated based on number of variables.
 #' @param plot_height Numeric. Height of saved plot in inches. If NULL (default),
 #'   height is calculated based on number of variables.
-#' @param plot_dpi Numeric. Resolution of saved plot in dots per inch. 
+#' @param plot_dpi Numeric. Resolution of saved plot in dots per inch.
 #'   Default is 300.
 #' @param show_plot Logical. If FALSE, the plot is returned invisibly (not displayed).
 #'   Useful when only saving plots. Default is TRUE.
-#' @param facet_by Character. Column name to facet the plot by (e.g., "year", 
-#'   "month", "adm1"). When provided, only the first input/output pair is 
+#' @param facet_by Character. Column name to facet the plot by (e.g., "year",
+#'   "month", "adm1"). When provided, only the first input/output pair is
 #'   processed and the plot is faceted by this variable instead of by comparison.
 #'   Useful for examining consistency patterns across time or geographical units.
 #'   Default is NULL (facet by comparison).
@@ -141,7 +141,7 @@
 #'   facet_by = "year"
 #' )
 #'
-#' # Example 6: Facet by administrative unit (single pair only)  
+#' # Example 6: Facet by administrative unit (single pair only)
 #' consistency_check(
 #'   fake_epi_df_togo,
 #'   inputs = c("test"),
@@ -216,7 +216,7 @@ consistency_check <- function(data,
       "i" = "Run `rlang::last_trace()` to see where the error occurred."
     ))
   }
-  
+
   # Check facet_by parameter constraints
   if (!is.null(facet_by)) {
     if (length(inputs) > 1 || length(outputs) > 1) {
@@ -226,7 +226,7 @@ consistency_check <- function(data,
         "i" = "Run `rlang::last_trace()` to see where the error occurred."
       ))
     }
-    
+
     if (!facet_by %in% names(data)) {
       cli::cli_abort(c(
         "!" = "Column '{facet_by}' not found in the data.",
@@ -331,7 +331,7 @@ consistency_check <- function(data,
     x_label <- "Output variables"
     y_label <- "Input variables"
   }
-  
+
   # Create the plot
   plot <-
     results |>
@@ -379,14 +379,14 @@ consistency_check <- function(data,
           ) |>
           dplyr::mutate(
             prop = inconsistent_obs / total_obs * 100,
-            label = paste0(facet_var, " (n = ", scales::comma(inconsistent_obs), 
+            label = paste0(facet_var, " (n = ", scales::comma(inconsistent_obs),
                           ", ", sprintf("%.1f", prop), "%)")
           )
-        
+
         # Create named vector for labeller
         facet_labels <- setNames(facet_stats$label, facet_stats$facet_var)
-        
-        ggplot2::facet_wrap(ggplot2::vars(facet_var), scales = "free", 
+
+        ggplot2::facet_wrap(ggplot2::vars(facet_var), scales = "free",
                            labeller = ggplot2::labeller(
                              facet_var = facet_labels
                            ))
@@ -448,14 +448,14 @@ consistency_check <- function(data,
       original_x_label <- plot$labels$x
       original_y_label <- plot$labels$y
     }
-    
+
     plot <- translate_plot_labels(
       plot,
       target_language = target_language,
       source_language = source_language,
       lang_cache_path = lang_cache_path
     )
-    
+
     # Restore original axis labels when faceting
     if (!is.null(facet_by)) {
       plot$labels$x <- original_x_label
@@ -498,34 +498,34 @@ consistency_check <- function(data,
           NA
         }
       }, error = function(e) NA)
-      
+
       if (target_language != "en") {
         # Try to get translations for filename components, fall back to English if not available
         check_word <- tryCatch({
           translate_text(
-            "consistency check", 
+            "consistency check",
             target_language = target_language,
             source_language = source_language,
             cache_path = lang_cache_path
           ) |> stringr::str_replace_all(" ", "_")
         }, error = function(e) "consistency_check")
-        
+
         # Add "pour" (for) after consistency check in non-English languages
         pour_word <- tryCatch({
           translate_text(
-            "for", 
+            "for",
             target_language = target_language,
             source_language = source_language,
             cache_path = lang_cache_path
           )
         }, error = function(e) "for")
-        
+
         vs_word <- "vs"  # Always keep "vs" untranslated in filenames
-        
+
         by_word <- if (!is.null(facet_by)) {
           by_translated <- tryCatch({
             translate_text(
-              "by", 
+              "by",
               target_language = target_language,
               source_language = source_language,
               cache_path = lang_cache_path
@@ -541,13 +541,13 @@ consistency_check <- function(data,
         vs_word <- "vs"
         by_word <- if (!is.null(facet_by)) paste0("_by_", facet_by) else ""
       }
-      
+
       # Add year range to filename if available
       year_suffix <- if (!is.na(year_range)) paste0("_", year_range) else ""
-      
+
       # Add "pour" word if not empty
       pour_part <- if (pour_word != "") paste0("_", pour_word) else ""
-      
+
       basename <- glue::glue(
         "{check_word}{pour_part}_{inputs[1]}_{vs_word}_{outputs[1]}{by_word}{year_suffix}_",
         "v{format(Sys.Date(), '%Y-%m-%d')}.png"
@@ -563,7 +563,7 @@ consistency_check <- function(data,
         data = data,
         save_title_prefix = "consistency check"
       )
-      
+
       basename <- glue::glue(
         "{translated_terms$prefix}_{translated_terms$for_word}_",
         "{paste(inputs[0:3], collapse = '_')}_vs_",
@@ -628,7 +628,7 @@ consistency_check <- function(data,
             cache_path = lang_cache_path
           )
         }, error = function(e) "Plot saved to:")
-        
+
         # Show only relative path from current directory if it's a subdirectory
         display_path <- full_path
         if (startsWith(full_path, getwd())) {
