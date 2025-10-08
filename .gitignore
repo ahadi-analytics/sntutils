@@ -5,3 +5,6 @@
 ^README\.qmd$
 ^README\.html$
 ^README_files$
+AGENTS.md
+generate_svg_badge.R
+.claude/settings.local.json
