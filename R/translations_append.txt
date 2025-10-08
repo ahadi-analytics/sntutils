@@ -1,0 +1,13 @@
+
+  # Lowercase French articles (de, du) unless at start of string  
+  # Handle " De " → " de " (not at start of string)
+  out <- base::gsub("(?<!^)\\s+De\\s+", " de ", out, perl = TRUE)
+  
+  # Handle " Du " → " du " (not at start of string)
+  out <- base::gsub("(?<!^)\\s+Du\\s+", " du ", out, perl = TRUE)
+  
+  # Handle "_De_" and "_De " in filenames → "_de_" and "_de "
+  out <- base::gsub("_De([\\s_])", "_de\\1", out, perl = TRUE)
+  
+  # Handle "_Du_" and "_Du " in filenames → "_du_" and "_du "
+  out <- base::gsub("_Du([\\s_])", "_du\\1", out, perl = TRUE)

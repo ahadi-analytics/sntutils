@@ -126,6 +126,9 @@ globalVariables(
     "has_data",
     "periods_with_data",
     "reporting_rate",
-    "total_periods"
+    "total_periods",
+     "typical_size", "cold_start_value", "weight", "weight_sum",
+    "is_cold_start", "n_cold_start", "prop_cold_start",
+    "reported_any_var", "w_den", "w_num", "reprate_w", "missrate_w"
   )
 )
