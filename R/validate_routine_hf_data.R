@@ -210,9 +210,11 @@ validate_routine_hf_data <- function(
     out <- .detect_outliers(
       data = data,
       id_col = cols$id_col,
+      date_col = cols$date_col,
       year_col = cols$year_col,
       adm_cols = cols$admin_cols,
       yearmon_col = cols$yearmon_col,
+      month_col = cols$month_col,
       indicators = indicators_use,
       methods = outlier_methods,
       iqr_multiplier = iqr_multiplier,
@@ -817,17 +819,24 @@ validate_routine_hf_data <- function(
 #' @noRd
 .detect_outliers <- function(data,
                              id_col,
+                             date_col,
                              year_col,
                              adm_cols,
                              yearmon_col,
+                             month_col,
                              indicators,
                              methods,
                              iqr_multiplier,
                              verbose) {
-  # need at least id, year, adm0/adm1 for grouping in sntutils::detect_outliers
-  req <- c(id_col, year_col, adm_cols[1:base::min(2, length(adm_cols))])
+  admin_present <- adm_cols[adm_cols %in% names(data)]
+  req <- c(
+    id_col,
+    year_col,
+    yearmon_col,
+    admin_present[seq_len(base::min(2, length(admin_present)))]
+  )
   req <- req[req %in% names(data)]
-  if (length(req) < 3) {
+  if (length(req) < 4) {
     if (verbose) {
       cli::cli_h2("Check 5: Outlier Detection")
       cli::cli_warn("Insufficient columns for outlier detection. Skipping.")
@@ -838,25 +847,56 @@ validate_routine_hf_data <- function(
       total_records = base::as.character(sntutils::big_mark(base::nrow(data))),
       percent = 0
     )
-    return(base::list(combined = NULL, by_indicator = base::list(), summary_row = row))
+    return(
+      base::list(
+        combined = tibble::tibble(),
+        by_indicator = base::list(),
+        summary_row = row
+      )
+    )
+  }
+
+  admin_use <- admin_present
+  if (base::length(admin_use) > 2) {
+    admin_use <- admin_use[seq_len(2)]
+  }
+  month_use <- NULL
+  if (!base::is.null(month_col) && month_col %in% names(data)) {
+    month_use <- month_col
   }
 
   if (verbose) cli::cli_h2("Check 5: Outlier Detection")
 
-  # run per-indicator and collect
   by_ind <- base::list()
   for (ind in indicators) {
+    value_type <- if (base::grepl("rate", ind, ignore.case = TRUE)) {
+      "rate"
+    } else if (base::grepl("ratio", ind, ignore.case = TRUE)) {
+      "rate"
+    } else {
+      "count"
+    }
+
     res <- tryCatch(
       {
         sntutils::detect_outliers(
           data = data,
           column = ind,
           record_id = id_col,
-          adm1 = adm_cols[base::min(1, length(adm_cols))],
-          adm2 = adm_cols[base::min(2, length(adm_cols))],
-          yearmon = yearmon_col,
-          year = year_col,
-          iqr_multiplier = iqr_multiplier
+          admin_levels = admin_use,
+          date = date_col,
+          time_mode = "across_time",
+          value_type = value_type,
+          strictness = "advanced",
+          sd_multiplier = 2,
+          mad_constant = 1.4826,
+          mad_multiplier = 6,
+          iqr_multiplier = iqr_multiplier,
+          min_n = 3,
+          methods = methods,
+          consensus_rule = 1,
+          output_profile = "audit",
+          verbose = FALSE
         )
       },
       error = function(e) {
@@ -867,64 +907,65 @@ validate_routine_hf_data <- function(
       }
     )
 
-    # keep only rows flagged by requested methods
-    if (!base::is.null(res)) {
+    if (!base::is.null(res) && base::nrow(res) > 0) {
       flags <- base::paste0("outlier_flag_", methods)
       flags <- flags[flags %in% names(res)]
-      if (length(flags) > 0) {
+      if (base::length(flags) > 0) {
         keep <- res |>
-          dplyr::filter(dplyr::if_any(dplyr::all_of(flags), ~ .x == "outlier")) |>
+          dplyr::filter(
+            dplyr::if_any(dplyr::all_of(flags), ~ .x == "outlier")
+          ) |>
+          dplyr::mutate(indicator_source = ind) |>
           sntutils::auto_parse_types()
-        by_ind[[ind]] <- keep
+
         if (verbose && base::nrow(keep) > 0) {
           pct <- base::round(base::nrow(keep) / base::nrow(data) * 100, 2)
-          cli::cli_alert_info("{ind}: {sntutils::big_mark(base::nrow(keep))} outlier(s) ({pct}%)")
+          cli::cli_alert_info(
+            "{ind}: {sntutils::big_mark(base::nrow(keep))} outlier(s) ({pct}%)"
+          )
+        }
+
+        if (base::nrow(keep) > 0) {
+          by_ind[[length(by_ind) + 1]] <- keep
         }
       }
     }
   }
 
-  # combine and order columns
-  combined <- NULL
-  n_unique <- 0L
-  if (length(by_ind) > 0) {
-    combined <- dplyr::bind_rows(by_ind, .id = "indicator_source")
-    n_unique <- dplyr::n_distinct(combined[[id_col]])
-
-    # target column order
-    core <- c("record_id", "date", "adm0", "adm1", "adm2", "adm3")
-    value_then_flags <- c("value")
-    for (m in c("iqr", "mean", "median")) {
-      f <- paste0("outlier_flag_", m)
-      if (f %in% names(combined)) value_then_flags <- c(value_then_flags, f)
-    }
-    for (m in c("iqr", "median", "mean")) {
-      lo <- paste0(m, "_lower_bound")
-      hi <- paste0(m, "_upper_bound")
-      if (lo %in% names(combined)) value_then_flags <- c(value_then_flags, lo, hi)
-    }
-    keep <- c(core, value_then_flags)
-    keep <- keep[keep %in% names(combined)]
-
-    combined <- combined |>
-      dplyr::select(dplyr::any_of(keep)) |>
-      sntutils::auto_parse_types()
-
-    if (verbose) {
-      pct_recs <- base::round(n_unique / base::nrow(data) * 100, 2)
-      cli::cli_alert_success(
-        paste(
-          "Outlier detection complete: {sntutils::big_mark(n_unique)} unique",
-          "record(s) ({pct_recs}%) with outliers across",
-          "{sntutils::big_mark(length(by_ind))} indicator(s)"
-        )
-      )
-    }
-  } else if (verbose) {
-    cli::cli_alert_success("No outliers detected")
+  if (base::length(by_ind) > 0) {
+    combined <- dplyr::bind_rows(by_ind)
+  } else {
+    combined <- tibble::tibble()
   }
 
-  # summary row
+  if (base::ncol(combined) > 0) {
+    combined <- combined |> sntutils::auto_parse_types()
+  }
+
+  id_col_present <- id_col %in% names(combined)
+  n_unique <- if (id_col_present) {
+    dplyr::n_distinct(combined[[id_col]])
+  } else if ("record_id" %in% names(combined)) {
+    dplyr::n_distinct(combined[["record_id"]])
+  } else {
+    0L
+  }
+
+  if (verbose) {
+    if (base::nrow(combined) > 0) {
+      pct_recs <- base::round(n_unique / base::nrow(data) * 100, 2)
+      cli::cli_alert_success(
+        base::paste(
+          "Outlier detection complete: {sntutils::big_mark(n_unique)} unique",
+          "record(s) ({pct_recs}%) across",
+          "{sntutils::big_mark(base::length(by_ind))} indicator(s)"
+        )
+      )
+    } else {
+      cli::cli_alert_success("No outliers detected")
+    }
+  }
+
   row <- tibble::tibble(
     check = "Outliers",
     issues_found = base::as.character(sntutils::big_mark(n_unique)),
@@ -932,7 +973,11 @@ validate_routine_hf_data <- function(
     percent = base::round(n_unique / base::nrow(data) * 100, 2)
   )
 
-  base::list(combined = combined, summary_row = row)
+  base::list(
+    combined = combined,
+    by_indicator = by_ind,
+    summary_row = row
+  )
 }
 
 #' Translate select components for Excel sheet names and headers
