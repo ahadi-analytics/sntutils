@@ -19,7 +19,7 @@ facility_reporting_plot(
   compression_speed = 1,
   compression_verbose = TRUE,
   plot_scale = 0.75,
-  plot_width = 20,
+  plot_width = 22,
   plot_height = 15,
   plot_dpi = 300,
   show_plot = TRUE,

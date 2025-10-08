@@ -1,7 +1,7 @@
-# tests/testthat/test-validate_facility_data.R
-# comprehensive tests for validate_facility_data function
+# tests/testthat/test-validate_routine_hf_data.R
+# comprehensive tests for validate_routine_hf_data function
 # this file focuses on output structure and validation logic
-# RELEVANT FILES: R/validate_facility_data.R, R/detect_outliers.R
+# RELEVANT FILES: R/validate_routine_hf_data.R, R/detect_outliers.R
 
 # helper to create test data ------------------------------------------------
 
@@ -74,10 +74,10 @@ create_test_data <- function(n_rows = 100, add_issues = TRUE) {
 
 # test basic structure -------------------------------------------------------
 
-testthat::test_that("validate_facility_data returns correct structure", {
+testthat::test_that("validate_routine_hf_data returns correct structure", {
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_outliers = TRUE,
@@ -114,10 +114,10 @@ testthat::test_that("validate_facility_data returns correct structure", {
 
 # test missing values check --------------------------------------------------
 
-testthat::test_that("validate_facility_data detects missing values correctly", {
+testthat::test_that("validate_routine_hf_data detects missing values correctly", {
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_duplicates = FALSE,
@@ -160,7 +160,7 @@ testthat::test_that("validate_facility_data detects missing values correctly", {
 testthat::test_that("missing values summary shows column counts not cell counts", {
   data <- create_test_data(n_rows = 100, add_issues = TRUE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_duplicates = FALSE,
@@ -183,10 +183,10 @@ testthat::test_that("missing values summary shows column counts not cell counts"
 
 # test duplicate records check -----------------------------------------------
 
-testthat::test_that("validate_facility_data detects duplicate records", {
+testthat::test_that("validate_routine_hf_data detects duplicate records", {
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_duplicates = TRUE,
@@ -209,10 +209,10 @@ testthat::test_that("validate_facility_data detects duplicate records", {
   testthat::expect_true(grepl("set\\(s\\)", dup_row$issues_found))
 })
 
-testthat::test_that("validate_facility_data handles no duplicates", {
+testthat::test_that("validate_routine_hf_data handles no duplicates", {
   data <- create_test_data(n_rows = 50, add_issues = FALSE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_duplicates = TRUE,
@@ -233,10 +233,10 @@ testthat::test_that("validate_facility_data handles no duplicates", {
 
 # test future dates check ----------------------------------------------------
 
-testthat::test_that("validate_facility_data detects future dates", {
+testthat::test_that("validate_routine_hf_data detects future dates", {
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_duplicates = FALSE,
@@ -264,10 +264,10 @@ testthat::test_that("validate_facility_data detects future dates", {
   testthat::expect_gt(future_row$percent, 0)
 })
 
-testthat::test_that("validate_facility_data handles no future dates", {
+testthat::test_that("validate_routine_hf_data handles no future dates", {
   data <- create_test_data(n_rows = 50, add_issues = FALSE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_duplicates = FALSE,
@@ -288,10 +288,10 @@ testthat::test_that("validate_facility_data handles no future dates", {
 
 # test logical consistency check ---------------------------------------------
 
-testthat::test_that("validate_facility_data detects consistency violations", {
+testthat::test_that("validate_routine_hf_data detects consistency violations", {
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_duplicates = FALSE,
@@ -326,11 +326,11 @@ testthat::test_that("validate_facility_data detects consistency violations", {
   testthat::expect_true(grepl("pair\\(s\\)", consistency_row$issues_found))
 })
 
-testthat::test_that("validate_facility_data handles custom consistency pairs", {
+testthat::test_that("validate_routine_hf_data handles custom consistency pairs", {
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
 
   # test with only one consistency pair
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     consistency_pairs = list(
       list(input = "test", output = "conf")
@@ -348,10 +348,10 @@ testthat::test_that("validate_facility_data handles custom consistency pairs", {
 
 # test outlier detection -----------------------------------------------------
 
-testthat::test_that("validate_facility_data detects outliers", {
+testthat::test_that("validate_routine_hf_data detects outliers", {
   data <- create_test_data(n_rows = 100, add_issues = TRUE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_duplicates = FALSE,
@@ -380,11 +380,11 @@ testthat::test_that("validate_facility_data detects outliers", {
   testthat::expect_gt(outlier_row$percent, 0)
 })
 
-testthat::test_that("validate_facility_data handles no outliers", {
+testthat::test_that("validate_routine_hf_data handles no outliers", {
   # create data without outliers
   data <- create_test_data(n_rows = 50, add_issues = FALSE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_duplicates = FALSE,
@@ -407,10 +407,10 @@ testthat::test_that("validate_facility_data handles no outliers", {
 
 # test parameter combinations ------------------------------------------------
 
-testthat::test_that("validate_facility_data works with all checks disabled", {
+testthat::test_that("validate_routine_hf_data works with all checks disabled", {
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_duplicates = FALSE,
@@ -426,10 +426,10 @@ testthat::test_that("validate_facility_data works with all checks disabled", {
   testthat::expect_false("Outliers" %in% result$Summary$check)
 })
 
-testthat::test_that("validate_facility_data works with all checks enabled", {
+testthat::test_that("validate_routine_hf_data works with all checks enabled", {
   data <- create_test_data(n_rows = 100, add_issues = TRUE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_duplicates = TRUE,
@@ -448,10 +448,10 @@ testthat::test_that("validate_facility_data works with all checks enabled", {
   testthat::expect_true("Outliers" %in% summary_checks)
 })
 
-testthat::test_that("validate_facility_data handles custom indicator list", {
+testthat::test_that("validate_routine_hf_data handles custom indicator list", {
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     indicators = c("conf", "test"),
     verbose = FALSE,
@@ -470,10 +470,10 @@ testthat::test_that("validate_facility_data handles custom indicator list", {
 
 # test edge cases ------------------------------------------------------------
 
-testthat::test_that("validate_facility_data handles data with no issues", {
+testthat::test_that("validate_routine_hf_data handles data with no issues", {
   data <- create_test_data(n_rows = 50, add_issues = FALSE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_duplicates = TRUE,
@@ -495,7 +495,7 @@ testthat::test_that("validate_facility_data handles data with no issues", {
   }
 })
 
-testthat::test_that("validate_facility_data handles minimal data", {
+testthat::test_that("validate_routine_hf_data handles minimal data", {
   data <- tibble::tibble(
     record_id = c("REC1", "REC2", "REC3"),
     hf_id = c("HF1", "HF2", "HF3"),
@@ -508,7 +508,7 @@ testthat::test_that("validate_facility_data handles minimal data", {
     conf = c(10, 20, 30)
   )
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     indicators = "conf",
     verbose = FALSE,
@@ -524,12 +524,12 @@ testthat::test_that("validate_facility_data handles minimal data", {
 
 # test verbose mode ----------------------------------------------------------
 
-testthat::test_that("validate_facility_data verbose mode works", {
+testthat::test_that("validate_routine_hf_data verbose mode works", {
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
 
   # capture output - just check that verbose produces output
   testthat::expect_output(
-    result <- sntutils::validate_facility_data(
+    result <- sntutils::validate_routine_hf_data(
       data = data,
       verbose = TRUE,
       check_outliers = FALSE
@@ -543,12 +543,12 @@ testthat::test_that("validate_facility_data verbose mode works", {
 
 # test return value invisibility ---------------------------------------------
 
-testthat::test_that("validate_facility_data returns invisibly", {
+testthat::test_that("validate_routine_hf_data returns invisibly", {
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
 
   # check that function returns invisibly
   testthat::expect_invisible(
-    sntutils::validate_facility_data(
+    sntutils::validate_routine_hf_data(
       data = data,
       verbose = FALSE,
       check_outliers = FALSE
@@ -561,7 +561,7 @@ testthat::test_that("validate_facility_data returns invisibly", {
 testthat::test_that("summary percentages are correctly calculated", {
   data <- create_test_data(n_rows = 100, add_issues = TRUE)
 
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     check_duplicates = TRUE,
@@ -588,7 +588,7 @@ testthat::test_that("summary percentages are correctly calculated", {
 
 # test language translation --------------------------------------------------
 
-testthat::test_that("validate_facility_data handles language translation", {
+testthat::test_that("validate_routine_hf_data handles language translation", {
   # Skip if translation fails (e.g., no internet)
   testthat::skip_if_not(
     tryCatch({
@@ -597,13 +597,13 @@ testthat::test_that("validate_facility_data handles language translation", {
     }, error = function(e) FALSE),
     "Translation service not available"
   )
-  
+
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
   temp_dir <- tempdir()
   temp_file <- file.path(temp_dir, "test_validation")
-  
+
   # Test with French translation
-  result <- sntutils::validate_facility_data(
+  result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
     save_results = TRUE,
@@ -613,16 +613,16 @@ testthat::test_that("validate_facility_data handles language translation", {
     target_language = "fr",
     source_language = "en"
   )
-  
+
   # Check that file was created
   xlsx_files <- list.files(temp_dir, pattern = "test_validation.*\\.xlsx$", full.names = TRUE)
   testthat::expect_true(length(xlsx_files) > 0)
-  
+
   # Clean up
   unlink(xlsx_files)
 })
 
-testthat::test_that("validate_facility_data translation converts column names correctly", {
+testthat::test_that("validate_routine_hf_data translation converts column names correctly", {
   # Mock translation function for testing
   mock_translate <- function(text, target_language, source_language, cache_path) {
     if (text == "Summary") return("Résumé")
@@ -637,7 +637,7 @@ testthat::test_that("validate_facility_data translation converts column names co
     if (text == "pair(s)") return("paire(s)")
     return(text)
   }
-  
+
   # Create minimal test results
   test_results <- list(
     Summary = tibble::tibble(
@@ -654,7 +654,7 @@ testthat::test_that("validate_facility_data translation converts column names co
       column_type = c("Core ID", "Indicator")
     )
   )
-  
+
   # Mock the translate_text function
   with_mocked_bindings(
     translate_text = mock_translate,
@@ -666,18 +666,18 @@ testthat::test_that("validate_facility_data translation converts column names co
         source_language = "en",
         cache_path = tempdir()
       )
-      
+
       # Check sheet names are translated
       testthat::expect_true("Résumé" %in% names(translated))
       testthat::expect_true("Valeurs manquantes" %in% names(translated))
-      
+
       # Check column names don't have dots
       summary_cols <- names(translated[["Résumé"]])
       testthat::expect_false(any(grepl("\\.", summary_cols)))
-      
+
       missing_cols <- names(translated[["Valeurs manquantes"]])
       testthat::expect_false(any(grepl("\\.", missing_cols)))
-      
+
       # Check specific translations in data
       # Find the column that contains the issues (might have different name after translation)
       issues_col <- which(grepl("Problèmes", names(translated[["Résumé"]])))
@@ -686,7 +686,7 @@ testthat::test_that("validate_facility_data translation converts column names co
         testthat::expect_true(any(grepl("colonne\\(s\\)", issues_data)))
         testthat::expect_true(any(grepl("ensemble\\(s\\)", issues_data)))
       }
-      
+
       # Check Core ID and Indicator translations
       # Find the column type column
       type_col <- which(grepl("Type", names(translated[["Valeurs manquantes"]])))

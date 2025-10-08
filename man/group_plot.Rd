@@ -12,6 +12,7 @@ group_plot(
   fill_var,
   fill_label,
   title_prefix,
+  subtitle = NULL,
   y_axis_label,
   common_elements,
   target_language = "en",
@@ -35,6 +36,8 @@ information}
 
 \item{title_prefix}{Title prefix based on whether showing reporting or
 missing rates}
+
+\item{subtitle}{Optional subtitle text to display under the title. Default NULL.}
 
 \item{y_axis_label}{Label for the y-axis}
 
