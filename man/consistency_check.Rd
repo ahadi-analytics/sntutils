@@ -22,7 +22,8 @@ consistency_check(
   plot_width = NULL,
   plot_height = NULL,
   plot_dpi = 300,
-  show_plot = TRUE
+  show_plot = TRUE,
+  facet_by = NULL
 )
 }
 \arguments{
@@ -82,6 +83,12 @@ Default is 300.}
 
 \item{show_plot}{Logical. If FALSE, the plot is returned invisibly (not displayed).
 Useful when only saving plots. Default is TRUE.}
+
+\item{facet_by}{Character. Column name to facet the plot by (e.g., "year",
+"month", "adm1"). When provided, only the first input/output pair is
+processed and the plot is faceted by this variable instead of by comparison.
+Useful for examining consistency patterns across time or geographical units.
+Default is NULL (facet by comparison).}
 }
 \value{
 A ggplot2 object showing the consistency between the number of
@@ -171,6 +178,22 @@ consistency_check(
   fake_epi_df_togo,
   inputs = c("malaria_tests", "cholera_tests"),
   outputs = c("malaria_cases", "cholera_cases")
+)
+
+# Example 5: Facet by year for time-series analysis (single pair only)
+consistency_check(
+  fake_epi_df_togo,
+  inputs = c("malaria_tests"),
+  outputs = c("malaria_cases"),
+  facet_by = "year"
+)
+
+# Example 6: Facet by administrative unit (single pair only)  
+consistency_check(
+  fake_epi_df_togo,
+  inputs = c("test"),
+  outputs = c("conf"),
+  facet_by = "adm1"
 )
 
 # Old syntax (deprecated but still supported for backward

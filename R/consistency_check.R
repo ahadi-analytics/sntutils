@@ -77,6 +77,11 @@
 #'   Default is 300.
 #' @param show_plot Logical. If FALSE, the plot is returned invisibly (not displayed).
 #'   Useful when only saving plots. Default is TRUE.
+#' @param facet_by Character. Column name to facet the plot by (e.g., "year", 
+#'   "month", "adm1"). When provided, only the first input/output pair is 
+#'   processed and the plot is faceted by this variable instead of by comparison.
+#'   Useful for examining consistency patterns across time or geographical units.
+#'   Default is NULL (facet by comparison).
 #'
 #' @return A ggplot2 object showing the consistency between the number of
 #'   inputs and outputs. The x-axis represents the outputs, and the y-axis
@@ -128,6 +133,22 @@
 #'   outputs = c("malaria_cases", "cholera_cases")
 #' )
 #'
+#' # Example 5: Facet by year for time-series analysis (single pair only)
+#' consistency_check(
+#'   fake_epi_df_togo,
+#'   inputs = c("malaria_tests"),
+#'   outputs = c("malaria_cases"),
+#'   facet_by = "year"
+#' )
+#'
+#' # Example 6: Facet by administrative unit (single pair only)  
+#' consistency_check(
+#'   fake_epi_df_togo,
+#'   inputs = c("test"),
+#'   outputs = c("conf"),
+#'   facet_by = "adm1"
+#' )
+#'
 #' # Old syntax (deprecated but still supported for backward
 #' # compatibility)
 #' consistency_check(
@@ -137,6 +158,7 @@
 #' )
 #'}
 #'
+
 #' @export
 consistency_check <- function(data,
                               inputs = NULL,
@@ -155,7 +177,8 @@ consistency_check <- function(data,
                               plot_width = NULL,
                               plot_height = NULL,
                               plot_dpi = 300,
-                              show_plot = TRUE) {
+                              show_plot = TRUE,
+                              facet_by = NULL) {
 
   # Ensure relevant packages are installed
   ensure_packages(c("ggtext", "scales"))
@@ -193,14 +216,44 @@ consistency_check <- function(data,
       "i" = "Run `rlang::last_trace()` to see where the error occurred."
     ))
   }
+  
+  # Check facet_by parameter constraints
+  if (!is.null(facet_by)) {
+    if (length(inputs) > 1 || length(outputs) > 1) {
+      cli::cli_abort(c(
+        "!" = "When 'facet_by' is provided, only one input/output pair is allowed.",
+        "i" = "Please provide single values for 'inputs' and 'outputs'.",
+        "i" = "Run `rlang::last_trace()` to see where the error occurred."
+      ))
+    }
+    
+    if (!facet_by %in% names(data)) {
+      cli::cli_abort(c(
+        "!" = "Column '{facet_by}' not found in the data.",
+        "i" = "Available columns: {paste(names(data), collapse = ', ')}",
+        "i" = "Run `rlang::last_trace()` to see where the error occurred."
+      ))
+    }
+  }
 
 
   # Initialize a data frame to store results
-  results <- data.frame(
-    comparison = character(),
-    outputs = numeric(),
-    inputs = numeric()
-  )
+  if (!is.null(facet_by)) {
+    results <- data.frame(
+      comparison = character(),
+      outputs = numeric(),
+      inputs = numeric(),
+      facet_var = character(),
+      stringsAsFactors = FALSE
+    )
+  } else {
+    results <- data.frame(
+      comparison = character(),
+      outputs = numeric(),
+      inputs = numeric(),
+      stringsAsFactors = FALSE
+    )
+  }
 
   # Compute statistics and find rows where inputs are less than outputs
   inconsistent_rows <- list()
@@ -225,18 +278,32 @@ consistency_check <- function(data,
     inconsistent_rows[[i]] <- inconsistency
     comparison_name <- paste0(
       input_column, " vs ", output_column,
-      " (n = ", inconsistent_count, ", ",
+      " (n = ", scales::comma(inconsistent_count), ", ",
       sprintf("%.1f%%", inconsistent_prop), ")"
     )
 
-    results <- rbind(
-      results,
-      data.frame(
-        comparison = comparison_name,
-        outputs = data[[output_column]],
-        inputs = data[[input_column]]
+    if (!is.null(facet_by)) {
+      results <- rbind(
+        results,
+        data.frame(
+          comparison = comparison_name,
+          outputs = data[[output_column]],
+          inputs = data[[input_column]],
+          facet_var = as.character(data[[facet_by]]),
+          stringsAsFactors = FALSE
+        )
       )
-    )
+    } else {
+      results <- rbind(
+        results,
+        data.frame(
+          comparison = comparison_name,
+          outputs = data[[output_column]],
+          inputs = data[[input_column]],
+          stringsAsFactors = FALSE
+        )
+      )
+    }
 
     # Check if there are more inputs than outputs
     if (inconsistent_count == 0) {
@@ -256,6 +323,15 @@ consistency_check <- function(data,
     }
   }
 
+  # Determine axis labels based on variable names
+  if (length(inputs) == 1 && length(outputs) == 1) {
+    x_label <- outputs[1]
+    y_label <- inputs[1]
+  } else {
+    x_label <- "Output variables"
+    y_label <- "Input variables"
+  }
+  
   # Create the plot
   plot <-
     results |>
@@ -290,10 +366,37 @@ consistency_check <- function(data,
       linewidth = 1,
       na.rm = TRUE
     ) +
-    ggplot2::facet_wrap(~comparison, scales = "free") +
+    {
+      if (!is.null(facet_by)) {
+        # Calculate inconsistency stats by facet group
+        facet_stats <- results |>
+          dplyr::filter(!is.na(outputs) & !is.na(inputs)) |>
+          dplyr::group_by(facet_var) |>
+          dplyr::summarise(
+            total_obs = dplyr::n(),
+            inconsistent_obs = sum(outputs > inputs, na.rm = TRUE),
+            .groups = 'drop'
+          ) |>
+          dplyr::mutate(
+            prop = inconsistent_obs / total_obs * 100,
+            label = paste0(facet_var, " (n = ", scales::comma(inconsistent_obs), 
+                          ", ", sprintf("%.1f", prop), "%)")
+          )
+        
+        # Create named vector for labeller
+        facet_labels <- setNames(facet_stats$label, facet_stats$facet_var)
+        
+        ggplot2::facet_wrap(ggplot2::vars(facet_var), scales = "free", 
+                           labeller = ggplot2::labeller(
+                             facet_var = facet_labels
+                           ))
+      } else {
+        ggplot2::facet_wrap(~comparison, scales = "free")
+      }
+    } +
     ggplot2::labs(
-      x = "Reported events (input)",
-      y = "Recorded outcomes (output)\n",
+      x = x_label,
+      y = paste0(y_label, "\n"),
       title = paste0(
         "<span style = 'font-size:10pt'><b style='color:#526A83'>",
         "Consistency Check</b>: Comparing the number of inputs ",
@@ -340,27 +443,28 @@ consistency_check <- function(data,
 
   # Translate labels if language is not English
   if (target_language != "en") {
+    # Store original x and y labels when faceting to preserve them
+    if (!is.null(facet_by)) {
+      original_x_label <- plot$labels$x
+      original_y_label <- plot$labels$y
+    }
+    
     plot <- translate_plot_labels(
       plot,
       target_language = target_language,
       source_language = source_language,
       lang_cache_path = lang_cache_path
     )
+    
+    # Restore original axis labels when faceting
+    if (!is.null(facet_by)) {
+      plot$labels$x <- original_x_label
+      plot$labels$y <- original_y_label
+    }
   }
 
   # Save the plot if requested
   if (!is.null(plot_path)) {
-    # Get common translated terms for filenames
-    translated_terms <- get_translated_terms(
-      target_language = target_language,
-      source_language = source_language,
-      lang_cache_path = lang_cache_path,
-      x_var = "inputs",
-      vars_of_interest = paste(inputs, collapse = "_"),
-      data = data,
-      save_title_prefix = "consistency check"
-    )
-
     # Create directory if it doesn't exist
     if (!dir.exists(plot_path)) {
       dir_created <- dir.create(plot_path,
@@ -372,13 +476,102 @@ consistency_check <- function(data,
       }
     }
 
-    basename <- glue::glue(
-      "{translated_terms$prefix}_{translated_terms$for_word}_",
-      "{paste(inputs[0:3], collapse = '_')}_vs_",
-      "{paste(outputs[0:3], collapse = '_')}_",
-      "{translated_terms$year_range}_",
-      "v{format(Sys.Date(), '%Y-%m-%d')}.png"
-    ) |> stringr::str_remove_all("_NA")
+    # Generate filename based on single vs multiple pairs
+    if (length(inputs) == 1 && length(outputs) == 1) {
+      # Single pair: use actual variable names with translated filename components
+      # Extract year range from data
+      year_range <- tryCatch({
+        if ("year" %in% names(data)) {
+          years <- data$year[!is.na(data$year)]
+          if (length(years) > 0) {
+            min_year <- min(years)
+            max_year <- max(years)
+            if (min_year == max_year) {
+              as.character(min_year)
+            } else {
+              paste0(min_year, "-", max_year)
+            }
+          } else {
+            NA
+          }
+        } else {
+          NA
+        }
+      }, error = function(e) NA)
+      
+      if (target_language != "en") {
+        # Try to get translations for filename components, fall back to English if not available
+        check_word <- tryCatch({
+          translate_text(
+            "consistency check", 
+            target_language = target_language,
+            source_language = source_language,
+            cache_path = lang_cache_path
+          ) |> stringr::str_replace_all(" ", "_")
+        }, error = function(e) "consistency_check")
+        
+        # Add "pour" (for) after consistency check in non-English languages
+        pour_word <- tryCatch({
+          translate_text(
+            "for", 
+            target_language = target_language,
+            source_language = source_language,
+            cache_path = lang_cache_path
+          )
+        }, error = function(e) "for")
+        
+        vs_word <- "vs"  # Always keep "vs" untranslated in filenames
+        
+        by_word <- if (!is.null(facet_by)) {
+          by_translated <- tryCatch({
+            translate_text(
+              "by", 
+              target_language = target_language,
+              source_language = source_language,
+              cache_path = lang_cache_path
+            )
+          }, error = function(e) "by")
+          paste0("_", by_translated, "_", facet_by)
+        } else {
+          ""
+        }
+      } else {
+        check_word <- "consistency_check"
+        pour_word <- ""  # No "for" in English filenames
+        vs_word <- "vs"
+        by_word <- if (!is.null(facet_by)) paste0("_by_", facet_by) else ""
+      }
+      
+      # Add year range to filename if available
+      year_suffix <- if (!is.na(year_range)) paste0("_", year_range) else ""
+      
+      # Add "pour" word if not empty
+      pour_part <- if (pour_word != "") paste0("_", pour_word) else ""
+      
+      basename <- glue::glue(
+        "{check_word}{pour_part}_{inputs[1]}_{vs_word}_{outputs[1]}{by_word}{year_suffix}_",
+        "v{format(Sys.Date(), '%Y-%m-%d')}.png"
+      )
+    } else {
+      # Multiple pairs: use translated terms approach
+      translated_terms <- get_translated_terms(
+        target_language = target_language,
+        source_language = source_language,
+        lang_cache_path = lang_cache_path,
+        x_var = "inputs",
+        vars_of_interest = paste(inputs, collapse = "_"),
+        data = data,
+        save_title_prefix = "consistency check"
+      )
+      
+      basename <- glue::glue(
+        "{translated_terms$prefix}_{translated_terms$for_word}_",
+        "{paste(inputs[0:3], collapse = '_')}_vs_",
+        "{paste(outputs[0:3], collapse = '_')}_",
+        "{translated_terms$year_range}_",
+        "v{format(Sys.Date(), '%Y-%m-%d')}.png"
+      ) |> stringr::str_remove_all("_NA")
+    }
 
     full_path <- file.path(plot_path, basename)
 
@@ -427,12 +620,14 @@ consistency_check <- function(data,
           )
         }
 
-        success_msg <- translate_text(
-          "Plot saved to:",
-          target_language = target_language,
-          source_language = source_language,
-          cache_path = lang_cache_path
-        )
+        success_msg <- tryCatch({
+          translate_text(
+            "Plot saved to:",
+            target_language = target_language,
+            source_language = source_language,
+            cache_path = lang_cache_path
+          )
+        }, error = function(e) "Plot saved to:")
         
         # Show only relative path from current directory if it's a subdirectory
         display_path <- full_path
