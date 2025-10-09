@@ -46,7 +46,7 @@ dhis2_map <- function(data, dict, new_col, old_col, verbose = TRUE) {
 
   # robust normalization helper
   norm <- function(x) {
-    out <- gsub("\u00A0", " ", x)               # replace non-breaking space
+    out <- gsub("\\u00A0", " ", x)               # replace non-breaking space
     out <- stringi::stri_trans_general(out, "Latin-ASCII")
     out <- tolower(out)
     out <- gsub("[[:punct:]]", " ", out)        # remove punctuation
@@ -91,12 +91,12 @@ dhis2_map <- function(data, dict, new_col, old_col, verbose = TRUE) {
 
     if (length(dict_unmatched)) {
       cli::cli_alert_info("Dictionary entries not found in dataset: {length(dict_unmatched)}")
-      cat("  •", paste(utils::head(dict_unmatched, 5), collapse = "\n  • "), "\n")
+      cat("  *", paste(utils::head(dict_unmatched, 5), collapse = "\n  * "), "\n")
     }
 
     if (length(data_unmatched)) {
       cli::cli_alert_info("Dataset columns without dictionary entry: {length(data_unmatched)}")
-      cat("  •", paste(utils::head(data_unmatched, 5), collapse = "\n  • "), "\n")
+      cat("  *", paste(utils::head(data_unmatched, 5), collapse = "\n  * "), "\n")
     }
   }
 
