@@ -7,16 +7,26 @@
 outlier_plot(
   data,
   column,
-  adm0 = NULL,
-  adm1 = "adm1",
-  adm2 = "adm2",
   record_id = "record_id",
-  yearmon = "yearmon",
-  year = "year",
-  methods = c("iqr", "median", "mean"),
-  iqr_multiplier = 1.5,
+  admin_levels = c("adm1", "adm2"),
+  date = "date",
+  time_mode = c("by_month", "across_time", "within_year"),
+  value_type = c("count", "rate"),
+  strictness = c("balanced", "lenient", "strict", "advanced"),
+  sd_multiplier = 3,
+  mad_constant = 1.4826,
+  mad_multiplier = 9,
+  iqr_multiplier = 2,
+  min_n = 8,
+  reporting_rate_col = NULL,
+  reporting_rate_min = 0.5,
+  consensus_rule = 2,
+  output_profile = c("standard", "lean", "audit"),
+  seasonal_pool_years = 5,
+  min_years_per_month = 3,
+  methods = c("iqr", "median", "mean", "consensus"),
   year_breaks = 2,
-  compare_periods = FALSE,
+  verbose = TRUE,
   target_language = "en",
   source_language = "en",
   lang_cache_path = tempdir(),
@@ -33,41 +43,80 @@ outlier_plot(
 )
 }
 \arguments{
-\item{data}{A data frame containing the data to analyze}
+\item{data}{Data frame containing the indicator to analyse.}
 
-\item{column}{Name of the column to check for outliers}
+\item{column}{Name of the numeric column to evaluate.}
 
-\item{adm0}{Optional administrative level 0 filter (default: NULL)}
+\item{record_id}{Unique record identifier column.}
 
-\item{adm1}{Name of administrative level 1 column (default: "adm1")}
+\item{admin_levels}{Character vector of administrative level columns ordered
+from higher to lower resolution. Defaults to \code{c("adm1", "adm2")}. Missing
+entries are dropped automatically; if only \code{adm1} is available, detection
+runs at adm1 only.}
 
-\item{adm2}{Name of administrative level 2 column (default: "adm2")}
+\item{date}{Date column (Date, POSIXt, or parseable character string).
+Year, month, and yearmon are automatically derived from this column.}
 
-\item{record_id}{Name of unique record ID column (default: "record_id")}
+\item{time_mode}{Pooling strategy: \code{"across_time"}, \code{"within_year"}, or
+\code{"by_month"}. \code{"by_month"} activates the seasonal fallback ladder.}
 
-\item{yearmon}{Name of year-month date column (default: "yearmon")}
+\item{value_type}{Indicator type: \code{"count"} or \code{"rate"}. Counts floor lower
+bounds at 0.}
 
-\item{year}{Name of year column (default: "year")}
+\item{strictness}{Strictness preset: \code{"lenient"}, \code{"balanced"}, \code{"strict"},
+or \code{"advanced"}. Presets map to method multipliers. If not \code{"advanced"},
+any manual multipliers are \strong{ignored}.}
 
-\item{methods}{Vector of outlier detection methods to use:
-"iqr" (Interquartile Range),
-"median" (Median method),
-"mean" (Mean method)
-(default: c("iqr", "median", "mean"))}
+\item{sd_multiplier}{Width (in SD units) for the mean method
+(used only when \code{strictness = "advanced"}).}
 
-\item{iqr_multiplier}{Multiplier for IQR method (default: 1.5)}
+\item{mad_constant}{Constant passed to \code{stats::mad()} in advanced mode
+(default 1.4826).}
+
+\item{mad_multiplier}{Width multiplier for the MAD method (advanced mode).}
+
+\item{iqr_multiplier}{Tukey fence multiplier for the IQR method (advanced mode).}
+
+\item{min_n}{Minimum observations required in the active comparison bucket
+before flagging is attempted (applies to any seasonal bucket or fallback).}
+
+\item{reporting_rate_col}{Optional column with reporting completeness in
+\verb{[0, 1]}.}
+
+\item{reporting_rate_min}{Minimum acceptable reporting rate. Rows below the
+threshold receive \code{reason = "low_reporting"} and are not flagged.}
+
+\item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3}) for
+the consensus flag to call an outlier. Default \code{2}.}
+
+\item{output_profile}{Controls the amount of detail returned:
+\code{"lean"} (minimal columns: id, admin, date, value, consensus flag, reason),
+\code{"standard"} (lean + per-method flags + bounds + seasonality mode),
+\code{"audit"} (all columns for full reproducibility). Default \code{"standard"}.}
+
+\item{seasonal_pool_years}{Rolling history window (in years) for same-month
+pooling when \code{time_mode = "by_month"}. Default \code{5}.}
+
+\item{min_years_per_month}{Minimum distinct years required in the same-month
+pool before moving to a fallback. Default \code{3}.}
+
+\item{methods}{Character vector specifying which outlier detection methods to plot:
+"iqr" (Interquartile Range), "median" (Median Absolute Deviation), "mean"
+(Mean +/- SD), and/or "consensus". Default is c("iqr", "median", "mean", "consensus")
+to show all methods. For consensus, at least 2 other methods must be selected.}
 
 \item{year_breaks}{Numeric value specifying the interval for x-axis breaks
 (default: 2). For example, 2 shows every 2nd year/month, 3 shows every 3rd.}
 
-\item{compare_periods}{Logical. If TRUE, creates comparison plots between
-different time periods (default: FALSE)}
+\item{verbose}{Logical. When \code{TRUE}, prints an informative summary showing
+which methods are being applied, the pooling strategy, strictness settings,
+guardrails, and consensus rule. Default is \code{FALSE}.}
 
 \item{target_language}{Character string specifying the language for plot
 labels. Defaults to "en" (English). Use ISO 639-1 language codes.}
 
 \item{source_language}{Source language code. If NULL, auto-detection is used.
-Defaults to NULL.}
+Defaults to "en".}
 
 \item{lang_cache_path}{Path to directory for storing translation cache.
 Defaults to tempdir().}
@@ -104,26 +153,62 @@ Useful when only saving plots. Default is TRUE.}
 }
 \value{
 If a single method is specified, returns a ggplot object. If multiple
-methods are specified, returns a list of ggplot objects named by method.
+methods are specified, returns a named list of ggplot objects (one per method).
 When show_plot is FALSE, returns invisibly.
 }
 \description{
-This function creates plots to visualize outliers in data using multiple
-detection methods.
+This function creates plots to visualize outliers in data using the same
+detection methods as \code{detect_outliers()}. The plotting function inherits
+all parameters from the detection function for seamless integration.
 }
 \details{
-The function creates scatter plots showing outliers detected by different
-methods. Each plot shows data points colored by outlier status, faceted by
-administrative level 2 regions. Summary statistics of outliers are shown in
-facet labels.
+The function creates scatter plots showing outliers detected using the specified
+statistical methods. Each method produces a separate plot with points colored by
+outlier status (red for outliers, grey for normal values). For consensus plots,
+the caption shows the consensus rule used. The plots are faceted by administrative
+levels and include summary statistics in the subtitle.
 }
 \examples{
 \dontrun{
-plots <- outlier_plot(
-  data = my_data,
-  column = "price",
-  record_id = "id",
-  methods = c("iqr", "median")
+# Create plots for all methods (default) - returns named list
+all_plots <- outlier_plot(
+  data = malaria_data,
+  column = "confirmed_cases",
+  date = "date",
+  record_id = "facility_id"
+)
+# Access individual plots: all_plots$iqr, all_plots$median, etc.
+
+# Single method - returns single ggplot object
+iqr_plot <- outlier_plot(
+  data = malaria_data,
+  column = "confirmed_cases",
+  date = "date",
+  record_id = "facility_id",
+  methods = "iqr"
+)
+
+# Multiple specific methods
+selected_plots <- outlier_plot(
+  data = malaria_data,
+  column = "confirmed_cases",
+  date = "date",
+  record_id = "facility_id",
+  methods = c("iqr", "median"),
+  time_mode = "by_month",
+  strictness = "strict",
+  year_breaks = 6
+)
+
+# Include consensus (requires 2+ other methods)
+with_consensus <- outlier_plot(
+  data = malaria_data,
+  column = "confirmed_cases",
+  date = "date",
+  record_id = "facility_id",
+  methods = c("iqr", "median", "mean", "consensus"),
+  consensus_rule = 2,
+  plot_path = "outliers.png"  # Saves as outliers_iqr.png, etc.
 )
 }
 }
