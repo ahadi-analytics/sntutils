@@ -7,21 +7,22 @@
 dhis2_map(data, dict, new_col, old_col, verbose = TRUE)
 }
 \arguments{
-\item{data}{A data.frame with DHIS2 columns to be renamed.}
+\item{data}{a data.frame with DHIS2 columns to be renamed.}
 
-\item{dict}{A data.frame containing the dictionary.}
+\item{dict}{a data.frame containing the dictionary.}
 
-\item{new_col}{Column in \code{dict} with harmonised names (name or index).}
+\item{new_col}{column in \code{dict} with harmonised names (name or index).}
 
-\item{old_col}{Column in \code{dict} with raw/source names (name or index).}
+\item{old_col}{column in \code{dict} with raw/source names (name or index).}
 
-\item{verbose}{Logical; if TRUE (default) prints CLI messages.}
+\item{verbose}{logical; if TRUE (default) prints CLI messages.}
 }
 \value{
-The input dataset with renamed columns.
+the input dataset with renamed columns.
 }
 \description{
 Given a dataset and its dictionary, build mappings between harmonised
 names and raw headers, then rename dataset columns accordingly. Matching
-is case/space/accent-insensitive. Optionally prints CLI diagnostics.
+is case-, space-, punctuation-, and accent-insensitive. Optionally prints
+CLI diagnostics summarising matched and unmatched columns.
 }
