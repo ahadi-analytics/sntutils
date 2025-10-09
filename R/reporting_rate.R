@@ -105,7 +105,7 @@
 #'
 #' Then:
 #' - Unweighted reporting rate = 7/10 = 70%
-#' - Weighted reporting rate \u2248 84% (reflecting that most patient volume is covered)
+#' - Weighted reporting rate \\u2248 84% (reflecting that most patient volume is covered)
 #'
 #' @examples
 #' hf_data <- data.frame(
