@@ -2,93 +2,196 @@
 % Please edit documentation in R/outlier_detection.R
 \name{detect_outliers}
 \alias{detect_outliers}
-\title{Detect outliers in a dataset using multiple statistical methods}
+\title{Detect outliers with guardrails, consensus, and seasonal fallbacks}
 \usage{
 detect_outliers(
   data,
   column,
-  iqr_multiplier = 1.5,
   record_id = "record_id",
-  adm1 = "adm1",
-  adm2 = "adm2",
-  yearmon = "yearmon",
-  year = "year"
+  admin_levels = c("adm1", "adm2"),
+  date = "date",
+  time_mode = c("by_month", "across_time", "within_year"),
+  value_type = c("count", "rate"),
+  strictness = c("balanced", "lenient", "strict", "advanced"),
+  sd_multiplier = 3,
+  mad_constant = 1.4826,
+  mad_multiplier = 9,
+  iqr_multiplier = 2,
+  min_n = 8,
+  reporting_rate_col = NULL,
+  reporting_rate_min = 0.5,
+  methods = c("iqr", "median", "mean", "consensus"),
+  consensus_rule = 2,
+  output_profile = c("standard", "lean", "audit"),
+  seasonal_pool_years = 5,
+  min_years_per_month = 3,
+  verbose = TRUE
 )
 }
 \arguments{
-\item{data}{A data frame containing the data to analyze}
+\item{data}{Data frame containing the indicator to analyse.}
 
-\item{column}{Character string specifying the column name to check for
-outliers}
+\item{column}{Name of the numeric column to evaluate.}
 
-\item{iqr_multiplier}{Numeric value specifying the IQR multiplier for Tukey's
-method (default = 1.5)}
+\item{record_id}{Unique record identifier column.}
 
-\item{record_id}{Character string specifying the column name for record ID
-(default = "record_id")}
+\item{admin_levels}{Character vector of administrative level columns ordered
+from higher to lower resolution. Defaults to \code{c("adm1", "adm2")}. Missing
+entries are dropped automatically; if only \code{adm1} is available, detection
+runs at adm1 only.}
 
-\item{adm1}{Character string specifying the column name for administrative
-level 1 (default = "adm1")}
+\item{date}{Date column (Date, POSIXt, or parseable character string).
+Year, month, and yearmon are automatically derived from this column.}
 
-\item{adm2}{Character string specifying the column name for administrative
-level 2 (default = "adm2")}
+\item{time_mode}{Pooling strategy: \code{"across_time"}, \code{"within_year"}, or
+\code{"by_month"}. \code{"by_month"} activates the seasonal fallback ladder.}
 
-\item{yearmon}{Character string specifying the column name for year-month
-(default = "yearmon")}
+\item{value_type}{Indicator type: \code{"count"} or \code{"rate"}. Counts floor lower
+bounds at 0.}
 
-\item{year}{Character string specifying the column name for year
-(default = "year")}
+\item{strictness}{Strictness preset: \code{"lenient"}, \code{"balanced"}, \code{"strict"},
+or \code{"advanced"}. Presets map to method multipliers. If not \code{"advanced"},
+any manual multipliers are \strong{ignored}.}
+
+\item{sd_multiplier}{Width (in SD units) for the mean method
+(used only when \code{strictness = "advanced"}).}
+
+\item{mad_constant}{Constant passed to \code{stats::mad()} in advanced mode
+(default 1.4826).}
+
+\item{mad_multiplier}{Width multiplier for the MAD method (advanced mode).}
+
+\item{iqr_multiplier}{Tukey fence multiplier for the IQR method (advanced mode).}
+
+\item{min_n}{Minimum observations required in the active comparison bucket
+before flagging is attempted (applies to any seasonal bucket or fallback).}
+
+\item{reporting_rate_col}{Optional column with reporting completeness in
+\verb{[0, 1]}.}
+
+\item{reporting_rate_min}{Minimum acceptable reporting rate. Rows below the
+threshold receive \code{reason = "low_reporting"} and are not flagged.}
+
+\item{methods}{Character vector specifying which outlier detection methods to use:
+"iqr" (Interquartile Range), "median" (Median Absolute Deviation), "mean"
+(Mean +/- SD), and/or "consensus". Default is c("iqr", "median", "mean", "consensus")
+to calculate all methods. For consensus, at least 2 other methods must be selected.}
+
+\item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3}) for
+the consensus flag to call an outlier. Default \code{2}.}
+
+\item{output_profile}{Controls the amount of detail returned:
+\code{"lean"} (minimal columns: id, admin, date, value, consensus flag, reason),
+\code{"standard"} (lean + per-method flags + bounds + seasonality mode),
+\code{"audit"} (all columns for full reproducibility). Default \code{"standard"}.}
+
+\item{seasonal_pool_years}{Rolling history window (in years) for same-month
+pooling when \code{time_mode = "by_month"}. Default \code{5}.}
+
+\item{min_years_per_month}{Minimum distinct years required in the same-month
+pool before moving to a fallback. Default \code{3}.}
+
+\item{verbose}{Logical. When \code{TRUE}, prints an informative summary showing
+which methods are being applied, the pooling strategy, strictness settings,
+guardrails, and consensus rule. Default is \code{FALSE}.}
 }
 \value{
-A data frame with the record_id, specified column, and outlier
-classification information containing:
-\itemize{
-\item record_id: Identifier for each record
-\item column_name: The name of the analyzed column
-\item value: The value in the specified column
-\item outlier_flag_mean: Identifies outliers using mean ± 3 standard deviations
-\item outlier_flag_median: Identifies outliers using Median identifier
-(median ± 15*MAD)
-\item outlier_flag_iqr: Identifies outliers using Tukey's fences
-(Q1/Q3 ± custom*IQR)
-\item mean_lower_bound: Lower bound for mean-based detection
-\item mean_upper_bound: Upper bound for mean-based detection
-\item median_lower_bound: Lower bound for Median identifier
-\item median_upper_bound: Upper bound for Median identifier
-\item iqr_lower_bound: Lower bound for IQR-based detection
-\item iqr_upper_bound: Upper bound for IQR-based detection
-\item iqr_value: The calculated IQR value
-}
+Tibble with outlier classifications and metadata. Columns include:
+identifiers (\code{record_id}, admin levels, \code{yearmon}, \code{year}, derived \code{month}),
+\code{column_name}, \code{value}, \code{value_type}, scale stats (\code{mean}, \code{sd}, \code{median},
+\code{mad}, \code{q1}, \code{q3}, \code{iqr}), method bounds, residual stats (if residual
+fallback), \code{n_in_group}, guardrail \code{reason}, method flags (optional),
+\code{outlier_flag_consensus}, seasonality descriptors, strictness multipliers,
+and fallback information.
 }
 \description{
-This function identifies outliers in a specified numeric column using three
-different statistical approaches: parametric (mean ± 3SD), Median identifier
-(median ± 15 * MAD), and Tukey's fences (quartiles ± custom IQR).
+\code{detect_outliers()} evaluates a numeric indicator by administrative unit and
+time using three methods (mean +/- SD, median +/- MAD, Tukey IQR). It enforces
+reporting and sample-size guardrails, supports strictness presets, and when
+requested applies a seasonality ladder (same-month -> neighbours -> residual
+-> across-time) to select stable comparison pools. It returns per-method flags
+(optional), a consensus classification, scale statistics, and metadata that
+records which fallback was used.
 }
 \details{
-The function groups data by administrative units (adm1, adm2), health
-facility (hf), and year before calculating statistics. Each method has
-different sensitivity to outliers, with the Median identifier being more
-robust against extreme values.
-
-\strong{About \code{iqr_multiplier}:}
-The \code{iqr_multiplier} controls the sensitivity of Tukey's fences (IQR method).
-\itemize{
-\item The standard value is \strong{1.5} (used in boxplots) for "mild" outliers.
-\item A value of \strong{3} is sometimes used for "extreme" outliers.
-\item Higher values make the method less sensitive (fewer outliers detected).
-\item Lower values make it more sensitive (more outliers detected).
+\strong{Workflow}
+\enumerate{
+\item Validation & prep: confirm required columns, coerce target to numeric
+safely, derive month from \code{yearmon}.
+\item Strictness: presets map to (SD, MAD, IQR) multipliers; advanced mode
+honours manual multipliers. On across-time fallback the strictness shifts
+one step toward lenient.
+\item Guardrails: rows failing \code{reporting_rate_min} or \code{min_n} bypass flagging
+and record \code{reason} (\code{low_reporting}, \code{insufficient_n},
+\code{insufficient_seasonal_history}).
+\item Seasonality (if \code{time_mode = "by_month"}): ladder applied in order:
+same-month (rolling \code{seasonal_pool_years}), neighbours (m +/- 1 with
+weights 2:1), residual (remove month fixed effects), across-time (with
+strictness shift), then exclusion if still inadequate. Each row records
+\code{seasonality_mode_used}, window text, and any fallback reason.
+\item Flagging: each method classifies rows respecting guardrails and unstable
+scales (when \code{sd}, \code{mad}, or \code{iqr} equals zero the method is suppressed
+and marked \code{unstable_scale}).
+\item Consensus: final \code{outlier_flag_consensus} requires at least
+\code{consensus_rule} methods to agree over available (non-suppressed) methods.
 }
 
-Returns NULL if the specified column doesn't exist or isn't numeric.
+\strong{Presets}
+\itemize{
+\item lenient: SD 4.0; MAD constant 1.4826, MAD mult 12; IQR 3.0
+\item balanced: SD 3.0; MAD constant 1.4826, MAD mult 9; IQR 2.0
+\item strict: SD 2.5; MAD constant 1.4826, MAD mult 6; IQR 1.5
+\item advanced: use user-supplied multipliers
+}
+
+\strong{Seasonality ladder thresholds}
+\itemize{
+\item same-month requires \code{min_years_per_month} and \code{min_n} within the
+\code{seasonal_pool_years} window; otherwise fall back as above.
+}
+
+The returned tibble always contains identifiers, scale statistics, bounds,
+strictness and seasonality metadata, and the guardrail reason. When
+\code{output_profile = "standard"} or \code{"audit"}, method-specific flags are included in addition to the
+consensus.
 }
 \examples{
 \dontrun{
-# Detect outliers in the "confirmed_cases" column with default IQR multiplier
-outlier_results <- detect_outliers(malaria_data, "confirmed_cases")
+# 1) Minimal consensus output at adm1-only level
+detect_outliers(
+  data = malaria_data,
+  column = "confirmed_cases",
+  date = "date",
+  record_id = "facility_id",
+  admin_levels = c("adm1"),        # ignore adm2 if not present
+  time_mode = "across_time"
+)
 
-# Use custom IQR multiplier
-outlier_results <- detect_outliers(malaria_data, "confirmed_cases",
-                                  iqr_multiplier = 2)
+# 2) Seasonality with fallbacks (same-month -> neighbours -> residual -> across-time)
+detect_outliers(
+  data = malaria_data,
+  column = "confirmed_cases",
+  date = "date",
+  admin_levels = c("adm1"),
+  time_mode = "by_month",
+  seasonal_pool_years = 5,
+  min_years_per_month = 3,
+  consensus_rule = 2,
+  output_profile = "audit"
+)
+
+# 3) Advanced overrides for rates
+detect_outliers(
+  data = malaria_data,
+  column = "positivity_rate",
+  date = "date",
+  value_type = "rate",
+  strictness = "advanced",
+  sd_multiplier = 2.5,
+  mad_multiplier = 7,
+  iqr_multiplier = 1.8,
+  min_n = 10,
+  output_profile = "audit"
+)
 }
 }

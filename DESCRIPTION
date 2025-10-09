@@ -73,6 +73,7 @@ Suggests:
     ecmwfr,
     ncdf4,
     rnaturalearth,
+    rstudioapi,
     lifecycle
 Config/testthat/edition: 3
 Encoding: UTF-8
