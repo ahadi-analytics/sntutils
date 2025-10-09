@@ -91,3 +91,44 @@ testthat::test_that("dhis2_map errors on invalid inputs and unknown columns", {
   )
 })
 
+testthat::test_that("dhis2_map preserves unmatched columns with original names", {
+  testthat::skip_if_not_installed("stringi")
+
+  # dictionary with some entries that won't match
+  dict <- tibble::tibble(
+    new_name = c("renamed_col1", "renamed_col2", "not_in_data"),
+    old_name = c("Match Me", "Also Match", "Missing Column")
+  )
+
+  # dataset with matched and unmatched columns
+  data_tbl <- tibble::tibble(
+    `match me` = 1:3,
+    `UnMatched_Col` = 4:6,
+    `also match` = 7:9,
+    `Extra Column!` = 10:12
+  )
+
+  out <- dhis2_map(
+    data = data_tbl,
+    dict = dict,
+    new_col = "new_name",
+    old_col = "old_name",
+    verbose = FALSE
+  )
+
+  # check renamed columns
+  testthat::expect_true("renamed_col1" %in% names(out))
+  testthat::expect_true("renamed_col2" %in% names(out))
+  
+  # check unmatched columns are preserved with original names
+  testthat::expect_true("UnMatched_Col" %in% names(out))
+  testthat::expect_true("Extra Column!" %in% names(out))
+  
+  # verify all columns are present
+  testthat::expect_equal(length(names(out)), 4)
+  
+  # verify data integrity
+  testthat::expect_equal(out$renamed_col1, 1:3)
+  testthat::expect_equal(out$UnMatched_Col, 4:6)
+})
+
