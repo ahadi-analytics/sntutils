@@ -412,7 +412,7 @@ french_malaria_acronyms <- function() {
   # Handle "weighted reporting rate" first (before generic "reporting rate")
   out <- base::gsub(
     "(?i)weighted\\s+reporting\\s+rate(s?)",
-    "taux de rapport pondéré",
+    "taux de rapport pond\u00e9r\u00e9",
     out,
     perl = TRUE
   )
@@ -484,7 +484,7 @@ french_malaria_acronyms <- function() {
   # Handle weighted reporting rate FIRST (before generic reporting rate)
   out <- base::gsub(
     "(?i)weighted\\s+reporting\\s+rate(s?)",
-    "taux de rapport pondéré",
+    "taux de rapport pond\u00e9r\u00e9",
     out,
     perl = TRUE
   )
@@ -498,36 +498,36 @@ french_malaria_acronyms <- function() {
   )
 
   out <- base::gsub(
-    "(?i)taux[\\s_]+(de|du|d['’])?[\\s_]*d[ée]claration(s?)",
+    "(?i)taux[\\s_]+(de|du|d['\u2019])?[\\s_]*d[\u00e9e]claration(s?)",
     "taux de rapport",
     out,
     perl = TRUE
   )
 
   out <- base::gsub(
-    "(?i)taux_de_d[ée]claration(s?)",
+    "(?i)taux_de_d[\u00e9e]claration(s?)",
     "taux de rapport",
     out,
     perl = TRUE
   )
 
   out <- base::gsub(
-    "(?i)taux\\s+(de|du|d['’]|the)\\s+rapportage(s?)",
+    "(?i)taux\\s+(de|du|d['\u2019]|the)\\s+rapportage(s?)",
     "taux de rapport",
     out,
     perl = TRUE
   )
 
   out <- base::gsub(
-    "(?i)taux\\s+de\\s+rapportage\\s+pondérés?",
-    "taux de rapport pondéré",
+    "(?i)taux\\s+de\\s+rapportage\\s+pond\u00e9r\u00e9s?",
+    "taux de rapport pond\u00e9r\u00e9",
     out,
     perl = TRUE
   )
 
   out <- base::gsub(
-    "(?i)taux_de_rapportage_pondérés?",
-    "taux de rapport pondéré",
+    "(?i)taux_de_rapportage_pond\u00e9r\u00e9s?",
+    "taux de rapport pond\u00e9r\u00e9",
     out,
     perl = TRUE
   )
@@ -550,19 +550,19 @@ french_malaria_acronyms <- function() {
 
 
 
-  out <- base::gsub("D['’]", "d'", out, perl = TRUE)
+  out <- base::gsub("D['\u2019]", "d'", out, perl = TRUE)
 
   # Lowercase French articles (de, du) unless at start of string
-  # Handle " De " → " de " (not at start of string)
+  # Handle " De " -> " de " (not at start of string)
   out <- base::gsub("(?<!^)\\s+De\\s+", " de ", out, perl = TRUE)
-  
-  # Handle " Du " → " du " (not at start of string)
+
+  # Handle " Du " -> " du " (not at start of string)
   out <- base::gsub("(?<!^)\\s+Du\\s+", " du ", out, perl = TRUE)
-  
-  # Handle "_De_" and "_De " in filenames → "_de_" and "_de "
+
+  # Handle "_De_" and "_De " in filenames -> "_de_" and "_de "
   out <- base::gsub("_De([\\s_])", "_de\\1", out, perl = TRUE)
-  
-  # Handle "_Du_" and "_Du " in filenames → "_du_" and "_du "
+
+  # Handle "_Du_" and "_Du " in filenames -> "_du_" and "_du "
   out <- base::gsub("_Du([\\s_])", "_du\\1", out, perl = TRUE)
   out
 }
