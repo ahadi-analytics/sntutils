@@ -9,7 +9,9 @@ facility_reporting_plot(
   hf_col,
   date_col = "date",
   key_indicators = c("test", "pres", "conf"),
+  facet_col = NULL,
   palette = "classic",
+  include_never_reported = TRUE,
   target_language = "en",
   source_language = "en",
   lang_cache_path = base::tempdir(),
@@ -22,8 +24,7 @@ facility_reporting_plot(
   plot_width = 22,
   plot_height = 15,
   plot_dpi = 300,
-  show_plot = TRUE,
-  include_never_reported = FALSE
+  show_plot = TRUE
 )
 }
 \arguments{
@@ -37,8 +38,17 @@ facility_reporting_plot(
 \item{key_indicators}{Character vector with columns defining reporting
 activity. Defaults to \code{c("test", "pres", "conf")}.}
 
+\item{facet_col}{Character. Optional column name to use for faceting the plot.
+When provided, creates separate panels for each unique value in this column
+(e.g., one panel per province or administrative region). Can be any column
+type. Default is NULL (no faceting).}
+
 \item{palette}{Character. Colour palette for activity statuses. One of
 \code{c("classic", "sunset", "forest", "coral", "violet", "slate", "citrus", "orchid")}. Defaults to "classic".}
+
+\item{include_never_reported}{Logical. If TRUE, includes facilities that
+have never reported in the plot. If TRUE (default), only shows
+facilities that have reported at least once.}
 
 \item{target_language}{Target language for labels (ISO 639-1). Defaults to
 "en".}
@@ -75,10 +85,6 @@ Default is 300.}
 
 \item{show_plot}{Logical. If FALSE, the plot is returned invisibly (not
 displayed). Useful when only saving plots. Default is TRUE.}
-
-\item{include_never_reported}{Logical. If TRUE, includes facilities that
-have never reported in the plot. If FALSE (default), only shows
-facilities that have reported at least once.}
 }
 \value{
 A ggplot object visualising facility reporting activity.
