@@ -471,19 +471,32 @@ calculate_reporting_metrics <- function(
           reported_any_var = dplyr::if_any(dplyr::all_of(vars_of_interest), ~ !is.na(.x))
         )
 
-      result <- data_with_weights |>
+      # First aggregate by facility within each group to get facility-level reporting
+      facility_summary <- data_with_weights |>
+        dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var, hf_col)))) |>
+        dplyr::summarise(
+          reported_facility = any(reported_any_var),
+          weight_facility = mean(weight, na.rm = TRUE),
+          weight_value_facility = mean(.data[[weight_var]], na.rm = TRUE),
+          .groups = "drop"
+        )
+
+      # Then aggregate to group level
+      result <- facility_summary |>
         dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var)))) |>
         dplyr::summarise(
-          rep = sum(reported_any_var),
-          exp = dplyr::n_distinct(.data[[hf_col]]),
-          w_num = sum(weight * reported_any_var, na.rm = TRUE),
-          w_den = sum(weight, na.rm = TRUE),
+          # Count distinct facilities that reported
+          rep = sum(reported_facility),
+          exp = dplyr::n(),
+          # Calculate weighted rates
+          w_num = sum(weight_facility * reported_facility, na.rm = TRUE),
+          w_den = sum(weight_facility, na.rm = TRUE),
           reprate_w = dplyr::if_else(w_den > 0, w_num / w_den, NA_real_),
           missrate_w = dplyr::if_else(!is.na(reprate_w), 1 - reprate_w, NA_real_),
           # Add raw weight_var statistics
-          !!paste0("avg_", weight_var) := base::mean(.data[[weight_var]], na.rm = TRUE),
-          !!paste0("min_", weight_var) := min(.data[[weight_var]], na.rm = TRUE),
-          !!paste0("max_", weight_var) := max(.data[[weight_var]], na.rm = TRUE),
+          !!paste0("avg_", weight_var) := base::mean(weight_value_facility, na.rm = TRUE),
+          !!paste0("min_", weight_var) := min(weight_value_facility, na.rm = TRUE),
+          !!paste0("max_", weight_var) := max(weight_value_facility, na.rm = TRUE),
           .groups = "drop"
         ) |>
         dplyr::mutate(
@@ -501,9 +514,13 @@ calculate_reporting_metrics <- function(
     } else {
       result <- data |>
         dplyr::filter(include_in_denom) |>
+        dplyr::mutate(
+          reported_any_var = dplyr::if_any(dplyr::all_of(vars_of_interest), ~ !is.na(.x))
+        ) |>
         dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var)))) |>
         dplyr::summarise(
-          rep = sum(dplyr::if_any(dplyr::all_of(vars_of_interest), ~ !is.na(.x))),
+          # Count distinct facilities that reported any of vars_of_interest
+          rep = dplyr::n_distinct(.data[[hf_col]][reported_any_var]),
           exp = dplyr::n_distinct(.data[[hf_col]]),
           .groups = "drop"
         ) |>
@@ -1638,7 +1655,7 @@ translate_plot_labels <- function(plot, target_language,
           source_language = source_language,
           cache_path = lang_cache_path
         )
-        
+
         # Apply title case for fill label (legend title)
         if (lab_name == "fill") {
           # Convert first letter to uppercase
@@ -1647,7 +1664,7 @@ translate_plot_labels <- function(plot, target_language,
             substring(translated_text, 2)
           )
         }
-        
+
         plot_labs[[lab_name]] <- translated_text
       }
     }
@@ -1742,4 +1759,576 @@ create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
   )
 
   common_elements
+}
+
+#' Plot reporting rate maps over time
+#'
+#' @description
+#' Creates faceted maps of reporting rates (or missing rates) by administrative
+#' unit and time. Designed to complement `reporting_rate_plot()` with consistent
+#' styling and color schemes. The function displays the variables of interest in
+#' both the title and subtitle for clarity.
+#'
+#' @param data Data frame of health facility data.
+#' @param shapefile sf object containing administrative boundaries (adm1 or adm2).
+#' @param x_var Character. Time variable (e.g., "yearmon", "year", "month").
+#' @param adm_var Character. Administrative variable in both `data` and `shapefile`
+#'   (e.g., "adm1" or "adm2").
+#' @param vars_of_interest Character vector. Variable(s) to compute reporting rates for.
+#'   These will be displayed in the plot title and subtitle.
+#' @param hf_col Character. Health facility ID column, if required. Default is NULL.
+#' @param use_reprate Logical. If TRUE, plot reporting rate (facilities that reported);
+#'   if FALSE, plot missing rate (facilities that didn't report). Default is TRUE.
+#' @param full_range Logical. If TRUE, the fill scale will use the full range from 0 to 100.
+#'   If FALSE, the fill scale will use the range of values present in the data. Default is TRUE.
+#' @param weighting Logical. If TRUE, compute weighted reporting rates based on
+#'   facility size. Default is FALSE.
+#' @param weight_var Character. Weight variable if weighting = TRUE.
+#' @param weight_window Integer. Number of periods for typical size.
+#'   Default is 12.
+#' @param exclude_current_x Logical. Exclude current period in weighting.
+#'   Default is TRUE.
+#' @param cold_start Character. Cold-start strategy ("median_within_y" or "median_global").
+#'   Default is "median_within_y".
+#' @param fill_palette Character. Not used - kept for backward compatibility.
+#'   Color palette is automatically selected based on use_reprate parameter
+#'   to match reporting_rate_plot() styling.
+#' @param facet_label Character. Optional custom label for the administrative level
+#'   in the title. If NULL, uses adm_var value. Default is NULL.
+#' @param facet_ncol Integer. Number of facet columns. Default is 4.
+#' @param target_language Character. ISO 639-1 code for translation. Default "en".
+#' @param source_language Character. Source language for translation. Default "en".
+#' @param lang_cache_path Path to directory for storing translation cache.
+#'   Default is tempdir().
+#' @param plot_path Character. Path to save the plot. Can be either a directory path
+#'   (filename will be auto-generated) or a full file path ending in .png.
+#'   If NULL, plot is not saved.
+#' @param compress_image Logical. If TRUE, compress the saved plot.
+#'   Default is FALSE.
+#' @param image_overwrite Logical. If TRUE, overwrite existing files.
+#'   Default is TRUE.
+#' @param compression_speed Integer. Speed/quality trade-off from 1
+#'   (brute-force) to 10 (fastest). Default is 1.
+#' @param compression_verbose Logical. Controls output verbosity.
+#'   FALSE = silent, TRUE = verbose. Default is TRUE.
+#' @param plot_scale Numeric. Scaling factor for saved plots. Values > 1
+#'   increase size, < 1 decrease size. Default is 1.
+#' @param plot_width Numeric. Width of saved plot in inches. If NULL,
+#'   width is calculated automatically based on data.
+#' @param plot_height Numeric. Height of saved plot in inches. If NULL,
+#'   height is calculated automatically based on data.
+#' @param plot_dpi Numeric. Resolution of saved plot in dots per inch.
+#'   Default is 300.
+#' @param show_plot Logical. Display plot (TRUE) or return invisibly (FALSE).
+#'   Default is TRUE.
+#'
+#' @return A ggplot2 object.
+#'
+#' @examples
+#' \dontrun{
+#' # Example: adm1-level map over months
+#' reporting_rate_map(
+#'   data = hf_data,
+#'   shapefile = adm1_sf,
+#'   x_var = "month",
+#'   adm_var = "district",
+#'   vars_of_interest = "malaria"
+#' )
+#' }
+#' @export
+reporting_rate_map <- function(
+  data,
+  shapefile,
+  x_var,
+  adm_var,
+  vars_of_interest,
+  hf_col = NULL,
+  use_reprate = TRUE,
+  full_range = TRUE,
+  weighting = FALSE,
+  weight_var = NULL,
+  weight_window = 12,
+  exclude_current_x = TRUE,
+  cold_start = "median_within_y",
+  fill_palette = "Zissou1",
+  facet_label = NULL,
+  facet_ncol = 4,
+  target_language = "en",
+  source_language = "en",
+  lang_cache_path = tempdir(),
+  plot_path = NULL,
+  compress_image = FALSE,
+  image_overwrite = TRUE,
+  compression_speed = 1,
+  compression_verbose = TRUE,
+  plot_scale = 1,
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_dpi = 300,
+  show_plot = TRUE
+) {
+  # Ensure required packages
+  ensure_packages(c("wesanderson", "ggplot2", "sf"))
+
+  # Validate inputs
+  if (!inherits(shapefile, "sf")) {
+    cli::cli_abort("'shapefile' must be an sf object")
+  }
+
+  if (!adm_var %in% names(shapefile)) {
+    cli::cli_abort("'{adm_var}' not found in shapefile")
+  }
+
+  if (!adm_var %in% names(data)) {
+    cli::cli_abort("'{adm_var}' not found in data")
+  }
+
+  # Prepare summarized data using calculate_reporting_metrics
+  summary_data <- calculate_reporting_metrics(
+    data = data,
+    vars_of_interest = vars_of_interest,
+    x_var = x_var,
+    y_var = adm_var,
+    hf_col = hf_col,
+    weighting = weighting,
+    weight_var = weight_var,
+    weight_window = weight_window,
+    exclude_current_x = exclude_current_x,
+    cold_start = cold_start
+  )
+
+  # Determine which rate variable to use
+  rate_var <- if (use_reprate) {
+    if (weighting) "reprate_w" else "reprate"
+  } else {
+    if (weighting) "missrate_w" else "missrate"
+  }
+
+  # Join shapefile and reporting data
+  merged <- shapefile |>
+    dplyr::left_join(
+      summary_data, by = dplyr::join_by(!!rlang::sym(adm_var)))
+
+  # Ensure rate is in percentage
+  merged <- merged |>
+    dplyr::mutate(
+      !!rate_var := !!rlang::sym(rate_var) * 100,
+      time_factor = forcats::as_factor(.data[[x_var]])
+    )
+
+  # Palette setup - match reporting_rate_plot color scheme
+  color_pal <- if (use_reprate) {
+    rev(wesanderson::wes_palette("Zissou1", 100, type = "continuous"))
+  } else {
+    wesanderson::wes_palette("Zissou1", 100, type = "continuous")
+  }
+
+  # Translate labels if needed
+  should_translate <- target_language != "en"
+
+  # Create title prefix matching reporting_rate_plot style
+  title_prefix <- if (use_reprate) {
+    "Reporting rate of"
+  } else {
+    "The proportion of missing data for"
+  }
+
+  fill_label <- if (use_reprate) {
+    if (weighting) {
+      "Weighted reporting rate (%)"
+    } else {
+      "Reporting rate (%)"
+    }
+  } else {
+    if (weighting) {
+      "Weighted missing rate (%)"
+    } else {
+      "Missing rate (%)"
+    }
+  }
+
+  by_text <- "by"
+  and_text <- "and"
+
+  # Use facet_label if provided, otherwise use adm_var
+  admin_label <- if (!is.null(facet_label)) facet_label else adm_var
+
+  if (should_translate) {
+    ensure_packages("gtranslate")
+
+    title_prefix <- translate_text(
+      title_prefix,
+      target_language = target_language,
+      source_language = source_language,
+      cache_path = lang_cache_path
+    )
+
+    fill_label <- translate_text(
+      fill_label,
+      target_language = target_language,
+      source_language = source_language,
+      cache_path = lang_cache_path
+    )
+
+    by_text <- translate_text(
+      by_text,
+      target_language = target_language,
+      source_language = source_language,
+      cache_path = lang_cache_path
+    )
+
+    and_text <- translate_text(
+      and_text,
+      target_language = target_language,
+      source_language = source_language,
+      cache_path = lang_cache_path
+    )
+
+    # Translate admin_label if it's a common term and facet_label was provided
+    if (!is.null(facet_label)) {
+      admin_label <- translate_text(
+        admin_label,
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+    }
+  }
+
+  # Create title components matching reporting_rate_plot style
+  vars_display <- if (length(vars_of_interest) <= 5) {
+    paste(vars_of_interest, collapse = ", ")
+  } else {
+    paste0(length(vars_of_interest), " variables")
+  }
+
+  # Build title in the same format as reporting_rate_plot
+  title_vars <- paste(vars_display, by_text, x_var)
+  title_suffix <- paste(and_text, admin_label)
+
+  # Create full title
+  title_full <- paste(title_prefix, title_vars, title_suffix)
+
+  # Apply sentence case to the title prefix only, preserve other capitalizations
+  # This ensures proper nouns and variable names keep their case
+  if (grepl("^[A-Z]", title_prefix)) {
+    # Split the title into components
+    title_parts <- strsplit(title_full, " ")[[1]]
+
+    # Find where title_prefix ends
+    prefix_parts <- strsplit(title_prefix, " ")[[1]]
+    prefix_length <- length(prefix_parts)
+
+    # Apply sentence case only to the prefix parts
+    for (i in 1:min(prefix_length, length(title_parts))) {
+      if (i == 1) {
+        # First word stays capitalized
+        title_parts[i] <- paste0(toupper(substring(title_parts[i], 1, 1)),
+                                 substring(title_parts[i], 2))
+      } else {
+        # Other prefix words become lowercase
+        title_parts[i] <- tolower(title_parts[i])
+      }
+    }
+
+    # Reconstruct the title
+    title_full <- paste(title_parts, collapse = " ")
+  }
+
+
+  # Set fill scale limits based on full_range parameter
+  fill_limits <- if (full_range) {
+    c(0, 100)
+  } else {
+    # Calculate limits from the actual data
+    rate_values <- merged[[rate_var]]
+    c(
+      floor(min(rate_values, na.rm = TRUE)),
+      ceiling(max(rate_values, na.rm = TRUE))
+    )
+  }
+
+  # Create plot
+  p <- ggplot2::ggplot(merged) +
+    ggplot2::geom_sf(
+      ggplot2::aes(fill = .data[[rate_var]]),
+      color = "white",
+      size = 0.2
+    ) +
+    ggplot2::facet_wrap(
+      ~time_factor,
+      ncol = facet_ncol,
+      labeller = ggplot2::labeller(
+        time_factor = function(x) {
+          if (x_var %in% c("yearmon", "month", "date")) {
+            # Try to parse as date and use translate_yearmon
+            dates <- tryCatch(
+              as.Date(as.character(x)),
+              error = function(e) NA
+            )
+            if (!any(is.na(dates))) {
+              return(sntutils::translate_yearmon(
+                dates,
+                language = target_language
+              ))
+            }
+          }
+          return(as.character(x))
+        }
+      )
+    ) +
+    ggplot2::scale_fill_gradientn(
+      colours = color_pal,
+      limits = fill_limits,
+      na.value = "grey90",
+      name = fill_label
+    ) +
+    ggplot2::labs(
+      title = stringr::str_to_sentence(title_full),
+      fill = stringr::str_to_sentence(fill_label)
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      # Legend styling to match create_common_elements exactly
+      legend.title = ggplot2::element_text(
+        size = 12,
+        face = "bold",
+        family = "sans"
+      ),
+      legend.position = "bottom",
+      legend.direction = "horizontal",
+      legend.box = "horizontal",
+      legend.box.just = "center",
+      legend.margin = ggplot2::margin(t = 0, unit = "cm"),
+      legend.text = ggplot2::element_text(
+        size = 8,
+        family = "sans"
+      ),
+      # Title styling - use element_markdown to match reporting_rate.R
+      plot.title = ggtext::element_markdown(
+        size = 12,
+        family = "sans",
+        margin = ggplot2::margin(b = 10)
+      ),
+      # Map-specific elements (no axis for maps)
+      axis.text = ggplot2::element_blank(),
+      axis.title = ggplot2::element_blank(),
+      axis.ticks = ggplot2::element_blank(),
+      # Grid styling to match reporting_rate.R
+      panel.grid.minor = ggplot2::element_blank(),
+      panel.grid.major = ggplot2::element_blank(),
+      panel.background = ggplot2::element_blank(),
+      # Facet strip styling to match reporting_rate.R exactly
+      strip.text = ggplot2::element_text(
+        family = "sans",
+        face = "bold"
+      ),
+      # Panel spacing
+      panel.spacing = grid::unit(0.5, "lines")
+    ) +
+    # Guide colorbar to match create_common_elements exactly
+    ggplot2::guides(
+      fill = ggplot2::guide_colorbar(
+        title.position = "top",
+        label.position = "bottom",
+        direction = "horizontal",
+        barheight = ggplot2::unit(0.3, "cm"),
+        barwidth = ggplot2::unit(4.5, "cm"),
+        ticks = TRUE,
+        draw.ulim = TRUE,
+        draw.llim = TRUE
+      )
+    )
+
+  # Save plot if requested
+  if (!is.null(plot_path)) {
+    # Check if plot_path is directory or file
+    is_directory <- !grepl("\\.png$", plot_path, ignore.case = TRUE)
+
+    if (is_directory) {
+      # Create directory if needed
+      if (!dir.exists(plot_path)) {
+        dir_created <- dir.create(plot_path, recursive = TRUE, showWarnings = FALSE)
+        if (!dir_created) {
+          cli::cli_warn("Could not create directory: {plot_path}")
+          return(invisible(p))
+        }
+      }
+
+      # Get translated terms for filename construction
+      # Translate save title prefix
+      save_title_prefix <- if (use_reprate) {
+        "reporting rate map"
+      } else {
+        "missing rate map"
+      }
+
+      save_title_prefix_tr <- translate_text(
+        save_title_prefix,
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      save_title_prefix_tr <- tolower(save_title_prefix_tr)
+      save_title_prefix_tr <- gsub(" ", "_", save_title_prefix_tr)
+
+      # Translate common words for filename
+      for_word <- translate_text(
+        "for",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+
+      by_word <- translate_text(
+        "by",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+
+      # Format x_var for filename
+      x_title <- if (x_var == "yearmon") "year_and_month" else x_var
+      x_title <- translate_text(
+        x_title,
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      x_title <- tolower(gsub(" ", "_", x_title))
+
+      # Format vars for filename
+      vars_str <- if (length(vars_of_interest) > 3) {
+        translated_str <- translate_text(
+          "multiple_variables",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        tolower(gsub(" ", "_", translated_str))
+      } else {
+        tolower(paste(vars_of_interest, collapse = "_"))
+      }
+
+      # Add admin level to filename
+      admin_part <- paste0("_", tolower(gsub(" ", "_", admin_label)))
+
+      # Get year range from data
+      year_range <- tryCatch({
+        if ("year" %in% names(data) && length(unique(data$year)) > 1) {
+          paste0(min(data$year, na.rm = TRUE), "-", max(data$year, na.rm = TRUE))
+        } else if ("year" %in% names(data)) {
+          as.character(min(data$year, na.rm = TRUE))
+        } else {
+          # Try to extract year from x_var values
+          years <- unique(format(as.Date(merged[[x_var]]), "%Y"))
+          if (length(years) > 1) {
+            paste0(min(years), "-", max(years))
+          } else {
+            years[1]
+          }
+        }
+      }, error = function(e) {
+        format(Sys.Date(), "%Y")
+      })
+
+      # Construct filename
+      filename <- sprintf(
+        "%s_%s_%s_%s_%s%s_%s_v%s.png",
+        save_title_prefix_tr,
+        for_word,
+        vars_str,
+        by_word,
+        x_title,
+        admin_part,
+        year_range,
+        format(Sys.Date(), "%Y-%m-%d")
+      )
+
+      full_path <- file.path(plot_path, filename)
+    } else {
+      # plot_path is already a full file path
+      full_path <- plot_path
+      plot_dir <- dirname(full_path)
+      if (!dir.exists(plot_dir)) {
+        dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+      }
+    }
+
+    # Calculate plot dimensions if not provided
+    if (is.null(plot_width)) {
+      n_facets <- length(unique(merged$time_factor))
+      plot_width <- min(20, max(10, 4 * min(facet_ncol, n_facets)))
+    }
+
+    if (is.null(plot_height)) {
+      n_facets <- length(unique(merged$time_factor))
+      n_rows <- ceiling(n_facets / facet_ncol)
+      plot_height <- min(15, max(8, 3 * n_rows))
+    }
+
+    # Save plot
+    tryCatch({
+      ggplot2::ggsave(
+        filename = full_path,
+        plot = p,
+        width = plot_width,
+        height = plot_height,
+        dpi = plot_dpi,
+        scale = plot_scale,
+        limitsize = FALSE
+      )
+
+      # Close device to prevent warnings
+      if (grDevices::dev.cur() > 1) {
+        grDevices::dev.off()
+      }
+
+      # Compress if requested
+      if (compress_image && endsWith(tolower(full_path), ".png")) {
+        if (requireNamespace("R.utils", quietly = TRUE)) {
+          compress_png(
+            path = full_path,
+            png_overwrite = image_overwrite,
+            speed = compression_speed,
+            verbosity = compression_verbose
+          )
+        } else {
+          cli::cli_warn("R.utils package required for compression. Skipping compression.")
+        }
+      }
+
+      # Success message
+      success_msg <- translate_text(
+        "Plot saved to:",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+
+      # Show only relative path from current directory if it's a subdirectory
+      display_path <- full_path
+      if (startsWith(full_path, getwd())) {
+        display_path <- sub(paste0("^", getwd(), "/"), "", full_path)
+      } else if (grepl("03_outputs", full_path)) {
+        # Extract from 03_outputs onward if present
+        display_path <- sub(".*/(03_outputs/.*)", "\\1", full_path)
+      }
+
+      cli::cli_alert_success(paste(success_msg, display_path))
+    }, error = function(e) {
+      # Close device on error
+      if (grDevices::dev.cur() > 1) {
+        grDevices::dev.off()
+      }
+      cli::cli_warn("Failed to save plot to {full_path}: {e$message}")
+    })
+  }
+
+  # Return plot
+  if (show_plot) {
+    return(p)
+  } else {
+    return(invisible(p))
+  }
 }

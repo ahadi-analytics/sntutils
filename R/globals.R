@@ -193,6 +193,9 @@ globalVariables(
     "unstable_iqr",
     "unstable_mean",
     "unstable_median",
-    "yearmon"
+    "yearmon",
+    "reported_facility",
+    "weight_facility",
+    "weight_value_facility"
   )
 )
