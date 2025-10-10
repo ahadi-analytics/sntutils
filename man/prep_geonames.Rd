@@ -38,18 +38,20 @@ attached to sntutils is used.}
 \item{level4}{level4 col name (settlement) in both 'data' and 'lookup_data'.}
 
 \item{cache_path}{Optional; the path where the cache data frame is
-saved after user modifications. This path is also used to match and
-integrate previously established corrections into the current
-session. If NULL or the file does not exist at the provided path,
-users will be prompted to specify a new path or create a new cache
-data frame.}
+saved after user modifications. Supports all file formats supported
+by sntutils read() and write() functions including .rds, .csv, .xlsx,
+.dta, .tsv, and more. This path is also used to match and integrate
+previously established corrections into the current session. If NULL
+or the file does not exist at the provided path, users will be
+prompted to specify a new path or create a new cache data frame.}
 
 \item{unmatched_export_path}{Optional; path to save unmatched data after
 processing. The file will include complete rows with full hierarchical
 context, showing which column needs matching (typically the most
 granular level like health facilities) along with all administrative
-levels and metadata (timestamp, username, data sources). Supports .csv
-and .rds file formats based on the file extension.}
+levels and metadata (timestamp, username, data sources). Supports all
+file formats supported by sntutils write() function based on the file
+extension.}
 
 \item{method}{The string distance calculation method(s) to be used. Users
 can specify one or more algorithms from the

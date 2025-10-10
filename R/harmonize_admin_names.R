@@ -1,22 +1,28 @@
-#' Save Dataframe to RDS File
+#' Save Dataframe Using sntutils Write Function
 #'
-#' Prompts the user for confirmation before saving a dataframe to a RDS file.
-#' If the specified file path does not exist or is NULL, the user is prompted to
-#' provide a new path. A default file name is used if no valid path is provided.
-#' If a cache file already exists, the function merges new data with existing
-#' data, ensuring that the most recent entries (based on `created_time`)
-#' are retained.
+#' Prompts the user for confirmation before saving a dataframe to a file.
+#' Supports all file formats supported by the sntutils write() function
+#' including RDS, CSV, Excel, DTA, TSV, and more. If the specified file path
+#' does not exist or is NULL, the user is prompted to provide a new path.
+#' A default file name is used if no valid path is provided. If a cache file
+#' already exists, the function merges new data with existing data, ensuring
+#' that the most recent entries (based on `created_time`) are retained.
 #'
 #' @param data_to_save DataFrame to be saved.
 #' @param default_save_path Default path for saving the dataframe. If not
 #'                     provided or invalid, the user is prompted for a new path.
-#'                    Defaults to \code{NULL}.
+#'                     File extension determines format (e.g., .rds, .csv, .xlsx,
+#'                     .dta, .tsv). Defaults to \code{NULL}.
 #'
 #' @return Invisible \code{NULL}. The function's primary purpose is to saving a
 #'        file, not to return a value.
 #'
 #' @examples
 #' # handle_file_save(data_to_save, "path/to/default/location.rds")
+#' # handle_file_save(data_to_save, "path/to/default/location.csv")
+#' # handle_file_save(data_to_save, "path/to/default/location.xlsx")
+#' # handle_file_save(data_to_save, "path/to/default/location.dta")
+#' # handle_file_save(data_to_save, "path/to/default/location.tsv")
 #'
 #' @keywords internal
 #' @noRd
@@ -67,9 +73,15 @@ handle_file_save <- function(data_to_save, default_save_path = NULL) {
       on.exit(filelock::unlock(lock))
       file.remove(lock_path)
 
-      # Load existing cache if available
-      existing_cache <-
-        if (file.exists(cache_path)) readRDS(cache_path) else NULL
+      # Load existing cache if available using sntutils read()
+      existing_cache <- if (file.exists(cache_path)) {
+        tryCatch(
+          read(cache_path),
+          error = function(e) NULL
+        )
+      } else {
+        NULL
+      }
 
       # Merge with existing cache if applicable
       if (!is.null(existing_cache) && nrow(existing_cache) > 0) {
@@ -80,8 +92,8 @@ handle_file_save <- function(data_to_save, default_save_path = NULL) {
         merged_cache <- data_to_save
       }
 
-      # Save the merged cache
-      saveRDS(merged_cache, cache_path)
+      # Save the merged cache using sntutils write()
+      write(merged_cache, cache_path)
       cli::cli_alert_success("File saved successfully to {cache_path}.")
       break
     } else if (confirm_save == "n") {
@@ -1128,37 +1140,18 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
         "name_of_creator"
       )
 
-    # Save based on file extension
-    file_ext <- tools::file_ext(unmatched_export_path)
-
+    # Save using sntutils write() function
     tryCatch({
-      if (tolower(file_ext) == "csv") {
-        utils::write.csv(unmatched_df, unmatched_export_path, row.names = FALSE)
-        cli::cli_alert_success(
-          "Unmatched data exported to: {fs::path_rel(unmatched_export_path)}"
-        )
-      } else if (tolower(file_ext) == "rds") {
-        saveRDS(unmatched_df, unmatched_export_path)
-        cli::cli_alert_success(
-          "Unmatched data exported to: {fs::path_rel(unmatched_export_path)}"
-        )
-      } else {
-        # Default to CSV if extension not recognized
-        utils::write.csv(
-          unmatched_df,
-          paste0(fs::path_rel(unmatched_export_path), ".csv"),
-          row.names = FALSE
-        )
-        cli::cli_alert_success(
-          "Unmatched data exported to: ",
-          "{paste0(fs::path_rel(unmatched_export_path), '.csv')}"
-        )
-      }
+      write(unmatched_df, unmatched_export_path)
+      cli::cli_alert_success(
+        "Unmatched data exported to: {.file {unmatched_export_path}}"
+      )
 
       # Show summary of unmatched data
+      # Extract the column name for display
+      col_name <- if (!is.na(unmatched_column)) unmatched_column else "unknown"
       cli::cli_alert_info(
-        "Exported {nrow(unmatched_df)} unmatched rows for column ",
-        "'{unmatched_column}'"
+        "Exported {nrow(unmatched_df)} unmatched rows for column '{col_name}'"
       )
     }, error = function(e) {
       cli::cli_alert_warning(
@@ -1192,17 +1185,19 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
 #' @param level3 level3 col name (subdistrict) in both 'data' and 'lookup_data'.
 #' @param level4 level4 col name (settlement) in both 'data' and 'lookup_data'.
 #' @param cache_path Optional; the path where the cache data frame is
-#'        saved after user modifications. This path is also used to match and
-#'        integrate previously established corrections into the current
-#'        session. If NULL or the file does not exist at the provided path,
-#'        users will be prompted to specify a new path or create a new cache
-#'        data frame.
+#'        saved after user modifications. Supports all file formats supported
+#'        by sntutils read() and write() functions including .rds, .csv, .xlsx,
+#'        .dta, .tsv, and more. This path is also used to match and integrate
+#'        previously established corrections into the current session. If NULL
+#'        or the file does not exist at the provided path, users will be
+#'        prompted to specify a new path or create a new cache data frame.
 #' @param unmatched_export_path Optional; path to save unmatched data after
 #'        processing. The file will include complete rows with full hierarchical
 #'        context, showing which column needs matching (typically the most
 #'        granular level like health facilities) along with all administrative
-#'        levels and metadata (timestamp, username, data sources). Supports .csv
-#'        and .rds file formats based on the file extension.
+#'        levels and metadata (timestamp, username, data sources). Supports all
+#'        file formats supported by sntutils write() function based on the file
+#'        extension.
 #' @param method The string distance calculation method(s) to be used. Users
 #'        can specify one or more algorithms from the
 #'        \code{\link[stringdist]{stringdist}} package to compute
@@ -1558,8 +1553,15 @@ prep_geonames <- function(
 
   # load saved cache file
   if (!is.null(cache_path) && file.exists(cache_path)) {
-    # load the cache file
-    saved_cache_df <- readRDS(cache_path)
+    # load the cache file using sntutils read() function
+    saved_cache_df <- tryCatch(
+      read(cache_path),
+      error = function(e) {
+        cli::cli_abort(
+          "Failed to read cache file: {e$message}"
+        )
+      }
+    )
 
     # harmonise column names in case using old version of cache file
     saved_cache_df <- saved_cache_df |>
