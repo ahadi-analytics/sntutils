@@ -251,3 +251,56 @@ test_that("facility_reporting_plot can save and compress", {
   saved_files <- fs::dir_ls(tmp_dir, glob = "*.png")
   expect_length(saved_files, 1L)
 })
+
+test_that("facility_reporting_plot handles facet_col parameter", {
+  data <- tibble::tibble(
+    hf = rep(c("HF1", "HF2", "HF3"), each = 3),
+    date = rep(
+      base::seq.Date(
+        base::as.Date("2023-01-01"),
+        by = "month",
+        length.out = 3
+      ),
+      times = 3
+    ),
+    test = c(1, NA, 2, NA, NA, 3, NA, NA, NA),
+    pres = c(NA, 3, NA, 5, NA, NA, 7, 8, 9),
+    conf = c(NA, NA, 1, NA, 2, NA, NA, NA, NA)
+  )
+
+  plot_fun <- facility_reporting_plot
+  mockery::stub(plot_fun, "ensure_packages", function(...) invisible(NULL))
+
+  # Add a grouping column for faceting
+  data$region <- c("North", "North", "North", "South", "South", "South", "East", "East", "East")
+  
+  # Test with facet_col = "region"
+  plot <- plot_fun(
+    data = data,
+    hf_col = "hf",
+    date_col = "date",
+    key_indicators = c("test", "pres", "conf"),
+    facet_col = "region"
+  )
+
+  expect_s3_class(plot, "ggplot")
+  
+  # Check that plot has facets
+  expect_s3_class(plot$facet, "FacetWrap")
+  
+  # Check that legend title still mentions key indicators
+  legend <- plot$scales$get_scales("fill")
+  expect_true(stringr::str_detect(legend$name, "(test, pres, conf)"))
+  
+  # Test error when facet_col is not in data
+  expect_error(
+    plot_fun(
+      data = data,
+      hf_col = "hf",
+      date_col = "date",
+      key_indicators = c("test", "pres", "conf"),
+      facet_col = "invalid"
+    ),
+    "must be a column in the data"
+  )
+})

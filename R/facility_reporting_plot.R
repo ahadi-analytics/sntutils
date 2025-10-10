@@ -162,9 +162,16 @@ classify_facility_activity <- function(
 #'   "date".
 #' @param key_indicators Character vector with columns defining reporting
 #'   activity. Defaults to `c("test", "pres", "conf")`.
+#' @param facet_col Character. Optional column name to use for faceting the plot.
+#'   When provided, creates separate panels for each unique value in this column
+#'   (e.g., one panel per province or administrative region). Can be any column
+#'   type. Default is NULL (no faceting).
 #' @param palette Character. Colour palette for activity statuses. One of
 #'   `c("classic", "sunset", "forest", "coral", "violet", "slate",
 #'   "citrus", "orchid")`. Defaults to "classic".
+#' @param include_never_reported Logical. If TRUE, includes facilities that
+#'   have never reported in the plot. If TRUE (default), only shows
+#'   facilities that have reported at least once.
 #' @param target_language Target language for labels (ISO 639-1). Defaults to
 #'   "en".
 #' @param source_language Source language for labels. Defaults to "en".
@@ -188,9 +195,6 @@ classify_facility_activity <- function(
 #'   Default is 300.
 #' @param show_plot Logical. If FALSE, the plot is returned invisibly (not
 #'   displayed). Useful when only saving plots. Default is TRUE.
-#' @param include_never_reported Logical. If TRUE, includes facilities that
-#'   have never reported in the plot. If FALSE (default), only shows
-#'   facilities that have reported at least once.
 #'
 #' @return A ggplot object visualising facility reporting activity.
 #' @examples
@@ -220,7 +224,9 @@ facility_reporting_plot <- function(
   hf_col,
   date_col = "date",
   key_indicators = c("test", "pres", "conf"),
+  facet_col = NULL,
   palette = "classic",
+  include_never_reported = TRUE,
   target_language = "en",
   source_language = "en",
   lang_cache_path = base::tempdir(),
@@ -233,8 +239,7 @@ facility_reporting_plot <- function(
   plot_width = 22,
   plot_height = 15,
   plot_dpi = 300,
-  show_plot = TRUE,
-  include_never_reported = FALSE
+  show_plot = TRUE
 ) {
   ensure_packages(c("ggtext", "scales"))
 
@@ -315,6 +320,7 @@ facility_reporting_plot <- function(
   }
 
   status_colours <- palette_values[[palette]]
+  
   legend_title <- glue::glue(
     "Reported any key indicator ({base::toString(key_indicators)})"
   )
@@ -330,12 +336,36 @@ facility_reporting_plot <- function(
     "Inactive Facility -> never reported any key indicator"
   )
 
+  # Check if facet_col exists in the original data if provided
+  if (!is.null(facet_col) && !facet_col %in% names(data)) {
+    cli::cli_abort(
+      "`facet_col` must be a column in the data. Available columns: {toString(names(data))}"
+    )
+  }
+
   routine_reporting <- classify_facility_activity(
     data = data,
     hf_col = hf_col,
     date_col = date_col,
     key_indicators = key_indicators
   )
+
+  # If facet_col is provided, add it to the routine_reporting data
+  if (!is.null(facet_col)) {
+    # Join the facet column from original data
+    facet_data <- data |>
+      dplyr::mutate(
+        !!rlang::sym(date_col) := lubridate::floor_date(
+          base::as.Date(.data[[date_col]]),
+          unit = "month"
+        )
+      ) |>
+      dplyr::select(dplyr::all_of(c(hf_col, date_col, facet_col))) |>
+      dplyr::distinct()
+    
+    routine_reporting <- routine_reporting |>
+      dplyr::left_join(facet_data, by = c(hf_col, date_col))
+  }
 
   # Count never-reported facilities after creating routine_reporting
   never_reported_count <- routine_reporting |>
@@ -466,9 +496,6 @@ facility_reporting_plot <- function(
       )
     }
   }
-  legend_title <- glue::glue(
-    "{legend_title_prefix} ({base::toString(key_indicators)})"
-  )
 
   if (include_never_reported) {
     # First get facilities that have reported, ordered by first reporting date
@@ -498,7 +525,7 @@ facility_reporting_plot <- function(
   # Calculate y-axis breaks
   n_facilities <- length(facility_order)
   if (n_facilities > 0) {
-    y_breaks <- c(1, ceiling(n_facilities/2), n_facilities)
+    y_breaks <- c(1, ceiling(n_facilities / 2), n_facilities)
     # Keep 1-based indexing to match the title count and format with big_mark
     y_labels <- vapply(y_breaks, function(x) big_mark(x), character(1))
   } else {
@@ -534,18 +561,23 @@ facility_reporting_plot <- function(
     ) +
     ggplot2::scale_x_date(
       expand = c(0, 0),
-      date_labels = "%b %Y",
-      date_breaks = "3 months"
+      date_breaks = "3 months",
+      labels = function(x) {
+        sntutils::translate_yearmon(x, language = target_language)
+      }
     ) +
     ggplot2::labs(
       x = "",
       y = if (should_translate) {
-        paste0(translate_text(
-          "HF Number",
-          target_language = target_language,
-          source_language = source_language,
-          cache_path = lang_cache_path
-        ), "\n")
+        paste0(
+          translate_text(
+            "HF Number",
+            target_language = target_language,
+            source_language = source_language,
+            cache_path = lang_cache_path
+          ),
+          "\n"
+        )
       } else {
         "HF Number\n"
       },
@@ -569,13 +601,36 @@ facility_reporting_plot <- function(
       legend.box = "vertical"
     )
 
-  # Add y-axis scale if we have facilities
-  if (!is.null(y_breaks) && n_facilities > 0) {
+  # Add faceting if facet_col is provided
+  if (!is.null(facet_col)) {
+    plot_object <- plot_object +
+      ggplot2::facet_wrap(
+        ~ .data[[facet_col]], 
+        scales = "free_y",
+        ncol = 2
+      )
+    
+    # When using free_y scales with faceting, use a function for y-axis labels
     plot_object <- plot_object +
       ggplot2::scale_y_discrete(
-        breaks = facility_order[y_breaks],
-        labels = y_labels
+        labels = function(x) {
+          # Get position of each facility within its facet
+          pos <- seq_along(x)
+          # Only show first, middle, and last
+          ifelse(pos %in% c(1, ceiling(length(pos)/2), length(pos)), 
+                 pos, 
+                 "")
+        }
       )
+  } else {
+    # Add y-axis scale if we have facilities (only when not faceting)
+    if (!is.null(y_breaks) && n_facilities > 0) {
+      plot_object <- plot_object +
+        ggplot2::scale_y_discrete(
+          breaks = facility_order[y_breaks],
+          labels = y_labels
+        )
+    }
   }
 
   if (!base::is.null(plot_path)) {
@@ -625,9 +680,27 @@ facility_reporting_plot <- function(
     file_base <- make_slug(base_label)
     date_range_slug <- make_slug(date_range_text)
 
-    file_name <- glue::glue(
-      "{file_base}_{date_range_slug}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
-    )
+    # Add facet column to filename if provided
+    if (!is.null(facet_col)) {
+      by_word <- if (should_translate) {
+        translate_text(
+          "by",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+      } else {
+        "by"
+      }
+      facet_slug <- make_slug(paste(by_word, facet_col))
+      file_name <- glue::glue(
+        "{file_base}_{facet_slug}_{date_range_slug}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
+      )
+    } else {
+      file_name <- glue::glue(
+        "{file_base}_{date_range_slug}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
+      )
+    }
     file_path <- fs::path(plot_path, file_name)
 
     ggplot2::ggsave(
@@ -665,7 +738,8 @@ facility_reporting_plot <- function(
     display_path <- file_path
     if (startsWith(as.character(file_path), getwd())) {
       display_path <- sub(
-        paste0("^", getwd(), "/"), "",
+        paste0("^", getwd(), "/"),
+        "",
         as.character(file_path)
       )
     } else if (grepl("03_outputs", as.character(file_path))) {
