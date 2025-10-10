@@ -1122,7 +1122,9 @@ outlier_plot <- function(
       ) +
       ggplot2::scale_x_date(
         date_breaks = paste(year_breaks, "months"),
-        date_labels = "%Y-%m",
+        labels = function(x) {
+          sntutils::translate_yearmon(x, language = target_language, format = "%Y-%m")
+        },
         expand = ggplot2::expansion(mult = 0.02)
       ) +
       ggplot2::scale_y_continuous(
@@ -2302,7 +2304,9 @@ outlier_plot <- function(
     ) +
     ggplot2::scale_x_date(
       date_breaks = date_breaks,
-      date_labels = "%Y-%m"
+      labels = function(x) {
+        sntutils::translate_yearmon(x, language = target_language, format = "%Y-%m")
+      }
     ) +
     ggplot2::labs(
       title = title_text,
