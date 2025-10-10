@@ -959,7 +959,7 @@ outlier_plot <- function(
     percent_summary <- percent_summary |>
       dplyr::mutate(
         label = glue::glue(
-          "{facet_value}\n{outliers_label}:\n {pct_outlier}% ({n_outlier_fmt}/{n_total_fmt})"
+          "{facet_value}\n {pct_outlier}% ({n_outlier_fmt}/{n_total_fmt})"
         )
       )
 
@@ -1156,14 +1156,10 @@ outlier_plot <- function(
 
     # Save plot if path is provided
     if (!is.null(plot_path)) {
-      # Add method suffix to filename
-      base_path <- tools::file_path_sans_ext(plot_path)
-      ext <- tools::file_ext(plot_path)
-      method_path <- paste0(base_path, "_", method, ".", ext)
 
       .save_outlier_plot(
         plot = p,
-        plot_path = method_path,
+        plot_path = tools::file_path_sans_ext(plot_path),
         method_name = method,
         column = column,
         yearmon = "yearmon",
@@ -1249,7 +1245,7 @@ outlier_plot <- function(
     tolower()
   plot_tr <- .translate_quiet("plot") |>
     tolower()
-  outlier_plot_tr <- paste(outlier_tr, plot_tr, sep = "_")
+  outlier_plot_tr <- paste(gsub(" ", "_", outlier_tr), plot_tr, sep = "_")
 
   method_tr <- .translate_quiet(method_name) |>
     tolower()
@@ -1349,10 +1345,6 @@ outlier_plot <- function(
 
   invisible(full_path)
 }
-# /Users/mohamedyusuf/ahadi-analytics/code/GitHub/sntutils/R/outlier_detection_helpers.R
-# helper functions for outlier detection workflow
-# keeps detect_outliers modular, readable, and auditable
-# RELEVANT FILES:R/outlier_detection.R,tests/testthat/test-outlier_detection.R
 
 #' validate detect_outliers inputs and derive core columns
 #'
