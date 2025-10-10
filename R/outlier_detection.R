@@ -959,7 +959,7 @@ outlier_plot <- function(
     percent_summary <- percent_summary |>
       dplyr::mutate(
         label = glue::glue(
-          "{facet_value}\n{outliers_label}: {pct_outlier}% ({n_outlier_fmt}/{n_total_fmt})"
+          "{facet_value}\n{outliers_label}:\n {pct_outlier}% ({n_outlier_fmt}/{n_total_fmt})"
         )
       )
 
