@@ -178,6 +178,7 @@ validate_process_coordinates <- function(
     final_points_df = NULL,
     checks = NULL,
     invalid_rows = NULL,
+    missing_coord_rows = NULL,
     duplicate_rows = NULL,
     coordinates_adm0 = NULL,
     column_dictionary = NULL
@@ -333,6 +334,10 @@ validate_process_coordinates <- function(
     results$invalid_rows <- .append_invalid_rows(
       results$invalid_rows, data[miss_idx, , drop = FALSE]
     )
+    # Track missing coordinate indices for later exclusion
+    results$missing_coord_idx <- miss_idx
+    # Store the rows with missing coordinates
+    results$missing_coord_rows <- data[miss_idx, , drop = FALSE]
 
     if (fix_issues) {
       data[[lon_col]][miss_idx] <- NA
@@ -377,6 +382,12 @@ validate_process_coordinates <- function(
   lat <- suppressWarnings(as.numeric(lat_chr))
 
   non_numeric <- which(is.na(lon) | is.na(lat))
+  
+  # Exclude rows already identified as having missing coordinates
+  if (!is.null(results$missing_coord_idx)) {
+    non_numeric <- setdiff(non_numeric, results$missing_coord_idx)
+  }
+  
   if (length(non_numeric) > 0) {
     results$issues <- c(
       results$issues,
@@ -460,6 +471,9 @@ validate_process_coordinates <- function(
       )
       sf::st_geometry(pts)[na_coords_global] <- na_geom
     }
+    
+    # Store indices of NA coordinates as an attribute
+    attr(pts, "na_coord_indices") <- which(na_coords_global)
   } else {
     pts <- sf::st_as_sf(data, coords = c(lon_col, lat_col), crs = 4326)
   }
@@ -590,19 +604,12 @@ validate_process_coordinates <- function(
   }
 
   # Remove empty geometries (but preserve intentional NA geometries)
+  # Note: Empty geometries from NA coordinates are already reported as "missing coordinates"
+  # so we don't report them again here
   empty_idx <- which(sf::st_is_empty(pts_4326))
 
-  if (length(empty_idx) > 0) {
-    results$issues <- c(
-      results$issues, sprintf("%d empty geometries", length(empty_idx))
-    )
-    results$invalid_rows <- .append_invalid_rows(
-      results$invalid_rows, pts_4326[empty_idx, ]
-    )
-
-    if (fix_issues) {
-      pts_4326 <- pts_4326[-empty_idx, ]
-    }
+  if (length(empty_idx) > 0 && fix_issues) {
+    pts_4326 <- pts_4326[-empty_idx, ]
   }
 
   # Coordinate range checks for EPSG:4326
@@ -633,10 +640,17 @@ validate_process_coordinates <- function(
 # @return List with updated results and points
 .check_coordinate_ranges <- function(pts_4326, results, fix_issues) {
   coords <- sf::st_coordinates(sf::st_geometry(pts_4326))
+  
+  # First check which coordinates are NA (missing)
+  na_coords <- is.na(coords[, 1]) | is.na(coords[, 2])
+  
+  # Only check range for non-NA coordinates
   invalid_idx <- which(
-    !is.finite(coords[, 1]) | !is.finite(coords[, 2]) |
-    coords[, 1] < -180 | coords[, 1] > 180 |
-    coords[, 2] < -90  | coords[, 2] > 90
+    !na_coords & (
+      !is.finite(coords[, 1]) | !is.finite(coords[, 2]) |
+      coords[, 1] < -180 | coords[, 1] > 180 |
+      coords[, 2] < -90  | coords[, 2] > 90
+    )
   )
 
   if (length(invalid_idx) > 0) {
@@ -675,6 +689,9 @@ validate_process_coordinates <- function(
   if (!quiet) cli::cli_progress_step("Checking decimal precision...")
 
   coords <- sf::st_coordinates(pts_4326$geometry)
+  
+  # Check for NA coordinates first
+  na_coords <- is.na(coords[, 1]) | is.na(coords[, 2])
 
   # Use text-based precision if available, otherwise calculate from numeric
   if ("lon_dp_text" %in% names(pts_4326) &&
@@ -696,8 +713,9 @@ validate_process_coordinates <- function(
     lat_dp <- .count_decimal_places_numeric(coords[, 2])
   }
 
-  precise_ok <- lon_dp >= min_decimals & lat_dp >= min_decimals
-  n_imprecise <- sum(!precise_ok, na.rm = TRUE)
+  # Only check precision for non-NA coordinates
+  precise_ok <- na_coords | (lon_dp >= min_decimals & lat_dp >= min_decimals)
+  n_imprecise <- sum(!na_coords & !precise_ok, na.rm = TRUE)
 
   if (n_imprecise > 0) {
     results$issues <- c(
@@ -742,7 +760,9 @@ validate_process_coordinates <- function(
 # @param results Results list to update with issues
 # @return List with updated results and points (with zero_coords flag)
 .check_zero_coordinates <- function(pts_4326, coords, results) {
-  zero_coords_idx <- which(coords[, 1] == 0 & coords[, 2] == 0)
+  # Only check for (0,0) if coordinates are not NA
+  zero_coords_idx <- which(!is.na(coords[, 1]) & !is.na(coords[, 2]) & 
+                          coords[, 1] == 0 & coords[, 2] == 0)
 
   if (length(zero_coords_idx) > 0) {
     if (!"zero_coords" %in% names(pts_4326)) pts_4326$zero_coords <- FALSE
@@ -969,10 +989,12 @@ validate_process_coordinates <- function(
     pts_4326
   }
 
-  # Compute containment
+  # Compute containment, excluding NA geometries
+  non_na_idx <- !sf::st_is_empty(pts_geom)
   rel <- sf::st_within(pts_geom, adm0_data$adm0_target)
   inside <- lengths(rel) > 0
-  n_out <- sum(!inside, na.rm = TRUE)
+  # Only count non-NA geometries that are outside
+  n_out <- sum(!inside & non_na_idx, na.rm = TRUE)
 
   if (n_out > 0) {
     results$issues <- c(
@@ -1037,7 +1059,7 @@ validate_process_coordinates <- function(
 
   results$final_points_df <- pts_out
   results$column_dictionary <- .create_column_dictionary(pts_out)
-  results$checks <- .create_checks_output(pts_out, pts, duplicate_result)
+  results$checks <- .create_checks_output(pts_out, pts, duplicate_result, results)
 
   results
 }
@@ -1098,8 +1120,9 @@ validate_process_coordinates <- function(
 # @param pts_out Final sf output object with standardized columns
 # @param pts sf object with validation flags
 # @param duplicate_result List with duplicate detection metadata
+# @param results Results list containing missing_coord_rows
 # @return List of validation check results (or NULL if empty)
-.create_checks_output <- function(pts_out, pts, duplicate_result) {
+.create_checks_output <- function(pts_out, pts, duplicate_result, results) {
   duplicate_info <- duplicate_result$duplicate_info
   checks <- list()
 
@@ -1126,10 +1149,10 @@ validate_process_coordinates <- function(
   }
 
   # Other validation checks
-  checks <- c(checks, .create_validation_checks(pts_out, pts))
+  checks <- c(checks, .create_validation_checks(pts_out, pts, results))
 
   # Remove empty checks
-  checks <- Filter(function(x) inherits(x, "sf") && nrow(x) > 0, checks)
+  checks <- Filter(function(x) (inherits(x, "sf") || inherits(x, "data.frame")) && nrow(x) > 0, checks)
   if (length(checks) == 0) return(NULL)
 
   checks
@@ -1138,9 +1161,33 @@ validate_process_coordinates <- function(
 # Create validation-specific checks
 # @param pts_out Final sf output object with standardized columns
 # @param pts sf object with validation flags
+# @param results Results list containing missing_coord_rows
 # @return List with validation check results (flipped, imprecise, outside ADM0)
-.create_validation_checks <- function(pts_out, pts) {
+.create_validation_checks <- function(pts_out, pts, results) {
   checks <- list()
+
+  # Missing coordinates - convert to sf with empty/NA geometry
+  if (!is.null(results$missing_coord_rows) && nrow(results$missing_coord_rows) > 0) {
+    missing_sf <- results$missing_coord_rows
+    
+    # Create NA point geometries
+    na_points <- sf::st_sfc(
+      lapply(1:nrow(missing_sf), function(x) sf::st_point(c(NA_real_, NA_real_))),
+      crs = 4326
+    )
+    
+    # Convert to sf object with NA geometry
+    missing_sf <- sf::st_sf(
+      missing_sf,
+      geometry = na_points
+    )
+    
+    # Add lon/lat columns as NA
+    missing_sf$lon <- NA_real_
+    missing_sf$lat <- NA_real_
+    
+    checks$missing_coordinates <- missing_sf
+  }
 
   # Maybe flipped coordinates
   if ("maybe_flipped" %in% names(pts)) {
@@ -1212,6 +1259,8 @@ validate_process_coordinates <- function(
 .finalize_results <- function(results, fix_issues, quiet) {
   # Clean up intermediate results
   results$invalid_rows <- NULL
+  results$missing_coord_idx <- NULL
+  results$missing_coord_rows <- NULL
   results$duplicate_rows <- NULL
   results$coordinates_adm0 <- NULL
 
@@ -1265,9 +1314,7 @@ validate_process_coordinates <- function(
   if (any(grepl("coordinates out of range", issues))) {
     fixed_actions <- c(fixed_actions, "Set out-of-range coordinates to NA")
   }
-  if (any(grepl("empty geometries", issues))) {
-    fixed_actions <- c(fixed_actions, "Removed empty geometries")
-  }
+  # Empty geometries are removed when fixing missing coordinates, so no separate action needed
   if (any(grepl("Missing CRS", issues))) {
     fixed_actions <- c(fixed_actions, "Set CRS to WGS84 (EPSG:4326)")
   }
