@@ -1,5 +1,3 @@
-# validation -------------------------------------------------------------------
-
 #' Validate inputs for write_snt_data (internal)
 #'
 #' @description
@@ -99,42 +97,42 @@
   if (!is.data.frame(x)) {
     return(x)
   }
-  
+
   # convert character and factor columns
   x[] <- lapply(x, function(col) {
     # handle factors by converting to character first
     if (is.factor(col)) {
       col <- as.character(col)
     }
-    
+
     if (is.character(col)) {
       # multi-stage conversion with fallbacks
       conv <- iconv(col, from = "", to = "UTF-8", sub = "")
-      
+
       # fallback to latin1 if NAs produced
       bad <- is.na(conv) & !is.na(col)
       if (any(bad)) {
         conv[bad] <- iconv(col[bad], from = "latin1", to = "UTF-8", sub = "")
       }
-      
+
       # last resort: ASCII transliteration
       bad <- is.na(conv) & !is.na(col)
       if (any(bad)) {
         tmp <- iconv(col[bad], from = "", to = "ASCII//TRANSLIT", sub = "")
         conv[bad] <- iconv(tmp, from = "", to = "UTF-8", sub = "")
       }
-      
+
       # set encoding mark
       Encoding(conv) <- "UTF-8"
       return(conv)
     }
     col
   })
-  
+
   # also convert column names
   names(x) <- iconv(names(x), from = "", to = "UTF-8", sub = "")
   Encoding(names(x)) <- "UTF-8"
-  
+
   x
 }
 
@@ -191,11 +189,11 @@
       nm <- paste0("Sheet", seq_along(dfs))
     }
     nm[nm == "" | is.na(nm)] <- paste0("Sheet", which(nm == "" | is.na(nm)))
-    
+
     # ensure sheet names are UTF-8 before sanitization
     nm <- iconv(nm, from = "", to = "UTF-8", sub = "")
     Encoding(nm) <- "UTF-8"
-    
+
     nm <- gsub("[\\[\\]\\*\\:\\?\\/\\\\]", "_", nm, perl = TRUE)
     nm <- substr(nm, 1, 31)
     if (any(duplicated(nm))) {
@@ -212,7 +210,7 @@
         used <- c(used, cand)
       }
     }
-    
+
     # final UTF-8 enforcement on names
     nm <- iconv(nm, from = "", to = "UTF-8", sub = "")
     Encoding(nm) <- "UTF-8"
@@ -887,7 +885,10 @@
       try("error", silent = TRUE)
     },
     xlsx = if (requireNamespace("openxlsx", quietly = TRUE)) {
-      try(openxlsx::read.xlsx(path), silent = TRUE)
+      suppressWarnings(try(
+        openxlsx::read.xlsx(path),
+        silent = TRUE
+      ))
     } else {
       try("error", silent = TRUE)
     },
