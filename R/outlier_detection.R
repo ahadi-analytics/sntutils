@@ -16,10 +16,9 @@
 #' @param data Data frame containing the indicator to analyse.
 #' @param column Name of the numeric column to evaluate.
 #' @param record_id Unique record identifier column.
-#' @param admin_levels Character vector of administrative level columns ordered
-#'   from higher to lower resolution. Defaults to `c("adm1", "adm2")`. Missing
-#'   entries are dropped automatically; if only `adm1` is available, detection
-#'   runs at adm1 only.
+#' @param admin_level Character vector of administrative level columns for
+#'   parallel grouping, ordered from higher to lower resolution.
+#'   Defaults to `c("adm1", "adm2")`. Used for efficient data.table grouping.
 #' @param date Date column (Date, POSIXt, or parseable character string).
 #'   Year, month, and yearmon are automatically derived from this column.
 #' @param time_mode Pooling strategy: `"across_time"`, `"within_year"`, or
@@ -74,6 +73,16 @@
 #' @param verbose Logical. When `TRUE`, prints an informative summary showing
 #'   which methods are being applied, the pooling strategy, strictness settings,
 #'   guardrails, and consensus rule. Default is `FALSE`.
+#' @param cache_stats Logical. Cache intermediate statistical calculations
+#'   to improve performance across seasonal pools. Default is `TRUE`.
+#' @param cache_dir Character string specifying directory for file-based cache.
+#'   If NULL (default), uses project cache directory or tempdir(). Cache persists
+#'   across R sessions for reproducible performance gains.
+#' @param spatial_level Character string specifying the finest spatial unit
+#'   for analysis (e.g., "hf_uid" for facility-level). When specified,
+#'   `admin_levels` defines grouping boundaries while `spatial_level` defines
+#'   the unit of analysis. This prevents excessive grouping while maintaining
+#'   spatial granularity. Default is `NULL` (uses most granular admin level).
 #'
 #' @details
 #' **Workflow**
@@ -193,7 +202,7 @@ detect_outliers <- function(
     data,
     column,
     record_id = "record_id",
-    admin_levels = c("adm1", "adm2"),
+    admin_level = c("adm1", "adm2"),
     date = "date",
     time_mode = c("by_month", "across_time", "within_year"),
     value_type = c("count", "rate"),
@@ -211,10 +220,14 @@ detect_outliers <- function(
     output_profile = c("standard", "lean", "audit"),
     seasonal_pool_years = 5,
     min_years_per_month = 3,
-    verbose = TRUE) {
+    verbose = TRUE,
+    cache_stats = TRUE,
+    cache_dir = NULL,
+    spatial_level = NULL) {
   if (column %in% names(data) && !is.numeric(data[[column]])) {
     cli::cli_abort("Column {.val {column}} must be numeric.")
   }
+
 
   activeness_applied <- FALSE
   n_inactive_skipped <- 0L
@@ -258,32 +271,56 @@ detect_outliers <- function(
     key_indicators_used <- paste(key_indicators_hf, collapse = ", ")
   }
 
-  # detection orchestrator ---------------------------------------------------
-  options <- .normalize_outlier_options(
-    time_mode = time_mode,
-    value_type = value_type,
-    strictness = strictness,
-    methods = methods,
-    output_profile = output_profile
-  )
-  methods <- options$methods
+  # setup caching if enabled - cache the entire detection process
+  if (cache_stats && !is.null(cache_dir)) {
+    cache_config <- .setup_outlier_cache(cache_stats = cache_stats, cache_dir = cache_dir)
 
-  if (
-    options$strictness != "advanced" &&
-    (!missing(sd_multiplier) ||
-      !missing(mad_multiplier) ||
-      !missing(iqr_multiplier))
-  ) {
+    # Create a cached version of the core detection logic
+    if (!is.null(cache_config) && cache_config$enabled) {
+      cached_detection <- memoise::memoise(.core_outlier_detection, cache = cache_config$backend)
+
+      # Call the cached detection with all parameters as cache key
+      return(cached_detection(
+        data = data,
+        column = column,
+        record_id = record_id,
+        admin_level = admin_level,
+        date = date,
+        time_mode = time_mode,
+        value_type = value_type,
+        strictness = strictness,
+        sd_multiplier = sd_multiplier,
+        mad_constant = mad_constant,
+        mad_multiplier = mad_multiplier,
+        iqr_multiplier = iqr_multiplier,
+        min_n = min_n,
+        reporting_rate_col = reporting_rate_col,
+        reporting_rate_min = reporting_rate_min,
+        key_indicators_hf = key_indicators_hf,
+        methods = methods,
+        consensus_rule = consensus_rule,
+        output_profile = output_profile,
+        seasonal_pool_years = seasonal_pool_years,
+        min_years_per_month = min_years_per_month,
+        verbose = verbose,
+        spatial_level = spatial_level,
+        activeness_applied = activeness_applied,
+        n_inactive_skipped = n_inactive_skipped,
+        key_indicators_used = key_indicators_used
+      ))
+    }
   }
 
-  context <- .prepare_outlier_context(
+  # fallback to non-cached execution
+  .core_outlier_detection(
     data = data,
     column = column,
     record_id = record_id,
-    admin_levels = admin_levels,
-    date_column = date,
-    options = options,
-    consensus_rule = consensus_rule,
+    admin_level = admin_level,
+    date = date,
+    time_mode = time_mode,
+    value_type = value_type,
+    strictness = strictness,
     sd_multiplier = sd_multiplier,
     mad_constant = mad_constant,
     mad_multiplier = mad_multiplier,
@@ -291,31 +328,20 @@ detect_outliers <- function(
     min_n = min_n,
     reporting_rate_col = reporting_rate_col,
     reporting_rate_min = reporting_rate_min,
-    seasonal_pool_years = seasonal_pool_years,
-    min_years_per_month = min_years_per_month
-  )
-
-  # execution ----------------------------------------------------------------
-  detection <- .execute_outlier_detection(
-    context = context,
+    key_indicators_hf = key_indicators_hf,
     methods = methods,
-    consensus_rule = consensus_rule
-  )
-
-  .finalize_outlier_detection(
-    detection = detection,
-    context = context,
-    methods = methods,
-    record_id = record_id,
-    output_profile = options$output_profile,
-    column = column,
-    verbose = verbose,
     consensus_rule = consensus_rule,
+    output_profile = output_profile,
+    seasonal_pool_years = seasonal_pool_years,
+    min_years_per_month = min_years_per_month,
+    verbose = verbose,
+    spatial_level = spatial_level,
     activeness_applied = activeness_applied,
     n_inactive_skipped = n_inactive_skipped,
     key_indicators_used = key_indicators_used
   )
 }
+
 
 # option normalization --------------------------------------------------------
 
@@ -405,7 +431,7 @@ detect_outliers <- function(
     data,
     column,
     record_id,
-    admin_levels,
+    admin_level,
     date_column,
     options,
     consensus_rule,
@@ -417,7 +443,9 @@ detect_outliers <- function(
     reporting_rate_col,
     reporting_rate_min,
     seasonal_pool_years,
-    min_years_per_month) {
+    min_years_per_month,
+    cache_stats = TRUE,
+    spatial_level = NULL) {
   if (!date_column %in% names(data)) {
     cli::cli_abort("Date column {.val {date_column}} not found in data.")
   }
@@ -463,7 +491,7 @@ detect_outliers <- function(
     data = prepared,
     column = column,
     record_id = record_id,
-    admin_levels = admin_levels,
+    admin_level = admin_level,
     year = year_col,
     yearmon = yearmon_col,
     month = month_col,
@@ -474,15 +502,31 @@ detect_outliers <- function(
     consensus_rule = consensus_rule,
     min_n = min_n,
     reporting_rate_col = reporting_rate_col,
-    reporting_rate_min = reporting_rate_min
+    reporting_rate_min = reporting_rate_min,
+    spatial_level = spatial_level
   )
   prepared_data <- validated$data
 
+  # Handle spatial_level parameter for proper detection vs grouping
+  if (!is.null(spatial_level)) {
+    # Detection happens at spatial_level, grouping for efficiency at admin_level
+    detection_admin_levels <- c(admin_level, spatial_level)
+    parallel_grouping_levels <- admin_level  # For data.table parallel efficiency
+  } else {
+    # Original behavior - use all admin_level for both detection and grouping
+    detection_admin_levels <- admin_level
+    parallel_grouping_levels <- admin_level
+  }
+
   admin_info <- .resolve_admin_levels(
     prepared_data,
-    admin_levels,
+    detection_admin_levels,
     record_id
   )
+
+  # Store both levels for different purposes
+  admin_info$detection_levels <- detection_admin_levels      # What we detect outliers on
+  admin_info$parallel_grouping_levels <- parallel_grouping_levels  # How we group for efficiency
 
   strictness_info <- .resolve_strictness(
     options$strictness,
@@ -494,7 +538,7 @@ detect_outliers <- function(
 
   grouping_cols <- .build_group_keys(
     prepared_data,
-    admin_info$admin_levels,
+    admin_info$detection_levels,  # Use detection_levels for actual outlier detection
     options$time_mode,
     ".outlier_year",
     validated$month
@@ -517,7 +561,9 @@ detect_outliers <- function(
     constraints = list(
       min_n = min_n,
       reporting_rate_min = reporting_rate_min
-    )
+    ),
+    cache_stats = cache_stats,
+    spatial_level = spatial_level
   )
 }
 
@@ -541,7 +587,8 @@ detect_outliers <- function(
     return(
       .run_seasonal_detection(
         data = context$prepared_data,
-        admin_levels = context$admin_info$admin_levels,
+        detection_admin_levels = context$admin_info$detection_levels,
+        parallel_grouping_levels = context$admin_info$parallel_grouping_levels,
         strictness = context$strictness,
         params = context$seasonality_params,
         methods = methods,
@@ -1043,12 +1090,11 @@ detect_outliers <- function(
 #' all parameters from the detection function for seamless integration.
 #'
 #' @inheritParams detect_outliers
-#' @param plot_admin_level Character vector specifying the admin levels to use for
-#'   plot faceting only. If NULL (default), uses the most granular
-#'   admin level from `admin_levels`. This allows you to detect outliers at
-#'   facility level but visualize them grouped by district or regional panels
-#'   without aggregating the underlying data. Must be a subset of `admin_levels`.
-#'   For example, `"adm1"` to facet facility-level outliers by region.
+#' @param cache_stats Logical. If TRUE, caches computed statistics to improve
+#'   performance on repeated calls with the same data. Default is TRUE.
+#' @param cache_dir Character string specifying directory for file-based cache.
+#'   If NULL (default), uses project cache directory or tempdir(). Cache persists
+#'   across R sessions for reproducible performance gains.
 #' @param methods Character vector specifying which outlier detection methods
 #'   to plot: "iqr" (Interquartile Range), "median" (Median Absolute
 #'   Deviation), "mean" (Mean +/- SD), and/or "consensus".
@@ -1147,8 +1193,8 @@ detect_outliers <- function(
 #'   column = "confirmed_cases",
 #'   date = "date",
 #'   record_id = "facility_id",
-#'   admin_levels = c("adm1", "adm2", "facility_id"),  # Detection done at facility level
-#'   plot_admin_level = c("adm1", "adm2"),  # But plot/aggregate at district level
+#'   spatial_level = "facility_id",  # Detection at facility level
+#'   admin_level = c("adm1", "adm2"),  # Plot/facet at district level
 #'   methods = c("consensus")
 #' )
 #' }
@@ -1157,8 +1203,8 @@ outlier_plot <- function(
     data,
     column,
     record_id = "record_id",
-    admin_levels = c("adm1", "adm2"),
-    plot_admin_level = NULL,
+    spatial_level = NULL,
+    admin_level = c("adm1", "adm2"),
     date = "date",
     time_mode = c("by_month", "across_time", "within_year"),
     value_type = c("count", "rate"),
@@ -1176,6 +1222,8 @@ outlier_plot <- function(
     min_years_per_month = 3,
     methods = c("iqr", "median", "mean", "consensus"),
     year_breaks = 2,
+    cache_stats = TRUE,
+    cache_dir = NULL,
     verbose = TRUE,
     target_language = "en",
     source_language = "en",
@@ -1200,15 +1248,20 @@ outlier_plot <- function(
   valid_methods <- c("iqr", "median", "mean", "consensus")
   methods <- match.arg(methods, valid_methods, several.ok = TRUE)
 
-  # Validate plot_admin_level
-  if (!is.null(plot_admin_level)) {
-    if (!all(plot_admin_level %in% admin_levels)) {
-      missing_levels <- setdiff(plot_admin_level, admin_levels)
-      cli::cli_abort(
-        "plot_admin_level contains invalid levels: {.val {missing_levels}}. Must be subset of admin_levels: {.val {admin_levels}}"
-      )
-    }
+  # Handle backward compatibility and new parameter structure
+  # spatial_level replaces old admin_levels parameter for detection granularity
+  # admin_level replaces old plot_admin_level parameter for plotting/grouping
+
+  # Set up detection admin levels (for calling detect_outliers)
+  if (is.null(spatial_level)) {
+    # Default to finest granularity available
+    detection_admin_levels <- admin_level
+  } else {
+    detection_admin_levels <- c(admin_level, spatial_level)
   }
+
+  # Set up plotting admin levels (for aggregation/faceting)
+  plot_admin_levels <- admin_level
 
   # Check if consensus is requested with sufficient other methods
   if ("consensus" %in% methods) {
@@ -1227,12 +1280,13 @@ outlier_plot <- function(
     # Data appears to be outlier detection results already
     outlier_results <- data
   } else {
-    # Run outlier detection on raw data
+    # Run outlier detection on raw data using new parameter structure
     outlier_results <- detect_outliers(
       data = data,
       column = column,
       record_id = record_id,
-      admin_levels = admin_levels,
+      admin_level = admin_level,
+      spatial_level = spatial_level,
       date = date,
       time_mode = time_mode,
       value_type = value_type,
@@ -1250,6 +1304,8 @@ outlier_plot <- function(
       output_profile = "audit",  # Get all flags for individual methods
       seasonal_pool_years = seasonal_pool_years,
       min_years_per_month = min_years_per_month,
+      cache_stats = cache_stats,
+      cache_dir = cache_dir,
       verbose = FALSE  # plot helper prints summary itself
     )
   }
@@ -1261,7 +1317,7 @@ outlier_plot <- function(
       methods = methods,
       column = column,
       time_mode = time_mode,
-      admin_levels = admin_levels,
+      admin_levels = admin_level,
       strictness = strictness,
       strictness_info = list(
         sd_multiplier = sd_multiplier,
@@ -1284,16 +1340,11 @@ outlier_plot <- function(
     )
 
   # Determine admin level for faceting (visualization only - no data aggregation)
-  if (!is.null(plot_admin_level)) {
-    # Use the most granular level from plot_admin_level for faceting
-    facet_column <- plot_admin_level[length(plot_admin_level)]
-  } else {
-    # Use most granular admin level by default
-    facet_column <- admin_levels[length(admin_levels)]
-  }
+  # Use the most granular level from admin_level for faceting
+  facet_column <- admin_level[length(admin_level)]
 
-  # Note: We do NOT aggregate data when plot_admin_level is specified
-  # The plot_admin_level parameter only changes faceting for visualization
+  # Note: We do NOT aggregate data when admin_level is specified
+  # The admin_level parameter only changes faceting for visualization
   # This preserves the full facility-level dataset and sample size
 
   # Create list to store plots
@@ -1309,12 +1360,26 @@ outlier_plot <- function(
       "consensus" = "outlier_flag_consensus"
     )
 
-    # Filter data for this method
+    # Filter data for this method and add binary flag
     plot_data <- plot_data_base |>
       dplyr::filter(
         !is.na(.data[[flag_column]]),
         .data[[flag_column]] != "insufficient_evidence"
-      )
+      ) |>
+      dplyr::mutate(
+        # Convert to binary TRUE/FALSE for outlier status
+        .binary_flag = dplyr::case_when(
+          .data[[flag_column]] == "outlier" ~ "TRUE",
+          TRUE ~ "FALSE"
+        ),
+        # Different alpha values: normal points more transparent
+        .alpha_val = dplyr::case_when(
+          .data[[flag_column]] == "outlier" ~ 0.9,  # Outliers more opaque
+          TRUE ~ 0.5  # Normal points more transparent
+        )
+      ) |>
+      # Sort so outliers (TRUE) are plotted on top of normal points (FALSE)
+      dplyr::arrange(.binary_flag)
 
 
     # Create summary for facet labels
@@ -1540,12 +1605,15 @@ outlier_plot <- function(
         ggplot2::aes(
           x = date_for_plot,
           y = value,
-          color = .data[[flag_column]]
-        )
+          color = .binary_flag,
+          alpha = .alpha_val
+        ),
+        size = 2
       ) +
       ggplot2::scale_color_manual(
-        values = c("normal" = "grey", "outlier" = "red")
+        values = c("TRUE" = "red", "FALSE" = "grey")
       ) +
+      ggplot2::scale_alpha_identity() +  # Use alpha values directly
       ggplot2::labs(
         title = title_text,
         subtitle = subtitle_text,
@@ -1820,7 +1888,7 @@ outlier_plot <- function(
     data,
     column,
     record_id,
-    admin_levels,
+    admin_level,
     year,
     yearmon,
     month,
@@ -1831,7 +1899,8 @@ outlier_plot <- function(
     consensus_rule,
     min_n,
     reporting_rate_col,
-    reporting_rate_min) {
+    reporting_rate_min,
+    spatial_level = NULL) {
   if (!inherits(data, "data.frame")) {
     cli::cli_abort("{.arg data} must be a data frame.")
   }
@@ -1923,7 +1992,7 @@ outlier_plot <- function(
     data = cleaned,
     column = column,
     record_id = record_id,
-    admin_levels = admin_levels,
+    admin_level = admin_level,
     year = year,
     yearmon = yearmon,
     month = ".outlier_month",
@@ -1934,7 +2003,8 @@ outlier_plot <- function(
     consensus_rule = consensus_rule,
     min_n = min_n,
     reporting_rate_col = reporting_rate_col,
-    reporting_rate_min = reporting_rate_min
+    reporting_rate_min = reporting_rate_min,
+    spatial_level = spatial_level
   )
 }
 
@@ -2731,25 +2801,23 @@ outlier_plot <- function(
     caption,
     target_language,
     date_breaks = "3 months") {
+  # Binary outlier classification with your specified colors
   color_values <- c(
-    "normal" = "grey60",
-    "outlier" = "red",
-    "low_reporting" = "grey80",
-    "insufficient_n" = "grey80",
-    "insufficient_seasonal_history" = "grey80",
-    "unstable_scale" = "grey70",
-    "insufficient_evidence" = "grey70"
+    "TRUE" = "red",      # Outliers
+    "FALSE" = "grey"  # Normal points
   )
 
   data <- data |>
     dplyr::mutate(
+      # Binary classification: TRUE = outlier, FALSE = normal
       .plot_flag = dplyr::case_when(
-        outlier_flag_consensus %in% names(color_values) ~
-          outlier_flag_consensus,
-        TRUE ~ "normal"
+        outlier_flag_consensus == "outlier" ~ "TRUE",
+        TRUE ~ "FALSE"
       ),
       .plot_date = lubridate::ymd(paste0(.data[[yearmon]], "-01"))
-    )
+    ) |>
+    # Sort so outliers (TRUE) are plotted on top
+    dplyr::arrange(.plot_flag)
 
   title_text <- glue::glue(
     "Outlier Detection for <b>{column}</b>"
@@ -2763,7 +2831,9 @@ outlier_plot <- function(
         x = .plot_date,
         y = value,
         color = .plot_flag
-      )
+      ),
+      alpha = 0.7,  # Add transparency to show density patterns
+      size = 2
     ) +
     ggplot2::scale_color_manual(
       name = .translation_qc_labels(
@@ -3009,10 +3079,16 @@ outlier_plot <- function(
   } else {
     row_residual <- target$.outlier_value - row_month_mean
   }
+  # Safe min/max calculation for year range
+  years <- group_data$.outlier_year[!is.na(group_data$.outlier_year)]
+  if (length(years) > 0) {
+    year_range <- paste0(min(years), "-", max(years))
+  } else {
+    year_range <- "unknown"
+  }
+
   desc <- glue::glue(
-    "Residual pooled, months fixed; ",
-    "{min(group_data$.outlier_year, na.rm = TRUE)}-",
-    "{max(group_data$.outlier_year, na.rm = TRUE)}"
+    "Residual pooled, months fixed; {year_range}"
   )
   residual_stats <- list(
     residual_sd = stats::sd(residuals$.residual_value, na.rm = TRUE),
@@ -3061,9 +3137,16 @@ outlier_plot <- function(
     strictness$mad_multiplier,
     strictness$iqr_multiplier
   )
+  # Safe min/max calculation for year range
+  years <- group_data$.outlier_year[!is.na(group_data$.outlier_year)]
+  if (length(years) > 0) {
+    year_range <- paste0(min(years), "-", max(years))
+  } else {
+    year_range <- "unknown"
+  }
+
   desc <- glue::glue(
-    "Across-time fallback, {min(group_data$.outlier_year, na.rm = TRUE)}-",
-    "{max(group_data$.outlier_year, na.rm = TRUE)}"
+    "Across-time fallback, {year_range}"
   )
   list(
     eligible = TRUE,
@@ -3093,7 +3176,8 @@ outlier_plot <- function(
 #' @noRd
 .run_seasonal_detection <- function(
     data,
-    admin_levels,
+    detection_admin_levels,
+    parallel_grouping_levels = detection_admin_levels,
     strictness,
     params,
     methods,
@@ -3101,12 +3185,30 @@ outlier_plot <- function(
     min_n,
     reporting_rate_min,
     value_type) {
+  # Setup data.table threading for improved performance
+  if (requireNamespace("data.table", quietly = TRUE)) {
+    .setup_dt_threads()
+    on.exit(.reset_dt_threads())
+  }
+
+  # Use parallel_grouping_levels for efficient grouping (e.g., by district)
+  # This avoids creating 188k+ facility-level groups for better performance
   grouped <- dplyr::group_by(
     data,
-    dplyr::across(dplyr::all_of(admin_levels))
+    dplyr::across(dplyr::all_of(parallel_grouping_levels))
   )
 
+  # Debug: Show how many groups we're processing
+  n_groups <- dplyr::n_groups(grouped)
+  level_desc <- if (length(parallel_grouping_levels) > 0) {
+    paste(parallel_grouping_levels, collapse="/")
+  } else {
+    "admin"
+  }
+  cli::cli_inform("Processing {n_groups} groups at {level_desc} level")
+
   dplyr::group_modify(grouped, function(group_data, key) {
+    # Sort data within this geographic group
     group_data <- dplyr::arrange(
       group_data,
       .outlier_year,
@@ -3114,49 +3216,245 @@ outlier_plot <- function(
       .outlier_yearmon
     )
 
-    # precompute seasonal pool caches
-    same_month_cache <- .cache_same_month_pools(
-      group_data,
-      params,
-      strictness,
-      value_type
-    )
-    neighbors_cache <- .cache_neighbors_pools(
-      same_month_cache,
-      params,
-      strictness,
-      value_type
-    )
-    residual_cache <- .cache_residual_pools(
-      group_data,
-      params,
-      strictness,
-      value_type
-    )
-    across_time_cache <- .cache_across_time_pools(
-      group_data,
-      strictness,
-      value_type
-    )
+    # Within this geographic group, we need to detect outliers at the spatial level
+    # Get the spatial level column (e.g., facility ID)
+    spatial_col <- setdiff(detection_admin_levels, parallel_grouping_levels)
 
-    # vectorized pool selection and flagging
-    .select_pools_vectorized(
-      group_data,
-      same_month_cache,
-      neighbors_cache,
-      residual_cache,
-      across_time_cache,
-      params,
-      methods,
-      reporting_rate_min,
-      min_n,
-      consensus_rule
-    )
+    if (length(spatial_col) > 0) {
+      # Group by spatial level within this geographic group
+      spatial_grouped <- dplyr::group_by(
+        group_data,
+        dplyr::across(dplyr::all_of(spatial_col))
+      )
+
+      # Process each spatial unit (e.g., facility) within this geographic group
+      dplyr::group_modify(spatial_grouped, function(spatial_data, spatial_key) {
+        # For each facility, compute seasonal caches using the full group context
+        same_month_cache <- .cache_same_month_pools(
+          spatial_data,
+          params,
+          strictness,
+          value_type
+        )
+        neighbors_cache <- .cache_neighbors_pools(
+          same_month_cache,
+          params,
+          strictness,
+          value_type
+        )
+        residual_cache <- .cache_residual_pools(
+          spatial_data,
+          params,
+          strictness,
+          value_type
+        )
+        across_time_cache <- .cache_across_time_pools(
+          spatial_data,
+          strictness,
+          value_type
+        )
+
+        # Apply outlier detection to this spatial unit
+        .select_pools_vectorized(
+          spatial_data,
+          same_month_cache,
+          neighbors_cache,
+          residual_cache,
+          across_time_cache,
+          params,
+          methods,
+          reporting_rate_min,
+          min_n,
+          consensus_rule
+        )
+      }) |> dplyr::ungroup()
+    } else {
+      # No spatial level specified, use original logic
+      same_month_cache <- .cache_same_month_pools(
+        group_data,
+        params,
+        strictness,
+        value_type
+      )
+      neighbors_cache <- .cache_neighbors_pools(
+        same_month_cache,
+        params,
+        strictness,
+        value_type
+      )
+      residual_cache <- .cache_residual_pools(
+        group_data,
+        params,
+        strictness,
+        value_type
+      )
+      across_time_cache <- .cache_across_time_pools(
+        group_data,
+        strictness,
+        value_type
+      )
+
+      .select_pools_vectorized(
+        group_data,
+        same_month_cache,
+        neighbors_cache,
+        residual_cache,
+        across_time_cache,
+        params,
+        methods,
+        reporting_rate_min,
+        min_n,
+        consensus_rule
+      )
+    }
   }) |>
     dplyr::ungroup() |>
     dplyr::mutate(
       seasonality_mode_requested = "by_month"
     )
+}
+
+
+#' setup data.table threads for optimal performance
+#'
+#' @keywords internal
+#' @noRd
+.setup_dt_threads <- function() {
+  if (!requireNamespace("data.table", quietly = TRUE)) {
+    cli::cli_inform("data.table not available - parallel processing disabled")
+    return(invisible(NULL))
+  }
+
+  # Get number of cores safely
+  n_cores <- .get_cores_safe()
+
+  # Use n-1 cores to leave one for system
+  threads_to_use <- max(1, n_cores - 1)
+
+  # Set data.table threads
+  data.table::setDTthreads(threads_to_use)
+
+  # Verify and report
+  actual_threads <- data.table::getDTthreads()
+  cli::cli_inform("data.table threading: {actual_threads}/{n_cores} threads (detected {n_cores} cores)")
+}
+
+#' safely detect number of cores across platforms
+#'
+#' @return integer number of cores
+#' @keywords internal
+#' @noRd
+.get_cores_safe <- function() {
+  tryCatch({
+    # Try parallel package first
+    if (requireNamespace("parallel", quietly = TRUE)) {
+      cores <- parallel::detectCores(logical = FALSE)
+      if (!is.na(cores) && cores > 0) return(cores)
+    }
+
+    # Platform-specific fallbacks
+    if (.Platform$OS.type == "windows") {
+      cores <- as.integer(Sys.getenv("NUMBER_OF_PROCESSORS"))
+      if (!is.na(cores) && cores > 0) return(cores)
+    } else {
+      # Unix-like (Linux/macOS)
+      cores <- system("nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1", intern = TRUE)
+      cores <- as.integer(cores[1])
+      if (!is.na(cores) && cores > 0) return(cores)
+    }
+
+    return(1L)
+  }, error = function(e) 1L)
+}
+
+#' reset data.table threads to default
+#'
+#' @keywords internal
+#' @noRd
+.reset_dt_threads <- function() {
+  if (requireNamespace("data.table", quietly = TRUE)) {
+    data.table::setDTthreads(0)  # 0 = reset to default
+  }
+}
+
+#' setup file-based caching for outlier detection functions
+#'
+#' @param cache_stats logical flag to enable caching
+#' @param cache_dir path to cache directory (if NULL, uses default)
+#' @return list with cache objects or NULL if caching disabled
+#' @keywords internal
+#' @noRd
+.setup_outlier_cache <- function(cache_stats = TRUE, cache_dir = NULL) {
+  if (!cache_stats) {
+    return(NULL)
+  }
+
+  if (!requireNamespace("memoise", quietly = TRUE)) {
+    cli::cli_warn("memoise package not available - caching disabled")
+    return(NULL)
+  }
+
+  # Set default cache directory if not provided
+  if (is.null(cache_dir)) {
+    if (requireNamespace("here", quietly = TRUE)) {
+      cache_dir <- here::here("cache", "outlier_cache")
+    } else {
+      cache_dir <- file.path(tempdir(), "outlier_cache")
+    }
+  }
+
+  # Create cache directory if it doesn't exist
+  if (!dir.exists(cache_dir)) {
+    dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  # Create filesystem cache backend
+  cache_backend <- memoise::cache_filesystem(cache_dir)
+
+  # Create list of cached function names to return
+  list(
+    backend = cache_backend,
+    dir = cache_dir,
+    enabled = TRUE
+  )
+}
+
+#' apply caching to key outlier detection functions
+#'
+#' @param cache_config cache configuration from .setup_outlier_cache
+#' @return invisible NULL (functions are memoised in parent environment)
+#' @keywords internal
+#' @noRd
+.apply_outlier_caching <- function(cache_config) {
+  if (is.null(cache_config) || !cache_config$enabled) {
+    return(invisible(NULL))
+  }
+
+  # Apply caching to expensive functions that exist
+  cache_backend <- cache_config$backend
+  parent_env <- parent.frame()
+
+  # Cache the main expensive detection functions
+  if (exists(".run_seasonal_detection", envir = parent_env, inherits = FALSE)) {
+    assign(".run_seasonal_detection",
+           memoise::memoise(.run_seasonal_detection, cache = cache_backend),
+           envir = parent_env)
+  }
+
+  if (exists(".run_non_seasonal_detection", envir = parent_env, inherits = FALSE)) {
+    assign(".run_non_seasonal_detection",
+           memoise::memoise(.run_non_seasonal_detection, cache = cache_backend),
+           envir = parent_env)
+  }
+
+  # Cache utility functions
+  if (exists(".parse_date_column", envir = parent_env, inherits = FALSE)) {
+    assign(".parse_date_column",
+           memoise::memoise(.parse_date_column, cache = cache_backend),
+           envir = parent_env)
+  }
+
+  invisible(NULL)
 }
 
 #' parse date column into year, month, and yearmon components
@@ -3237,7 +3535,7 @@ outlier_plot <- function(
   # core columns always included
   core_cols <- c(record_id, admin_levels, yearmon, year, "month")
 
-  if (output_profile == "lean") {
+  if (output_profile[1] == "lean") {
     # minimal: record id, admin levels, yearmon, derived year/month,
     # column name, value, value type, consensus flag, reason,
     # activeness metadata
@@ -3248,7 +3546,7 @@ outlier_plot <- function(
     )
     data |> dplyr::select(dplyr::all_of(lean_cols[lean_cols %in% names(data)]))
 
-  } else if (output_profile == "standard") {
+  } else if (output_profile[1] == "standard") {
     # lean + method flags (mean/median/iqr), bounds (*_lower, *_upper),
     # n, seasonality mode, window description, and activeness metadata
     standard_cols <- c(
@@ -3270,6 +3568,136 @@ outlier_plot <- function(
     # strictness label/shift, ladder metadata, activeness metadata
     data
   }
+}
+
+#' core outlier detection logic for caching
+#'
+#' @param ... all parameters from detect_outliers
+#' @return detection results tibble
+#' @keywords internal
+#' @noRd
+.core_outlier_detection <- function(
+    data,
+    column,
+    record_id,
+    admin_level,
+    date,
+    time_mode,
+    value_type,
+    strictness,
+    sd_multiplier,
+    mad_constant,
+    mad_multiplier,
+    iqr_multiplier,
+    min_n,
+    reporting_rate_col,
+    reporting_rate_min,
+    key_indicators_hf,
+    methods,
+    consensus_rule,
+    output_profile,
+    seasonal_pool_years,
+    min_years_per_month,
+    verbose,
+    spatial_level,
+    activeness_applied,
+    n_inactive_skipped,
+    key_indicators_used) {
+
+  # detection orchestrator ---------------------------------------------------
+  options <- .normalize_outlier_options(
+    time_mode = time_mode,
+    value_type = value_type,
+    strictness = strictness,
+    methods = methods,
+    output_profile = output_profile
+  )
+  methods <- options$methods
+
+  # Handle spatial_level parameter for proper detection vs grouping
+  if (!is.null(spatial_level)) {
+    # Detection happens at spatial_level, grouping for efficiency at admin_level
+    detection_admin_levels <- c(admin_level, spatial_level)
+    parallel_grouping_levels <- admin_level  # For data.table parallel efficiency
+  } else {
+    # Original behavior - use all admin_level for both detection and grouping
+    detection_admin_levels <- admin_level
+    parallel_grouping_levels <- admin_level
+  }
+
+  context <- .prepare_outlier_context(
+    data = data,
+    column = column,
+    record_id = record_id,
+    admin_level = detection_admin_levels,
+    date_column = date,
+    options = options,
+    consensus_rule = consensus_rule,
+    sd_multiplier = sd_multiplier,
+    mad_constant = mad_constant,
+    mad_multiplier = mad_multiplier,
+    iqr_multiplier = iqr_multiplier,
+    min_n = min_n,
+    reporting_rate_col = reporting_rate_col,
+    reporting_rate_min = reporting_rate_min,
+    seasonal_pool_years = seasonal_pool_years,
+    min_years_per_month = min_years_per_month,
+    cache_stats = FALSE,  # Don't cache within cached function
+    spatial_level = spatial_level
+  )
+
+  if (options$time_mode == "by_month") {
+    detection <- .run_seasonal_detection(
+      data = context$prepared_data,
+      detection_admin_levels = detection_admin_levels,
+      parallel_grouping_levels = parallel_grouping_levels,
+      strictness = context$strictness,
+      params = context$seasonality_params,
+      methods = methods,
+      consensus_rule = consensus_rule,
+      min_n = context$constraints$min_n,
+      reporting_rate_min = context$constraints$reporting_rate_min,
+      value_type = options$value_type
+    )
+  } else {
+    detection <- .run_non_seasonal_detection(
+      data = context$prepared_data,
+      grouping_cols = context$grouping_cols,
+      strictness = context$strictness,
+      min_n = context$constraints$min_n,
+      reporting_rate_min = context$constraints$reporting_rate_min,
+      methods = methods,
+      consensus_rule = consensus_rule,
+      value_type = options$value_type,
+      metadata = list(
+        seasonality_mode_used = options$time_mode,
+        seasonal_window_desc = NA_character_
+      )
+    )
+  }
+
+  result <- .finalize_outlier_detection(
+    detection = detection,
+    context = context,
+    methods = methods,
+    record_id = record_id,
+    output_profile = output_profile,
+    column = column,
+    verbose = verbose,
+    consensus_rule = consensus_rule,
+    activeness_applied = activeness_applied,
+    n_inactive_skipped = n_inactive_skipped,
+    key_indicators_used = key_indicators_used
+  )
+
+  .filter_by_output_profile(
+    result,
+    output_profile,
+    record_id,
+    context$admin_info$admin_levels,
+    context$yearmon_col,
+    context$year_col
+  )
 }
 
 #' vectorized consensus flag calculation
@@ -3759,9 +4187,15 @@ outlier_plot <- function(
     n_in_group = as.integer(n_vals),
     desc = paste0(
       "Across-time fallback, ",
-      min(group_data$.outlier_year, na.rm = TRUE),
-      "-",
-      max(group_data$.outlier_year, na.rm = TRUE)
+      if (length(group_data$.outlier_year[!is.na(group_data$.outlier_year)]) > 0) {
+        paste0(
+          min(group_data$.outlier_year, na.rm = TRUE),
+          "-",
+          max(group_data$.outlier_year, na.rm = TRUE)
+        )
+      } else {
+        "unknown-years"
+      }
     ),
     mean = mean_val,
     sd = sd_val,
