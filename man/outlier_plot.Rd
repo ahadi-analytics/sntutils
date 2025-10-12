@@ -8,8 +8,8 @@ outlier_plot(
   data,
   column,
   record_id = "record_id",
-  admin_levels = c("adm1", "adm2"),
-  plot_admin_level = NULL,
+  spatial_level = NULL,
+  admin_level = c("adm1", "adm2"),
   date = "date",
   time_mode = c("by_month", "across_time", "within_year"),
   value_type = c("count", "rate"),
@@ -27,6 +27,8 @@ outlier_plot(
   min_years_per_month = 3,
   methods = c("iqr", "median", "mean", "consensus"),
   year_breaks = 2,
+  cache_stats = TRUE,
+  cache_dir = NULL,
   verbose = TRUE,
   target_language = "en",
   source_language = "en",
@@ -50,17 +52,15 @@ outlier_plot(
 
 \item{record_id}{Unique record identifier column.}
 
-\item{admin_levels}{Character vector of administrative level columns ordered
-from higher to lower resolution. Defaults to \code{c("adm1", "adm2")}. Missing
-entries are dropped automatically; if only \code{adm1} is available, detection
-runs at adm1 only.}
+\item{spatial_level}{Character string specifying the finest spatial unit
+for analysis (e.g., "hf_uid" for facility-level). When specified,
+\code{admin_levels} defines grouping boundaries while \code{spatial_level} defines
+the unit of analysis. This prevents excessive grouping while maintaining
+spatial granularity. Default is \code{NULL} (uses most granular admin level).}
 
-\item{plot_admin_level}{Character vector specifying the admin levels to use for
-plot faceting only. If NULL (default), uses the most granular
-admin level from \code{admin_levels}. This allows you to detect outliers at
-facility level but visualize them grouped by district or regional panels
-without aggregating the underlying data. Must be a subset of \code{admin_levels}.
-For example, \code{"adm1"} to facet facility-level outliers by region.}
+\item{admin_level}{Character vector of administrative level columns for
+parallel grouping, ordered from higher to lower resolution.
+Defaults to \code{c("adm1", "adm2")}. Used for efficient data.table grouping.}
 
 \item{date}{Date column (Date, POSIXt, or parseable character string).
 Year, month, and yearmon are automatically derived from this column.}
@@ -121,6 +121,13 @@ For consensus, at least two other methods must be selected.}
 
 \item{year_breaks}{Numeric value specifying the interval for x-axis breaks.
 Default \code{2}. For example, \code{2} shows every second tick and \code{3} every third.}
+
+\item{cache_stats}{Logical. If TRUE, caches computed statistics to improve
+performance on repeated calls with the same data. Default is TRUE.}
+
+\item{cache_dir}{Character string specifying directory for file-based cache.
+If NULL (default), uses project cache directory or tempdir(). Cache persists
+across R sessions for reproducible performance gains.}
 
 \item{verbose}{Logical. When \code{TRUE}, prints an informative summary describing
 methods, pooling, strictness, guardrails, and consensus rule.
@@ -232,8 +239,8 @@ district_plots <- outlier_plot(
   column = "confirmed_cases",
   date = "date",
   record_id = "facility_id",
-  admin_levels = c("adm1", "adm2", "facility_id"),  # Detection done at facility level
-  plot_admin_level = c("adm1", "adm2"),  # But plot/aggregate at district level
+  spatial_level = "facility_id",  # Detection at facility level
+  admin_level = c("adm1", "adm2"),  # Plot/facet at district level
   methods = c("consensus")
 )
 }
