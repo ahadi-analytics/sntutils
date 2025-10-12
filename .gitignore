@@ -12,3 +12,5 @@ CLAUDE.md
 agents.config.json
 test-changed.sh
 test-changed-smart.sh
+.nanocoder/commands/test.md
+.nanocoder/commands/review.md
