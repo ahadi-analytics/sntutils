@@ -175,3 +175,36 @@ testthat::test_that("outlier_plot returns ggplot object", {
   testthat::expect_s3_class(plot, "ggplot")
   testthat::expect_no_error(ggplot2::ggplot_build(plot))
 })
+
+testthat::test_that("outlier_plot preserves sample size with plot_admin_level", {
+  data <- create_test_data()
+  
+  # First get outlier detection results without plot_admin_level
+  detection_results <- sntutils::detect_outliers(
+    data = data,
+    column = "confirmed_cases",
+    admin_levels = c("adm1", "adm2"),
+    methods = "iqr"
+  )
+  
+  original_sample_size <- nrow(detection_results)
+  
+  # Create plot with plot_admin_level - should not reduce sample size
+  # Use the original data, not detection results, to avoid date column issue
+  plot <- sntutils::outlier_plot(
+    data = data,
+    column = "confirmed_cases", 
+    admin_levels = c("adm1", "adm2"),
+    plot_admin_level = "adm1",  # Different from detection level
+    methods = "iqr",
+    show_plot = FALSE
+  )
+  
+  # Extract the underlying data from the plot
+  plot_data <- ggplot2::ggplot_build(plot)$data[[1]]
+  
+  # The plot should preserve the facility-level data even when faceted by adm1
+  # The sample size should match the original detection results
+  testthat::expect_equal(nrow(plot_data), original_sample_size)
+  testthat::expect_s3_class(plot, "ggplot")
+})
