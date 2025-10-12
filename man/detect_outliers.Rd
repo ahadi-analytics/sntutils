@@ -20,6 +20,7 @@ detect_outliers(
   min_n = 8,
   reporting_rate_col = NULL,
   reporting_rate_min = 0.5,
+  key_indicators_hf = NULL,
   methods = c("iqr", "median", "mean", "consensus"),
   consensus_rule = 2,
   output_profile = c("standard", "lean", "audit"),
@@ -61,7 +62,8 @@ any manual multipliers are \strong{ignored}.}
 
 \item{mad_multiplier}{Width multiplier for the MAD method (advanced mode).}
 
-\item{iqr_multiplier}{Tukey fence multiplier for the IQR method (advanced mode).}
+\item{iqr_multiplier}{Tukey fence multiplier for the IQR method
+(advanced mode).}
 
 \item{min_n}{Minimum observations required in the active comparison bucket
 before flagging is attempted (applies to any seasonal bucket or fallback).}
@@ -72,13 +74,23 @@ before flagging is attempted (applies to any seasonal bucket or fallback).}
 \item{reporting_rate_min}{Minimum acceptable reporting rate. Rows below the
 threshold receive \code{reason = "low_reporting"} and are not flagged.}
 
-\item{methods}{Character vector specifying which outlier detection methods to use:
-"iqr" (Interquartile Range), "median" (Median Absolute Deviation), "mean"
-(Mean +/- SD), and/or "consensus". Default is c("iqr", "median", "mean", "consensus")
-to calculate all methods. For consensus, at least 2 other methods must be selected.}
+\item{key_indicators_hf}{Optional character vector of indicator names used to
+determine facility activeness. If supplied, the function calls
+\code{classify_facility_activity()} internally to exclude inactive health
+facilities from outlier detection. Inactive facility-months are tagged with
+\code{reason = "inactive_facility"} and excluded from detection. If \code{NULL}
+(default), activeness filtering is skipped. Typical indicators include
+\code{"allout"}, \code{"test"}, or \code{"conf"}. This adjustment prevents false positives
+caused by facilities that start or stop reporting mid-period.}
 
-\item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3}) for
-the consensus flag to call an outlier. Default \code{2}.}
+\item{methods}{Character vector specifying which outlier detection
+methods to use: "iqr" (Interquartile Range), "median" (Median Absolute
+Deviation), "mean" (Mean +/- SD), and/or "consensus".
+Default is \code{c("iqr", "median", "mean", "consensus")}.
+For consensus, at least two other methods must be selected.}
+
+\item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3})
+for the consensus flag to call an outlier. Default \code{2}.}
 
 \item{output_profile}{Controls the amount of detail returned:
 \code{"lean"} (minimal columns: id, admin, date, value, consensus flag, reason),
@@ -97,27 +109,32 @@ guardrails, and consensus rule. Default is \code{FALSE}.}
 }
 \value{
 Tibble with outlier classifications and metadata. Columns include:
-identifiers (\code{record_id}, admin levels, \code{yearmon}, \code{year}, derived \code{month}),
-\code{column_name}, \code{value}, \code{value_type}, scale stats (\code{mean}, \code{sd}, \code{median},
-\code{mad}, \code{q1}, \code{q3}, \code{iqr}), method bounds, residual stats (if residual
-fallback), \code{n_in_group}, guardrail \code{reason}, method flags (optional),
-\code{outlier_flag_consensus}, seasonality descriptors, strictness multipliers,
-and fallback information.
+identifiers (\code{record_id}, admin levels, \code{yearmon}, \code{year}, derived
+\code{month}), \code{column_name}, \code{value}, \code{value_type}, scale stats (\code{mean},
+\code{sd}, \code{median}, \code{mad}, \code{q1}, \code{q3}, \code{iqr}), method bounds, residual stats
+(if residual fallback), \code{n_in_group}, guardrail \code{reason}, method flags
+(optional), \code{outlier_flag_consensus}, seasonality descriptors, strictness
+multipliers, fallback information, and (if activeness filtering was
+applied) \code{activeness_applied} and \code{key_indicators_used}.
 }
 \description{
 \code{detect_outliers()} evaluates a numeric indicator by administrative unit and
-time using three methods (mean +/- SD, median +/- MAD, Tukey IQR). It enforces
-reporting and sample-size guardrails, supports strictness presets, and when
-requested applies a seasonality ladder (same-month -> neighbours -> residual
--> across-time) to select stable comparison pools. It returns per-method flags
-(optional), a consensus classification, scale statistics, and metadata that
-records which fallback was used.
+time using three methods (mean +/- SD, median +/- MAD, Tukey IQR).
+It enforces reporting and sample-size guardrails, supports strictness
+presets, and when requested applies a seasonality ladder
+(same-month -> neighbours -> residual -> across-time) to select stable
+comparison pools. It returns per-method flags (optional), a consensus
+classification, scale statistics, and metadata recording any fallback used.
 }
 \details{
 \strong{Workflow}
 \enumerate{
 \item Validation & prep: confirm required columns, coerce target to numeric
 safely, derive month from \code{yearmon}.
+\item Activeness filtering (if \code{key_indicators_hf} is supplied): call
+\code{classify_facility_activity()} to tag inactive facilities. Inactive
+facility-months are excluded from detection and assigned
+\code{reason = "inactive_facility"}.
 \item Strictness: presets map to (SD, MAD, IQR) multipliers; advanced mode
 honours manual multipliers. On across-time fallback the strictness shifts
 one step toward lenient.
@@ -136,6 +153,20 @@ and marked \code{unstable_scale}).
 \code{consensus_rule} methods to agree over available (non-suppressed) methods.
 }
 
+\strong{Facility activeness adjustment}
+
+When inactive or newly activated health facilities are included in aggregated
+totals, apparent spikes or dips can occur that do not represent real
+epidemiological changes. For example, if ten new facilities start reporting
+in Matoto in mid-2022, the total number of confirmed cases rises even if
+incidence per facility remains constant. To prevent such artefacts,
+\code{detect_outliers()} can optionally apply activeness filtering using
+\code{classify_facility_activity()}. Only active facilities (those that reported
+at least one of the specified key indicators in a given month) contribute to
+the comparison pool for outlier detection. This step improves
+interpretability of results and reduces false positives in areas with
+variable reporting completeness or frequent facility additions.
+
 \strong{Presets}
 \itemize{
 \item lenient: SD 4.0; MAD constant 1.4826, MAD mult 12; IQR 3.0
@@ -152,8 +183,8 @@ and marked \code{unstable_scale}).
 
 The returned tibble always contains identifiers, scale statistics, bounds,
 strictness and seasonality metadata, and the guardrail reason. When
-\code{output_profile = "standard"} or \code{"audit"}, method-specific flags are included in addition to the
-consensus.
+\code{output_profile = "standard"} or \code{"audit"}, method-specific flags are
+included alongside the consensus.
 }
 \examples{
 \dontrun{
@@ -167,7 +198,8 @@ detect_outliers(
   time_mode = "across_time"
 )
 
-# 2) Seasonality with fallbacks (same-month -> neighbours -> residual -> across-time)
+# 2) Seasonality with fallbacks
+#    (same-month -> neighbours -> residual -> across-time)
 detect_outliers(
   data = malaria_data,
   column = "confirmed_cases",
@@ -192,6 +224,16 @@ detect_outliers(
   iqr_multiplier = 1.8,
   min_n = 10,
   output_profile = "audit"
+)
+
+# 4) With facility activeness filtering
+detect_outliers(
+  data = malaria_data,
+  column = "conf",
+  date = "date",
+  admin_levels = c("adm1", "adm2"),
+  time_mode = "by_month",
+  key_indicators_hf = c("allout", "test", "conf")
 )
 }
 }
