@@ -45,6 +45,15 @@
 #' @param reporting_rate_min Minimum acceptable reporting rate. Rows below the
 #'   threshold receive `reason = "low_reporting"` and are not flagged.
 #'
+#' @param key_indicators_hf Optional character vector of indicator names used to
+#'   determine facility activeness. If supplied, the function calls
+#'   `classify_facility_activity()` internally to exclude inactive health
+#'   facilities from outlier detection. Inactive facility-months are tagged with
+#'   `reason = "inactive_facility"` and excluded from detection. If `NULL`
+#'   (default), activeness filtering is skipped. Typical indicators include
+#'   `"allout"`, `"test"`, or `"conf"`. This adjustment prevents false positives
+#'   caused by facilities that start or stop reporting mid-period.
+#'
 #' @param methods Character vector specifying which outlier detection
 #'   methods to use: "iqr" (Interquartile Range), "median" (Median Absolute
 #'   Deviation), "mean" (Mean +/- SD), and/or "consensus".
@@ -70,22 +79,40 @@
 #' **Workflow**
 #' 1) Validation & prep: confirm required columns, coerce target to numeric
 #'    safely, derive month from `yearmon`.
-#' 2) Strictness: presets map to (SD, MAD, IQR) multipliers; advanced mode
+#' 2) Activeness filtering (if `key_indicators_hf` is supplied): call
+#'    `classify_facility_activity()` to tag inactive facilities. Inactive
+#'    facility-months are excluded from detection and assigned
+#'    `reason = "inactive_facility"`.
+#' 3) Strictness: presets map to (SD, MAD, IQR) multipliers; advanced mode
 #'    honours manual multipliers. On across-time fallback the strictness shifts
 #'    one step toward lenient.
-#' 3) Guardrails: rows failing `reporting_rate_min` or `min_n` bypass flagging
+#' 4) Guardrails: rows failing `reporting_rate_min` or `min_n` bypass flagging
 #'    and record `reason` (`low_reporting`, `insufficient_n`,
 #'    `insufficient_seasonal_history`).
-#' 4) Seasonality (if `time_mode = "by_month"`): ladder applied in order:
+#' 5) Seasonality (if `time_mode = "by_month"`): ladder applied in order:
 #'    same-month (rolling `seasonal_pool_years`), neighbours (m +/- 1 with
 #'    weights 2:1), residual (remove month fixed effects), across-time (with
 #'    strictness shift), then exclusion if still inadequate. Each row records
 #'    `seasonality_mode_used`, window text, and any fallback reason.
-#' 5) Flagging: each method classifies rows respecting guardrails and unstable
+#' 6) Flagging: each method classifies rows respecting guardrails and unstable
 #'    scales (when `sd`, `mad`, or `iqr` equals zero the method is suppressed
 #'    and marked `unstable_scale`).
-#' 6) Consensus: final `outlier_flag_consensus` requires at least
+#' 7) Consensus: final `outlier_flag_consensus` requires at least
 #'    `consensus_rule` methods to agree over available (non-suppressed) methods.
+#'
+#' **Facility activeness adjustment**
+#'
+#' When inactive or newly activated health facilities are included in aggregated
+#' totals, apparent spikes or dips can occur that do not represent real
+#' epidemiological changes. For example, if ten new facilities start reporting
+#' in Matoto in mid-2022, the total number of confirmed cases rises even if
+#' incidence per facility remains constant. To prevent such artefacts,
+#' `detect_outliers()` can optionally apply activeness filtering using
+#' `classify_facility_activity()`. Only active facilities (those that reported
+#' at least one of the specified key indicators in a given month) contribute to
+#' the comparison pool for outlier detection. This step improves
+#' interpretability of results and reduces false positives in areas with
+#' variable reporting completeness or frequent facility additions.
 #'
 #' **Presets**
 #' - lenient: SD 4.0; MAD constant 1.4826, MAD mult 12; IQR 3.0
@@ -108,7 +135,8 @@
 #'   `sd`, `median`, `mad`, `q1`, `q3`, `iqr`), method bounds, residual stats
 #'   (if residual fallback), `n_in_group`, guardrail `reason`, method flags
 #'   (optional), `outlier_flag_consensus`, seasonality descriptors, strictness
-#'   multipliers, and fallback information.
+#'   multipliers, fallback information, and (if activeness filtering was
+#'   applied) `activeness_applied` and `key_indicators_used`.
 #'
 #' @examples
 #' \dontrun{
@@ -149,6 +177,16 @@
 #'   min_n = 10,
 #'   output_profile = "audit"
 #' )
+#'
+#' # 4) With facility activeness filtering
+#' detect_outliers(
+#'   data = malaria_data,
+#'   column = "conf",
+#'   date = "date",
+#'   admin_levels = c("adm1", "adm2"),
+#'   time_mode = "by_month",
+#'   key_indicators_hf = c("allout", "test", "conf")
+#' )
 #' }
 #' @export
 detect_outliers <- function(
@@ -167,6 +205,7 @@ detect_outliers <- function(
     min_n = 8,
     reporting_rate_col = NULL,
     reporting_rate_min = 0.5,
+    key_indicators_hf = NULL,
     methods = c("iqr", "median", "mean", "consensus"),
     consensus_rule = 2,
     output_profile = c("standard", "lean", "audit"),
@@ -175,6 +214,48 @@ detect_outliers <- function(
     verbose = TRUE) {
   if (column %in% names(data) && !is.numeric(data[[column]])) {
     cli::cli_abort("Column {.val {column}} must be numeric.")
+  }
+
+  activeness_applied <- FALSE
+  n_inactive_skipped <- 0L
+  key_indicators_used <- NA_character_
+
+  if (!is.null(key_indicators_hf)) {
+    missing_indicators <- setdiff(key_indicators_hf, names(data))
+    if (length(missing_indicators) > 0) {
+      cli::cli_abort(
+        "key_indicators_hf columns missing: {.val {missing_indicators}}"
+      )
+    }
+    if (!record_id %in% names(data)) {
+      cli::cli_abort(
+        "record_id {.val {record_id}} not found in data."
+      )
+    }
+    activeness_data <- classify_facility_activity(
+      data = data,
+      hf_col = record_id,
+      date_col = date,
+      key_indicators = key_indicators_hf
+    )
+    data <- data |>
+      dplyr::left_join(
+        activeness_data |>
+          dplyr::select(
+            dplyr::all_of(c(record_id, date)),
+            activity_status
+          ),
+        by = c(record_id, date)
+      ) |>
+      dplyr::mutate(
+        .is_active = activity_status == "Active Reporting"
+      )
+    n_inactive_skipped <- sum(!data$.is_active, na.rm = TRUE)
+    data <- data |>
+      dplyr::filter(.is_active) |>
+      dplyr::select(-.is_active, -activity_status)
+    activeness_applied <- TRUE
+    key_indicators_used <- paste(key_indicators_hf, collapse = ", ")
   }
 
   # detection orchestrator ---------------------------------------------------
@@ -193,9 +274,6 @@ detect_outliers <- function(
       !missing(mad_multiplier) ||
       !missing(iqr_multiplier))
   ) {
-    cli::cli_inform(
-      "Manual multipliers ignored when strictness != 'advanced'."
-    )
   }
 
   context <- .prepare_outlier_context(
@@ -232,7 +310,10 @@ detect_outliers <- function(
     output_profile = options$output_profile,
     column = column,
     verbose = verbose,
-    consensus_rule = consensus_rule
+    consensus_rule = consensus_rule,
+    activeness_applied = activeness_applied,
+    n_inactive_skipped = n_inactive_skipped,
+    key_indicators_used = key_indicators_used
   )
 }
 
@@ -520,7 +601,10 @@ detect_outliers <- function(
     output_profile,
     column,
     verbose,
-    consensus_rule) {
+    consensus_rule,
+    activeness_applied = FALSE,
+    n_inactive_skipped = 0L,
+    key_indicators_used = NA_character_) {
   if (!"residual_sd" %in% names(detection)) {
     detection <- detection |>
       dplyr::mutate(
@@ -567,7 +651,9 @@ detect_outliers <- function(
       iqr_multiplier = strictness_info$iqr_multiplier,
       time_mode = time_mode,
       reporting_rate = .outlier_reporting,
-      admin_level_used = paste(admin_info$admin_levels, collapse = ", ")
+      admin_level_used = paste(admin_info$admin_levels, collapse = ", "),
+      activeness_applied = activeness_applied,
+      key_indicators_used = key_indicators_used
     )
 
   if ("mean" %in% methods && "mean_flag" %in% names(detection)) {
@@ -591,7 +677,10 @@ detect_outliers <- function(
       strictness_info = strictness_info,
       min_n = min_n,
       reporting_rate_min = reporting_rate_min,
-      consensus_rule = consensus_rule
+      consensus_rule = consensus_rule,
+      activeness_applied = activeness_applied,
+      n_inactive_skipped = n_inactive_skipped,
+      key_indicators_used = key_indicators_used
     )
   }
 
@@ -652,7 +741,9 @@ detect_outliers <- function(
     "mad_multiplier",
     "iqr_multiplier",
     "time_mode",
-    "admin_level_used"
+    "admin_level_used",
+    "activeness_applied",
+    "key_indicators_used"
   )
 
   final <- detection |>
@@ -672,7 +763,6 @@ detect_outliers <- function(
       "year"
     )
 
-  .log_run_metadata(final, verbose)
   final
 }
 
@@ -763,7 +853,10 @@ detect_outliers <- function(
   min_n,
   reporting_rate_min,
   methods,
-  consensus_rule
+  consensus_rule,
+  activeness_applied = FALSE,
+  n_inactive_skipped = 0L,
+  key_indicators_used = NA_character_
 ) {
   time_desc <- switch(
     time_mode,
@@ -832,7 +925,22 @@ detect_outliers <- function(
       "{fmt_num(n_skipped_n)} groups skipped (n < {fmt_num(min_n)}), ",
       "{fmt_num(n_skipped_rep)} groups skipped ",
       "(reporting < {fmt_pct(reporting_rate_min)}%)"
-    ),
+    )
+  )
+
+  if (activeness_applied) {
+    lines <- c(
+      lines,
+      glue::glue(
+        "{cli::col_magenta(cli::style_bold('Activeness filtering'))}: ",
+        "{fmt_num(n_inactive_skipped)} inactive facility-months excluded ",
+        "(indicators: {key_indicators_used})"
+      )
+    )
+  }
+
+  lines <- c(
+    lines,
     "",
     cli::col_yellow(cli::style_bold('Method results:'))
   )
@@ -935,6 +1043,12 @@ detect_outliers <- function(
 #' all parameters from the detection function for seamless integration.
 #'
 #' @inheritParams detect_outliers
+#' @param plot_admin_level Character vector specifying the admin levels to use for
+#'   plot faceting only. If NULL (default), uses the most granular
+#'   admin level from `admin_levels`. This allows you to detect outliers at
+#'   facility level but visualize them grouped by district or regional panels
+#'   without aggregating the underlying data. Must be a subset of `admin_levels`.
+#'   For example, `"adm1"` to facet facility-level outliers by region.
 #' @param methods Character vector specifying which outlier detection methods
 #'   to plot: "iqr" (Interquartile Range), "median" (Median Absolute
 #'   Deviation), "mean" (Mean +/- SD), and/or "consensus".
@@ -1026,6 +1140,17 @@ detect_outliers <- function(
 #'   consensus_rule = 2,
 #'   plot_path = "outliers.png"  # Saves as outliers_iqr.png, etc.
 #' )
+#'
+#' # Detect at facility level but visualize at district level
+#' district_plots <- outlier_plot(
+#'   data = malaria_data,  # Contains facility-level outlier detection results
+#'   column = "confirmed_cases",
+#'   date = "date",
+#'   record_id = "facility_id",
+#'   admin_levels = c("adm1", "adm2", "facility_id"),  # Detection done at facility level
+#'   plot_admin_level = c("adm1", "adm2"),  # But plot/aggregate at district level
+#'   methods = c("consensus")
+#' )
 #' }
 #' @export
 outlier_plot <- function(
@@ -1033,6 +1158,7 @@ outlier_plot <- function(
     column,
     record_id = "record_id",
     admin_levels = c("adm1", "adm2"),
+    plot_admin_level = NULL,
     date = "date",
     time_mode = c("by_month", "across_time", "within_year"),
     value_type = c("count", "rate"),
@@ -1044,8 +1170,8 @@ outlier_plot <- function(
     min_n = 8,
     reporting_rate_col = NULL,
     reporting_rate_min = 0.5,
+    key_indicators_hf = NULL,
     consensus_rule = 2,
-    output_profile = c("standard", "lean", "audit"),
     seasonal_pool_years = 5,
     min_years_per_month = 3,
     methods = c("iqr", "median", "mean", "consensus"),
@@ -1069,11 +1195,20 @@ outlier_plot <- function(
   time_mode <- match.arg(time_mode)
   value_type <- match.arg(value_type)
   strictness <- match.arg(strictness)
-  output_profile <- match.arg(output_profile)
 
   # Validate methods selection
   valid_methods <- c("iqr", "median", "mean", "consensus")
   methods <- match.arg(methods, valid_methods, several.ok = TRUE)
+
+  # Validate plot_admin_level
+  if (!is.null(plot_admin_level)) {
+    if (!all(plot_admin_level %in% admin_levels)) {
+      missing_levels <- setdiff(plot_admin_level, admin_levels)
+      cli::cli_abort(
+        "plot_admin_level contains invalid levels: {.val {missing_levels}}. Must be subset of admin_levels: {.val {admin_levels}}"
+      )
+    }
+  }
 
   # Check if consensus is requested with sufficient other methods
   if ("consensus" %in% methods) {
@@ -1086,31 +1221,38 @@ outlier_plot <- function(
     }
   }
 
-  # Get outlier detection results using all inherited parameters.
-  # Force audit profile so all flags are available for plotting.
-  outlier_results <- detect_outliers(
-    data = data,
-    column = column,
-    record_id = record_id,
-    admin_levels = admin_levels,
-    date = date,
-    time_mode = time_mode,
-    value_type = value_type,
-    strictness = strictness,
-    sd_multiplier = sd_multiplier,
-    mad_constant = mad_constant,
-    mad_multiplier = mad_multiplier,
-    iqr_multiplier = iqr_multiplier,
-    min_n = min_n,
-    reporting_rate_col = reporting_rate_col,
-    reporting_rate_min = reporting_rate_min,
-    methods = methods,  # Pass methods to calculate only requested flags
-    consensus_rule = consensus_rule,
-    output_profile = "audit",  # Get all flags for individual methods
-    seasonal_pool_years = seasonal_pool_years,
-    min_years_per_month = min_years_per_month,
-    verbose = FALSE  # plot helper prints summary itself
-  )
+  # If data is already outlier detection results, use it directly
+  # Otherwise, run outlier detection
+  if (all(c("yearmon", "outlier_flag_consensus") %in% names(data))) {
+    # Data appears to be outlier detection results already
+    outlier_results <- data
+  } else {
+    # Run outlier detection on raw data
+    outlier_results <- detect_outliers(
+      data = data,
+      column = column,
+      record_id = record_id,
+      admin_levels = admin_levels,
+      date = date,
+      time_mode = time_mode,
+      value_type = value_type,
+      strictness = strictness,
+      sd_multiplier = sd_multiplier,
+      mad_constant = mad_constant,
+      mad_multiplier = mad_multiplier,
+      iqr_multiplier = iqr_multiplier,
+      min_n = min_n,
+      reporting_rate_col = reporting_rate_col,
+      reporting_rate_min = reporting_rate_min,
+      key_indicators_hf = key_indicators_hf,
+      methods = methods,  # Pass methods to calculate only requested flags
+      consensus_rule = consensus_rule,
+      output_profile = "audit",  # Get all flags for individual methods
+      seasonal_pool_years = seasonal_pool_years,
+      min_years_per_month = min_years_per_month,
+      verbose = FALSE  # plot helper prints summary itself
+    )
+  }
 
   # Show summary box once before creating plots
   if (isTRUE(verbose)) {
@@ -1141,8 +1283,18 @@ outlier_plot <- function(
       date_for_plot = lubridate::ymd(paste0(yearmon, "-01"))
     )
 
-  # Get the most granular admin level for faceting
-  facet_column <- admin_levels[length(admin_levels)]
+  # Determine admin level for faceting (visualization only - no data aggregation)
+  if (!is.null(plot_admin_level)) {
+    # Use the most granular level from plot_admin_level for faceting
+    facet_column <- plot_admin_level[length(plot_admin_level)]
+  } else {
+    # Use most granular admin level by default
+    facet_column <- admin_levels[length(admin_levels)]
+  }
+
+  # Note: We do NOT aggregate data when plot_admin_level is specified
+  # The plot_admin_level parameter only changes faceting for visualization
+  # This preserves the full facility-level dataset and sample size
 
   # Create list to store plots
   plot_list <- list()
@@ -1163,6 +1315,7 @@ outlier_plot <- function(
         !is.na(.data[[flag_column]]),
         .data[[flag_column]] != "insufficient_evidence"
       )
+
 
     # Create summary for facet labels
     percent_summary <- plot_data |>
@@ -2489,41 +2642,6 @@ outlier_plot <- function(
   combined
 }
 
-#' log run metadata for diagnostics
-#'
-#' @param data output tibble
-#' @param verbose logical flag
-#' @noRd
-.log_run_metadata <- function(data, verbose) {
-  if (!isTRUE(verbose)) {
-    return(invisible(NULL))
-  }
-
-  reason_counts <- data |>
-    dplyr::count(reason, name = "n_reason")
-
-  flag_counts <- data |>
-    dplyr::count(outlier_flag_consensus, name = "n_flag")
-
-  cli::cli_h1("Outlier detection summary")
-  cli::cli_text("Records analysed: {.val {nrow(data)}}")
-  cli::cli_text(
-    "Consensus flags: {.val {flag_counts$outlier_flag_consensus}} -> ",
-    "{.val {flag_counts$n_flag}}"
-  )
-  cli::cli_text("Reasons:")
-  for (i in seq_len(nrow(reason_counts))) {
-    reason_value <- reason_counts$reason[[i]]
-    if (is.na(reason_value) || reason_value == "") {
-      reason_value <- "<none>"
-    }
-    cli::cli_text(
-      "* {.val {reason_value}}: {.val {reason_counts$n_reason[[i]]}}"
-    )
-  }
-  invisible(NULL)
-}
-
 #' build subtitle summarising seasonality and guardrails
 #'
 #' @param data plotted data
@@ -3121,23 +3239,26 @@ outlier_plot <- function(
 
   if (output_profile == "lean") {
     # minimal: record id, admin levels, yearmon, derived year/month,
-    # column name, value, value type, consensus flag, reason
+    # column name, value, value type, consensus flag, reason,
+    # activeness metadata
     lean_cols <- c(
       core_cols,
-      "column_name", "value", "value_type", "outlier_flag_consensus", "reason"
+      "column_name", "value", "value_type", "outlier_flag_consensus", "reason",
+      "activeness_applied", "key_indicators_used"
     )
     data |> dplyr::select(dplyr::all_of(lean_cols[lean_cols %in% names(data)]))
 
   } else if (output_profile == "standard") {
     # lean + method flags (mean/median/iqr), bounds (*_lower, *_upper),
-    # n, seasonality mode, and window description
+    # n, seasonality mode, window description, and activeness metadata
     standard_cols <- c(
       core_cols,
       "column_name", "value", "value_type", "outlier_flag_consensus", "reason",
       "outlier_flag_mean", "outlier_flag_median", "outlier_flag_iqr",
       "mean_lower", "mean_upper", "median_lower", "median_upper",
       "iqr_lower", "iqr_upper", "n_in_group",
-      "seasonality_mode_used", "seasonal_window_desc"
+      "seasonality_mode_used", "seasonal_window_desc",
+      "activeness_applied", "key_indicators_used"
     )
     data |>
       dplyr::select(
@@ -3146,7 +3267,7 @@ outlier_plot <- function(
 
   } else {
     # audit: full table including scale stats, multipliers,
-    # strictness label/shift, ladder metadata
+    # strictness label/shift, ladder metadata, activeness metadata
     data
   }
 }
