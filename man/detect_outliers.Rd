@@ -8,7 +8,7 @@ detect_outliers(
   data,
   column,
   record_id = "record_id",
-  admin_levels = c("adm1", "adm2"),
+  admin_level = c("adm1", "adm2"),
   date = "date",
   time_mode = c("by_month", "across_time", "within_year"),
   value_type = c("count", "rate"),
@@ -26,7 +26,10 @@ detect_outliers(
   output_profile = c("standard", "lean", "audit"),
   seasonal_pool_years = 5,
   min_years_per_month = 3,
-  verbose = TRUE
+  verbose = TRUE,
+  cache_stats = TRUE,
+  cache_dir = NULL,
+  spatial_level = NULL
 )
 }
 \arguments{
@@ -36,10 +39,9 @@ detect_outliers(
 
 \item{record_id}{Unique record identifier column.}
 
-\item{admin_levels}{Character vector of administrative level columns ordered
-from higher to lower resolution. Defaults to \code{c("adm1", "adm2")}. Missing
-entries are dropped automatically; if only \code{adm1} is available, detection
-runs at adm1 only.}
+\item{admin_level}{Character vector of administrative level columns for
+parallel grouping, ordered from higher to lower resolution.
+Defaults to \code{c("adm1", "adm2")}. Used for efficient data.table grouping.}
 
 \item{date}{Date column (Date, POSIXt, or parseable character string).
 Year, month, and yearmon are automatically derived from this column.}
@@ -106,6 +108,19 @@ pool before moving to a fallback. Default \code{3}.}
 \item{verbose}{Logical. When \code{TRUE}, prints an informative summary showing
 which methods are being applied, the pooling strategy, strictness settings,
 guardrails, and consensus rule. Default is \code{FALSE}.}
+
+\item{cache_stats}{Logical. Cache intermediate statistical calculations
+to improve performance across seasonal pools. Default is \code{TRUE}.}
+
+\item{cache_dir}{Character string specifying directory for file-based cache.
+If NULL (default), uses project cache directory or tempdir(). Cache persists
+across R sessions for reproducible performance gains.}
+
+\item{spatial_level}{Character string specifying the finest spatial unit
+for analysis (e.g., "hf_uid" for facility-level). When specified,
+\code{admin_levels} defines grouping boundaries while \code{spatial_level} defines
+the unit of analysis. This prevents excessive grouping while maintaining
+spatial granularity. Default is \code{NULL} (uses most granular admin level).}
 }
 \value{
 Tibble with outlier classifications and metadata. Columns include:
