@@ -9,3 +9,6 @@ AGENTS.md
 generate_svg_badge.R
 .claude/settings.local.json
 CLAUDE.md
+agents.config.json
+test-changed.sh
+test-changed-smart.sh
