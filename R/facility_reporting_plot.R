@@ -166,6 +166,10 @@ classify_facility_activity <- function(
 #'   When provided, creates separate panels for each unique value in this column
 #'   (e.g., one panel per province or administrative region). Can be any column
 #'   type. Default is NULL (no faceting).
+#' @param facet_ncol Integer. Number of columns for facet layout when
+#'   `facet_col` is provided. Defaults to 2.
+#' @param year_breaks Numeric value specifying the interval (in months) for 
+#'   x-axis date breaks. If NULL (default), uses "3 months".
 #' @param palette Character. Colour palette for activity statuses. One of
 #'   `c("classic", "sunset", "forest", "coral", "violet", "slate",
 #'   "citrus", "orchid")`. Defaults to "classic".
@@ -225,6 +229,8 @@ facility_reporting_plot <- function(
   date_col = "date",
   key_indicators = c("test", "pres", "conf"),
   facet_col = NULL,
+  facet_ncol = 2,
+  year_breaks = NULL,
   palette = "classic",
   include_never_reported = TRUE,
   target_language = "en",
@@ -561,7 +567,7 @@ facility_reporting_plot <- function(
     ) +
     ggplot2::scale_x_date(
       expand = c(0, 0),
-      date_breaks = "3 months",
+      date_breaks = if (is.null(year_breaks)) "3 months" else paste(year_breaks, "months"),
       labels = function(x) {
         sntutils::translate_yearmon(x, language = target_language)
       }
@@ -607,7 +613,7 @@ facility_reporting_plot <- function(
       ggplot2::facet_wrap(
         ~ .data[[facet_col]], 
         scales = "free_y",
-        ncol = 2
+        ncol = facet_ncol
       )
     
     # When using free_y scales with faceting, use a function for y-axis labels
