@@ -3,9 +3,14 @@
 ^README\.qmd$
 ^README\.html$
 ^README_files$
+CLAUDE\.md$
 ^\.github$
 .covrignore
 generate_svg_badge.R
+.nanocoder
 .Rbuildignore
 .clau*
 AGENTS.md
+^test-changed\.sh$
+^test-changed-smart\.sh$
+agents.config.json

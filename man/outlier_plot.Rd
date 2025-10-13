@@ -8,7 +8,8 @@ outlier_plot(
   data,
   column,
   record_id = "record_id",
-  admin_levels = c("adm1", "adm2"),
+  spatial_level = NULL,
+  admin_level = c("adm1", "adm2"),
   date = "date",
   time_mode = c("by_month", "across_time", "within_year"),
   value_type = c("count", "rate"),
@@ -20,12 +21,14 @@ outlier_plot(
   min_n = 8,
   reporting_rate_col = NULL,
   reporting_rate_min = 0.5,
+  key_indicators_hf = NULL,
   consensus_rule = 2,
-  output_profile = c("standard", "lean", "audit"),
   seasonal_pool_years = 5,
   min_years_per_month = 3,
   methods = c("iqr", "median", "mean", "consensus"),
   year_breaks = 2,
+  cache_stats = TRUE,
+  cache_dir = NULL,
   verbose = TRUE,
   target_language = "en",
   source_language = "en",
@@ -49,10 +52,15 @@ outlier_plot(
 
 \item{record_id}{Unique record identifier column.}
 
-\item{admin_levels}{Character vector of administrative level columns ordered
-from higher to lower resolution. Defaults to \code{c("adm1", "adm2")}. Missing
-entries are dropped automatically; if only \code{adm1} is available, detection
-runs at adm1 only.}
+\item{spatial_level}{Character string specifying the finest spatial unit
+for analysis (e.g., "hf_uid" for facility-level). When specified,
+\code{admin_levels} defines grouping boundaries while \code{spatial_level} defines
+the unit of analysis. This prevents excessive grouping while maintaining
+spatial granularity. Default is \code{NULL} (uses most granular admin level).}
+
+\item{admin_level}{Character vector of administrative level columns for
+parallel grouping, ordered from higher to lower resolution.
+Defaults to \code{c("adm1", "adm2")}. Used for efficient data.table grouping.}
 
 \item{date}{Date column (Date, POSIXt, or parseable character string).
 Year, month, and yearmon are automatically derived from this column.}
@@ -75,7 +83,8 @@ any manual multipliers are \strong{ignored}.}
 
 \item{mad_multiplier}{Width multiplier for the MAD method (advanced mode).}
 
-\item{iqr_multiplier}{Tukey fence multiplier for the IQR method (advanced mode).}
+\item{iqr_multiplier}{Tukey fence multiplier for the IQR method
+(advanced mode).}
 
 \item{min_n}{Minimum observations required in the active comparison bucket
 before flagging is attempted (applies to any seasonal bucket or fallback).}
@@ -86,13 +95,17 @@ before flagging is attempted (applies to any seasonal bucket or fallback).}
 \item{reporting_rate_min}{Minimum acceptable reporting rate. Rows below the
 threshold receive \code{reason = "low_reporting"} and are not flagged.}
 
-\item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3}) for
-the consensus flag to call an outlier. Default \code{2}.}
+\item{key_indicators_hf}{Optional character vector of indicator names used to
+determine facility activeness. If supplied, the function calls
+\code{classify_facility_activity()} internally to exclude inactive health
+facilities from outlier detection. Inactive facility-months are tagged with
+\code{reason = "inactive_facility"} and excluded from detection. If \code{NULL}
+(default), activeness filtering is skipped. Typical indicators include
+\code{"allout"}, \code{"test"}, or \code{"conf"}. This adjustment prevents false positives
+caused by facilities that start or stop reporting mid-period.}
 
-\item{output_profile}{Controls the amount of detail returned:
-\code{"lean"} (minimal columns: id, admin, date, value, consensus flag, reason),
-\code{"standard"} (lean + per-method flags + bounds + seasonality mode),
-\code{"audit"} (all columns for full reproducibility). Default \code{"standard"}.}
+\item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3})
+for the consensus flag to call an outlier. Default \code{2}.}
 
 \item{seasonal_pool_years}{Rolling history window (in years) for same-month
 pooling when \code{time_mode = "by_month"}. Default \code{5}.}
@@ -100,20 +113,28 @@ pooling when \code{time_mode = "by_month"}. Default \code{5}.}
 \item{min_years_per_month}{Minimum distinct years required in the same-month
 pool before moving to a fallback. Default \code{3}.}
 
-\item{methods}{Character vector specifying which outlier detection methods to plot:
-"iqr" (Interquartile Range), "median" (Median Absolute Deviation), "mean"
-(Mean +/- SD), and/or "consensus". Default is c("iqr", "median", "mean", "consensus")
-to show all methods. For consensus, at least 2 other methods must be selected.}
+\item{methods}{Character vector specifying which outlier detection methods
+to plot: "iqr" (Interquartile Range), "median" (Median Absolute
+Deviation), "mean" (Mean +/- SD), and/or "consensus".
+Default is \code{c("iqr", "median", "mean", "consensus")}.
+For consensus, at least two other methods must be selected.}
 
-\item{year_breaks}{Numeric value specifying the interval for x-axis breaks
-(default: 2). For example, 2 shows every 2nd year/month, 3 shows every 3rd.}
+\item{year_breaks}{Numeric value specifying the interval for x-axis breaks.
+Default \code{2}. For example, \code{2} shows every second tick and \code{3} every third.}
 
-\item{verbose}{Logical. When \code{TRUE}, prints an informative summary showing
-which methods are being applied, the pooling strategy, strictness settings,
-guardrails, and consensus rule. Default is \code{FALSE}.}
+\item{cache_stats}{Logical. If TRUE, caches computed statistics to improve
+performance on repeated calls with the same data. Default is TRUE.}
+
+\item{cache_dir}{Character string specifying directory for file-based cache.
+If NULL (default), uses project cache directory or tempdir(). Cache persists
+across R sessions for reproducible performance gains.}
+
+\item{verbose}{Logical. When \code{TRUE}, prints an informative summary describing
+methods, pooling, strictness, guardrails, and consensus rule.
+Default is \code{FALSE}.}
 
 \item{target_language}{Character string specifying the language for plot
-labels. Defaults to "en" (English). Use ISO 639-1 language codes.}
+labels. Defaults to \code{"en"} (English). Use ISO 639-1 language codes.}
 
 \item{source_language}{Source language code. If NULL, auto-detection is used.
 Defaults to "en".}
@@ -142,19 +163,19 @@ increase size, < 1 decrease size. Default is 1.}
 \item{plot_width}{Numeric. Width of saved plot in inches. If NULL (default),
 width is calculated based on number of facets.}
 
-\item{plot_height}{Numeric. Height of saved plot in inches. If NULL (default),
-height is calculated based on number of facets.}
+\item{plot_height}{Numeric. Height of saved plot in inches.
+If \code{NULL} (default), height is calculated from facet count.}
 
 \item{plot_dpi}{Numeric. Resolution of saved plot in dots per inch.
 Default is 300.}
 
-\item{show_plot}{Logical. If FALSE, the plot is returned invisibly (not displayed).
-Useful when only saving plots. Default is TRUE.}
+\item{show_plot}{Logical. If \code{FALSE}, the plot is returned invisibly
+(not displayed). Useful when only saving plots. Default is \code{TRUE}.}
 }
 \value{
 If a single method is specified, returns a ggplot object. If multiple
-methods are specified, returns a named list of ggplot objects (one per method).
-When show_plot is FALSE, returns invisibly.
+methods are specified, returns a named list of ggplot objects
+(one per method). When \code{show_plot} is \code{FALSE}, returns invisibly.
 }
 \description{
 This function creates plots to visualize outliers in data using the same
@@ -162,11 +183,12 @@ detection methods as \code{detect_outliers()}. The plotting function inherits
 all parameters from the detection function for seamless integration.
 }
 \details{
-The function creates scatter plots showing outliers detected using the specified
-statistical methods. Each method produces a separate plot with points colored by
-outlier status (red for outliers, grey for normal values). For consensus plots,
-the caption shows the consensus rule used. The plots are faceted by administrative
-levels and include summary statistics in the subtitle.
+The function creates scatter plots showing outliers detected using the
+specified statistical methods. Each method produces a separate plot with
+points colored by outlier status (red for outliers, grey for normal values).
+For consensus plots, the caption shows the consensus rule used.
+The plots are faceted by administrative levels and include summary
+statistics in the subtitle.
 }
 \examples{
 \dontrun{
@@ -209,6 +231,17 @@ with_consensus <- outlier_plot(
   methods = c("iqr", "median", "mean", "consensus"),
   consensus_rule = 2,
   plot_path = "outliers.png"  # Saves as outliers_iqr.png, etc.
+)
+
+# Detect at facility level but visualize at district level
+district_plots <- outlier_plot(
+  data = malaria_data,  # Contains facility-level outlier detection results
+  column = "confirmed_cases",
+  date = "date",
+  record_id = "facility_id",
+  spatial_level = "facility_id",  # Detection at facility level
+  admin_level = c("adm1", "adm2"),  # Plot/facet at district level
+  methods = c("consensus")
 )
 }
 }
