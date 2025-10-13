@@ -196,6 +196,7 @@ globalVariables(
     "yearmon",
     "reported_facility",
     "weight_facility",
-    "weight_value_facility"
+    "weight_value_facility",
+    ".alpha_val", ".binary_flag", ".is_active"
   )
 )

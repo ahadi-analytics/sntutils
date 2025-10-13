@@ -39,8 +39,15 @@ get_expected_data_structure <- function() {
       "1.2b_pfpr_estimates",
       "1.2c_mortality_estimates"
     ),
+    interventions = c(
+      "1.3a_itns",
+      "1.3b_iptp",
+      "1.3c_smc",
+      "1.3d_vap",
+      "1.3e_anc",
+      "1.3f_irs"
+    ),
     simple_domains = c(
-      "1.3_interventions",
       "1.4_drug_efficacy_resistance",
       "1.7_entomology",
       "1.8_commodities"
@@ -140,7 +147,6 @@ testthat::test_that("create_data_structure creates raw and processed folders", {
 
   # check simple domain folders have raw/processed
   simple_domains <- c(
-    "1.3_interventions",
     "1.4_drug_efficacy_resistance",
     "1.7_entomology",
     "1.8_commodities"
@@ -172,6 +178,12 @@ testthat::test_that("create_data_structure creates raw and processed folders", {
     "1.1_foundational/1.1e_population/1.1eii_worldpop_rasters",
     "1.1_foundational/1.1f_cache_files",
     "1.2_epidemiology/1.2a_routine_surveillance",
+    "1.3_interventions/1.3a_itns",
+    "1.3_interventions/1.3b_iptp",
+    "1.3_interventions/1.3c_smc",
+    "1.3_interventions/1.3d_vap",
+    "1.3_interventions/1.3e_anc",
+    "1.3_interventions/1.3f_irs",
     "1.5_environment/1.5a_climate",
     "1.6_health_systems/1.6a_dhs"
   )
@@ -449,7 +461,7 @@ testthat::test_that("functions work together in typical workflow", {
   complete_check_paths <- c(
     "01_data/1.1_foundational/1.1a_admin_boundaries/raw",
     "01_data/1.2_epidemiology/1.2b_pfpr_estimates/processed",
-    "01_data/1.3_interventions/raw",
+    "01_data/1.3_interventions/1.3a_itns/raw",
     "02_scripts",
     "03_outputs/plots",
     "04_reports",

@@ -10,6 +10,8 @@ facility_reporting_plot(
   date_col = "date",
   key_indicators = c("test", "pres", "conf"),
   facet_col = NULL,
+  facet_ncol = 2,
+  year_breaks = NULL,
   palette = "classic",
   include_never_reported = TRUE,
   target_language = "en",
@@ -42,6 +44,12 @@ activity. Defaults to \code{c("test", "pres", "conf")}.}
 When provided, creates separate panels for each unique value in this column
 (e.g., one panel per province or administrative region). Can be any column
 type. Default is NULL (no faceting).}
+
+\item{facet_ncol}{Integer. Number of columns for facet layout when
+\code{facet_col} is provided. Defaults to 2.}
+
+\item{year_breaks}{Numeric value specifying the interval (in months) for
+x-axis date breaks. If NULL (default), uses "3 months".}
 
 \item{palette}{Character. Colour palette for activity statuses. One of
 \code{c("classic", "sunset", "forest", "coral", "violet", "slate", "citrus", "orchid")}. Defaults to "classic".}
