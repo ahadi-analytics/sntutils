@@ -35,7 +35,14 @@ create_data_structure <- function(base_path = ".") {
       "1.2b_pfpr_estimates",
       "1.2c_mortality_estimates"
     ),
-    "1.3_interventions" = ".",
+    "1.3_interventions" = c(
+      "1.3a_itns",
+      "1.3b_iptp",
+      "1.3c_smc",
+      "1.3d_vap",
+      "1.3e_anc",
+      "1.3f_irs"
+    ),
     "1.4_drug_efficacy_resistance" = ".",
     "1.5_environment" = c(
       "1.5a_climate",
