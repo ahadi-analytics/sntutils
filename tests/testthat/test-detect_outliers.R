@@ -64,7 +64,7 @@ testthat::test_that("detect_outliers returns consensus output by default", {
 
   testthat::expect_s3_class(result, "tbl_df")
   expected_cols <- c(
-    "record_id", "adm1", "adm2", "yearmon", "year", "month",
+    "record_id", "adm1", "adm2", "month",
     "column_name", "value", "value_type", "outlier_flag_consensus", "reason",
     "outlier_flag_mean", "outlier_flag_median", "outlier_flag_iqr",
     "mean_lower", "mean_upper", "median_lower", "median_upper",
@@ -121,7 +121,7 @@ testthat::test_that("seasonality ladder records fallback metadata", {
   result <- sntutils::detect_outliers(
     data = data,
     column = "confirmed_cases",
-    admin_levels = c("adm1", "adm2"),
+    admin_level = c("adm1", "adm2"),
     reporting_rate_col = "reporting_rate",
     time_mode = "by_month",
     min_years_per_month = 3,
@@ -174,4 +174,34 @@ testthat::test_that("outlier_plot returns ggplot object", {
 
   testthat::expect_s3_class(plot, "ggplot")
   testthat::expect_no_error(ggplot2::ggplot_build(plot))
+})
+
+testthat::test_that("outlier_plot works with admin_level parameter", {
+  data <- create_test_data()
+
+  # First get outlier detection results
+  detection_results <- sntutils::detect_outliers(
+    data = data,
+    column = "confirmed_cases",
+    admin_level = c("adm1", "adm2"),
+    methods = "iqr"
+  )
+
+  original_sample_size <- nrow(detection_results)
+
+  # Create plot with admin_level parameter
+  plot <- sntutils::outlier_plot(
+    data = data,
+    column = "confirmed_cases",
+    admin_level = c("adm1", "adm2"),
+    methods = "iqr",
+    show_plot = FALSE
+  )
+
+  # Extract the underlying data from the plot
+  plot_data <- ggplot2::ggplot_build(plot)$data[[1]]
+
+  # The plot should work correctly with admin_level parameter
+  testthat::expect_s3_class(plot, "ggplot")
+  testthat::expect_true(nrow(plot_data) > 0)
 })
