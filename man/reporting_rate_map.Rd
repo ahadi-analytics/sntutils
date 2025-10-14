@@ -33,7 +33,8 @@ reporting_rate_map(
   plot_width = NULL,
   plot_height = NULL,
   plot_dpi = 300,
-  show_plot = TRUE
+  show_plot = TRUE,
+  ...
 )
 }
 \arguments{
@@ -117,6 +118,8 @@ Default is 300.}
 
 \item{show_plot}{Logical. Display plot (TRUE) or return invisibly (FALSE).
 Default is TRUE.}
+
+\item{...}{Additional arguments passed to internal functions.}
 }
 \value{
 A ggplot2 object.

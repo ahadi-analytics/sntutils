@@ -1,9 +1,8 @@
 #' Classify health facility activity status by reporting behaviour
 #'
 #' Builds a balanced monthly panel for all facilities and months, flags
-#' reporting on key indicators, and classifies each facility-month into an
-#' activity status: "Active Reporting", "Active Facility - Not Reporting",
-#' or "Inactive Facility".
+#' reporting on key indicators, and classifies each facility-month into
+#' activity status according to one of three methods.
 #'
 #' @param data Data frame containing routine health facility records.
 #' @param hf_col Character. Column storing health facility identifiers.
@@ -11,84 +10,77 @@
 #'   "date".
 #' @param key_indicators Character vector with columns defining reporting
 #'   activity. Defaults to `c("test", "pres", "conf")`.
-#' @param binary_classification Logical. If TRUE, returns binary classification
-#'   ("Active", "Non-Active") instead of three-level classification. Defaults to
-#'   FALSE.
+#' @param method Character. One of `"method1"`, `"method2"`, `"method3"`, or
+#'   `"all"`. See Details. Defaults to `"method1"`.
+#' @param nonreport_window Integer. Minimum number of consecutive non-reporting
+#'   months to classify a facility as inactive in method 3. Defaults to 6.
+#' @param reporting_rule Character. Defines what counts as reporting:
+#'   `"any_non_na"` (default, counts NA as non-reporting, 0 counts as reported)
+#'   or `"positive_only"` (requires >0 value to count as reported).
+#' @param binary_classification Logical. If TRUE, collapses categories into
+#'   "Active" vs "Inactive". Defaults to FALSE.
 #'
-#' @return Data frame with original columns plus:
-#'   \describe{
-#'     \item{reported_any}{Logical. TRUE if any key indicator was reported
-#'       that month.}
-#'     \item{first_reporting_date}{Date. First month the facility reported
-#'       any key indicator.}
-#'     \item{has_ever_reported}{Logical. TRUE if facility has reported at
-#'       least once up to this month.}
-#'     \item{activity_status}{Factor. One of "Active Reporting",
-#'       "Active Facility - Not Reporting", or "Inactive Facility" when
-#'       binary_classification = FALSE. When binary_classification = TRUE,
-#'       one of "Active" or "Non-Active".}
-#'   }
+#' @return Data frame with original columns plus reporting and activity status.
+#' If `method = "all"`, includes all three activity classification columns.
 #'
 #' @details
-#' Activity status logic:
+#' Three activity classification methods are supported:
 #' \itemize{
-#'   \item **Active Reporting**: Facility reported at least one key indicator
-#'     in that month.
-#'   \item **Active Facility - Not Reporting**: Facility has reported before
-#'     but did not report in that month.
-#'   \item **Inactive Facility**: Facility has never reported any key indicator.
+#'   \item **Method 1 (Permanent activation):** Facility is active from first
+#'   report onwards, remains active afterwards.
+#'   \item **Method 2 (First–Last activation):** Facility is active only between
+#'   first and last report dates.
+#'   \item **Method 3 (Dynamic):** Facility is active, but becomes inactive if
+#'   it misses `nonreport_window` consecutive months. Reactivates if reporting
+#'   resumes.
 #' }
 #'
-#' When binary_classification = TRUE:
+#' The `reporting_rule` parameter controls how reporting is flagged:
 #' \itemize{
-#'   \item **Active**: Facility reported at least one key indicator in that month
-#'     (equivalent to "Active Reporting").
-#'   \item **Non-Active**: Facility did not report in that month, regardless of
-#'     past reporting history (combines "Active Facility - Not Reporting" and
-#'     "Inactive Facility").
+#'   \item `"any_non_na"`: Any non-missing value counts as reported (including 0).
+#'   \item `"positive_only"`: Only values strictly >0 count as reported.
 #' }
 #'
 #' @examples
 #' toy_data <- tibble::tibble(
-#'   hf_uid = rep(c("HF1", "HF2"), each = 4),
+#'   hf_uid = rep(c("HF1", "HF2"), each = 6),
 #'   date = rep(
-#'     base::seq.Date(
-#'       base::as.Date("2024-01-01"),
-#'       by = "month",
-#'       length.out = 4
-#'     ),
-#'     times = 2
+#'     seq(as.Date("2024-01-01"), by = "month", length.out = 6),
+#'     2
 #'   ),
-#'   test = c(NA, 1, 2, NA, NA, NA, 3, 4),
-#'   pres = c(0, 2, NA, 1, NA, 1, 2, 3),
-#'   conf = c(0, NA, 1, 0, NA, NA, 1, 2)
+#'   test = c(NA, 1, 0, 0, NA, 0,  NA, NA, 0, 1, 0, 0),
+#'   pres = c(NA, 0, 1, NA, NA, 0,  0, NA, NA, 0, 1, NA),
+#'   conf = c(NA, 0, NA, 1, 0, NA,  0, 0, NA, NA, 0, 1)
 #' )
 #'
 #' classified <- classify_facility_activity(
 #'   data = toy_data,
 #'   hf_col = "hf_uid",
-#'   key_indicators = c("test", "pres", "conf")
-#' )
-#'
-#' table(classified$activity_status)
-#'
-#' # Binary classification example
-#' classified_binary <- classify_facility_activity(
-#'   data = toy_data,
-#'   hf_col = "hf_uid",
 #'   key_indicators = c("test", "pres", "conf"),
-#'   binary_classification = TRUE
+#'   method = "all",
+#'   nonreport_window = 2,
+#'   reporting_rule = "any_non_na"
 #' )
 #'
-#' table(classified_binary$activity_status)
+#' dplyr::count(classified, activity_status_method1)
+#'
 #' @export
 classify_facility_activity <- function(
   data,
   hf_col,
   date_col = "date",
   key_indicators = c("test", "pres", "conf"),
+  method = "method1",
+  nonreport_window = 6,
+  reporting_rule = c("any_non_na", "positive_only"),
   binary_classification = FALSE
 ) {
+  reporting_rule <- match.arg(reporting_rule)
+  method <- match.arg(
+    method,
+    choices = c("method1", "method2", "method3", "all")
+  )
+
   if (!base::is.data.frame(data)) {
     cli::cli_abort("`data` must be a data.frame.")
   }
@@ -118,7 +110,6 @@ classify_facility_activity <- function(
   facility_ids <- base::unique(data[[hf_col]])
   date_min <- base::min(data[[date_col]], na.rm = TRUE)
   date_max <- base::max(data[[date_col]], na.rm = TRUE)
-
   month_sequence <- base::seq(date_min, date_max, by = "month")
 
   complete_panel <- tidyr::expand_grid(
@@ -133,58 +124,118 @@ classify_facility_activity <- function(
   filtered_source <- data |>
     dplyr::select(dplyr::all_of(required_cols))
 
-  balanced_panel <- complete_panel |>
-    dplyr::left_join(filtered_source, by = c(hf_col, date_col))
-
-  flagged_panel <- balanced_panel |>
+  flagged_panel <- complete_panel |>
+    dplyr::left_join(filtered_source, by = c(hf_col, date_col)) |>
     dplyr::mutate(
       reported_any = dplyr::if_any(
         dplyr::all_of(key_indicators),
-        ~ !base::is.na(.x)
+        ~ if (reporting_rule == "any_non_na") {
+          !is.na(.x)
+        } else {
+          !is.na(.x) & .x > 0
+        }
       )
     )
 
-  first_reporting <- flagged_panel |>
-    dplyr::filter(reported_any) |>
+  first_last <- flagged_panel |>
     dplyr::group_by(.data[[hf_col]]) |>
     dplyr::summarise(
-      first_reporting_date = base::min(.data[[date_col]], na.rm = TRUE),
+      first_reporting_date = if (any(reported_any)) {
+        min(.data[[date_col]][reported_any], na.rm = TRUE)
+      } else {
+        as.Date(NA)
+      },
+      last_reporting_date = if (any(reported_any)) {
+        max(.data[[date_col]][reported_any], na.rm = TRUE)
+      } else {
+        as.Date(NA)
+      },
       .groups = "drop"
     )
 
-  routine_reporting <- flagged_panel |>
-    dplyr::left_join(first_reporting, by = hf_col) |>
+  flagged_panel <- flagged_panel |>
+    dplyr::left_join(first_last, by = hf_col) |>
     dplyr::group_by(.data[[hf_col]]) |>
     dplyr::mutate(
-      has_ever_reported = dplyr::cumany(reported_any),
-      activity_status = if (binary_classification) {
-        dplyr::case_when(
-          reported_any ~ "Active",
-          TRUE ~ "Non-Active"
-        )
-      } else {
-        dplyr::case_when(
-          reported_any ~ "Active Reporting",
-          has_ever_reported ~ "Active Facility - Not Reporting",
-          TRUE ~ "Inactive Facility"
-        )
-      },
-      activity_status = base::factor(
-        activity_status,
-        levels = if (binary_classification) {
-          c("Active", "Non-Active")
-        } else {
-          c(
-            "Active Reporting",
-            "Active Facility - Not Reporting",
-            "Inactive Facility"
-          )
-        }
+      has_ever_reported = dplyr::cumany(reported_any)
+    ) |>
+    dplyr::ungroup()
+
+  # Method 1
+  flagged_panel <- flagged_panel |>
+    dplyr::mutate(
+      activity_status_method1 = dplyr::case_when(
+        reported_any ~ "Active Reporting",
+        has_ever_reported ~ "Active Facility - Not Reporting",
+        TRUE ~ "Inactive Facility"
+      )
+    )
+
+  # Method 2
+  flagged_panel <- flagged_panel |>
+    dplyr::mutate(
+      activity_status_method2 = dplyr::case_when(
+        is.na(first_reporting_date) ~ "Inactive Facility",
+        .data[[date_col]] >= first_reporting_date &
+          .data[[date_col]] <= last_reporting_date &
+          reported_any ~
+          "Active Reporting",
+        .data[[date_col]] >= first_reporting_date &
+          .data[[date_col]] <= last_reporting_date &
+          !reported_any ~
+          "Active Facility - Not Reporting",
+        TRUE ~ "Inactive Facility"
+      )
+    )
+
+  # Method 3 (Dynamic)
+  flagged_panel <- flagged_panel |>
+    dplyr::arrange(.data[[hf_col]], .data[[date_col]]) |>
+    dplyr::group_by(.data[[hf_col]]) |>
+    dplyr::mutate(
+      # track consecutive non-reporting streaks
+      nonreport_streak = with(
+        rle(!reported_any),
+        rep(cumsum(values & lengths >= nonreport_window), lengths)
+      ),
+      # method 3 classification
+      activity_status_method3 = dplyr::case_when(
+        is.na(first_reporting_date) ~ "Inactive Facility",
+        reported_any ~ "Active Reporting",
+        nonreport_streak > 0 ~ "Inactive Facility",
+        has_ever_reported ~ "Active Facility - Not Reporting",
+        TRUE ~ "Inactive Facility"
       )
     ) |>
     dplyr::ungroup()
 
-  routine_reporting
+  # Apply binary classification collapse if requested
+  if (binary_classification) {
+    flagged_panel <- flagged_panel |>
+      dplyr::mutate(
+        dplyr::across(
+          dplyr::starts_with("activity_status_"),
+          ~ dplyr::case_when(
+            .x %in% c("Active Reporting", "Active Facility - Not Reporting") ~
+              "Active",
+            TRUE ~ "Inactive"
+          )
+        )
+      )
+  }
+
+  # Restrict output
+  if (method != "all") {
+    keep_col <- paste0("activity_status_", method)
+    flagged_panel <- flagged_panel |>
+      dplyr::select(
+        -dplyr::starts_with("activity_status_"),
+        dplyr::all_of(keep_col)
+      ) |>
+      dplyr::rename(activity_status = dplyr::all_of(keep_col))
+  }
+
+  flagged_panel
 }
 
 #' Plot monthly reporting activity by health facility
@@ -198,8 +249,16 @@ classify_facility_activity <- function(
 #'   "date".
 #' @param key_indicators Character vector with columns defining reporting
 #'   activity. Defaults to `c("test", "pres", "conf")`.
+#' @param method Character. One of `"method1"`, `"method2"`, `"method3"`, or
+#'   `"all"`. Classification method for facility activity status. Defaults to
+#'   `"method1"`.
+#' @param nonreport_window Integer. Minimum number of consecutive non-reporting
+#'   months to classify a facility as inactive in method 3. Defaults to 6.
+#' @param reporting_rule Character. Defines what counts as reporting:
+#'   `"any_non_na"` (default, counts NA as non-reporting, 0 counts as reported)
+#'   or `"positive_only"` (requires >0 value to count as reported).
 #' @param binary_classification Logical. If TRUE, uses binary classification
-#'   ("Active", "Non-Active") instead of three-level classification. Defaults to
+#'   ("Active", "Inactive") instead of three-level classification. Defaults to
 #'   FALSE.
 #' @param facet_col Character. Optional column name to use for faceting the plot.
 #'   When provided, creates separate panels for each unique value in this column
@@ -238,6 +297,7 @@ classify_facility_activity <- function(
 #'   Default is 300.
 #' @param show_plot Logical. If FALSE, the plot is returned invisibly (not
 #'   displayed). Useful when only saving plots. Default is TRUE.
+#' @param ... Additional arguments passed to internal functions.
 #'
 #' @return A ggplot object visualising facility reporting activity.
 #' @examples
@@ -274,6 +334,9 @@ facility_reporting_plot <- function(
   hf_col,
   date_col = "date",
   key_indicators = c("test", "pres", "conf"),
+  method = "method1",
+  nonreport_window = 6,
+  reporting_rule = c("any_non_na", "positive_only"),
   binary_classification = FALSE,
   facet_col = NULL,
   facet_ncol = 2,
@@ -292,7 +355,8 @@ facility_reporting_plot <- function(
   plot_width = 22,
   plot_height = 15,
   plot_dpi = 300,
-  show_plot = TRUE
+  show_plot = TRUE,
+  ...
 ) {
   ensure_packages(c("ggtext", "scales"))
 
@@ -326,35 +390,35 @@ facility_reporting_plot <- function(
     palette_values <- list(
       classic = c(
         "Active" = "#0072B2",
-        "Non-Active" = "#E69F00"
+        "Inactive" = "#E69F00"
       ),
       sunset = c(
         "Active" = "#D1495B",
-        "Non-Active" = "#F79256"
+        "Inactive" = "#F79256"
       ),
       forest = c(
         "Active" = "#2A9D8F",
-        "Non-Active" = "#E9C46A"
+        "Inactive" = "#E9C46A"
       ),
       coral = c(
         "Active" = "#FF6F61",
-        "Non-Active" = "#FFB88C"
+        "Inactive" = "#FFB88C"
       ),
       violet = c(
         "Active" = "#6A4C93",
-        "Non-Active" = "#F0A6CA"
+        "Inactive" = "#F0A6CA"
       ),
       slate = c(
         "Active" = "#345995",
-        "Non-Active" = "#FB4D3D"
+        "Inactive" = "#FB4D3D"
       ),
       citrus = c(
         "Active" = "#F4A259",
-        "Non-Active" = "#5B8E7D"
+        "Inactive" = "#5B8E7D"
       ),
       orchid = c(
         "Active" = "#875C74",
-        "Non-Active" = "#E6C79C"
+        "Inactive" = "#E6C79C"
       )
     )
   } else {
@@ -420,7 +484,7 @@ facility_reporting_plot <- function(
   if (binary_classification) {
     subtitle_lines <- c(
       "Active -> reported at least one key indicator",
-      "Non-Active -> did not report any key indicator that month"
+      "Inactive -> did not report any key indicator that month"
     )
   } else {
     subtitle_lines <- c(
@@ -445,6 +509,9 @@ facility_reporting_plot <- function(
     hf_col = hf_col,
     date_col = date_col,
     key_indicators = key_indicators,
+    method = method,
+    nonreport_window = nonreport_window,
+    reporting_rule = reporting_rule,
     binary_classification = binary_classification
   )
 
@@ -452,17 +519,11 @@ facility_reporting_plot <- function(
   if (!is.null(facet_col)) {
     # Join the facet column from original data
     facet_data <- data |>
-      dplyr::mutate(
-        !!rlang::sym(date_col) := lubridate::floor_date(
-          base::as.Date(.data[[date_col]]),
-          unit = "month"
-        )
-      ) |>
-      dplyr::select(dplyr::all_of(c(hf_col, date_col, facet_col))) |>
+      dplyr::select(dplyr::all_of(c(hf_col, facet_col))) |>
       dplyr::distinct()
 
     routine_reporting <- routine_reporting |>
-      dplyr::left_join(facet_data, by = c(hf_col, date_col))
+      dplyr::left_join(facet_data, by = hf_col)
   }
 
   # Count never-reported facilities after creating routine_reporting
@@ -659,7 +720,11 @@ facility_reporting_plot <- function(
     ) +
     ggplot2::scale_x_date(
       expand = c(0, 0),
-      date_breaks = if (is.null(year_breaks)) "3 months" else paste(year_breaks, "months"),
+      date_breaks = if (is.null(year_breaks)) {
+        "3 months"
+      } else {
+        paste(year_breaks, "months")
+      },
       labels = function(x) {
         sntutils::translate_yearmon(x, language = target_language)
       }
@@ -715,9 +780,7 @@ facility_reporting_plot <- function(
           # Get position of each facility within its facet
           pos <- seq_along(x)
           # Only show first, middle, and last
-          ifelse(pos %in% c(1, ceiling(length(pos)/2), length(pos)),
-                 pos,
-                 "")
+          ifelse(pos %in% c(1, ceiling(length(pos) / 2), length(pos)), pos, "")
         }
       )
   } else {
@@ -777,6 +840,7 @@ facility_reporting_plot <- function(
 
     file_base <- make_slug(base_label)
     date_range_slug <- make_slug(date_range_text)
+    method_slug <- make_slug(method)
 
     # Add facet column to filename if provided
     if (!is.null(facet_col)) {
@@ -792,11 +856,11 @@ facility_reporting_plot <- function(
       }
       facet_slug <- make_slug(paste(by_word, facet_col))
       file_name <- glue::glue(
-        "{file_base}_{facet_slug}_{date_range_slug}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
+        "{file_base}_{method_slug}_{facet_slug}_{date_range_slug}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
       )
     } else {
       file_name <- glue::glue(
-        "{file_base}_{date_range_slug}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
+        "{file_base}_{method_slug}_{date_range_slug}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
       )
     }
     file_path <- fs::path(plot_path, file_name)
@@ -808,7 +872,8 @@ facility_reporting_plot <- function(
       height = plot_height,
       dpi = plot_dpi,
       scale = plot_scale,
-      limitsize = FALSE
+      limitsize = FALSE,
+      ...
     )
 
     if (compress_image) {
@@ -816,7 +881,8 @@ facility_reporting_plot <- function(
         path = file_path,
         png_overwrite = image_overwrite,
         speed = compression_speed,
-        verbosity = compression_verbose
+        verbosity = compression_verbose,
+        ...
       )
     }
 
@@ -826,7 +892,8 @@ facility_reporting_plot <- function(
         "Plot saved to:",
         target_language = target_language,
         source_language = source_language,
-        cache_path = lang_cache_path
+        cache_path = lang_cache_path,
+        ...
       )
     } else {
       "Plot saved to:"

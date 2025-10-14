@@ -185,6 +185,7 @@ globalVariables(
     "residual_iqr",
     "residual_mad",
     "residual_mean",
+    ".x_axis_var",
     "residual_median",
     "residual_q1",
     "residual_q3",

@@ -9,6 +9,9 @@ classify_facility_activity(
   hf_col,
   date_col = "date",
   key_indicators = c("test", "pres", "conf"),
+  method = "method1",
+  nonreport_window = 6,
+  reporting_rule = c("any_non_na", "positive_only"),
   binary_classification = FALSE
 )
 }
@@ -23,81 +26,67 @@ classify_facility_activity(
 \item{key_indicators}{Character vector with columns defining reporting
 activity. Defaults to \code{c("test", "pres", "conf")}.}
 
-\item{binary_classification}{Logical. If TRUE, returns binary classification
-("Active", "Non-Active") instead of three-level classification. Defaults to
-FALSE.}
+\item{method}{Character. One of \code{"method1"}, \code{"method2"}, \code{"method3"}, or
+\code{"all"}. See Details. Defaults to \code{"method1"}.}
+
+\item{nonreport_window}{Integer. Minimum number of consecutive non-reporting
+months to classify a facility as inactive in method 3. Defaults to 6.}
+
+\item{reporting_rule}{Character. Defines what counts as reporting:
+\code{"any_non_na"} (default, counts NA as non-reporting, 0 counts as reported)
+or \code{"positive_only"} (requires >0 value to count as reported).}
+
+\item{binary_classification}{Logical. If TRUE, collapses categories into
+"Active" vs "Inactive". Defaults to FALSE.}
 }
 \value{
-Data frame with original columns plus:
-\describe{
-\item{reported_any}{Logical. TRUE if any key indicator was reported
-that month.}
-\item{first_reporting_date}{Date. First month the facility reported
-any key indicator.}
-\item{has_ever_reported}{Logical. TRUE if facility has reported at
-least once up to this month.}
-\item{activity_status}{Factor. One of "Active Reporting",
-"Active Facility - Not Reporting", or "Inactive Facility" when
-binary_classification = FALSE. When binary_classification = TRUE,
-one of "Active" or "Non-Active".}
-}
+Data frame with original columns plus reporting and activity status.
+If \code{method = "all"}, includes all three activity classification columns.
 }
 \description{
 Builds a balanced monthly panel for all facilities and months, flags
-reporting on key indicators, and classifies each facility-month into an
-activity status: "Active Reporting", "Active Facility - Not Reporting",
-or "Inactive Facility".
+reporting on key indicators, and classifies each facility-month into
+activity status according to one of three methods.
 }
 \details{
-Activity status logic:
+Three activity classification methods are supported:
 \itemize{
-\item \strong{Active Reporting}: Facility reported at least one key indicator
-in that month.
-\item \strong{Active Facility - Not Reporting}: Facility has reported before
-but did not report in that month.
-\item \strong{Inactive Facility}: Facility has never reported any key indicator.
+\item \strong{Method 1 (Permanent activation):} Facility is active from first
+report onwards, remains active afterwards.
+\item \strong{Method 2 (First–Last activation):} Facility is active only between
+first and last report dates.
+\item \strong{Method 3 (Dynamic):} Facility is active, but becomes inactive if
+it misses \code{nonreport_window} consecutive months. Reactivates if reporting
+resumes.
 }
 
-When binary_classification = TRUE:
+The \code{reporting_rule} parameter controls how reporting is flagged:
 \itemize{
-\item \strong{Active}: Facility reported at least one key indicator in that month
-(equivalent to "Active Reporting").
-\item \strong{Non-Active}: Facility did not report in that month, regardless of
-past reporting history (combines "Active Facility - Not Reporting" and
-"Inactive Facility").
+\item \code{"any_non_na"}: Any non-missing value counts as reported (including 0).
+\item \code{"positive_only"}: Only values strictly >0 count as reported.
 }
 }
 \examples{
 toy_data <- tibble::tibble(
-  hf_uid = rep(c("HF1", "HF2"), each = 4),
+  hf_uid = rep(c("HF1", "HF2"), each = 6),
   date = rep(
-    base::seq.Date(
-      base::as.Date("2024-01-01"),
-      by = "month",
-      length.out = 4
-    ),
-    times = 2
+    seq(as.Date("2024-01-01"), by = "month", length.out = 6),
+    2
   ),
-  test = c(NA, 1, 2, NA, NA, NA, 3, 4),
-  pres = c(0, 2, NA, 1, NA, 1, 2, 3),
-  conf = c(0, NA, 1, 0, NA, NA, 1, 2)
+  test = c(NA, 1, 0, 0, NA, 0,  NA, NA, 0, 1, 0, 0),
+  pres = c(NA, 0, 1, NA, NA, 0,  0, NA, NA, 0, 1, NA),
+  conf = c(NA, 0, NA, 1, 0, NA,  0, 0, NA, NA, 0, 1)
 )
 
 classified <- classify_facility_activity(
   data = toy_data,
   hf_col = "hf_uid",
-  key_indicators = c("test", "pres", "conf")
-)
-
-table(classified$activity_status)
-
-# Binary classification example
-classified_binary <- classify_facility_activity(
-  data = toy_data,
-  hf_col = "hf_uid",
   key_indicators = c("test", "pres", "conf"),
-  binary_classification = TRUE
+  method = "all",
+  nonreport_window = 2,
+  reporting_rule = "any_non_na"
 )
 
-table(classified_binary$activity_status)
+dplyr::count(classified, activity_status_method1)
+
 }
