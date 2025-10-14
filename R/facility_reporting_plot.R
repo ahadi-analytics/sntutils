@@ -11,6 +11,9 @@
 #'   "date".
 #' @param key_indicators Character vector with columns defining reporting
 #'   activity. Defaults to `c("test", "pres", "conf")`.
+#' @param binary_classification Logical. If TRUE, returns binary classification
+#'   ("Active", "Non-Active") instead of three-level classification. Defaults to
+#'   FALSE.
 #'
 #' @return Data frame with original columns plus:
 #'   \describe{
@@ -21,7 +24,9 @@
 #'     \item{has_ever_reported}{Logical. TRUE if facility has reported at
 #'       least once up to this month.}
 #'     \item{activity_status}{Factor. One of "Active Reporting",
-#'       "Active Facility - Not Reporting", or "Inactive Facility".}
+#'       "Active Facility - Not Reporting", or "Inactive Facility" when
+#'       binary_classification = FALSE. When binary_classification = TRUE,
+#'       one of "Active" or "Non-Active".}
 #'   }
 #'
 #' @details
@@ -32,6 +37,15 @@
 #'   \item **Active Facility - Not Reporting**: Facility has reported before
 #'     but did not report in that month.
 #'   \item **Inactive Facility**: Facility has never reported any key indicator.
+#' }
+#'
+#' When binary_classification = TRUE:
+#' \itemize{
+#'   \item **Active**: Facility reported at least one key indicator in that month
+#'     (equivalent to "Active Reporting").
+#'   \item **Non-Active**: Facility did not report in that month, regardless of
+#'     past reporting history (combines "Active Facility - Not Reporting" and
+#'     "Inactive Facility").
 #' }
 #'
 #' @examples
@@ -57,12 +71,23 @@
 #' )
 #'
 #' table(classified$activity_status)
+#'
+#' # Binary classification example
+#' classified_binary <- classify_facility_activity(
+#'   data = toy_data,
+#'   hf_col = "hf_uid",
+#'   key_indicators = c("test", "pres", "conf"),
+#'   binary_classification = TRUE
+#' )
+#'
+#' table(classified_binary$activity_status)
 #' @export
 classify_facility_activity <- function(
   data,
   hf_col,
   date_col = "date",
-  key_indicators = c("test", "pres", "conf")
+  key_indicators = c("test", "pres", "conf"),
+  binary_classification = FALSE
 ) {
   if (!base::is.data.frame(data)) {
     cli::cli_abort("`data` must be a data.frame.")
@@ -132,18 +157,29 @@ classify_facility_activity <- function(
     dplyr::group_by(.data[[hf_col]]) |>
     dplyr::mutate(
       has_ever_reported = dplyr::cumany(reported_any),
-      activity_status = dplyr::case_when(
-        reported_any ~ "Active Reporting",
-        has_ever_reported ~ "Active Facility - Not Reporting",
-        TRUE ~ "Inactive Facility"
-      ),
+      activity_status = if (binary_classification) {
+        dplyr::case_when(
+          reported_any ~ "Active",
+          TRUE ~ "Non-Active"
+        )
+      } else {
+        dplyr::case_when(
+          reported_any ~ "Active Reporting",
+          has_ever_reported ~ "Active Facility - Not Reporting",
+          TRUE ~ "Inactive Facility"
+        )
+      },
       activity_status = base::factor(
         activity_status,
-        levels = c(
-          "Active Reporting",
-          "Active Facility - Not Reporting",
-          "Inactive Facility"
-        )
+        levels = if (binary_classification) {
+          c("Active", "Non-Active")
+        } else {
+          c(
+            "Active Reporting",
+            "Active Facility - Not Reporting",
+            "Inactive Facility"
+          )
+        }
       )
     ) |>
     dplyr::ungroup()
@@ -162,13 +198,16 @@ classify_facility_activity <- function(
 #'   "date".
 #' @param key_indicators Character vector with columns defining reporting
 #'   activity. Defaults to `c("test", "pres", "conf")`.
+#' @param binary_classification Logical. If TRUE, uses binary classification
+#'   ("Active", "Non-Active") instead of three-level classification. Defaults to
+#'   FALSE.
 #' @param facet_col Character. Optional column name to use for faceting the plot.
 #'   When provided, creates separate panels for each unique value in this column
 #'   (e.g., one panel per province or administrative region). Can be any column
 #'   type. Default is NULL (no faceting).
 #' @param facet_ncol Integer. Number of columns for facet layout when
 #'   `facet_col` is provided. Defaults to 2.
-#' @param year_breaks Numeric value specifying the interval (in months) for 
+#' @param year_breaks Numeric value specifying the interval (in months) for
 #'   x-axis date breaks. If NULL (default), uses "3 months".
 #' @param palette Character. Colour palette for activity statuses. One of
 #'   `c("classic", "sunset", "forest", "coral", "violet", "slate",
@@ -222,12 +261,20 @@ classify_facility_activity <- function(
 #'   data = toy_data,
 #'   hf_col = "hf_uid_new"
 #' )
+#'
+#' # Binary classification example
+#' facility_reporting_plot(
+#'   data = toy_data,
+#'   hf_col = "hf_uid_new",
+#'   binary_classification = TRUE
+#' )
 #' @export
 facility_reporting_plot <- function(
   data,
   hf_col,
   date_col = "date",
   key_indicators = c("test", "pres", "conf"),
+  binary_classification = FALSE,
   facet_col = NULL,
   facet_ncol = 2,
   year_breaks = NULL,
@@ -275,48 +322,85 @@ facility_reporting_plot <- function(
     cli::cli_abort("Unable to derive month floor from `{date_col}`.")
   }
 
-  palette_values <- list(
-    classic = c(
-      "Active Reporting" = "#0072B2",
-      "Active Facility - Not Reporting" = "#E69F00",
-      "Inactive Facility" = "#56B4E9"
-    ),
-    sunset = c(
-      "Active Reporting" = "#D1495B",
-      "Active Facility - Not Reporting" = "#F79256",
-      "Inactive Facility" = "#8E7DBE"
-    ),
-    forest = c(
-      "Active Reporting" = "#2A9D8F",
-      "Active Facility - Not Reporting" = "#E9C46A",
-      "Inactive Facility" = "#264653"
-    ),
-    coral = c(
-      "Active Reporting" = "#FF6F61",
-      "Active Facility - Not Reporting" = "#FFB88C",
-      "Inactive Facility" = "#6B5B95"
-    ),
-    violet = c(
-      "Active Reporting" = "#6A4C93",
-      "Active Facility - Not Reporting" = "#F0A6CA",
-      "Inactive Facility" = "#80CED7"
-    ),
-    slate = c(
-      "Active Reporting" = "#345995",
-      "Active Facility - Not Reporting" = "#FB4D3D",
-      "Inactive Facility" = "#98B9AB"
-    ),
-    citrus = c(
-      "Active Reporting" = "#F4A259",
-      "Active Facility - Not Reporting" = "#5B8E7D",
-      "Inactive Facility" = "#BC4B51"
-    ),
-    orchid = c(
-      "Active Reporting" = "#875C74",
-      "Active Facility - Not Reporting" = "#E6C79C",
-      "Inactive Facility" = "#6C7A89"
+  if (binary_classification) {
+    palette_values <- list(
+      classic = c(
+        "Active" = "#0072B2",
+        "Non-Active" = "#E69F00"
+      ),
+      sunset = c(
+        "Active" = "#D1495B",
+        "Non-Active" = "#F79256"
+      ),
+      forest = c(
+        "Active" = "#2A9D8F",
+        "Non-Active" = "#E9C46A"
+      ),
+      coral = c(
+        "Active" = "#FF6F61",
+        "Non-Active" = "#FFB88C"
+      ),
+      violet = c(
+        "Active" = "#6A4C93",
+        "Non-Active" = "#F0A6CA"
+      ),
+      slate = c(
+        "Active" = "#345995",
+        "Non-Active" = "#FB4D3D"
+      ),
+      citrus = c(
+        "Active" = "#F4A259",
+        "Non-Active" = "#5B8E7D"
+      ),
+      orchid = c(
+        "Active" = "#875C74",
+        "Non-Active" = "#E6C79C"
+      )
     )
-  )
+  } else {
+    palette_values <- list(
+      classic = c(
+        "Active Reporting" = "#0072B2",
+        "Active Facility - Not Reporting" = "#E69F00",
+        "Inactive Facility" = "#56B4E9"
+      ),
+      sunset = c(
+        "Active Reporting" = "#D1495B",
+        "Active Facility - Not Reporting" = "#F79256",
+        "Inactive Facility" = "#8E7DBE"
+      ),
+      forest = c(
+        "Active Reporting" = "#2A9D8F",
+        "Active Facility - Not Reporting" = "#E9C46A",
+        "Inactive Facility" = "#264653"
+      ),
+      coral = c(
+        "Active Reporting" = "#FF6F61",
+        "Active Facility - Not Reporting" = "#FFB88C",
+        "Inactive Facility" = "#6B5B95"
+      ),
+      violet = c(
+        "Active Reporting" = "#6A4C93",
+        "Active Facility - Not Reporting" = "#F0A6CA",
+        "Inactive Facility" = "#80CED7"
+      ),
+      slate = c(
+        "Active Reporting" = "#345995",
+        "Active Facility - Not Reporting" = "#FB4D3D",
+        "Inactive Facility" = "#98B9AB"
+      ),
+      citrus = c(
+        "Active Reporting" = "#F4A259",
+        "Active Facility - Not Reporting" = "#5B8E7D",
+        "Inactive Facility" = "#BC4B51"
+      ),
+      orchid = c(
+        "Active Reporting" = "#875C74",
+        "Active Facility - Not Reporting" = "#E6C79C",
+        "Inactive Facility" = "#6C7A89"
+      )
+    )
+  }
 
   if (!palette %in% names(palette_values)) {
     cli::cli_abort(c(
@@ -326,21 +410,28 @@ facility_reporting_plot <- function(
   }
 
   status_colours <- palette_values[[palette]]
-  
+
   legend_title <- glue::glue(
     "Reported any key indicator ({base::toString(key_indicators)})"
   )
   legend_title_prefix <- "Reported any key indicator"
   legend_labels <- names(status_colours)
 
-  subtitle_lines <- c(
-    "Active Reporting -> reported at least one key indicator",
-    paste(
-      "Active Facility - Not Reporting -> skipped that month but",
-      "had reported earlier"
-    ),
-    "Inactive Facility -> never reported any key indicator"
-  )
+  if (binary_classification) {
+    subtitle_lines <- c(
+      "Active -> reported at least one key indicator",
+      "Non-Active -> did not report any key indicator that month"
+    )
+  } else {
+    subtitle_lines <- c(
+      "Active Reporting -> reported at least one key indicator",
+      paste(
+        "Active Facility - Not Reporting -> did not report that month but",
+        "had reported in previous months"
+      ),
+      "Inactive Facility -> never reported any key indicator"
+    )
+  }
 
   # Check if facet_col exists in the original data if provided
   if (!is.null(facet_col) && !facet_col %in% names(data)) {
@@ -353,7 +444,8 @@ facility_reporting_plot <- function(
     data = data,
     hf_col = hf_col,
     date_col = date_col,
-    key_indicators = key_indicators
+    key_indicators = key_indicators,
+    binary_classification = binary_classification
   )
 
   # If facet_col is provided, add it to the routine_reporting data
@@ -368,7 +460,7 @@ facility_reporting_plot <- function(
       ) |>
       dplyr::select(dplyr::all_of(c(hf_col, date_col, facet_col))) |>
       dplyr::distinct()
-    
+
     routine_reporting <- routine_reporting |>
       dplyr::left_join(facet_data, by = c(hf_col, date_col))
   }
@@ -611,11 +703,11 @@ facility_reporting_plot <- function(
   if (!is.null(facet_col)) {
     plot_object <- plot_object +
       ggplot2::facet_wrap(
-        ~ .data[[facet_col]], 
+        ~ .data[[facet_col]],
         scales = "free_y",
         ncol = facet_ncol
       )
-    
+
     # When using free_y scales with faceting, use a function for y-axis labels
     plot_object <- plot_object +
       ggplot2::scale_y_discrete(
@@ -623,8 +715,8 @@ facility_reporting_plot <- function(
           # Get position of each facility within its facet
           pos <- seq_along(x)
           # Only show first, middle, and last
-          ifelse(pos %in% c(1, ceiling(length(pos)/2), length(pos)), 
-                 pos, 
+          ifelse(pos %in% c(1, ceiling(length(pos)/2), length(pos)),
+                 pos,
                  "")
         }
       )

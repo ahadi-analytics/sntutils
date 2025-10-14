@@ -9,6 +9,7 @@ facility_reporting_plot(
   hf_col,
   date_col = "date",
   key_indicators = c("test", "pres", "conf"),
+  binary_classification = FALSE,
   facet_col = NULL,
   facet_ncol = 2,
   year_breaks = NULL,
@@ -39,6 +40,10 @@ facility_reporting_plot(
 
 \item{key_indicators}{Character vector with columns defining reporting
 activity. Defaults to \code{c("test", "pres", "conf")}.}
+
+\item{binary_classification}{Logical. If TRUE, uses binary classification
+("Active", "Non-Active") instead of three-level classification. Defaults to
+FALSE.}
 
 \item{facet_col}{Character. Optional column name to use for faceting the plot.
 When provided, creates separate panels for each unique value in this column
@@ -121,5 +126,12 @@ toy_data <- tibble::tibble(
 facility_reporting_plot(
   data = toy_data,
   hf_col = "hf_uid_new"
+)
+
+# Binary classification example
+facility_reporting_plot(
+  data = toy_data,
+  hf_col = "hf_uid_new",
+  binary_classification = TRUE
 )
 }

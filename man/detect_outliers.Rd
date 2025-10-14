@@ -21,6 +21,7 @@ detect_outliers(
   reporting_rate_col = NULL,
   reporting_rate_min = 0.5,
   key_indicators_hf = NULL,
+  binary_classification = FALSE,
   methods = c("iqr", "median", "mean", "consensus"),
   consensus_rule = 2,
   output_profile = c("standard", "lean", "audit"),
@@ -84,6 +85,12 @@ facilities from outlier detection. Inactive facility-months are tagged with
 (default), activeness filtering is skipped. Typical indicators include
 \code{"allout"}, \code{"test"}, or \code{"conf"}. This adjustment prevents false positives
 caused by facilities that start or stop reporting mid-period.}
+
+\item{binary_classification}{Logical. When \code{key_indicators_hf} is provided,
+determines the classification method passed to \code{classify_facility_activity()}.
+If TRUE, uses binary classification ("Active", "Non-Active"). If FALSE
+(default), uses three-level classification ("Active Reporting",
+"Active Facility - Not Reporting", "Inactive Facility").}
 
 \item{methods}{Character vector specifying which outlier detection
 methods to use: "iqr" (Interquartile Range), "median" (Median Absolute
@@ -249,6 +256,17 @@ detect_outliers(
   admin_levels = c("adm1", "adm2"),
   time_mode = "by_month",
   key_indicators_hf = c("allout", "test", "conf")
+)
+
+# 5) With binary activeness classification
+detect_outliers(
+  data = malaria_data,
+  column = "conf",
+  date = "date", 
+  admin_levels = c("adm1", "adm2"),
+  time_mode = "by_month",
+  key_indicators_hf = c("allout", "test", "conf"),
+  binary_classification = TRUE
 )
 }
 }
