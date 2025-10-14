@@ -31,7 +31,8 @@ reporting_rate_plot(
   plot_height = NULL,
   plot_dpi = 300,
   show_plot = TRUE,
-  y_axis_label = NULL
+  y_axis_label = NULL,
+  ...
 )
 }
 \arguments{
@@ -116,6 +117,8 @@ Useful when only saving plots. Default is TRUE.}
 
 \item{y_axis_label}{Optional character string for y-axis label. If NULL,
 defaults to y_var name or "Variable" for variable scenario.}
+
+\item{...}{Additional arguments passed to internal functions.}
 }
 \value{
 A ggplot2 object. When show_plot is FALSE, returns invisibly.

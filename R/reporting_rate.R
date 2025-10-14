@@ -922,6 +922,7 @@ prepare_plot_data <- function(
 #'   Useful when only saving plots. Default is TRUE.
 #' @param y_axis_label Optional character string for y-axis label. If NULL,
 #'   defaults to y_var name or "Variable" for variable scenario.
+#' @param ... Additional arguments passed to internal functions.
 #' @return A ggplot2 object. When show_plot is FALSE, returns invisibly.
 #' @examples
 #' # Sample data
@@ -992,7 +993,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 plot_height = NULL,
                                 plot_dpi = 300,
                                 show_plot = TRUE,
-                                y_axis_label = NULL) {
+                                y_axis_label = NULL,
+                                ...) {
   # Input validation
   if (is.null(x_var) || !x_var %in% names(data)) {
     cli::cli_abort(c(
@@ -1211,11 +1213,17 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
                            subtitle = NULL, common_elements,
                            target_language = "en", source_language = "en",
                            lang_cache_path = tempdir()) {
+  # Use x_var directly as factor for consistent discrete plotting
+  plot_data <- plot_data |>
+    dplyr::mutate(
+      .x_axis_var = as.factor(.data[[x_var]])
+    )
+
   # Create plot with variables on y-axis
   plot <- ggplot2::ggplot(
     plot_data,
     ggplot2::aes(
-      x = as.factor(!!rlang::sym(x_var)),
+      x = .x_axis_var,
       y = variable, # Use variable names on y-axis
       fill = !!rlang::sym(fill_var)
     )
@@ -1231,6 +1239,8 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
       y = "Variable",
       fill = fill_label
     )
+
+  # Let ggplot2 handle x-axis automatically
 
   # Translate labels if needed
   if (target_language != "en") {
@@ -1278,11 +1288,17 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
     "multiple variables"
   }
 
+  # Use x_var directly as factor for consistent discrete plotting
+  plot_data <- plot_data |>
+    dplyr::mutate(
+      .x_axis_var = as.factor(.data[[x_var]])
+    )
+
   # Create plot with grouping variable on y-axis
   plot <- ggplot2::ggplot(
     plot_data,
     ggplot2::aes(
-      x = as.factor(!!rlang::sym(x_var)),
+      x = .x_axis_var,
       y = !!rlang::sym(y_var),
       fill = !!rlang::sym(fill_var)
     )
@@ -1299,6 +1315,8 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
       y = y_axis_label,
       fill = fill_label
     )
+
+  # Let ggplot2 handle x-axis automatically
 
   # Translate labels if needed
   if (target_language != "en") {
@@ -1741,7 +1759,6 @@ create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
       colours = color_pal,
       limits = fill_limits
     ),
-    ggplot2::scale_x_discrete(expand = c(0, 0)),
     ggplot2::scale_y_discrete(expand = c(0, 0)),
     base_theme,
     ggplot2::guides(
@@ -1757,6 +1774,8 @@ create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
       )
     )
   )
+
+  # Let ggplot2 handle x-axis scale automatically
 
   common_elements
 }
@@ -1821,6 +1840,7 @@ create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
 #'   Default is 300.
 #' @param show_plot Logical. Display plot (TRUE) or return invisibly (FALSE).
 #'   Default is TRUE.
+#' @param ... Additional arguments passed to internal functions.
 #'
 #' @return A ggplot2 object.
 #'
@@ -1865,7 +1885,8 @@ reporting_rate_map <- function(
   plot_width = NULL,
   plot_height = NULL,
   plot_dpi = 300,
-  show_plot = TRUE
+  show_plot = TRUE,
+  ...
 ) {
   # Ensure required packages
   ensure_packages(c("wesanderson", "ggplot2", "sf"))

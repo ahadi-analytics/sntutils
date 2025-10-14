@@ -1,6 +1,6 @@
-#' Setup project paths and environment for Burundi SNT analysis
+#' Setup project paths and environment for SNT pipeline
 #'
-#' Creates a list of standardized paths for the Burundi SNT 2025 project.
+#' Creates a list of standardized paths for the SNT pipelines
 #' Detects a project root automatically and constructs all data/cache/output
 #' paths with short, memorable names. Optionally creates missing folders.
 #'

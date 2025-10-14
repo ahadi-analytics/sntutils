@@ -2,7 +2,7 @@
 % Please edit documentation in R/setup_project_paths.R
 \name{setup_project_paths}
 \alias{setup_project_paths}
-\title{Setup project paths and environment for Burundi SNT analysis}
+\title{Setup project paths and environment for SNT pipeline}
 \usage{
 setup_project_paths(base_path = NULL, create = TRUE, quiet = TRUE)
 }
@@ -22,7 +22,7 @@ climate, accessibility, land_use, dhs, ento, commodities,
 validation_plots, validation_tables.
 }
 \description{
-Creates a list of standardized paths for the Burundi SNT 2025 project.
+Creates a list of standardized paths for the SNT pipelines
 Detects a project root automatically and constructs all data/cache/output
 paths with short, memorable names. Optionally creates missing folders.
 }
