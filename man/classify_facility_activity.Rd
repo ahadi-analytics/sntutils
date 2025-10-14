@@ -8,7 +8,8 @@ classify_facility_activity(
   data,
   hf_col,
   date_col = "date",
-  key_indicators = c("test", "pres", "conf")
+  key_indicators = c("test", "pres", "conf"),
+  binary_classification = FALSE
 )
 }
 \arguments{
@@ -21,6 +22,10 @@ classify_facility_activity(
 
 \item{key_indicators}{Character vector with columns defining reporting
 activity. Defaults to \code{c("test", "pres", "conf")}.}
+
+\item{binary_classification}{Logical. If TRUE, returns binary classification
+("Active", "Non-Active") instead of three-level classification. Defaults to
+FALSE.}
 }
 \value{
 Data frame with original columns plus:
@@ -32,7 +37,9 @@ any key indicator.}
 \item{has_ever_reported}{Logical. TRUE if facility has reported at
 least once up to this month.}
 \item{activity_status}{Factor. One of "Active Reporting",
-"Active Facility - Not Reporting", or "Inactive Facility".}
+"Active Facility - Not Reporting", or "Inactive Facility" when
+binary_classification = FALSE. When binary_classification = TRUE,
+one of "Active" or "Non-Active".}
 }
 }
 \description{
@@ -49,6 +56,15 @@ in that month.
 \item \strong{Active Facility - Not Reporting}: Facility has reported before
 but did not report in that month.
 \item \strong{Inactive Facility}: Facility has never reported any key indicator.
+}
+
+When binary_classification = TRUE:
+\itemize{
+\item \strong{Active}: Facility reported at least one key indicator in that month
+(equivalent to "Active Reporting").
+\item \strong{Non-Active}: Facility did not report in that month, regardless of
+past reporting history (combines "Active Facility - Not Reporting" and
+"Inactive Facility").
 }
 }
 \examples{
@@ -74,4 +90,14 @@ classified <- classify_facility_activity(
 )
 
 table(classified$activity_status)
+
+# Binary classification example
+classified_binary <- classify_facility_activity(
+  data = toy_data,
+  hf_col = "hf_uid",
+  key_indicators = c("test", "pres", "conf"),
+  binary_classification = TRUE
+)
+
+table(classified_binary$activity_status)
 }

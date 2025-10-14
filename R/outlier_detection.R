@@ -53,6 +53,12 @@
 #'   `"allout"`, `"test"`, or `"conf"`. This adjustment prevents false positives
 #'   caused by facilities that start or stop reporting mid-period.
 #'
+#' @param binary_classification Logical. When `key_indicators_hf` is provided,
+#'   determines the classification method passed to `classify_facility_activity()`.
+#'   If TRUE, uses binary classification ("Active", "Non-Active"). If FALSE
+#'   (default), uses three-level classification ("Active Reporting",
+#'   "Active Facility - Not Reporting", "Inactive Facility").
+#'
 #' @param methods Character vector specifying which outlier detection
 #'   methods to use: "iqr" (Interquartile Range), "median" (Median Absolute
 #'   Deviation), "mean" (Mean +/- SD), and/or "consensus".
@@ -196,6 +202,17 @@
 #'   time_mode = "by_month",
 #'   key_indicators_hf = c("allout", "test", "conf")
 #' )
+#'
+#' # 5) With binary activeness classification
+#' detect_outliers(
+#'   data = malaria_data,
+#'   column = "conf",
+#'   date = "date", 
+#'   admin_levels = c("adm1", "adm2"),
+#'   time_mode = "by_month",
+#'   key_indicators_hf = c("allout", "test", "conf"),
+#'   binary_classification = TRUE
+#' )
 #' }
 #' @export
 detect_outliers <- function(
@@ -215,6 +232,7 @@ detect_outliers <- function(
     reporting_rate_col = NULL,
     reporting_rate_min = 0.5,
     key_indicators_hf = NULL,
+    binary_classification = FALSE,
     methods = c("iqr", "median", "mean", "consensus"),
     consensus_rule = 2,
     output_profile = c("standard", "lean", "audit"),
@@ -249,7 +267,8 @@ detect_outliers <- function(
       data = data,
       hf_col = record_id,
       date_col = date,
-      key_indicators = key_indicators_hf
+      key_indicators = key_indicators_hf,
+      binary_classification = binary_classification
     )
     data <- data |>
       dplyr::left_join(
@@ -1217,6 +1236,7 @@ outlier_plot <- function(
     reporting_rate_col = NULL,
     reporting_rate_min = 0.5,
     key_indicators_hf = NULL,
+    binary_classification = FALSE,
     consensus_rule = 2,
     seasonal_pool_years = 5,
     min_years_per_month = 3,
@@ -1299,6 +1319,7 @@ outlier_plot <- function(
       reporting_rate_col = reporting_rate_col,
       reporting_rate_min = reporting_rate_min,
       key_indicators_hf = key_indicators_hf,
+      binary_classification = binary_classification,
       methods = methods,  # Pass methods to calculate only requested flags
       consensus_rule = consensus_rule,
       output_profile = "audit",  # Get all flags for individual methods

@@ -22,6 +22,7 @@ outlier_plot(
   reporting_rate_col = NULL,
   reporting_rate_min = 0.5,
   key_indicators_hf = NULL,
+  binary_classification = FALSE,
   consensus_rule = 2,
   seasonal_pool_years = 5,
   min_years_per_month = 3,
@@ -103,6 +104,12 @@ facilities from outlier detection. Inactive facility-months are tagged with
 (default), activeness filtering is skipped. Typical indicators include
 \code{"allout"}, \code{"test"}, or \code{"conf"}. This adjustment prevents false positives
 caused by facilities that start or stop reporting mid-period.}
+
+\item{binary_classification}{Logical. When \code{key_indicators_hf} is provided,
+determines the classification method passed to \code{classify_facility_activity()}.
+If TRUE, uses binary classification ("Active", "Non-Active"). If FALSE
+(default), uses three-level classification ("Active Reporting",
+"Active Facility - Not Reporting", "Inactive Facility").}
 
 \item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3})
 for the consensus flag to call an outlier. Default \code{2}.}
