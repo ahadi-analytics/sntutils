@@ -343,7 +343,7 @@ fuzzy_match_facilities <- function(
     dplyr::count(match_method, name = "count") |>
     dplyr::arrange(match_method)
 
-  unique_target <- dplyr::n_distinct(results[[uid_col]])
+  unique_target <- dplyr::n_distinct(target_df[[uid_col]])
 
   # ---------------------- coverage cross-checks ---------------------------
   cross <- .coverage_crosscheck(

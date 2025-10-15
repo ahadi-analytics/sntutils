@@ -370,7 +370,7 @@ french_malaria_acronyms <- function() {
     list("RDT", "rapid diagnostic test", "TDR", "test diagnostique rapide"),
     list("NSP", "national strategic plan", "PSN", "plan strat\u00e9gique national"),
     list("FR", "(GFATM) funding request", "DF", "demande de financement"),
-    list("HF", "health facility", "FS", "formation sanitaire")
+    list("HF; Health Facility", "health facility", "FOSA", "Formation sanitaire")
   )
 
   # convert into columns

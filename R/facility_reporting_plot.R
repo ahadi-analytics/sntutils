@@ -166,8 +166,8 @@ classify_facility_activity <- function(
     dplyr::mutate(
       activity_status_method1 = dplyr::case_when(
         reported_any ~ "Active Reporting",
-        has_ever_reported ~ "Active Facility - Not Reporting",
-        TRUE ~ "Inactive Facility"
+        has_ever_reported ~ "Active Health Facility - Not Reporting",
+        TRUE ~ "Inactive Health Facility"
       )
     )
 
@@ -175,7 +175,7 @@ classify_facility_activity <- function(
   flagged_panel <- flagged_panel |>
     dplyr::mutate(
       activity_status_method2 = dplyr::case_when(
-        is.na(first_reporting_date) ~ "Inactive Facility",
+        is.na(first_reporting_date) ~ "Inactive Health Facility",
         .data[[date_col]] >= first_reporting_date &
           .data[[date_col]] <= last_reporting_date &
           reported_any ~
@@ -183,8 +183,8 @@ classify_facility_activity <- function(
         .data[[date_col]] >= first_reporting_date &
           .data[[date_col]] <= last_reporting_date &
           !reported_any ~
-          "Active Facility - Not Reporting",
-        TRUE ~ "Inactive Facility"
+          "Active Health Facility - Not Reporting",
+        TRUE ~ "Inactive Health Facility"
       )
     )
 
@@ -200,11 +200,11 @@ classify_facility_activity <- function(
       ),
       # method 3 classification
       activity_status_method3 = dplyr::case_when(
-        is.na(first_reporting_date) ~ "Inactive Facility",
+        is.na(first_reporting_date) ~ "Inactive Health Facility",
         reported_any ~ "Active Reporting",
-        nonreport_streak > 0 ~ "Inactive Facility",
-        has_ever_reported ~ "Active Facility - Not Reporting",
-        TRUE ~ "Inactive Facility"
+        nonreport_streak > 0 ~ "Inactive Health Facility",
+        has_ever_reported ~ "Active Health Facility - Not Reporting",
+        TRUE ~ "Inactive Health Facility"
       )
     ) |>
     dplyr::ungroup()
@@ -216,7 +216,7 @@ classify_facility_activity <- function(
         dplyr::across(
           dplyr::starts_with("activity_status_"),
           ~ dplyr::case_when(
-            .x %in% c("Active Reporting", "Active Facility - Not Reporting") ~
+            .x %in% c("Active Reporting", "Active Health Facility - Not Reporting") ~
               "Active",
             TRUE ~ "Inactive"
           )
@@ -425,43 +425,43 @@ facility_reporting_plot <- function(
     palette_values <- list(
       classic = c(
         "Active Reporting" = "#0072B2",
-        "Active Facility - Not Reporting" = "#E69F00",
-        "Inactive Facility" = "#56B4E9"
+        "Active Health Facility - Not Reporting" = "#E69F00",
+        "Inactive Health Facility" = "#56B4E9"
       ),
       sunset = c(
         "Active Reporting" = "#D1495B",
-        "Active Facility - Not Reporting" = "#F79256",
-        "Inactive Facility" = "#8E7DBE"
+        "Active Health Facility - Not Reporting" = "#F79256",
+        "Inactive Health Facility" = "#8E7DBE"
       ),
       forest = c(
         "Active Reporting" = "#2A9D8F",
-        "Active Facility - Not Reporting" = "#E9C46A",
-        "Inactive Facility" = "#264653"
+        "Active Health Facility - Not Reporting" = "#E9C46A",
+        "Inactive Health Facility" = "#264653"
       ),
       coral = c(
         "Active Reporting" = "#FF6F61",
-        "Active Facility - Not Reporting" = "#FFB88C",
-        "Inactive Facility" = "#6B5B95"
+        "Active Health Facility - Not Reporting" = "#FFB88C",
+        "Inactive Health Facility" = "#6B5B95"
       ),
       violet = c(
         "Active Reporting" = "#6A4C93",
-        "Active Facility - Not Reporting" = "#F0A6CA",
-        "Inactive Facility" = "#80CED7"
+        "Active Health Facility - Not Reporting" = "#F0A6CA",
+        "Inactive Health Facility" = "#80CED7"
       ),
       slate = c(
         "Active Reporting" = "#345995",
-        "Active Facility - Not Reporting" = "#FB4D3D",
-        "Inactive Facility" = "#98B9AB"
+        "Active Health Facility - Not Reporting" = "#FB4D3D",
+        "Inactive Health Facility" = "#98B9AB"
       ),
       citrus = c(
         "Active Reporting" = "#F4A259",
-        "Active Facility - Not Reporting" = "#5B8E7D",
-        "Inactive Facility" = "#BC4B51"
+        "Active Health Facility - Not Reporting" = "#5B8E7D",
+        "Inactive Health Facility" = "#BC4B51"
       ),
       orchid = c(
         "Active Reporting" = "#875C74",
-        "Active Facility - Not Reporting" = "#E6C79C",
-        "Inactive Facility" = "#6C7A89"
+        "Active Health Facility - Not Reporting" = "#E6C79C",
+        "Inactive Health Facility" = "#6C7A89"
       )
     )
   }
@@ -490,10 +490,10 @@ facility_reporting_plot <- function(
     subtitle_lines <- c(
       "Active Reporting -> reported at least one key indicator",
       paste(
-        "Active Facility - Not Reporting -> did not report that month but",
+        "Active Health Facility - Not Reporting -> did not report that month but",
         "had reported in previous months"
       ),
-      "Inactive Facility -> never reported any key indicator"
+      "Inactive Health Facility -> never reported any key indicator"
     )
   }
 
