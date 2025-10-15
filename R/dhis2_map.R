@@ -26,7 +26,9 @@ dhis2_map <- function(data, dict, new_col, old_col, verbose = TRUE) {
   # helper to resolve column selectors
   to_pos <- function(x, df) {
     if (is.numeric(x)) {
-      if (x > ncol(df)) cli::cli_abort("Column index {x} out of bounds.")
+      if (x > ncol(df)) {
+        cli::cli_abort("Column index {x} out of bounds.")
+      }
       return(x)
     }
     if (is.character(x)) {
@@ -44,59 +46,67 @@ dhis2_map <- function(data, dict, new_col, old_col, verbose = TRUE) {
   new_col <- to_pos(new_col, dict)
   old_col <- to_pos(old_col, dict)
 
-  # robust normalization helper
+  # normalize text robustly
   norm <- function(x) {
-    out <- gsub("\\u00A0", " ", x)               # replace non-breaking space
+    out <- gsub("\\u00A0", " ", x) # non-breaking spaces
     out <- stringi::stri_trans_general(out, "Latin-ASCII")
     out <- tolower(out)
-    out <- gsub("[[:punct:]]", " ", out)        # remove punctuation
-    out <- gsub("\\s+", " ", out)               # collapse multiple spaces
+    out <- gsub("<", "lt", out) # retain < and >
+    out <- gsub(">", "gt", out)
+    out <- gsub("[[:punct:]]", " ", out)
+    out <- gsub("\\s+", " ", out)
     trimws(out)
   }
 
-  # extract dictionary columns
   new_names <- dict[[new_col]]
   old_names <- dict[[old_col]]
 
-  # mapping (new = old)
-  name_mapping <- stats::setNames(old_names, new_names)
-
-  # normalize for matching
+  # normalized forms
   data_cols_raw <- colnames(data)
   data_cols_norm <- norm(data_cols_raw)
   dict_old_norm <- norm(old_names)
 
-  keep_idx <- dict_old_norm %in% data_cols_norm
-  filtered_mapping <- name_mapping[keep_idx]
+  # dictionary match positions
+  matched_pos <- match(dict_old_norm, data_cols_norm)
 
-  # use exact raw dataset column names
-  matched_pos <- match(dict_old_norm[keep_idx], data_cols_norm)
-  filtered_mapping[] <- data_cols_raw[matched_pos]
+  # keep only true matches
+  valid_idx <- which(!is.na(matched_pos))
+  matched_data_cols <- data_cols_raw[matched_pos[valid_idx]]
 
-  # diagnostics
-  dict_unmatched <- old_names[!keep_idx]
-  data_unmatched <- data_cols_raw[!(data_cols_norm %in% dict_old_norm)]
+  # construct mapping: new = matched data col
+  matched_mapping <- stats::setNames(matched_data_cols, new_names[valid_idx])
 
   # preserve unmatched columns
-  unmatched_mapping <- stats::setNames(data_unmatched, data_unmatched)
+  unmatched_cols <- setdiff(data_cols_raw, matched_data_cols)
+  unmatched_mapping <- stats::setNames(unmatched_cols, unmatched_cols)
 
-  # combine matched + unmatched
-  final_mapping <- c(filtered_mapping, unmatched_mapping)
+  # combine (but only overwrite if actually matched)
+  final_mapping <- c(matched_mapping, unmatched_mapping)
 
   if (isTRUE(verbose)) {
     cli::cli_h2("DHIS2 dictionary crosswalk")
     cli::cli_alert_success(
-      "{sum(keep_idx)} of {length(name_mapping)} dictionary entries matched dataset."
+      "{length(valid_idx)} of {nrow(dict)} dictionary entries matched dataset."
     )
-
-    if (length(dict_unmatched)) {
-      cli::cli_alert_info("Dictionary entries not found in dataset: {length(dict_unmatched)}")
-      cat("  *", paste(utils::head(dict_unmatched, 5), collapse = "\n  * "), "\n")
+    if (length(old_names) - length(valid_idx) > 0) {
+      cli::cli_alert_info(
+        "Dictionary entries not found in dataset: {length(old_names) - length(valid_idx)}"
+      )
+      cat(
+        "  *",
+        paste(
+          utils::head(old_names[is.na(matched_pos)], 5),
+          collapse = "\n  * "
+        ),
+        "\n"
+      )
     }
-
-    if (length(data_unmatched)) {
-      cli::cli_alert_info("Dataset columns without dictionary entry: {length(data_unmatched)}")
-      cat("  *", paste(utils::head(data_unmatched, 5), collapse = "\n  * "), "\n")
+    not_in_dict <- setdiff(data_cols_raw, matched_data_cols)
+    if (length(not_in_dict)) {
+      cli::cli_alert_info(
+        "Dataset columns without dictionary entry: {length(not_in_dict)}"
+      )
+      cat("  *", paste(utils::head(not_in_dict, 5), collapse = "\n  * "), "\n")
     }
   }
 

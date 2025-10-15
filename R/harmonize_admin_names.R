@@ -1272,8 +1272,8 @@ prep_geonames <- function(
   preserve_case = FALSE
 ) {
   # Capture the names of the data frames at the beginning
-  target_df_name <- deparse(substitute(target_df))
-  lookup_df_name <- deparse(substitute(lookup_df))
+  target_df_name <- paste(deparse(substitute(target_df)), collapse = "")
+  lookup_df_name <- paste(deparse(substitute(lookup_df)), collapse = "")
 
   # Validation -----------------------------------------------------------------
 
