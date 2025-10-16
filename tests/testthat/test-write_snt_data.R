@@ -336,9 +336,9 @@ testthat::test_that(
   testthat::expect_true(info2$modification_time >= info1$modification_time)
 })
 
-# dedupe behavior --------------------------------------------------------------
+# version pruning --------------------------------------------------------------
 
-testthat::test_that("dedupes identical dated versions with same-day writes", {
+testthat::test_that("same-day versioned writes reuse the existing file", {
   tmp <- withr::local_tempdir()
 
   res1 <- write_snt_data(
@@ -347,7 +347,6 @@ testthat::test_that("dedupes identical dated versions with same-day writes", {
     data_name = "cars",
     file_formats = "csv",
     include_date = TRUE,
-    dedupe_identical = TRUE,
     quiet = FALSE
   )
   res2 <- write_snt_data(
@@ -356,7 +355,6 @@ testthat::test_that("dedupes identical dated versions with same-day writes", {
     data_name = "cars",
     file_formats = "csv",
     include_date = TRUE,
-    dedupe_identical = TRUE,
     quiet = FALSE
   )
 
@@ -370,6 +368,69 @@ testthat::test_that("dedupes identical dated versions with same-day writes", {
 
   testthat::expect_equal(length(files), 1L)
   testthat::expect_identical(files[[1]], paste0("cars_v", today, ".csv"))
+})
+
+testthat::test_that("n_saved keeps only the newest versioned files", {
+  tmp <- withr::local_tempdir()
+  tags <- sprintf("2025-01-%02d", 1:4)
+  old_path <- NULL
+  old_sidecar <- NULL
+
+  for (i in seq_along(tags)) {
+    res <- write_snt_data(
+      obj = tibble::tibble(idx = i),
+      path = tmp,
+      data_name = "cars",
+      file_formats = "csv",
+      include_date = FALSE,
+      version_tag = tags[[i]],
+      n_saved = 3,
+      quiet = TRUE
+    )
+    testthat::expect_true(res$ok[[1]])
+    if (i == 1L) {
+      old_path <- res$path[[1]]
+      old_sidecar <- .sidecar_path(old_path)
+      testthat::expect_true(fs::file_exists(old_sidecar))
+    }
+    Sys.setFileTime(
+      res$path[[1]],
+      as.POSIXct(sprintf("2025-01-%02d 12:00:00", i), tz = "UTC")
+    )
+  }
+
+  files <- fs::dir_ls(tmp, regexp = "cars_v.*\\.csv$")
+  basenames <- fs::path_file(files)
+
+  testthat::expect_equal(length(files), 3L)
+  testthat::expect_setequal(
+    basenames,
+    paste0("cars_v", tail(tags, 3), ".csv")
+  )
+  testthat::expect_false(fs::file_exists(old_path))
+  testthat::expect_false(fs::file_exists(old_sidecar))
+})
+
+testthat::test_that("n_saved defaults to keeping all versions", {
+  tmp <- withr::local_tempdir()
+  tags <- c("old", "new")
+  paths <- character(0)
+
+  for (tag in tags) {
+    res <- write_snt_data(
+      obj = tibble::tibble(idx = tag),
+      path = tmp,
+      data_name = "cars",
+      file_formats = "csv",
+      include_date = FALSE,
+      version_tag = tag,
+      quiet = TRUE
+    )
+    testthat::expect_true(res$ok[[1]])
+    paths <- c(paths, res$path[[1]])
+  }
+
+  testthat::expect_true(all(fs::file_exists(paths)))
 })
 
 # return structure and messages ------------------------------------------------
@@ -431,91 +492,6 @@ testthat::test_that("sidecar is created and well-formed", {
   testthat::expect_match(meta$file_md5, "^[0-9a-f]+$")
 })
 
-testthat::test_that("cross-format dedupe removes older file + sidecar", {
-  sidecar_ready <- has_pkg("jsonlite") &&
-    is.function(get0(".sidecar_path", mode = "function")) &&
-    is.function(get0(".read_sidecar", mode = "function"))
-  testthat::skip_if_not(sidecar_ready, "sidecar helpers missing")
-
-  tmp <- withr::local_tempdir()
-  df <- make_small_df()
-
-  # first write: csv (older)
-  res1 <- write_snt_data(
-    obj = df,
-    path = tmp,
-    data_name = "sc_cross",
-    file_formats = "csv",
-    quiet = TRUE
-  )
-  old_p <- res1$path[[1]]
-  old_sc <- .sidecar_path(old_p)
-  testthat::expect_true(fs::file_exists(old_p))
-  testthat::expect_true(fs::file_exists(old_sc))
-
-  # second write: rds (newer) should dedupe the csv
-  res2 <- write_snt_data(
-    obj = df,
-    path = tmp,
-    data_name = "sc_cross",
-    file_formats = "rds",
-    quiet = TRUE
-  )
-  new_p <- res2$path[[1]]
-  testthat::expect_true(res2$ok[[1]])
-  testthat::expect_true(fs::file_exists(new_p))
-
-  # old csv and its sidecar removed
-  testthat::expect_false(fs::file_exists(old_p))
-  testthat::expect_false(fs::file_exists(old_sc))
-})
-
-testthat::test_that(
-  "md5 fast path works if sidecar is missing (distinct versions)", {
-  sidecar_ready <- is.function(get0(".sidecar_path", mode = "function"))
-  testthat::skip_if_not(sidecar_ready, "sidecar helper missing")
-
-  tmp <- withr::local_tempdir()
-  df <- make_small_df()
-
-  # first write: explicit tag "old" so path differs from the next write
-  res1 <- write_snt_data(
-    obj = df,
-    path = tmp,
-    data_name = "sc_md5",
-    file_formats = "tsv",
-    include_date = FALSE,
-    version_tag = "old",
-    quiet = TRUE
-  )
-  p_old <- res1$path[[1]]
-  testthat::expect_true(res1$ok[[1]])
-  testthat::expect_true(fs::file_exists(p_old))
-
-  # remove sidecar to force md5 comparison path (no embedded obj hash)
-  sc_old <- .sidecar_path(p_old)
-  if (fs::file_exists(sc_old)) {
-    fs::file_delete(sc_old)
-  }
-
-  # second write: same data, different tag -> a different file to compare
-  res2 <- write_snt_data(
-    obj = df,
-    path = tmp,
-    data_name = "sc_md5",
-    file_formats = "tsv",
-    include_date = FALSE,
-    version_tag = "new",
-    quiet = TRUE
-  )
-  p_new <- res2$path[[1]]
-  testthat::expect_true(res2$ok[[1]])
-  testthat::expect_true(fs::file_exists(p_new))
-
-  # dedupe should have removed the old file (md5 fast path, same ext)
-  testthat::expect_false(fs::file_exists(p_old))
-})
-
 testthat::test_that("obj_hash matches across formats for same data", {
   sidecar_ready <- has_pkg("jsonlite") &&
     is.function(get0(".sidecar_path", mode = "function")) &&
@@ -525,7 +501,7 @@ testthat::test_that("obj_hash matches across formats for same data", {
   tmp <- withr::local_tempdir()
   df <- make_small_df()
 
-  # write both in one call so neither dedupes the other
+  # write both in one call so we capture both formats together
   res <- write_snt_data(
     obj = df,
     path = tmp,
