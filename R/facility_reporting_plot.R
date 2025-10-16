@@ -72,10 +72,10 @@ classify_facility_activity <- function(
   key_indicators = c("test", "pres", "conf"),
   method = "method1",
   nonreport_window = 6,
-  reporting_rule = c("any_non_na", "positive_only"),
+  reporting_rule = "any_non_na",
   binary_classification = FALSE
 ) {
-  reporting_rule <- match.arg(reporting_rule)
+  reporting_rule <- match.arg(reporting_rule, choices = c("any_non_na", "positive_only"))
   method <- match.arg(
     method,
     choices = c("method1", "method2", "method3", "all")
@@ -84,6 +84,16 @@ classify_facility_activity <- function(
   if (!base::is.data.frame(data)) {
     cli::cli_abort("`data` must be a data.frame.")
   }
+
+  if (
+    !base::is.numeric(nonreport_window) ||
+    base::length(nonreport_window) != 1L ||
+    base::is.na(nonreport_window) ||
+    nonreport_window < 1
+  ) {
+    cli::cli_abort("`nonreport_window` must be a positive integer.")
+  }
+  nonreport_window <- base::as.integer(nonreport_window)
 
   required_cols <- base::c(hf_col, date_col, key_indicators)
   missing_cols <- base::setdiff(required_cols, base::names(data))
@@ -189,25 +199,47 @@ classify_facility_activity <- function(
     )
 
   # Method 3 (Dynamic)
-  flagged_panel <- flagged_panel |>
-    dplyr::arrange(.data[[hf_col]], .data[[date_col]]) |>
-    dplyr::group_by(.data[[hf_col]]) |>
-    dplyr::mutate(
-      # track consecutive non-reporting streaks
-      nonreport_streak = with(
-        rle(!reported_any),
-        rep(cumsum(values & lengths >= nonreport_window), lengths)
-      ),
-      # method 3 classification
-      activity_status_method3 = dplyr::case_when(
-        is.na(first_reporting_date) ~ "Inactive Health Facility",
-        reported_any ~ "Active Reporting",
-        nonreport_streak > 0 ~ "Inactive Health Facility",
-        has_ever_reported ~ "Active Health Facility - Not Reporting",
-        TRUE ~ "Inactive Health Facility"
-      )
-    ) |>
-    dplyr::ungroup()
+flagged_panel <- flagged_panel |>
+  dplyr::arrange(.data[[hf_col]], .data[[date_col]]) |>
+  dplyr::group_by(.data[[hf_col]]) |>
+  dplyr::mutate(
+    activity_status_method3 = {
+      n_obs <- length(reported_any)
+      status <- character(n_obs)
+      
+      # track state dynamically
+      is_active <- FALSE
+      consecutive_nonreports <- 0
+
+      for (i in seq_len(n_obs)) {
+        if (reported_any[i]) {
+          # reporting this month - facility becomes active and resets
+          is_active <- TRUE
+          consecutive_nonreports <- 0
+          status[i] <- "Active Reporting"
+        } else {
+          # not reporting this month
+          if (is_active) {
+            # facility was active, increment consecutive non-reports
+            consecutive_nonreports <- consecutive_nonreports + 1
+            if (consecutive_nonreports >= nonreport_window) {
+              # hits threshold - becomes inactive
+              is_active <- FALSE
+              status[i] <- "Inactive Health Facility"
+            } else {
+              # still within threshold - remains active but not reporting
+              status[i] <- "Active Health Facility - Not Reporting"
+            }
+          } else {
+            # facility is inactive (either never reported or became inactive)
+            status[i] <- "Inactive Health Facility"
+          }
+        }
+      }
+      status
+    }
+  ) |>
+  dplyr::ungroup()
 
   # Apply binary classification collapse if requested
   if (binary_classification) {
@@ -224,18 +256,33 @@ classify_facility_activity <- function(
       )
   }
 
+  extra_cols <- base::setdiff(
+    base::names(data),
+    base::c(hf_col, date_col, key_indicators)
+  )
+
+  if (base::length(extra_cols) > 0L) {
+    extra_data <- data |>
+      dplyr::select(dplyr::all_of(c(hf_col, date_col, extra_cols))) |>
+      dplyr::distinct()
+
+    flagged_panel <- flagged_panel |>
+      dplyr::left_join(extra_data, by = c(hf_col, date_col))
+  }
+
+  result <- flagged_panel
+
   # Restrict output
   if (method != "all") {
     keep_col <- paste0("activity_status_", method)
-    flagged_panel <- flagged_panel |>
-      dplyr::select(
-        -dplyr::starts_with("activity_status_"),
-        dplyr::all_of(keep_col)
-      ) |>
+    # Remove other activity_status columns but keep everything else
+    other_activity_cols <- names(result)[grepl("^activity_status_", names(result)) & names(result) != keep_col]
+    result <- result |>
+      dplyr::select(-dplyr::all_of(other_activity_cols)) |>
       dplyr::rename(activity_status = dplyr::all_of(keep_col))
   }
 
-  flagged_panel
+  result
 }
 
 #' Plot monthly reporting activity by health facility
@@ -336,7 +383,7 @@ facility_reporting_plot <- function(
   key_indicators = c("test", "pres", "conf"),
   method = "method1",
   nonreport_window = 6,
-  reporting_rule = c("any_non_na", "positive_only"),
+  reporting_rule = "any_non_na",
   binary_classification = FALSE,
   facet_col = NULL,
   facet_ncol = 2,
