@@ -12,7 +12,7 @@ write_snt_data(
   date_format = "\%Y-\%m-\%d",
   include_date = TRUE,
   version_tag = NULL,
-  dedupe_identical = TRUE,
+  n_saved = NULL,
   quiet = TRUE,
   overwrite = TRUE,
   ...
@@ -33,7 +33,8 @@ write_snt_data(
 
 \item{version_tag}{Optional explicit tag (conflicts with include_date)}
 
-\item{dedupe_identical}{Logical; remove older identical versions.}
+\item{n_saved}{Optional positive integer; keep only the newest
+\code{n_saved} versioned files per format.}
 
 \item{quiet}{Logical; suppress info logs.}
 
@@ -46,8 +47,8 @@ tibble with columns format, path, ok, bytes, hash, message
 }
 \description{
 Writes an object (data.frame, list of data.frames, sf, etc.) to a directory
-using standardized naming. Supports atomic writes, optional deduping across
-prior dated versions, and returns a structured summary.
+using standardized naming. Supports atomic writes, optional pruning of older
+versioned files, and returns a structured summary.
 
 When filenames are not versioned (no date and no tag) and a file already
 exists, set \code{overwrite = TRUE} to replace it. Otherwise an error is thrown.
