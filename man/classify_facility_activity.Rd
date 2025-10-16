@@ -11,7 +11,7 @@ classify_facility_activity(
   key_indicators = c("test", "pres", "conf"),
   method = "method1",
   nonreport_window = 6,
-  reporting_rule = c("any_non_na", "positive_only"),
+  reporting_rule = "any_non_na",
   binary_classification = FALSE
 )
 }
