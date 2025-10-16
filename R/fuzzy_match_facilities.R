@@ -1121,7 +1121,7 @@ fuzzy_match_facilities <- function(
   cli::cat_line(
     cli::boxx(
       styled_lines,
-      header = cli::style_bold("Facility Matching Summary"),
+      header = cli::style_bold("Health Facility Matching Summary"),
       border_style = "double",
       padding = 1L,
       width = box_width
