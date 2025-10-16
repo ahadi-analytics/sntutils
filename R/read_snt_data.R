@@ -29,7 +29,7 @@ read_snt_data <- function(path, data_name, file_formats = NULL, quiet = TRUE) {
     ))
   }
 
-  # Versioned candidates (<name>_v*.*) in allowed formats
+  # First look for versioned files (<name>_v*.*) in allowed formats
   ver_files <- .list_versions(path, data_name)
   if (length(ver_files)) {
     ver_files <- ver_files[
@@ -37,11 +37,12 @@ read_snt_data <- function(path, data_name, file_formats = NULL, quiet = TRUE) {
     ]
   }
 
-  # Unversioned fallbacks (<name>.<ext>)
+  # Then look for unversioned files (<name>.<ext>) as fallback
   unv_files <- fs::path(path, paste0(data_name, ".", fmts))
   unv_files <- unv_files[fs::file_exists(unv_files)]
 
-  cand <- unique(c(ver_files, unv_files))
+  # Prioritize versioned files if they exist, otherwise use unversioned
+  cand <- if (length(ver_files) > 0) ver_files else unv_files
   if (length(cand) == 0) {
     cli::cli_abort(c(
       "No files found for '{data_name}' in {fs::path_abs(path)}.",
@@ -61,12 +62,13 @@ read_snt_data <- function(path, data_name, file_formats = NULL, quiet = TRUE) {
     cli::cli_inform("Reading {fs::path_file(chosen)} (latest by mtime).")
   }
 
-  obj <- .read_back(chosen, fmt)
-  if (is.null(obj)) {
+  obj <- tryCatch({
+    read(chosen)
+  }, error = function(e) {
     cli::cli_abort(
-      "Failed to read '{fs::path_file(chosen)}' (format: {fmt})."
+      "Failed to read '{fs::path_file(chosen)}': {conditionMessage(e)}"
     )
-  }
+  })
 
   # ensure sf's vctrs methods are available whenever sf/sfc appears anywhere
   needs_sf <- (function(x) {
