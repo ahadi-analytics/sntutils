@@ -11,11 +11,12 @@
 #' @param new_col column in `dict` with harmonised names (name or index).
 #' @param old_col column in `dict` with raw/source names (name or index).
 #' @param verbose logical; if TRUE (default) prints CLI messages.
+#' @param drop_unmatched logical; if TRUE, drops columns that are not found in the dictionary. Default is FALSE.
 #'
 #' @return the input dataset with renamed columns.
 #'
 #' @export
-dhis2_map <- function(data, dict, new_col, old_col, verbose = TRUE) {
+dhis2_map <- function(data, dict, new_col, old_col, verbose = TRUE, drop_unmatched = FALSE) {
   if (!inherits(data, "data.frame")) {
     cli::cli_abort("{.arg data} must be a data.frame.")
   }
@@ -76,12 +77,16 @@ dhis2_map <- function(data, dict, new_col, old_col, verbose = TRUE) {
   # construct mapping: new = matched data col
   matched_mapping <- stats::setNames(matched_data_cols, new_names[valid_idx])
 
-  # preserve unmatched columns
+  # preserve unmatched columns (unless drop_unmatched is TRUE)
   unmatched_cols <- setdiff(data_cols_raw, matched_data_cols)
-  unmatched_mapping <- stats::setNames(unmatched_cols, unmatched_cols)
 
-  # combine (but only overwrite if actually matched)
-  final_mapping <- c(matched_mapping, unmatched_mapping)
+  if (isTRUE(drop_unmatched)) {
+    final_mapping <- matched_mapping
+  } else {
+    unmatched_mapping <- stats::setNames(unmatched_cols, unmatched_cols)
+    # combine (but only overwrite if actually matched)
+    final_mapping <- c(matched_mapping, unmatched_mapping)
+  }
 
   if (isTRUE(verbose)) {
     cli::cli_h2("DHIS2 dictionary crosswalk")
@@ -103,12 +108,24 @@ dhis2_map <- function(data, dict, new_col, old_col, verbose = TRUE) {
     }
     not_in_dict <- setdiff(data_cols_raw, matched_data_cols)
     if (length(not_in_dict)) {
-      cli::cli_alert_info(
-        "Dataset columns without dictionary entry: {length(not_in_dict)}"
-      )
+      if (isTRUE(drop_unmatched)) {
+        cli::cli_alert_warning(
+          "Dropping {length(not_in_dict)} dataset column{?s} without dictionary entry"
+        )
+      } else {
+        cli::cli_alert_info(
+          "Dataset columns without dictionary entry: {length(not_in_dict)}"
+        )
+      }
       cat("  *", paste(utils::head(not_in_dict, 5), collapse = "\n  * "), "\n")
     }
   }
 
-  dplyr::rename(data, !!!final_mapping)
+  if (isTRUE(drop_unmatched)) {
+    # Use select to keep only matched columns and rename them
+    dplyr::select(data, !!!final_mapping)
+  } else {
+    # Use rename to preserve all columns
+    dplyr::rename(data, !!!final_mapping)
+  }
 }
