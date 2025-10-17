@@ -10,8 +10,10 @@
 #' via [auto_parse_types()] with `apply = TRUE` and `return = "data"`.
 #'
 #' @param pop_data data.frame/tibble with `adm0`, optional `adm1`/`adm2`/`adm3`,
-#'   `year`, and `pop`. `year` may be integer, numeric, Date/POSIXt, factor,
+#'   `year`, and population column(s). `year` may be integer, numeric, Date/POSIXt, factor,
 #'   or character; it is coerced to integer years when feasible.
+#' @param pop_cols character vector of population column names to process. 
+#'   Default is "pop" for backward compatibility.
 #' @param translate logical; when TRUE, add a translated label column
 #'   (default FR unless `language` is provided) using the translation cache.
 #' @param language Optional ISO code (e.g., "fr"). When provided, a
@@ -31,6 +33,7 @@
 #' - `levels_present` (character vector of admin levels detected)
 #'
 #' @examples
+#' # Basic usage with default "pop" column
 #' example_pop <- tibble::tibble(
 #'   adm0 = c("A", "A", "B"),
 #'   adm1 = c("X", "X", "Y"),
@@ -41,10 +44,25 @@
 #' out <- snt_process_population(example_pop)
 #' names(out)
 #' out$levels_present
+#' 
+#' # Using custom population column names
+#' example_multi_pop <- tibble::tibble(
+#'   adm0 = c("A", "A", "B"),
+#'   adm1 = c("X", "X", "Y"),
+#'   year = c(2020L, 2020L, 2021L),
+#'   total_pop = c(100, 50, 70),
+#'   under5_pop = c(20, 10, 15)
+#' )
+#' out_multi <- snt_process_population(
+#'   example_multi_pop, 
+#'   pop_cols = c("total_pop", "under5_pop")
+#' )
+#' names(out_multi)
 #'
 #' @export
 snt_process_population <- function(
   pop_data,
+  pop_cols = "pop",
   translate = TRUE,
   language = NULL,
   trans_cache_path = if (requireNamespace("here", quietly = TRUE)) {
@@ -55,7 +73,7 @@ snt_process_population <- function(
   infer_types = TRUE
 ) {
   # validate input shape early
-  .validate_pop_input(pop_data)
+  .validate_pop_input(pop_data, pop_cols)
 
   # optionally coerce types using the shared engine (preferred)
   if (isTRUE(infer_types)) {
@@ -74,13 +92,13 @@ snt_process_population <- function(
   levels_present <- lv_all[lv_all %in% names(pop_data)]
 
   # summarise for each level that truly exists
-  pop_data_adm0 <- .summarise_by(pop_data, c("adm0"))
-  pop_data_adm1 <- .summarise_by(pop_data, c("adm0", "adm1"))
-  pop_data_adm2 <- .summarise_by(pop_data, c("adm0", "adm1", "adm2"))
-  pop_data_adm3 <- .summarise_by(pop_data, c("adm0", "adm1", "adm2", "adm3"))
+  pop_data_adm0 <- .summarise_by(pop_data, c("adm0"), pop_cols)
+  pop_data_adm1 <- .summarise_by(pop_data, c("adm0", "adm1"), pop_cols)
+  pop_data_adm2 <- .summarise_by(pop_data, c("adm0", "adm1", "adm2"), pop_cols)
+  pop_data_adm3 <- .summarise_by(pop_data, c("adm0", "adm1", "adm2", "adm3"), pop_cols)
 
   # build compact dictionary for the columns we actually expose
-  dict_vars <- unique(c(levels_present, "year", "pop"))
+  dict_vars <- unique(c(levels_present, "year", pop_cols))
   keep_cols <- intersect(names(pop_data), dict_vars)
 
   # determine target language: explicit `language` wins; otherwise use FR when
@@ -145,21 +163,31 @@ snt_process_population <- function(
 #'
 #' @param pop_data Data frame with population.
 #' @param group_cols Character vector of grouping columns.
+#' @param pop_cols Character vector of population column names.
 #' @return Data frame or NULL.
 #' @noRd
-.summarise_by <- function(pop_data, group_cols) {
+.summarise_by <- function(pop_data, group_cols, pop_cols) {
   if (!all(group_cols %in% names(pop_data))) {
     return(NULL)
   }
   if (!requireNamespace("dplyr", quietly = TRUE)) {
     cli::cli_abort("Package 'dplyr' is required for summarising.")
   }
+  
+  # create summarise expressions for each population column
+  summarise_exprs <- rlang::set_names(
+    lapply(pop_cols, function(col) {
+      rlang::expr(sntutils::sum2(.data[[!!col]]))
+    }),
+    pop_cols
+  )
+  
   dplyr::group_by(
     pop_data,
     dplyr::across(dplyr::all_of(group_cols)),
     .data$year
   ) |>
-    dplyr::summarise(pop = sntutils::sum2(.data$pop), .groups = "drop")
+    dplyr::summarise(!!!summarise_exprs, .groups = "drop")
 }
 
 #' Cached translator factory
@@ -189,20 +217,25 @@ snt_process_population <- function(
 
 #' Validate minimal shape of population input
 #'
-#' Ensures required columns exist and `pop` is numeric. Leaves `year`
+#' Ensures required columns exist and population columns are numeric. Leaves `year`
 #' validation/coercion to later steps.
+#' @param pop_data data frame to validate
+#' @param pop_cols character vector of population column names
 #' @noRd
-.validate_pop_input <- function(pop_data) {
+.validate_pop_input <- function(pop_data, pop_cols) {
   if (!is.data.frame(pop_data)) {
     cli::cli_abort("`pop_data` must be a data.frame or tibble.")
   }
-  req <- c("adm0", "year", "pop")
+  req <- c("adm0", "year", pop_cols)
   miss <- setdiff(req, names(pop_data))
   if (length(miss)) {
     cli::cli_abort("missing required columns: {toString(miss)}")
   }
-  if (!is.numeric(pop_data$pop)) {
-    cli::cli_abort("`pop` must be numeric.")
+  # check that all population columns are numeric
+  for (col in pop_cols) {
+    if (!is.numeric(pop_data[[col]])) {
+      cli::cli_abort("`{col}` must be numeric.")
+    }
   }
   invisible(TRUE)
 }
