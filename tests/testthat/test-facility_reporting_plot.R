@@ -28,10 +28,10 @@ test_that("classify_facility_activity method1 with binary classification", {
   expect_equal(nrow(result), 12)
 
   # Check expected output matches your dummy data
-  expected_status <- c("Inactive", "Inactive", "Active", "Active", "Active", 
-                      "Active", "Active", "Active", "Active", "Active", 
+  expected_status <- c("Inactive", "Inactive", "Active", "Active", "Active",
+                      "Active", "Active", "Active", "Active", "Active",
                       "Active", "Active")
-  
+
   expect_equal(result$activity_status, expected_status)
 })
 
@@ -59,11 +59,11 @@ test_that("classify_facility_activity method2 with binary classification", {
   expect_true("activity_status" %in% names(result))
   expect_equal(nrow(result), 12)
 
-  # Check expected output matches your dummy data  
-  expected_status <- c("Inactive", "Inactive", "Active", "Active", "Active", 
-                      "Active", "Active", "Active", "Active", "Inactive", 
+  # Check expected output matches your dummy data
+  expected_status <- c("Inactive", "Inactive", "Active", "Active", "Active",
+                      "Active", "Active", "Active", "Active", "Inactive",
                       "Inactive", "Inactive")
-  
+
   expect_equal(result$activity_status, expected_status)
 })
 
@@ -96,10 +96,10 @@ test_that("classify_facility_activity method3 basic functionality", {
   # Month 3: Inactive (2nd gap, hits threshold), Months 4-8: Inactive (stays inactive)
   # Month 9: Active Reporting (reactivates), Month 10: Active Health Facility - Not Reporting
   # Month 11: Inactive (2nd gap after reactivation), Month 12: Inactive
-  expected_status <- c("Active", "Active", "Inactive", "Inactive", "Inactive", 
-                      "Inactive", "Inactive", "Inactive", "Active", "Active", 
+  expected_status <- c("Active", "Active", "Inactive", "Inactive", "Inactive",
+                      "Inactive", "Inactive", "Inactive", "Active", "Active",
                       "Inactive", "Inactive")
-  
+
   expect_equal(result$activity_status, expected_status)
 })
 
@@ -148,7 +148,7 @@ test_that("classify_facility_activity method3 dynamic reactivation behavior", {
   )
 
   expect_equal(result$activity_status, expected_status)
-  
+
   # Verify diagnostic behavior: inactive periods can be shorter than nonreport_window
   # after the facility becomes inactive (this is correct behavior)
   inactive_periods <- result |>
@@ -156,7 +156,7 @@ test_that("classify_facility_activity method3 dynamic reactivation behavior", {
     dplyr::mutate(run_id = data.table::rleid(activity_status)) |>
     dplyr::group_by(run_id) |>
     dplyr::summarise(run_length = dplyr::n(), .groups = "drop")
-  
+
   # Should have exactly one inactive period of length 1 (Feb 2021)
   expect_equal(nrow(inactive_periods), 1)
   expect_equal(inactive_periods$run_length, 1)
@@ -183,7 +183,7 @@ test_that("classify_facility_activity method3 handles facilities that never repo
   # All months should be "Inactive Health Facility"
   expected_status <- rep("Inactive Health Facility", 12)
   expect_equal(result$activity_status, expected_status)
-  
+
   # first_reporting_date should be NA
   expect_true(all(is.na(result$first_reporting_date)))
 })
@@ -221,7 +221,7 @@ test_that("classify_facility_activity method3 handles facility starting mid-peri
   )
 
   expect_equal(result$activity_status, expected_status)
-  
+
   # first_reporting_date should be April
   expect_equal(unique(result$first_reporting_date), as.Date("2020-04-01"))
 })
@@ -242,18 +242,18 @@ test_that("classify_facility_activity method3 validates nonreport_window paramet
       method = "method3",
       nonreport_window = window
     )
-    
+
     expect_s3_class(result, "data.frame")
     expect_equal(nrow(result), 1)
   }
-  
+
   # Test that parameter is properly used (not just validated)
   multi_month <- tibble::tibble(
     hf_uid = "HF1",
     date = seq(as.Date("2020-01-01"), by = "month", length.out = 8),
     test = c(1, rep(NA, 7))  # report in month 1, then 7 months of no reports
   )
-  
+
   # With window=3, should become inactive in month 4
   result_3 <- classify_facility_activity(
     data = multi_month,
@@ -262,9 +262,9 @@ test_that("classify_facility_activity method3 validates nonreport_window paramet
     method = "method3",
     nonreport_window = 3
   )
-  
+
   expect_equal(result_3$activity_status[4], "Inactive Health Facility")
-  
+
   # With window=6, should still be active in month 4
   result_6 <- classify_facility_activity(
     data = multi_month,
@@ -273,7 +273,7 @@ test_that("classify_facility_activity method3 validates nonreport_window paramet
     method = "method3",
     nonreport_window = 6
   )
-  
+
   expect_equal(result_6$activity_status[4], "Active Health Facility - Not Reporting")
 })
 
@@ -317,7 +317,7 @@ test_that("classify_facility_activity method3 correct diagnostics behavior", {
 
   # Should have exactly one inactive period spanning Aug 2020, Jun 2021, Jul 2021
   # This demonstrates that inactive periods can be shorter than nonreport_window
-  # The facility becomes inactive twice but rleid sees them as one period  
+  # The facility becomes inactive twice but rleid sees them as one period
   expect_equal(nrow(inactive_periods), 1)
   expect_equal(inactive_periods$run_length, 3)
   expect_equal(inactive_periods$start_date, as.Date("2020-08-01"))
@@ -360,7 +360,7 @@ test_that("classify_facility_activity method3 handles reporting_rule parameter",
   # With "positive_only": only >0 values count as reported
   result_positive <- classify_facility_activity(
     data = test_data,
-    hf_col = "hf_uid", 
+    hf_col = "hf_uid",
     key_indicators = "test",
     method = "method3",
     reporting_rule = "positive_only",
@@ -400,19 +400,19 @@ test_that("classify_facility_activity returns full original data", {
 
   # Should have all original columns plus classification columns
   expect_true(all(names(toy_data) %in% names(result)))
-  
+
   # Should have classification metadata columns
   expect_true("reported_any" %in% names(result))
   expect_true("first_reporting_date" %in% names(result))
   expect_true("last_reporting_date" %in% names(result))
   expect_true("has_ever_reported" %in% names(result))
   expect_true("activity_status" %in% names(result))
-  
+
   # Should preserve original data values
   expect_equal(result$extra_col1, toy_data$extra_col1)
   expect_equal(result$extra_col2, toy_data$extra_col2)
   expect_equal(result$extra_col3, toy_data$extra_col3)
-  
+
   # Should have same number of rows as original data
   expect_equal(nrow(result), nrow(toy_data))
 })
@@ -719,7 +719,7 @@ test_that("facility_reporting_plot can save and compress with method in filename
   expect_s3_class(plot, "ggplot")
   saved_files <- fs::dir_ls(tmp_dir, glob = "*.png")
   expect_length(saved_files, 1L)
-  
+
   # Check that filename contains method
   filename <- fs::path_file(saved_files[[1]])
   expect_true(stringr::str_detect(filename, "method3"))
@@ -746,7 +746,7 @@ test_that("facility_reporting_plot handles facet_col parameter", {
 
   # Add a grouping column for faceting
   data$region <- c("North", "North", "North", "South", "South", "South", "East", "East", "East")
-  
+
   # Test with facet_col = "region"
   plot <- plot_fun(
     data = data,
@@ -757,14 +757,14 @@ test_that("facility_reporting_plot handles facet_col parameter", {
   )
 
   expect_s3_class(plot, "ggplot")
-  
+
   # Check that plot has facets
   expect_s3_class(plot$facet, "FacetWrap")
-  
+
   # Check that legend title still mentions key indicators
   legend <- plot$scales$get_scales("fill")
   expect_true(stringr::str_detect(legend$name, "(test, pres, conf)"))
-  
+
   # Test error when facet_col is not in data
   expect_error(
     plot_fun(
