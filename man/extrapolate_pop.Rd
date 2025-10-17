@@ -7,19 +7,19 @@
 extrapolate_pop(
   data,
   year_col,
-  pop_col,
+  pop_cols,
   group_cols,
   years_to_extrap,
   multiplier = NULL
 )
 }
 \arguments{
-\item{data}{A data frame containing population data with year, population,
-and location columns.}
+\item{data}{A data frame containing population data with year, multiple
+population columns, and location columns.}
 
 \item{year_col}{The name of the year column (unquoted or character).}
 
-\item{pop_col}{The name of the population column (unquoted or character).}
+\item{pop_cols}{A character vector of population column names to extrapolate.}
 
 \item{group_cols}{A character vector of grouping column names defining
 location.}
@@ -29,22 +29,25 @@ unnamed (e.g., c(2021, 2022)) or named with specific multipliers
 (e.g., c(\code{2021} = 1.5, \code{2022} = 1.3)).}
 
 \item{multiplier}{A single numeric multiplier to apply to all years when
-\code{years_to_extrap} is unnamed (e.g., 1.5). Ignored if \code{years_to_extrap}
-provides named multipliers.}
+\code{years_to_extrap} is unnamed (e.g., 1.5). Can also be a named list/vector
+with multipliers for each population column. For year-specific multipliers,
+use a nested list structure like \code{list(pop_total = c('2021' = 1.03, '2022' = 1.025))}.
+If NULL and sufficient data exists, growth rates will be calculated automatically.}
 }
 \value{
-A data frame with updated population estimates for the specified
-years.
+A data frame with updated population estimates for all specified
+population columns and years.
 }
 \description{
-Fills missing population values for specified years by applying a multiplier
-to the nearest available year within each location group.
-Supports extending forward beyond the latest data or backward before the
-earliest data. Automatically expands data to a full year range.
+Fills missing population values for specified years by applying multipliers
+to the nearest available year within each location group. Can handle multiple
+population columns simultaneously. Supports extending forward beyond the latest
+data or backward before the earliest data. Automatically calculates growth
+rates from existing data when multipliers are not provided.
 }
 \examples{
 
-# Dummy data for 3 districts over 4 years
+# Dummy data for 3 districts over 3 years with multiple population columns
 dummy_data <- expand.grid(
  adm0 = "COUNTRYX",
  adm1 = c("RegionA", "RegionB"),
@@ -53,43 +56,58 @@ dummy_data <- expand.grid(
 ) |>
  dplyr::mutate(
    adm3 = paste0(adm2, "_Subarea"),
-   total_pop = sample(1000:5000, size = dplyr::n(), replace = TRUE)
+   pop_total = sample(1000:5000, size = dplyr::n(), replace = TRUE),
+   pop_0_11m = pop_total * 0.08,
+   pop_0_4y = pop_total * 0.15,
+   pop_u15 = pop_total * 0.45
  ) |>
  dplyr::arrange(adm0, adm1, adm2, year)
 
-# Example with the same multiplier for all years
+# Example with automatic growth rate calculation (no multiplier provided)
 extrapolate_pop(
   data = dummy_data,
   year_col = "year",
-  pop_col = "total_pop",
+  pop_cols = c("pop_total", "pop_0_11m", "pop_0_4y", "pop_u15"),
+  group_cols = c("adm0", "adm1", "adm2", "adm3"),
+  years_to_extrap = c(2021, 2022)
+)
+
+# Example with same multiplier for all columns
+extrapolate_pop(
+  data = dummy_data,
+  year_col = "year",
+  pop_cols = c("pop_total", "pop_0_11m", "pop_0_4y", "pop_u15"),
   group_cols = c("adm0", "adm1", "adm2", "adm3"),
   years_to_extrap = c(2021, 2022),
-  multiplier = 1.5
+  multiplier = 1.03
 )
 
-# Example with different multipliers for each year
+# Example with different multipliers for each column
 extrapolate_pop(
   data = dummy_data,
   year_col = "year",
-  pop_col = "total_pop",
+  pop_cols = c("pop_total", "pop_0_11m", "pop_0_4y", "pop_u15"),
   group_cols = c("adm0", "adm1", "adm2", "adm3"),
-  years_to_extrap = c(`2021` = 1.5, `2022` = 1.3)
+  years_to_extrap = c(2021, 2022),
+  multiplier = list(
+    pop_total = 1.025,
+    pop_0_11m = 1.030,
+    pop_0_4y = 1.028,
+    pop_u15 = 1.020
+  )
 )
 
-# Example with backward extrapolation from a single year
-backward_data <- tibble::tibble(
-  adm0 = "COUNTRYX",
-  year = 2024,
-  total_pop = 5000
-)
-
+# Example with year-specific multipliers for each column
 extrapolate_pop(
-  data = backward_data,
+  data = dummy_data,
   year_col = "year",
-  pop_col = "total_pop",
-  group_cols = "adm0",
-  years_to_extrap = 2020:2023,
-  multiplier = 1.2
+  pop_cols = c("pop_total", "pop_0_11m"),
+  group_cols = c("adm0", "adm1", "adm2", "adm3"),
+  years_to_extrap = c(2021, 2022),
+  multiplier = list(
+    pop_total = c(`2021` = 1.03, `2022` = 1.025),
+    pop_0_11m = c(`2021` = 1.035, `2022` = 1.030)
+  )
 )
 
 }

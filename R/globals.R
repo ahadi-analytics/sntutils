@@ -201,6 +201,10 @@ globalVariables(
     ".alpha_val",
     ".binary_flag",
     ".is_active",
-    ".read_back"
+    ".read_back",
+    "growth_rate",
+    "pop_sum",
+    "total_pop",
+    "growth_ratio", "prev_pop"
   )
 )
