@@ -737,80 +737,6 @@
   )
 }
 
-# sidecar metadata (.snt) ------------------------------------------------------
-
-#' Build hidden sidecar path (internal)
-#'
-#' @description
-#' Computes the path for the hidden `.snt/<basename>.snt.json` sidecar that
-#' stores metadata for a written data file. Creates the `.snt/` directory if
-#' missing.
-#'
-#' @param data_path Path to the primary data file.
-#' @return Absolute path to the sidecar JSON file.
-#' @keywords internal
-#' @noRd
-.sidecar_path <- function(data_path) {
-  dir <- fs::path_dir(data_path)
-  hid <- fs::path(dir, ".snt")
-  if (!fs::dir_exists(hid)) {
-    fs::dir_create(hid, recurse = TRUE)
-  }
-  fs::path(hid, paste0(fs::path_file(data_path), ".snt.json"))
-}
-
-#' Write sidecar JSON (internal)
-#'
-#' @description
-#' Writes a compact JSON sidecar with metadata for a given data file. On
-#' Windows, attempts to hide the sidecar file.
-#'
-#' @param data_path Path to the primary data file.
-#' @param meta Named list of metadata to write.
-#' @return Invisibly, the sidecar path.
-#' @keywords internal
-#' @noRd
-.write_sidecar <- function(data_path, meta) {
-  if (!requireNamespace("jsonlite", quietly = TRUE)) {
-    cli::cli_abort("Install 'jsonlite' to write sidecar JSON.")
-  }
-  sc <- .sidecar_path(data_path)
-  jsonlite::write_json(meta, path = sc, auto_unbox = TRUE, pretty = FALSE)
-  if (.Platform$OS.type == "windows") {
-    # best-effort hide when fs::file_hide is available
-    if (requireNamespace("fs", quietly = TRUE)) {
-      ns <- asNamespace("fs")
-      if (exists("file_hide", envir = ns, mode = "function")) {
-        try(get("file_hide", envir = ns)(sc), silent = TRUE)
-      }
-    }
-  }
-  invisible(sc)
-}
-
-#' Read sidecar JSON (if present)
-#'
-#' @description
-#' Reads the `.snt` sidecar metadata for a written data file when present.
-#'
-#' @param data_path Path to the primary data file.
-#' @return A named list of metadata, or `NULL` if missing/unavailable.
-#' @keywords internal
-#' @noRd
-.read_sidecar <- function(data_path) {
-  sc <- .sidecar_path(data_path)
-  if (!fs::file_exists(sc)) {
-    return(NULL)
-  }
-  if (!requireNamespace("jsonlite", quietly = TRUE)) {
-    return(NULL)
-  }
-  out <- try(jsonlite::read_json(sc, simplifyVector = TRUE), silent = TRUE)
-  if (inherits(out, "try-error")) {
-    return(NULL)
-  }
-  out
-}
 
 # list versions ----------------------------------------------------------------
 
@@ -898,10 +824,6 @@
     }
     if (isTRUE(ok)) {
       removed <- c(removed, f)
-      sc <- .sidecar_path(f)
-      if (fs::file_exists(sc)) {
-        try(fs::file_delete(sc), silent = TRUE)
-      }
       if (isTRUE(verbose)) {
         cli::cli_inform("Removed older version: {fs::path_file(f)}")
       }
@@ -965,7 +887,7 @@
 #' @param include_date Logical; append _v<date>. Default TRUE.
 #' @param version_tag Optional explicit tag (conflicts with include_date)
 #' @param n_saved Optional positive integer; keep only the newest
-#'   `n_saved` versioned files per format.
+#'   `n_saved` versioned files per format. Default is 3.
 #' @param quiet Logical; suppress info logs.
 #' @param overwrite Logical; allow overwrite when not versioned.
 #' @param ... Additional writer-specific arguments
@@ -983,7 +905,7 @@ write_snt_data <- function(
   date_format = "%Y-%m-%d",
   include_date = TRUE,
   version_tag = NULL,
-  n_saved = NULL,
+  n_saved = 3,
   quiet = TRUE,
   overwrite = TRUE,
   ...
@@ -1082,20 +1004,6 @@ write_snt_data <- function(
             hash_val <- .obj_hash(obj, fmt)
             ok <- TRUE
 
-            # write sidecar metadata (hidden in .snt/)
-            .write_sidecar(
-              write_path,
-              list(
-                fmt = fmt,
-                data_name = data_name,
-                size = as.numeric(bytes),
-                algo = "xxhash64",
-                obj_hash = .obj_hash(obj, fmt = "csv"),
-                file_md5 = .file_hash(write_path, "md5"),
-                written_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ"),
-                path = fs::path_file(write_path)
-              )
-            )
           },
           error = function(e) err_msg <<- conditionMessage(e)
         )
