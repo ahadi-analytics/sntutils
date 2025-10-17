@@ -1644,12 +1644,23 @@ translate_plot_labels <- function(plot, target_language,
     if (!is.null(plot_labs[[lab_name]]) && plot_labs[[lab_name]] != "") {
       # Special handling for markdown-formatted title
       if (lab_name == "title") {
-        orig_title <- translate_text(
+        manual_title <- .manual_title_translation(
           plot_labs[[lab_name]],
           target_language = target_language,
           source_language = source_language,
-          cache_path = lang_cache_path
+          lang_cache_path = lang_cache_path
         )
+
+        orig_title <- if (!is.null(manual_title)) {
+          manual_title
+        } else {
+          translate_text(
+            plot_labs[[lab_name]],
+            target_language = target_language,
+            source_language = source_language,
+            cache_path = lang_cache_path
+          )
+        }
 
         # Apply title case - capitalize first letter
         orig_title <- paste0(
@@ -1662,9 +1673,8 @@ translate_plot_labels <- function(plot, target_language,
           orig_title
         )
       } else if (lab_name == "subtitle") {
-        # Skip translating subtitle - it's already properly translated when created
-        # This preserves variable names that should remain untranslated
-        # Do nothing - keep subtitle as is
+        # Skip translating subtitle to keep manual translations.
+        # This preserves variable names for readability.
       } else {
         # Standard translation for other labels
         translated_text <- translate_text(
@@ -1692,6 +1702,74 @@ translate_plot_labels <- function(plot, target_language,
   plot + do.call(ggplot2::labs, plot_labs)
 }
 
+# helper: manual tweaks for tricky title translations
+#' @noRd
+.manual_title_translation <- function(title_text,
+                                      target_language,
+                                      source_language = "en",
+                                      lang_cache_path = tempdir()) {
+  if (target_language != "fr") {
+    return(NULL)
+  }
+
+  pattern <- "^Reporting rate of (.+) by (.+) and (.+)$"
+  match <- base::regexec(pattern, title_text)
+  captured <- base::regmatches(title_text, match)[[1]]
+  if (base::length(captured) != 4L) {
+    return(NULL)
+  }
+
+  variable_en <- captured[[2]]
+  x_en <- captured[[3]]
+  y_en <- captured[[4]]
+
+  variable_fr <- translate_text(
+    variable_en,
+    target_language = target_language,
+    source_language = source_language,
+    cache_path = lang_cache_path
+  )
+  x_fr <- translate_text(
+    x_en,
+    target_language = target_language,
+    source_language = source_language,
+    cache_path = lang_cache_path
+  )
+  y_fr <- translate_text(
+    y_en,
+    target_language = target_language,
+    source_language = source_language,
+    cache_path = lang_cache_path
+  )
+
+  # choose article based on leading vowel/consonant
+  variable_clean <- trimws(variable_fr)
+  has_article <- grepl(
+    "^(la|le|les|l'|du|de la|des|de l')\\s",
+    tolower(variable_clean)
+  )
+  leading_vowel <- grepl("^[aeiouh]", tolower(variable_clean))
+  article <- if (leading_vowel) "de l'" else "du "
+  variable_phrase <- if (has_article) {
+    variable_clean
+  } else {
+    paste0(article, variable_clean)
+  }
+
+  french_title <- paste(
+    "Taux de rapport",
+    variable_phrase,
+    "par",
+    trimws(x_fr),
+    "et",
+    trimws(y_fr)
+  )
+
+  french_title <- gsub("\\s+", " ", french_title)
+  french_title <- gsub("de l' ", "de l'", french_title, fixed = TRUE)
+  trimws(french_title)
+}
+
 #' Create common ggplot elements
 #'
 #' @param fill_var Fill variable name
@@ -1702,9 +1780,17 @@ translate_plot_labels <- function(plot, target_language,
 create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
   # Set up plot aesthetics
   color_pal <- if (use_reprate) {
-    rev(wesanderson::wes_palette("Zissou1", 100, type = "continuous"))
+    if (requireNamespace("wesanderson", quietly = TRUE)) {
+      rev(wesanderson::wes_palette("Zissou1", 100, type = "continuous"))
+    } else {
+      rev(grDevices::heat.colors(100))
+    }
   } else {
-    wesanderson::wes_palette("Zissou1", 100, type = "continuous")
+    if (requireNamespace("wesanderson", quietly = TRUE)) {
+      wesanderson::wes_palette("Zissou1", 100, type = "continuous")
+    } else {
+      grDevices::heat.colors(100)
+    }
   }
 
   # Define common theme elements
@@ -1889,7 +1975,7 @@ reporting_rate_map <- function(
   ...
 ) {
   # Ensure required packages
-  ensure_packages(c("wesanderson", "ggplot2", "sf"))
+  ensure_packages(c("ggplot2", "sf"))
 
   # Validate inputs
   if (!inherits(shapefile, "sf")) {
@@ -1939,9 +2025,17 @@ reporting_rate_map <- function(
 
   # Palette setup - match reporting_rate_plot color scheme
   color_pal <- if (use_reprate) {
-    rev(wesanderson::wes_palette("Zissou1", 100, type = "continuous"))
+    if (requireNamespace("wesanderson", quietly = TRUE)) {
+      rev(wesanderson::wes_palette("Zissou1", 100, type = "continuous"))
+    } else {
+      rev(grDevices::heat.colors(100))
+    }
   } else {
-    wesanderson::wes_palette("Zissou1", 100, type = "continuous")
+    if (requireNamespace("wesanderson", quietly = TRUE)) {
+      wesanderson::wes_palette("Zissou1", 100, type = "continuous")
+    } else {
+      grDevices::heat.colors(100)
+    }
   }
 
   # Translate labels if needed
