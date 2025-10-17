@@ -12,7 +12,7 @@ write_snt_data(
   date_format = "\%Y-\%m-\%d",
   include_date = TRUE,
   version_tag = NULL,
-  n_saved = NULL,
+  n_saved = 3,
   quiet = TRUE,
   overwrite = TRUE,
   ...
@@ -34,7 +34,7 @@ write_snt_data(
 \item{version_tag}{Optional explicit tag (conflicts with include_date)}
 
 \item{n_saved}{Optional positive integer; keep only the newest
-\code{n_saved} versioned files per format.}
+\code{n_saved} versioned files per format. Default is 3.}
 
 \item{quiet}{Logical; suppress info logs.}
 

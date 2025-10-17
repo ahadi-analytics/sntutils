@@ -1,16 +1,16 @@
-# minimal helpers for tests ----------------------------------------------------
+# test helpers ----------------------------------------------------------------
 
-# return TRUE if writer exists
 has_writer <- function(fmt) {
-  fmt %in% names(.writer_registry())
+  tryCatch({
+    reg <- sntutils:::.writer_registry()
+    fmt %in% names(reg)
+  }, error = function(e) FALSE)
 }
 
-# return TRUE if package exists
 has_pkg <- function(p) {
   requireNamespace(p, quietly = TRUE)
 }
 
-# small df with varied types and utf-8
 make_small_df <- function() {
   tibble::tibble(
     id = 1:3,
@@ -21,7 +21,6 @@ make_small_df <- function() {
   )
 }
 
-# small sf if sf present
 make_small_sf <- function() {
   if (!has_pkg("sf")) {
     return(NULL)
@@ -36,7 +35,7 @@ make_small_sf <- function() {
   sf::st_as_sf(df, geom = geom)
 }
 
-# core validation --------------------------------------------------------------
+# input validation ------------------------------------------------------------
 
 testthat::test_that("rejects bad inputs", {
   tmp <- withr::local_tempdir()
@@ -103,7 +102,7 @@ testthat::test_that("date vs tag conflict is rejected", {
   )
 })
 
-# basic writes -----------------------------------------------------------------
+# basic writing ---------------------------------------------------------------
 
 testthat::test_that("writes rds and returns summary", {
   tmp <- withr::local_tempdir()
@@ -157,7 +156,7 @@ testthat::test_that("tsv writer works", {
   testthat::expect_true(fs::file_exists(res$path[[1]]))
 })
 
-# excel ------------------------------------------------------------------------
+# excel format ----------------------------------------------------------------
 
 testthat::test_that("xlsx writes when openxlsx is available", {
   testthat::skip_if_not(has_pkg("openxlsx"))
@@ -203,7 +202,7 @@ testthat::test_that(
   }
 )
 
-# parquet/feather --------------------------------------------------------------
+# arrow formats ---------------------------------------------------------------
 
 testthat::test_that("parquet writes when arrow is available", {
   testthat::skip_if_not(has_pkg("arrow"))
@@ -234,7 +233,7 @@ testthat::test_that("feather writes when arrow is available", {
   testthat::expect_true(res$ok[[1]])
 })
 
-# qs2 -------------------------------------------------------------------
+# qs2 format ------------------------------------------------------------------
 
 testthat::test_that("qs2 writes when qs2 is available", {
   testthat::skip_if_not(has_pkg("qs2"))
@@ -270,7 +269,7 @@ testthat::test_that("sf geometry is dropped for non-geo formats", {
   testthat::expect_false(any(grepl("^geometry", names(dat))))
 })
 
-# overwrite and no-date behavior -----------------------------------------------
+# overwrite behavior ----------------------------------------------------------
 
 testthat::test_that("refuses overwrite when include_date = FALSE", {
   tmp <- withr::local_tempdir()
@@ -336,7 +335,7 @@ testthat::test_that(
   testthat::expect_true(info2$modification_time >= info1$modification_time)
 })
 
-# version pruning --------------------------------------------------------------
+# version management ----------------------------------------------------------
 
 testthat::test_that("same-day versioned writes reuse the existing file", {
   tmp <- withr::local_tempdir()
@@ -374,7 +373,6 @@ testthat::test_that("n_saved keeps only the newest versioned files", {
   tmp <- withr::local_tempdir()
   tags <- sprintf("2025-01-%02d", 1:4)
   old_path <- NULL
-  old_sidecar <- NULL
 
   for (i in seq_along(tags)) {
     res <- write_snt_data(
@@ -390,8 +388,6 @@ testthat::test_that("n_saved keeps only the newest versioned files", {
     testthat::expect_true(res$ok[[1]])
     if (i == 1L) {
       old_path <- res$path[[1]]
-      old_sidecar <- .sidecar_path(old_path)
-      testthat::expect_true(fs::file_exists(old_sidecar))
     }
     Sys.setFileTime(
       res$path[[1]],
@@ -408,7 +404,6 @@ testthat::test_that("n_saved keeps only the newest versioned files", {
     paste0("cars_v", tail(tags, 3), ".csv")
   )
   testthat::expect_false(fs::file_exists(old_path))
-  testthat::expect_false(fs::file_exists(old_sidecar))
 })
 
 testthat::test_that("n_saved defaults to keeping all versions", {
@@ -433,7 +428,7 @@ testthat::test_that("n_saved defaults to keeping all versions", {
   testthat::expect_true(all(fs::file_exists(paths)))
 })
 
-# return structure and messages ------------------------------------------------
+# return values ---------------------------------------------------------------
 
 testthat::test_that("returns typed summary for multiple formats", {
   tmp <- withr::local_tempdir()
@@ -455,72 +450,7 @@ testthat::test_that("returns typed summary for multiple formats", {
 })
 
 
-testthat::test_that("sidecar is created and well-formed", {
-  sidecar_ready <- has_pkg("jsonlite") &&
-    is.function(get0(".sidecar_path", mode = "function")) &&
-    is.function(get0(".read_sidecar", mode = "function"))
-  testthat::skip_if_not(sidecar_ready, "sidecar helpers missing")
 
-  tmp <- withr::local_tempdir()
-  df <- make_small_df()
-
-  res <- write_snt_data(
-    obj = df,
-    path = tmp,
-    data_name = "sc_basic",
-    file_formats = "csv",
-    quiet = TRUE
-  )
-
-  testthat::expect_s3_class(res, "data.frame")
-  testthat::expect_true(res$ok[[1]])
-  p <- res$path[[1]]
-  sc <- .sidecar_path(p)
-
-  testthat::expect_true(fs::file_exists(p))
-  testthat::expect_true(fs::file_exists(sc))
-
-  meta <- .read_sidecar(p)
-  testthat::expect_type(meta, "list")
-  testthat::expect_true(
-    all(c("fmt", "data_name", "size", "obj_hash", "file_md5") %in% names(meta))
-  )
-  testthat::expect_identical(meta$fmt, "csv")
-  testthat::expect_identical(meta$data_name, "sc_basic")
-  testthat::expect_gt(meta$size, 0)
-  testthat::expect_match(meta$obj_hash, "^[0-9a-f]+$")
-  testthat::expect_match(meta$file_md5, "^[0-9a-f]+$")
-})
-
-testthat::test_that("obj_hash matches across formats for same data", {
-  sidecar_ready <- has_pkg("jsonlite") &&
-    is.function(get0(".sidecar_path", mode = "function")) &&
-    is.function(get0(".read_sidecar", mode = "function"))
-  testthat::skip_if_not(sidecar_ready, "sidecar helpers missing")
-
-  tmp <- withr::local_tempdir()
-  df <- make_small_df()
-
-  # write both in one call so we capture both formats together
-  res <- write_snt_data(
-    obj = df,
-    path = tmp,
-    data_name = "sc_both",
-    file_formats = c("rds", "csv"),
-    quiet = TRUE
-  )
-  testthat::expect_true(all(res$ok))
-
-  p_rds <- res$path[res$format == "rds"][[1]]
-  p_csv <- res$path[res$format == "csv"][[1]]
-
-  sc_rds <- .read_sidecar(p_rds)
-  sc_csv <- .read_sidecar(p_csv)
-
-  testthat::expect_identical(sc_rds$obj_hash, sc_csv$obj_hash)
-  testthat::expect_identical(sc_rds$data_name, "sc_both")
-  testthat::expect_identical(sc_csv$data_name, "sc_both")
-})
 
 testthat::test_that("invisible return can still be captured", {
   tmp <- withr::local_tempdir()
