@@ -107,7 +107,7 @@ standardize_names <- function(
     )
   }
 
-  name_vec |>
+  standardized <- name_vec |>
     # ensure character
     as.character() |>
     # uppercase for consistent comparison
@@ -154,4 +154,8 @@ standardize_names <- function(
     })() |>
     # sort tokens with letters first, numbers last
     (\(x) apply_if(x, sort_tokens, sort_tokens_fun))()
+
+  # drop auto-generated names introduced by vapply
+  names(standardized) <- NULL
+  standardized
 }
