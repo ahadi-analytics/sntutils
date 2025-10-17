@@ -113,7 +113,7 @@ check_chirps_available <- function(dataset_code = "africa_monthly") {
     return(df)
 
   }, error = function(e) {
-    cli::cli_alert_danger(glue::glue("Could not access {base_url}"))
+    cli::cli_alert_danger(paste0("Could not access ", base_url))
     return(NULL)
   })
 }
@@ -166,8 +166,8 @@ download_chirps <- function(dataset, start, end = NULL,
   sel <- opts[opts$dataset == dataset, ]
   freq <- sel$frequency
   subdir <- sel$subdir
-  base_url <- glue::glue(
-    "https://data.chc.ucsb.edu/products/CHIRPS-2.0/{subdir}")
+  base_url <- paste0(
+    "https://data.chc.ucsb.edu/products/CHIRPS-2.0/", subdir)
 
   if (is.null(end)) {
     dates <- as.Date(paste0(start, "-01"))
@@ -178,7 +178,7 @@ download_chirps <- function(dataset, start, end = NULL,
 
   if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
-  cli::cli_h1(glue::glue("Downloading CHIRPS: {sel$label}"))
+  cli::cli_h1(paste0("Downloading CHIRPS: ", sel$label))
   cli::cli_progress_bar("Downloading", total = length(dates))
   cli::cli_text("")
 
@@ -188,9 +188,9 @@ download_chirps <- function(dataset, start, end = NULL,
     month <- format(d, "%m")
 
     if (freq == "monthly") {
-      orig_name <- glue::glue("chirps-v2.0.{year}.{month}.tif.gz")
-      custom_name <- glue::glue("{dataset}_chirps-v2.0.{year}.{month}.tif.gz")
-      url <- glue::glue("{base_url}/{orig_name}")
+      orig_name <- sprintf("chirps-v2.0.%s.%s.tif.gz", year, month)
+      custom_name <- sprintf("%s_chirps-v2.0.%s.%s.tif.gz", dataset, year, month)
+      url <- paste0(base_url, "/", orig_name)
       dest <- file.path(out_dir, custom_name)
       tif  <- sub(".gz$", "", dest)
 
