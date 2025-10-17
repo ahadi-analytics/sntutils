@@ -1,3 +1,7 @@
+^renv$
+^renv\.lock$
+^renv-guide\.md$
+^setup-renv\.R$
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^README\.qmd$
