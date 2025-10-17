@@ -1254,7 +1254,6 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
 #' }
 #'
 #' @importFrom rlang :=
-#' @importFrom foreach %dopar%
 #' @export
 prep_geonames <- function(
   target_df,
