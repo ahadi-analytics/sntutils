@@ -133,22 +133,23 @@ plot_admin_map_distinct <- function(
     ggplot2::theme_void(base_size = 14) +
     ggplot2::theme(legend.position = "none")
 
-  # Add labels with shadowtext if available, otherwise fallback to geom_text
-  if (rlang::is_installed("shadowtext")) {
+  # Add labels with ggrepel if available, otherwise fallback to geom_text
+  if (rlang::is_installed("ggrepel")) {
     gg <- gg +
-      shadowtext::geom_shadowtext(
+      ggrepel::geom_text_repel(
         data = labels,
         ggplot2::aes(x = x, y = y, label = .data[[group_col]]),
-        size = 4,
+        size = 3,
         fontface = "bold",
-        color = "black",
+        box.padding = 0.3,
+        segment.color = NA,
         bg.color = "white",
-        bg.r = 0.35,
-        check_overlap = TRUE
+        bg.r = 0.5,
+        label.padding = grid::unit(1.5, "lines")
       )
   } else {
     cli::cli_alert_info(
-      "Package {\"shadowtext\"} not installed; using ggplot2::geom_text instead."
+      "Package {\"ggrepel\"} not installed; using ggplot2::geom_text instead."
     )
     gg <- gg +
       ggplot2::geom_text(
