@@ -262,7 +262,7 @@ detect_outliers(
 detect_outliers(
   data = malaria_data,
   column = "conf",
-  date = "date", 
+  date = "date",
   admin_levels = c("adm1", "adm2"),
   time_mode = "by_month",
   key_indicators_hf = c("allout", "test", "conf"),

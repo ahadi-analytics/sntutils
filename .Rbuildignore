@@ -9,7 +9,7 @@ CLAUDE\.md$
 generate_svg_badge.R
 .nanocoder
 .Rbuildignore
-.clau*
+^\.clau.*$
 AGENTS.md
 ^test-changed\.sh$
 ^test-changed-smart\.sh$

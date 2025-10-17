@@ -206,7 +206,7 @@ flagged_panel <- flagged_panel |>
     activity_status_method3 = {
       n_obs <- length(reported_any)
       status <- character(n_obs)
-      
+
       # track state dynamically
       is_active <- FALSE
       consecutive_nonreports <- 0
@@ -284,6 +284,7 @@ flagged_panel <- flagged_panel |>
 
   result
 }
+
 
 #' Plot monthly reporting activity by health facility
 #'
