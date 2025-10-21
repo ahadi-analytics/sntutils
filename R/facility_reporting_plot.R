@@ -611,6 +611,18 @@ facility_reporting_plot <- function(
     )
   }
 
+  # Add method descriptions
+  method_descriptions <- list(
+    method1 = "Method 1: permanent activation since first report",
+    method2 = "Method 2: active after first report, inactive after last report",
+    method3 = "Method 3: dynamic activation and inactivation"
+  )
+
+  current_method_desc <- method_descriptions[[method]]
+  if (is.null(current_method_desc)) {
+    current_method_desc <- method_descriptions[["method1"]]
+  }
+
   subtitle_text <- base::paste(subtitle_lines, collapse = "\n")
   should_translate <- target_language != "en"
   if (should_translate) {
@@ -669,6 +681,14 @@ facility_reporting_plot <- function(
     }
     subtitle_lines <- gsub("\n", " ", subtitle_lines)
     subtitle_text <- base::paste(subtitle_lines, collapse = "\n")
+
+    # Translate method description
+    current_method_desc <- translate_text(
+      current_method_desc,
+      target_language = target_language,
+      source_language = source_language,
+      cache_path = lang_cache_path
+    )
 
     # Translate title parts separately to preserve number formatting
     title_base <- translate_text(
@@ -793,7 +813,8 @@ facility_reporting_plot <- function(
         "HF Number\n"
       },
       title = plot_title,
-      subtitle = paste0(subtitle_text, "\n")
+      subtitle = paste0(subtitle_text, "\n"),
+      caption = current_method_desc
     ) +
     ggplot2::theme_minimal(base_family = "sans") +
     ggplot2::guides(
@@ -809,7 +830,8 @@ facility_reporting_plot <- function(
       axis.line = ggplot2::element_line(color = "black", linewidth = 0.5),
       legend.position = "bottom",
       legend.direction = "horizontal",
-      legend.box = "vertical"
+      legend.box = "vertical",
+      plot.caption = ggplot2::element_text(hjust = 1, size = 9, color = "grey40")
     )
 
   # Add faceting if facet_col is provided
