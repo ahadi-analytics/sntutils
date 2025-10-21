@@ -55,12 +55,40 @@ snt_data_dict <- function(
     dplyr::mutate(domain = stringr::str_extract(.data$path, "^[^.]+")) |>
     dplyr::select(domain, dplyr::everything(), -path)
 
-  # Attach disaggregation info (if defined in YAML)
+  # Extract disaggregation info from variable names using schema
   flat_tbl$disagg <- purrr::map_chr(flat_tbl$snt_var_name, function(nm) {
-    dom <- flat_tbl$domain[flat_tbl$snt_var_name == nm][1]
-    found <- purrr::pluck(tree, dom, nm)
-    if (is.list(found) && "disagg" %in% names(found)) {
-      paste(found$disagg, collapse = ", ")
+    # Extract disaggregations from variable name using schema
+    if (is.null(tree$schema)) return(NA_character_)
+    
+    # Get all disaggregation types from schema
+    age_groups <- names(tree$schema$age_groups)
+    pop_groups <- names(tree$schema$population_groups)
+    test_types <- names(tree$schema$test_types)
+    sectors <- names(tree$schema$sectors)
+    service_levels <- names(tree$schema$service_levels)
+    
+    # Split variable name into tokens
+    tokens <- unlist(strsplit(nm, "_"))
+    
+    # Find matching disaggregations
+    found_disagg <- c()
+    
+    for (token in tokens) {
+      if (token %in% age_groups) {
+        found_disagg <- c(found_disagg, token)
+      } else if (token %in% pop_groups) {
+        found_disagg <- c(found_disagg, token)
+      } else if (token %in% test_types) {
+        found_disagg <- c(found_disagg, token)
+      } else if (token %in% sectors) {
+        found_disagg <- c(found_disagg, token)
+      } else if (token %in% service_levels) {
+        found_disagg <- c(found_disagg, token)
+      }
+    }
+    
+    if (length(found_disagg) > 0) {
+      paste(found_disagg, collapse = ", ")
     } else {
       NA_character_
     }
