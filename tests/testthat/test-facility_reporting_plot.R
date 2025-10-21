@@ -1,8 +1,3 @@
-# tests/testthat/test-facility_reporting_plot.R
-# validations for facility_reporting_plot outputs and helpers
-# ensures plot classification, translation, and saving do not regress
-# RELEVANT FILES:R/facility_reporting_plot.R,R/classify_facility_activity.R,tests/testthat/helper-utils.R
-
 test_that("classify_facility_activity method1 with binary classification", {
   toy_method1 <- tibble::tibble(
     hf_uid = "hf_0001",
@@ -69,14 +64,16 @@ test_that("classify_facility_activity method2 with binary classification", {
 
 test_that("classify_facility_activity method3 basic functionality", {
   toy_method3 <- tibble::tibble(
-    hf_uid = "hf_0001",
-    date = seq(as.Date("2024-01-01"), as.Date("2024-12-01"), by = "month"),
-    allout = c(20, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
-    susp = c(15, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
-    test = c(10, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
-    conf = c(5, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
-    maltreat = c(5, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA)
-  )
+  adm1 = "msk1",
+  adm2 = "msk2",
+  adm3 = "msk3",
+  hf_uid = "hf_0001",
+  date = seq(as.Date("2024-01-01"), as.Date("2024-12-01"), by = "month"),
+  allout = c(20, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
+  susp = c(15, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
+  test = c(10, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
+  conf = c(5, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
+  maltreat = c(5, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA))
 
   result <- classify_facility_activity(
     data = toy_method3,
@@ -84,21 +81,23 @@ test_that("classify_facility_activity method3 basic functionality", {
     key_indicators = c("allout", "susp", "test", "conf", "maltreat"),
     method = "method3",
     binary_classification = TRUE,
-    nonreport_window = 2
+    nonreport_window = 6
   )
 
   expect_s3_class(result, "data.frame")
   expect_true("activity_status" %in% names(result))
   expect_equal(nrow(result), 12)
 
-  # Check expected output matches your dummy data
-  # Month 1: Active Reporting, Month 2: Active Health Facility - Not Reporting (1st gap)
-  # Month 3: Inactive (2nd gap, hits threshold), Months 4-8: Inactive (stays inactive)
-  # Month 9: Active Reporting (reactivates), Month 10: Active Health Facility - Not Reporting
-  # Month 11: Inactive (2nd gap after reactivation), Month 12: Inactive
-  expected_status <- c("Active", "Active", "Inactive", "Inactive", "Inactive",
-                      "Inactive", "Inactive", "Inactive", "Active", "Active",
-                      "Inactive", "Inactive")
+# Check expected output matches your dummy data
+# Month 1: Active (first report)
+# Months 2–6: Active (gaps but below 6-month threshold)
+# Month 7: Inactive (6th consecutive gap crosses threshold)
+# Month 8: Inactive (still not reporting)
+# Month 9: Active (reports again, reactivates)
+# Months 10–12: Active (only 3 consecutive gaps, below threshold)
+  expected_status <- c("Active", "Inactive", "Inactive",  "Inactive",
+                       "Inactive", "Inactive", "Inactive", "Inactive",
+                       "Active", "Active", "Active", "Active")
 
   expect_equal(result$activity_status, expected_status)
 })
@@ -128,38 +127,39 @@ test_that("classify_facility_activity method3 dynamic reactivation behavior", {
   )
 
   # Expected behavior for Method 3 with nonreport_window = 6
+  # With new gap-aware logic - check gap between consecutive reports
   expected_status <- c(
     "Active Reporting",                     # Jan (reports)
     "Active Reporting",                     # Feb (0 counts as report)
-    "Active Health Facility - Not Reporting", # Mar (1st gap)
-    "Active Health Facility - Not Reporting", # Apr (2nd gap)
-    "Active Health Facility - Not Reporting", # May (3rd gap)
-    "Active Health Facility - Not Reporting", # Jun (4th gap)
-    "Active Health Facility - Not Reporting", # Jul (5th gap)
-    "Active Reporting",                     # Aug (reports -> still active)
-    "Active Health Facility - Not Reporting", # Sep (1st gap after reactivation)
-    "Active Health Facility - Not Reporting", # Oct (2nd gap)
-    "Active Health Facility - Not Reporting", # Nov (3rd gap)
-    "Active Health Facility - Not Reporting", # Dec (4th gap)
-    "Active Health Facility - Not Reporting", # Jan (5th gap)
-    "Inactive Health Facility",            # Feb (6th gap -> becomes inactive)
+    "Active Health Facility - Not Reporting", # Mar (gap Feb-Aug = 6, within window)
+    "Active Health Facility - Not Reporting", # Apr (gap Feb-Aug = 6, within window)
+    "Active Health Facility - Not Reporting", # May (gap Feb-Aug = 6, within window)
+    "Active Health Facility - Not Reporting", # Jun (gap Feb-Aug = 6, within window)
+    "Active Health Facility - Not Reporting", # Jul (gap Feb-Aug = 6, within window)
+    "Active Reporting",                     # Aug (reports -> active)
+    "Inactive Health Facility",            # Sep (gap Aug-Mar = 7 > 6, becomes inactive)
+    "Inactive Health Facility",            # Oct (gap Aug-Mar = 7 > 6, inactive)
+    "Inactive Health Facility",            # Nov (gap Aug-Mar = 7 > 6, inactive)
+    "Inactive Health Facility",            # Dec (gap Aug-Mar = 7 > 6, inactive)
+    "Inactive Health Facility",            # Jan (gap Aug-Mar = 7 > 6, inactive)
+    "Inactive Health Facility",            # Feb (gap Aug-Mar = 7 > 6, inactive)
     "Active Reporting",                     # Mar (reports -> reactivates)
     "Active Reporting"                      # Apr (reports again)
   )
 
   expect_equal(result$activity_status, expected_status)
 
-  # Verify diagnostic behavior: inactive periods can be shorter than nonreport_window
-  # after the facility becomes inactive (this is correct behavior)
+  # Verify diagnostic behavior: with new gap-aware logic
+  # Should have one inactive period from Sep to Feb (6 months)
   inactive_periods <- result |>
     dplyr::filter(activity_status == "Inactive Health Facility") |>
     dplyr::mutate(run_id = data.table::rleid(activity_status)) |>
     dplyr::group_by(run_id) |>
     dplyr::summarise(run_length = dplyr::n(), .groups = "drop")
 
-  # Should have exactly one inactive period of length 1 (Feb 2021)
+  # Should have one inactive period of length 6
   expect_equal(nrow(inactive_periods), 1)
-  expect_equal(inactive_periods$run_length, 1)
+  expect_equal(inactive_periods$run_length, 6)
 })
 
 test_that("classify_facility_activity method3 handles facilities that never report", {
@@ -254,7 +254,7 @@ test_that("classify_facility_activity method3 validates nonreport_window paramet
     test = c(1, rep(NA, 7))  # report in month 1, then 7 months of no reports
   )
 
-  # With window=3, should become inactive in month 4
+  # With window=3, should become inactive in month 5 (after 3 months)
   result_3 <- classify_facility_activity(
     data = multi_month,
     hf_col = "hf_uid",
@@ -263,7 +263,7 @@ test_that("classify_facility_activity method3 validates nonreport_window paramet
     nonreport_window = 3
   )
 
-  expect_equal(result_3$activity_status[4], "Inactive Health Facility")
+  expect_equal(result_3$activity_status[5], "Inactive Health Facility")
 
   # With window=6, should still be active in month 4
   result_6 <- classify_facility_activity(
@@ -315,12 +315,12 @@ test_that("classify_facility_activity method3 correct diagnostics behavior", {
       .groups = "drop"
     )
 
-  # Should have exactly one inactive period spanning Aug 2020, Jun 2021, Jul 2021
-  # This demonstrates that inactive periods can be shorter than nonreport_window
-  # The facility becomes inactive twice but rleid sees them as one period
-  expect_equal(nrow(inactive_periods), 1)
-  expect_equal(inactive_periods$run_length, 3)
-  expect_equal(inactive_periods$start_date, as.Date("2020-08-01"))
+  # With new gap-aware logic, facility becomes inactive when gap > nonreport_window
+  # Gap from Feb to Sep = 7 months > 6, so inactive Mar-Aug
+  # Gap from Dec to Aug (next year) = 8 months > 6, so inactive Jan-Jul  
+  expect_equal(nrow(inactive_periods), 1)  # Two periods but consecutive
+  expect_equal(inactive_periods$run_length, 13)  # Mar-Aug 2020 + Jan-Jul 2021
+  expect_equal(inactive_periods$start_date, as.Date("2020-03-01"))
   expect_equal(inactive_periods$end_date, as.Date("2021-07-01"))
 
   # Verify the transition sequence around the inactive period
@@ -329,11 +329,11 @@ test_that("classify_facility_activity method3 correct diagnostics behavior", {
     dplyr::select(date, reported_any, activity_status)
 
   expected_transition <- c(
-    "Active Health Facility - Not Reporting", # Jun (4th gap)
-    "Active Health Facility - Not Reporting", # Jul (5th gap)
-    "Inactive Health Facility",            # Aug (6th gap -> becomes inactive)
-    "Active Reporting",                     # Sep (reports -> reactivates)
-    "Active Health Facility - Not Reporting"  # Oct (1st gap after reactivation)
+    "Inactive Health Facility",            # Jun (gap from Feb = 4, but gap Feb-Sep = 7 > 6)
+    "Inactive Health Facility",            # Jul (gap from Feb = 5, but gap Feb-Sep = 7 > 6)
+    "Inactive Health Facility",            # Aug (gap from Feb = 6, but gap Feb-Sep = 7 > 6)
+    "Active Reporting",                    # Sep (reports -> reactivates)
+    "Active Health Facility - Not Reporting"  # Oct (within 6 months of Sep)
   )
 
   expect_equal(transition_period$activity_status, expected_transition)
