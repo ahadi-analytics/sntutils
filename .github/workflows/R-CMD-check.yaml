@@ -47,6 +47,8 @@ jobs:
             sudo apt-get install -y libnetcdf-dev
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
             brew install netcdf
+            # Ensure nc-config is in PATH
+            echo "$(brew --prefix netcdf)/bin" >> $GITHUB_PATH
           fi
         shell: bash
 
