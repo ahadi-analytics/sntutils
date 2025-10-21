@@ -26,7 +26,7 @@ format:
 |  | `reporting_rate_plot()` | Visualizes reporting/missing rates by two variables |
 | **Outlier Detection** | `detect_outliers()` | Flags outliers in a numeric column using mean ± 3 SD, Median, and Tukey’s IQR methods |
 |  | `outlier_plot()` | Generates time‐series plots of flagged outliers (faceted by admin area, colored by method) |
-| **Consistency Checks** | `consistency_check()` | Validates logical coherence in malaria care cascade (inputs ≥ outputs) |
+| **Consistency Checks** | `consistency_check()` | Validates logical coherence in malaria care cascade (inputs >= outputs) |
 | **Translation** | `translate_text()` | Translates text with persistent file cache |
 |  | `translate_text_vec()` | Vectorized version of `translate_text` function |
 |  | `translate_yearmon()` | Converts date to yearmon format with month names in multiple langs |
@@ -676,11 +676,11 @@ events (inputs) are greater than or equal to downstream events (outputs)
 in the care cascade. This is useful for data quality assessment.
 
 Common validation checks include:
-- All outpatients ≥ suspected malaria
-- Malaria tests ≥ confirmed cases
-- Confirmed cases ≥ cases treated
-- All admissions ≥ malaria admissions
-- Malaria admissions ≥ malaria deaths
+- All outpatients >= suspected malaria
+- Malaria tests >= confirmed cases
+- Confirmed cases >= cases treated
+- All admissions >= malaria admissions
+- Malaria admissions >= malaria deaths
 
 ```{r}
 #| label: consistency-check-examples

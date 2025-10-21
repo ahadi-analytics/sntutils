@@ -10,10 +10,10 @@ check_snt_var(var_name, schema = NULL, var_tree = NULL, return = FALSE)
 \item{var_name}{Character scalar — an SNT variable name.}
 
 \item{schema}{Optional list; if not provided, automatically loaded from
-inst/extdata/var_tree.yml.}
+the package's snt_var_tree dataset.}
 
 \item{var_tree}{Optional list; if not provided, automatically loaded from
-inst/extdata/var_tree.yml.}
+the package's snt_var_tree dataset.}
 
 \item{return}{Logical; if TRUE, also returns a tibble invisibly.}
 }
