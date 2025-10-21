@@ -206,33 +206,62 @@ flagged_panel <- flagged_panel |>
     activity_status_method3 = {
       n_obs <- length(reported_any)
       status <- character(n_obs)
-
-      # track state dynamically
-      is_active <- FALSE
-      consecutive_nonreports <- 0
+      
+      # Find all reporting months
+      all_reports <- which(reported_any)
 
       for (i in seq_len(n_obs)) {
         if (reported_any[i]) {
-          # reporting this month - facility becomes active and resets
-          is_active <- TRUE
-          consecutive_nonreports <- 0
+          # reporting this month - facility is active
           status[i] <- "Active Reporting"
         } else {
           # not reporting this month
-          if (is_active) {
-            # facility was active, increment consecutive non-reports
-            consecutive_nonreports <- consecutive_nonreports + 1
-            if (consecutive_nonreports >= nonreport_window) {
-              # hits threshold - becomes inactive
-              is_active <- FALSE
-              status[i] <- "Inactive Health Facility"
-            } else {
-              # still within threshold - remains active but not reporting
-              status[i] <- "Active Health Facility - Not Reporting"
-            }
-          } else {
-            # facility is inactive (either never reported or became inactive)
+          if (length(all_reports) == 0) {
+            # never reported - inactive
             status[i] <- "Inactive Health Facility"
+          } else {
+            # Check if this month should be active
+            # A month is active if:
+            # 1. It's within nonreport_window after a report AND
+            # 2. There's no large gap (> nonreport_window) between surrounding reports
+            
+            # Find previous and next report
+            prev_reports <- all_reports[all_reports < i]
+            next_reports <- all_reports[all_reports > i]
+            
+            is_active <- FALSE
+            
+            if (length(prev_reports) > 0) {
+              last_report <- max(prev_reports)
+              months_since_last <- i - last_report
+              
+              if (months_since_last <= nonreport_window) {
+                # Within window of last report
+                if (length(next_reports) > 0) {
+                  next_report <- min(next_reports)
+                  gap_between_reports <- next_report - last_report
+                  
+                  # Only stay active if the gap between reports is reasonable
+                  # If gap > nonreport_window, facility goes inactive in between
+                  if (gap_between_reports > nonreport_window) {
+                    # Large gap - only stay active right after the last report
+                    is_active <- FALSE
+                  } else {
+                    # Small gap - stay active throughout
+                    is_active <- TRUE
+                  }
+                } else {
+                  # No future reports - stay active for nonreport_window after last report
+                  is_active <- TRUE
+                }
+              }
+            }
+            
+            if (is_active) {
+              status[i] <- "Active Health Facility - Not Reporting"
+            } else {
+              status[i] <- "Inactive Health Facility"
+            }
           }
         }
       }
