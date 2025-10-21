@@ -40,7 +40,10 @@ jobs:
 
       - name: Install system dependencies on macOS
         if: runner.os == 'macOS'
-        run: brew install pngquant netcdf
+        run: |
+          brew install pngquant netcdf
+          # Ensure nc-config is in PATH
+          echo "$(brew --prefix netcdf)/bin" >> $GITHUB_PATH
 
       - name: Run pngquant test using repo functions
         shell: Rscript {0}
