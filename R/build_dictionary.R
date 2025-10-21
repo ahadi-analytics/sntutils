@@ -502,6 +502,85 @@
   out
 }
 
+#' match SNT variables with multilingual labels (internal)
+#'
+#' @description
+#' matches variable names against var_tree.yml using exact match first,
+#' then token structure detection. respects target_lang for output.
+#'
+#' @param vars character vector of variable names
+#' @param target_lang target language ("en", "fr", "pt")
+#' @param yaml_path path to var_tree.yml
+#'
+#' @return tibble with variable and label columns
+#' @noRd
+.match_snt_labels <- function(vars,
+                              target_lang = "en",
+                              yaml_path = NULL) {
+  # load yaml
+  if (base::is.null(yaml_path)) {
+    yaml_path <- system.file("extdata", "var_tree.yml",
+                             package = "sntutils")
+  }
+
+  # flatten tree if available
+  flat_tree <- if (base::nzchar(yaml_path) && base::file.exists(yaml_path)) {
+    .flatten_tree_recursive(yaml::read_yaml(yaml_path))
+  } else {
+    tibble::tibble(snt_var_name = character())
+  }
+
+  # initialize results
+  results <- tibble::tibble(
+    variable = vars,
+    label_en = NA_character_,
+    label_fr = NA_character_,
+    label_pt = NA_character_
+  )
+
+  for (i in base::seq_along(vars)) {
+    nm <- vars[i]
+
+    # exact match first
+    match_row <- dplyr::filter(flat_tree, .data$snt_var_name == nm)
+    if (base::nrow(match_row) == 1L) {
+      results$label_en[i] <- match_row$label_en
+      results$label_fr[i] <- match_row$label_fr
+      # note: label_pt not in current yaml but prepare for it
+      if ("label_pt" %in% base::names(match_row)) {
+        results$label_pt[i] <- match_row$label_pt
+      }
+      next
+    }
+
+    # otherwise infer from token structure if it looks like SNT variable
+    # (contains underscore and known tokens)
+    if (grepl("_", nm)) {
+      det <- tryCatch(
+        check_snt_var(nm, return = TRUE),
+        error = function(e) NULL
+      )
+      if (!base::is.null(det)) {
+        results$label_en[i] <- det$label_en
+        results$label_fr[i] <- det$label_fr
+        # label_pt would come from det if available
+        if ("label_pt" %in% base::names(det)) {
+          results$label_pt[i] <- det$label_pt
+        }
+      }
+    }
+  }
+
+  # select target language
+  lang_col <- base::paste0("label_", target_lang)
+  if (!lang_col %in% base::names(results)) {
+    lang_col <- "label_en" # fallback
+  }
+
+  results$label <- results[[lang_col]]
+  dplyr::select(results, variable, label)
+}
+
 # main -------------------------------------------------------------------------
 
 #' build a compact data dictionary
@@ -520,6 +599,8 @@
 #' @param max_levels max factor levels to summarize in notes. default 50.
 #' @param n_examples number of example values to show. default 3.
 #' @param trans_cache_path optional cache dir for translate_text_vec().
+#' @param override_yaml logical; if TRUE, CSV labels override YAML labels.
+#'   default FALSE (YAML takes precedence).
 #'
 #' @return tibble with:
 #'   variable, type, label_en, n, n_missing, pct_missing, n_unique,
@@ -540,7 +621,8 @@ build_dictionary <- function(
   language = NULL,
   max_levels = 50L,
   n_examples = 3L,
-  trans_cache_path = NULL
+  trans_cache_path = NULL,
+  override_yaml = FALSE
 ) {
   # validate input
   if (!base::inherits(data, "data.frame")) {
@@ -697,13 +779,31 @@ build_dictionary <- function(
     base::do.call(base::rbind, base::lapply(rows, base::as.data.frame))
   )
 
-  # attach english labels; fall back to variable name
+  # step 1: YAML-based SNT auto-labelling
+  snt_lbls <- .match_snt_labels(dict$variable, target_lang = "en")
+  dict <- dplyr::left_join(dict, snt_lbls, by = "variable") |>
+    dplyr::rename(label_yaml = label)
+
+  # step 2: combine with user-provided or base map labels
   label_en <- base::unname(lbl_map[dict$variable])
-  fill_name <- base::is.na(label_en) | !base::nzchar(label_en)
-  if (base::any(fill_name)) {
-    label_en[fill_name] <- dict$variable[fill_name]
+
+  if (override_yaml) {
+    # CSV takes precedence over YAML
+    dict$label_en <- dplyr::coalesce(
+      label_en,         # CSV first
+      dict$label_yaml,  # then YAML
+      dict$variable     # fallback to variable name
+    )
+  } else {
+    # YAML takes precedence over CSV (default)
+    dict$label_en <- dplyr::coalesce(
+      dict$label_yaml,  # YAML first
+      label_en,         # then CSV
+      dict$variable     # fallback to variable name
+    )
   }
-  dict$label_en <- label_en
+
+  dict$label_yaml <- NULL  # remove temp column
 
   # optional translation
   if (!base::is.null(language) && base::nzchar(language)) {
