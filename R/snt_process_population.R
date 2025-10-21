@@ -12,7 +12,7 @@
 #' @param pop_data data.frame/tibble with `adm0`, optional `adm1`/`adm2`/`adm3`,
 #'   `year`, and population column(s). `year` may be integer, numeric, Date/POSIXt, factor,
 #'   or character; it is coerced to integer years when feasible.
-#' @param pop_cols character vector of population column names to process. 
+#' @param pop_cols character vector of population column names to process.
 #'   Default is "pop" for backward compatibility.
 #' @param translate logical; when TRUE, add a translated label column
 #'   (default FR unless `language` is provided) using the translation cache.
@@ -33,6 +33,7 @@
 #' - `levels_present` (character vector of admin levels detected)
 #'
 #' @examples
+#' \dontrun{
 #' # Basic usage with default "pop" column
 #' example_pop <- tibble::tibble(
 #'   adm0 = c("A", "A", "B"),
@@ -44,7 +45,7 @@
 #' out <- snt_process_population(example_pop)
 #' names(out)
 #' out$levels_present
-#' 
+#'
 #' # Using custom population column names
 #' example_multi_pop <- tibble::tibble(
 #'   adm0 = c("A", "A", "B"),
@@ -54,11 +55,11 @@
 #'   under5_pop = c(20, 10, 15)
 #' )
 #' out_multi <- snt_process_population(
-#'   example_multi_pop, 
+#'   example_multi_pop,
 #'   pop_cols = c("total_pop", "under5_pop")
 #' )
 #' names(out_multi)
-#'
+#'}
 #' @export
 snt_process_population <- function(
   pop_data,
@@ -173,7 +174,7 @@ snt_process_population <- function(
   if (!requireNamespace("dplyr", quietly = TRUE)) {
     cli::cli_abort("Package 'dplyr' is required for summarising.")
   }
-  
+
   # create summarise expressions for each population column
   summarise_exprs <- rlang::set_names(
     lapply(pop_cols, function(col) {
@@ -181,7 +182,7 @@ snt_process_population <- function(
     }),
     pop_cols
   )
-  
+
   dplyr::group_by(
     pop_data,
     dplyr::across(dplyr::all_of(group_cols)),
