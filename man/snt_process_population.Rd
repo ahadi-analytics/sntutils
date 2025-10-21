@@ -57,6 +57,7 @@ admin levels were found. By default, column types are first inferred
 via \code{\link[=auto_parse_types]{auto_parse_types()}} with \code{apply = TRUE} and \code{return = "data"}.
 }
 \examples{
+\dontrun{
 # Basic usage with default "pop" column
 example_pop <- tibble::tibble(
   adm0 = c("A", "A", "B"),
@@ -78,9 +79,9 @@ example_multi_pop <- tibble::tibble(
   under5_pop = c(20, 10, 15)
 )
 out_multi <- snt_process_population(
-  example_multi_pop, 
+  example_multi_pop,
   pop_cols = c("total_pop", "under5_pop")
 )
 names(out_multi)
-
+}
 }
