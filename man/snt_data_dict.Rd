@@ -25,7 +25,7 @@ A tibble with columns:
 }
 }
 \description{
-Reads the bilingual indicator hierarchy from \code{inst/extdata/var_tree.yml}
+Loads the bilingual indicator hierarchy from the package's \code{snt_var_tree} dataset
 and returns a tidy table of all variables, their domains, labels, and
 disaggregation structure (if defined). You can optionally specify a
 single domain (e.g. \code{"routine_data"}, \code{"stock_management"}) to filter

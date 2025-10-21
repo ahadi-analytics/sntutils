@@ -206,6 +206,7 @@ globalVariables(
     "growth_rate",
     "pop_sum",
     "total_pop",
-    "growth_ratio", "prev_pop"
+    "growth_ratio", "prev_pop",
+    "snt_var_tree"
   )
 )
