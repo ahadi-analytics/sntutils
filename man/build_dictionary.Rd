@@ -10,7 +10,8 @@ build_dictionary(
   language = NULL,
   max_levels = 50L,
   n_examples = 3L,
-  trans_cache_path = NULL
+  trans_cache_path = NULL,
+  override_yaml = FALSE
 )
 }
 \arguments{
@@ -26,6 +27,9 @@ override english labels.}
 \item{n_examples}{number of example values to show. default 3.}
 
 \item{trans_cache_path}{optional cache dir for translate_text_vec().}
+
+\item{override_yaml}{logical; if TRUE, CSV labels override YAML labels.
+default FALSE (YAML takes precedence).}
 }
 \value{
 tibble with:
