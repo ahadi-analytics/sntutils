@@ -1,6 +1,6 @@
 #' Load and flatten the SNT variable tree
 #'
-#' Reads the bilingual indicator hierarchy from `inst/extdata/var_tree.yml`
+#' Loads the bilingual indicator hierarchy from the package's `snt_var_tree` dataset
 #' and returns a tidy table of all variables, their domains, labels, and
 #' disaggregation structure (if defined). You can optionally specify a
 #' single domain (e.g. `"routine_data"`, `"stock_management"`) to filter
@@ -35,25 +35,14 @@ snt_data_dict <- function(
   domain = NULL
 ) {
   # -- Load variable tree ------------------------------------------------------
-  yaml_path <- base::system.file(
-    "inst/extdata",
-    "var_tree.yml",
-    package = "sntutils"
-  )
-  if (yaml_path == "") {
-    cli::cli_abort("File `var_tree.yml` not found in `inst/extdata/`.")
-  }
-  tree <- yaml::read_yaml(yaml_path)
+  data("snt_var_tree", package = "sntutils", envir = environment())
+  tree <- snt_var_tree
 
   # -- Optionally load schema --------------------------------------------------
   if (include_schema) {
-    schema_path <- base::system.file(
-      "inst/extdata",
-      "var_tree.yml",
-      package = "sntutils"
-    )
-    if (schema_path != "") {
-      schema <- yaml::read_yaml(schema_path)
+    # Schema is already included in the snt_var_tree data object
+    schema <- tree$schema
+    if (!is.null(schema)) {
       base::attr(tree, "schema") <- schema
     }
   }
@@ -154,9 +143,9 @@ snt_data_dict <- function(
 #'
 #' @param var_name Character scalar — an SNT variable name.
 #' @param schema Optional list; if not provided, automatically loaded from
-#'   inst/extdata/var_tree.yml.
+#'   the package's snt_var_tree dataset.
 #' @param var_tree Optional list; if not provided, automatically loaded from
-#'   inst/extdata/var_tree.yml.
+#'   the package's snt_var_tree dataset.
 #' @param return Logical; if TRUE, also returns a tibble invisibly.
 #'
 #' @return Invisibly returns a tibble with parsed components and labels.
@@ -169,26 +158,19 @@ check_snt_var <- function(
 ) {
   # -- Load schema if not provided ---------------------------------------------
   if (is.null(schema)) {
-    schema_path <- system.file(
-      "extdata",
-      "var_tree.yml",
-      package = "sntutils"
-    )
-    if (schema_path == "") {
-      cli::cli_abort("`var_tree.yml` not found in inst/extdata/")
+    data("snt_var_tree", package = "sntutils", envir = environment())
+    schema <- snt_var_tree$schema
+    if (is.null(schema)) {
+      cli::cli_abort("Schema not found in snt_var_tree dataset")
     }
-    schema <- yaml::read_yaml(schema_path)$schema
   }
 
   # -- Load variable tree for label lookup -------------------------------------
   if (is.null(var_tree)) {
-    tree_path <- system.file("extdata", "var_tree.yml", package = "sntutils")
-    if (tree_path != "") {
-      var_tree <- yaml::read_yaml(tree_path)
-      flat_tree <- .flatten_tree_recursive(var_tree)
-    } else {
-      flat_tree <- NULL
-    }
+    data("snt_var_tree", package = "sntutils", envir = environment())
+    flat_tree <- .flatten_tree_recursive(snt_var_tree)
+  } else {
+    flat_tree <- .flatten_tree_recursive(var_tree)
   }
 
   # -- Collect suffix groups ---------------------------------------------------

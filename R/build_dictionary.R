@@ -505,27 +505,27 @@
 #' match SNT variables with multilingual labels (internal)
 #'
 #' @description
-#' matches variable names against var_tree.yml using exact match first,
+#' matches variable names against the snt_var_tree dataset using exact match first,
 #' then token structure detection. respects target_lang for output.
 #'
 #' @param vars character vector of variable names
 #' @param target_lang target language ("en", "fr", "pt")
-#' @param yaml_path path to var_tree.yml
+#' @param tree_data optional snt_var_tree data object
 #'
 #' @return tibble with variable and label columns
 #' @noRd
 .match_snt_labels <- function(vars,
                               target_lang = "en",
-                              yaml_path = NULL) {
-  # load yaml
-  if (base::is.null(yaml_path)) {
-    yaml_path <- system.file("extdata", "var_tree.yml",
-                             package = "sntutils")
+                              tree_data = NULL) {
+  # load snt_var_tree data
+  if (base::is.null(tree_data)) {
+    data("snt_var_tree", package = "sntutils", envir = environment())
+    tree_data <- snt_var_tree
   }
 
   # flatten tree if available
-  flat_tree <- if (base::nzchar(yaml_path) && base::file.exists(yaml_path)) {
-    .flatten_tree_recursive(yaml::read_yaml(yaml_path))
+  flat_tree <- if (!is.null(tree_data)) {
+    .flatten_tree_recursive(tree_data)
   } else {
     tibble::tibble(snt_var_name = character())
   }
