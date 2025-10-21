@@ -32,15 +32,15 @@ jobs:
           needs: check
 
       # OS package managers for non-Windows
-      - name: Install pngquant on Ubuntu (apt)
+      - name: Install system dependencies on Ubuntu
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y pngquant
+          sudo apt-get install -y pngquant libnetcdf-dev
 
-      - name: Install pngquant on macOS (brew)
+      - name: Install system dependencies on macOS
         if: runner.os == 'macOS'
-        run: brew install pngquant
+        run: brew install pngquant netcdf
 
       - name: Run pngquant test using repo functions
         shell: Rscript {0}
