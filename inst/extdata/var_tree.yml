@@ -1,0 +1,1194 @@
+_meta:
+  version: 1.0.0
+  author: "Mohamed Yusuf"
+  maintainer: "myusuf@appliedhealthanalytics.org"
+  date_created: "2025-10-21"
+  last_updated: "2025-10-21"
+  description: "Unified variable reference for SNT workflows (malaria, anemia, HMIS, population, and campaigns)."
+
+metadata:
+  _description: "Geospatial, temporal, and reporting metadata fields."
+  label_en: "Spatial, temporal, and facility metadata"
+  label_fr: "Métadonnées spatiales, temporelles et des formations sanitaires"
+  label_pt: "Metadados espaciais, temporais e das unidades sanitárias"
+
+  # ── Spatial hierarchy ─────────────────────────────────────────────────────────
+  adm0:
+    snt_var_name: adm0
+    label_en: "Administrative level 0 (country)"
+    label_fr: "Niveau administratif 0 (pays)"
+    label_pt: "Nível administrativo 0 (país)"
+
+  adm1:
+    snt_var_name: adm1
+    label_en: "Administrative level 1 (province)"
+    label_fr: "Niveau administratif 1 (province)"
+    label_pt: "Nível administrativo 1 (província)"
+
+  adm2:
+    snt_var_name: adm2
+    label_en: "Administrative level 2 (district)"
+    label_fr: "Niveau administratif 2 (district)"
+    label_pt: "Nível administrativo 2 (distrito)"
+
+  adm3:
+    snt_var_name: adm3
+    label_en: "Administrative level 3 (health area)"
+    label_fr: "Niveau administratif 3 (aire de santé)"
+    label_pt: "Nível administrativo 3 (área sanitária)"
+
+  catchment:
+    snt_var_name: catchment
+    label_en: "Catchment area name"
+    label_fr: "Nom de la zone de couverture"
+    label_pt: "Nome da área de cobertura"
+
+  hf_uid:
+    snt_var_name: hf_uid
+    label_en: "Health facility unique ID"
+    label_fr: "Identifiant unique formation sanitaire"
+    label_pt: "Identificador único da unidade sanitária"
+
+  hf_name:
+    snt_var_name: hf_name
+    label_en: "Health facility name"
+    label_fr: "Nom de la formation sanitaire"
+    label_pt: "Nome da unidade sanitária"
+
+  hf_type:
+    snt_var_name: hf_type
+    label_en: "Health facility type"
+    label_fr: "Type de formation sanitaire"
+    label_pt: "Tipo de unidade sanitária"
+
+  hf_lat:
+    snt_var_name: hf_lat
+    label_en: "Health facility latitude"
+    label_fr: "Latitude de la formation sanitaire"
+    label_pt: "Latitude da unidade sanitária"
+
+  hf_long:
+    snt_var_name: hf_long
+    label_en: "Health facility longitude"
+    label_fr: "Longitude de la formation sanitaire"
+    label_pt: "Longitude da unidade sanitária"
+
+  # ── Temporal fields ───────────────────────────────────────────────────────────
+  year:
+    snt_var_name: year
+    label_en: "Year of reporting"
+    label_fr: "Année de rapportage"
+    label_pt: "Ano de notificação"
+
+  month:
+    snt_var_name: month
+    label_en: "Month of reporting"
+    label_fr: "Mois de rapportage"
+    label_pt: "Mês de notificação"
+
+  yearmon:
+    snt_var_name: yearmon
+    label_en: "Reporting period (YYYY-MM)"
+    label_fr: "Période de rapport (AAAA-MM)"
+    label_pt: "Período de notificação (AAAA-MM)"
+
+  week:
+    snt_var_name: week
+    label_en: "Epidemiological week"
+    label_fr: "Semaine épidémiologique"
+    label_pt: "Semana epidemiológica"
+
+  date:
+    snt_var_name: date
+    label_en: "Exact date of report"
+    label_fr: "Date exacte du rapport"
+    label_pt: "Data exata do relatório"
+
+  period:
+    snt_var_name: period
+    label_en: "Reporting period code (YYYYMM)"
+    label_fr: "Code de période de rapport (AAAAMM)"
+    label_pt: "Código do período de notificação (AAAAMM)"
+
+  # ── Data source / reporting metadata ─────────────────────────────────────────
+  source:
+    snt_var_name: source
+    label_en: "Data source"
+    label_fr: "Source de données"
+    label_pt: "Fonte de dados"
+
+  dhis2_dataset:
+    snt_var_name: dhis2_dataset
+    label_en: "DHIS2 dataset name"
+    label_fr: "Nom du dataset DHIS2"
+    label_pt: "Nome do conjunto de dados DHIS2"
+
+  last_update:
+    snt_var_name: last_update
+    label_en: "Last update date"
+    label_fr: "Date de la dernière mise à jour"
+    label_pt: "Data da última atualização"
+
+  reporter:
+    snt_var_name: reporter
+    label_en: "Reporting officer name"
+    label_fr: "Nom de l'agent de rapportage"
+    label_pt: "Nome do responsável pelo relatório"
+
+  verified_by:
+    snt_var_name: verified_by
+    label_en: "Verified by"
+    label_fr: "Vérifié par"
+    label_pt: "Verificado por"
+
+  submission_status:
+    snt_var_name: submission_status
+    label_en: "Submission status"
+    label_fr: "Statut de soumission"
+    label_pt: "Estado de submissão"
+
+  validation_status:
+    snt_var_name: validation_status
+    label_en: "Validation status"
+    label_fr: "Statut de validation"
+    label_pt: "Estado de validação"
+
+  # ── Facility activity indicators ─────────────────────────────────────────────
+
+  rep:
+    snt_var_name: rep
+    label_en: "Number of health facilities that reported"
+    label_fr: "Nombre de formations sanitaires ayant rapporté"
+    label_pt: "Número de unidades sanitárias que reportaram"
+    disagg: ["sectors"]
+
+  exp:
+    snt_var_name: exp
+    label_en: "Number of health facilities expected to report"
+    label_fr: "Nombre de formations sanitaires attendues pour rapporter"
+    label_pt: "Número de unidades sanitárias esperadas para reportar"
+    disagg: ["sectors"]
+
+  reprate:
+    snt_var_name: reprate
+    label_en: "Reporting rate (%)"
+    label_fr: "Taux de notification (%)"
+    label_pt: "Taxa de notificação (%)"
+    disagg: ["sectors"]
+
+  reported_any:
+    snt_var_name: reported_any
+    label_en: "Reported any indicator this month"
+    label_fr: "A rapporté un indicateur ce mois-ci"
+    label_pt: "Reportou qualquer indicador este mês"
+
+  activity_status:
+    snt_var_name: activity_status
+    label_en: "Facility reporting activity status"
+    label_fr: "Statut d'activité de notification de la formation sanitaire"
+    label_pt: "Estado de atividade de notificação da unidade sanitária"
+
+  active_facilities:
+    snt_var_name: active_facilities
+    label_en: "Number of active facilities"
+    label_fr: "Nombre de formations sanitaires actives"
+    label_pt: "Número de unidades sanitárias ativas"
+
+  inactive_facilities:
+    snt_var_name: inactive_facilities
+    label_en: "Number of inactive facilities"
+    label_fr: "Nombre de formations sanitaires inactives"
+    label_pt: "Número de unidades sanitárias inativas"
+
+  # ── Spatial integrity and linkage ────────────────────────────────────────────
+  hf_uid_mfl:
+    snt_var_name: hf_uid_mfl
+    label_en: "Health facility UID (Master Facility List)"
+    label_fr: "UID formation sanitaire (liste maîtresse)"
+    label_pt: "UID da unidade sanitária (lista mestra)"
+
+  match_status:
+    snt_var_name: match_status
+    label_en: "Matching status between DHIS2 and MFL"
+    label_fr: "Statut d'appariement entre DHIS2 et la LMF"
+    label_pt: "Estado de correspondência entre DHIS2 e LMF"
+
+  geo_precision:
+    snt_var_name: geo_precision
+    label_en: "Geolocation precision level"
+    label_fr: "Niveau de précision géographique"
+    label_pt: "Nível de precisão geográfica"
+
+  last_report_date:
+    snt_var_name: last_report_date
+    label_en: "Date of last report"
+    label_fr: "Date du dernier rapport"
+    label_pt: "Data do último relatório"
+
+  first_report_date:
+    snt_var_name: first_report_date
+    label_en: "Date of first report"
+    label_fr: "Date du premier rapport"
+    label_pt: "Data do primeiro relatório"
+
+population:
+  _description: "Population denominators and target group estimates."
+  label_en: "Population denominators"
+  label_fr: "Dénominateurs de population"
+  label_pt: "Denominadores populacionais"
+
+  pop:
+    snt_var_name: pop
+    label_en: "Population, all ages"
+    label_fr: "Population, tous âges"
+    label_pt: "População, todas as idades"
+
+  pop_u5:
+    snt_var_name: pop_u5
+    label_en: "Population under 5 years"
+    label_fr: "Population âgée de moins de 5 ans"
+    label_pt: "População com menos de 5 anos"
+
+  pop_u1:
+    snt_var_name: pop_u1
+    label_en: "Population under 1 year"
+    label_fr: "Population âgée de moins de 1 an"
+    label_pt: "População com menos de 1 ano"
+
+  pop_ov5:
+    snt_var_name: pop_ov5
+    label_en: "Population aged 5 years and above"
+    label_fr: "Population âgée de 5 ans et plus"
+    label_pt: "População com 5 anos ou mais"
+
+  pop_ov15:
+    snt_var_name: pop_ov15
+    label_en: "Population aged 15 years and above"
+    label_fr: "Population âgée de 15 ans et plus"
+    label_pt: "População com 15 anos ou mais"
+
+  pop_mal:
+    snt_var_name: pop_mal
+    label_en: "Male population"
+    label_fr: "Population masculine"
+    label_pt: "População masculina"
+
+  pop_fem:
+    snt_var_name: pop_fem
+    label_en: "Female population"
+    label_fr: "Population féminine"
+    label_pt: "População feminina"
+
+  pop_fem_15_49y:
+    snt_var_name: pop_fem_15_49y
+    label_en: "Women of child-bearing age (15–49 years)"
+    label_fr: "Femmes en âge de procréer (15–49 ans)"
+    label_pt: "Mulheres em idade reprodutiva (15–49 anos)"
+
+  pop_preg_exp:
+    snt_var_name: pop_preg_exp
+    label_en: "Expected pregnancies"
+    label_fr: "Grossesses attendues"
+    label_pt: "Gravidezes esperadas"
+
+  pop_births_exp:
+    snt_var_name: pop_births_exp
+    label_en: "Expected births"
+    label_fr: "Naissances attendues"
+    label_pt: "Nascimentos esperados"
+
+  pop_infants_exp:
+    snt_var_name: pop_infants_exp
+    label_en: "Expected infants (<1 year)"
+    label_fr: "Nourrissons attendus (<1 an)"
+    label_pt: "Lactentes esperados (<1 ano)"
+
+  pop_target_u5:
+    snt_var_name: pop_target_u5
+    label_en: "Target under-5 population for malaria interventions"
+    label_fr: "Population cible des moins de 5 ans pour les interventions palustres"
+    label_pt: "População-alvo menor de 5 anos para intervenções de malária"
+
+  pop_target_preg:
+    snt_var_name: pop_target_preg
+    label_en: "Target pregnant women for IPTp or LLIN"
+    label_fr: "Femmes enceintes cibles pour TPIp ou MII"
+    label_pt: "Gestantes-alvo para IPTp ou MILD"
+
+  pop_households:
+    snt_var_name: pop_households
+    label_en: "Total households"
+    label_fr: "Nombre total de ménages"
+    label_pt: "Total de agregados familiares"
+
+  pop_density:
+    snt_var_name: pop_density
+    label_en: "Population density (per km²)"
+    label_fr: "Densité de population (par km²)"
+    label_pt: "Densidade populacional (por km²)"
+
+routine_data:
+  _description: "Routine HMIS malaria and service utilization indicators."
+  label_en: "Routine HMIS data"
+  label_fr: "Données HMIS de routine"
+  label_pt: "Dados rotineiros do SIS"
+
+  # ── All-cause service utilization ─────────────────────────────────────────────
+  allout:
+    label_en: "All-cause outpatient visits"
+    label_fr: "Consultations externes toutes causes"
+    label_pt: "Consultas externas por todas as causas"
+    snt_var_name: allout
+    disagg: ["age_groups", "sectors", "service_levels"]
+
+  alladm:
+    label_en: "All-cause inpatient admissions"
+    label_fr: "Admissions toutes causes"
+    label_pt: "Internações por todas as causas"
+    snt_var_name: alladm
+    disagg: ["age_groups", "sectors", "service_levels"]
+
+  alldth:
+    label_en: "All-cause deaths"
+    label_fr: "Décès toutes causes"
+    label_pt: "Óbitos por todas as causas"
+    snt_var_name: alldth
+    disagg: ["age_groups", "sectors", "service_levels"]
+
+  # ── Malaria: suspected, tested, confirmed, treated ────────────────────────────
+  suspected:
+    label_en: "Suspected malaria cases"
+    label_fr: "Cas suspects de paludisme"
+    label_pt: "Casos suspeitos de malária"
+    snt_var_name: susp
+    disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
+
+  presumed:
+    label_en: "Presumed malaria cases (treated without test)"
+    label_fr: "Cas présumés de paludisme (traités sans test)"
+    label_pt: "Casos presumidos de malária (tratados sem teste)"
+    snt_var_name: pres
+    disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
+
+  tested:
+    label_en: "Tested for malaria"
+    label_fr: "Personnes testées pour le paludisme"
+    label_pt: "Pessoas testadas para malária"
+    snt_var_name: test
+    disagg:
+      [
+        "age_groups",
+        "population_groups",
+        "sectors",
+        "test_types",
+        "service_levels",
+      ]
+
+  confirmed:
+    label_en: "Confirmed malaria cases"
+    label_fr: "Cas confirmés de paludisme"
+    label_pt: "Casos confirmados de malária"
+    snt_var_name: conf
+    disagg:
+      [
+        "age_groups",
+        "population_groups",
+        "sectors",
+        "test_types",
+        "service_levels",
+      ]
+
+  treated:
+    label_en: "Treated malaria cases"
+    label_fr: "Cas de paludisme traités"
+    label_pt: "Casos de malária tratados"
+    snt_var_name: maltreat
+    disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
+
+  severe_malaria:
+    label_en: "Severe malaria admissions"
+    label_fr: "Admissions pour paludisme grave"
+    label_pt: "Internações por malária grave"
+    snt_var_name: maladm
+    disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
+
+  malaria_deaths:
+    label_en: "Malaria deaths"
+    label_fr: "Décès dus au paludisme"
+    label_pt: "Óbitos por malária"
+    snt_var_name: maldth
+    disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
+
+  # ── Testing details ───────────────────────────────────────────────────────────
+  test_rdt:
+    label_en: "RDT tests conducted"
+    label_fr: "Tests TDR effectués"
+    label_pt: "Testes RDT realizados"
+    snt_var_name: test_rdt
+    disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
+
+  test_mic:
+    label_en: "Microscopy tests conducted"
+    label_fr: "Tests par frottis effectués"
+    label_pt: "Testes de microscopia realizados"
+    snt_var_name: test_mic
+    disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
+
+  conf_rdt:
+    label_en: "Confirmed malaria cases by RDT"
+    label_fr: "Cas de paludisme confirmés par TDR"
+    label_pt: "Casos de malária confirmados por RDT"
+    snt_var_name: conf_rdt
+    disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
+
+  conf_mic:
+    label_en: "Confirmed malaria cases by microscopy"
+    label_fr: "Cas de paludisme confirmés par frottis"
+    label_pt: "Casos de malária confirmados por microscopia"
+    snt_var_name: conf_mic
+    disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
+
+  # ── Derived or quality checks ─────────────────────────────────────────────────
+  tpr:
+    label_en: "Test positivity rate (%)"
+    label_fr: "Taux de positivité des tests (%)"
+    label_pt: "Taxa de positividade dos testes (%)"
+    snt_var_name: tpr
+    disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
+
+  conf_rate:
+    label_en: "Confirmation rate (%)"
+    label_fr: "Taux de confirmation (%)"
+    label_pt: "Taxa de confirmação (%)"
+    snt_var_name: conf_rate
+    disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
+
+  test_rate:
+    label_en: "Testing rate per 1,000 population"
+    label_fr: "Taux de test pour 1 000 habitants"
+    label_pt: "Taxa de testagem por 1.000 habitantes"
+    snt_var_name: test_rate
+    disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
+
+  treated_rate:
+    label_en: "Treated malaria cases per 1,000 population"
+    label_fr: "Cas de paludisme traités pour 1 000 habitants"
+    label_pt: "Casos de malária tratados por 1.000 habitantes"
+    snt_var_name: treated_rate
+    disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
+
+  # ── Outpatient vs Inpatient malaria differentiation ───────────────────────────
+  conf_opd:
+    label_en: "Outpatient confirmed malaria cases"
+    label_fr: "Cas de paludisme confirmés en consultation externe"
+    label_pt: "Casos de malária confirmados em consultas externas"
+    snt_var_name: conf_opd
+    disagg: ["age_groups", "population_groups", "sectors"]
+
+  conf_ipd:
+    label_en: "Inpatient confirmed malaria cases"
+    label_fr: "Cas de paludisme confirmés en hospitalisation"
+    label_pt: "Casos de malária confirmados em internação"
+    snt_var_name: conf_ipd
+    disagg: ["age_groups", "population_groups", "sectors"]
+
+  maladm_u5:
+    snt_var_name: maladm_u5
+    label_en: "Severe malaria admissions under 5 years"
+    label_fr: "Admissions paludisme grave <5 ans"
+    label_pt: "Internações por malária grave em menores de 5 anos"
+    disagg: ["population_groups", "sectors"]
+
+  maldth_u5:
+    snt_var_name: maldth_u5
+    label_en: "Malaria deaths under 5 years"
+    label_fr: "Décès palustres <5 ans"
+    label_pt: "Óbitos por malária em menores de 5 anos"
+    disagg: ["population_groups", "sectors"]
+
+  maldth_preg:
+    snt_var_name: maldth_preg
+    label_en: "Malaria deaths among pregnant women"
+    label_fr: "Décès palustres chez les femmes enceintes"
+    label_pt: "Óbitos por malária em gestantes"
+    disagg: ["sectors"]
+
+interventions:
+  _description: "Routine and campaign interventions (EPI, ANC/IPTp, LLIN, IRS, SMC, MDA)."
+  label_en: "Routine and campaign interventions"
+  label_fr: "Interventions de routine et campagnes"
+  label_pt: "Intervenções de rotina e campanhas"
+
+  # ── Immunization (EPI) ────────────────────────────────────────────────────────
+  epi:
+    label_en: "Immunization (EPI)"
+    label_fr: "Programme élargi de vaccination"
+    label_pt: "Programa Alargado de Imunização (PAI)"
+
+    penta1_targ:
+      snt_var_name: penta1_targ
+      label_en: "Children targeted for Penta1 vaccine"
+      label_fr: "Enfants ciblés pour le vaccin Penta1"
+      label_pt: "Crianças-alvo para a vacina Penta1"
+
+    penta1_tot:
+      snt_var_name: penta1_tot
+      label_en: "Children vaccinated with Penta1"
+      label_fr: "Enfants vaccinés avec le Penta1"
+      label_pt: "Crianças vacinadas com Penta1"
+
+    penta1_cov:
+      snt_var_name: penta1_cov
+      label_en: "Penta1 coverage (%)"
+      label_fr: "Couverture Penta1 (%)"
+      label_pt: "Cobertura Penta1 (%)"
+
+    penta3_targ:
+      snt_var_name: penta3_targ
+      label_en: "Children targeted for Penta3 vaccine"
+      label_fr: "Enfants ciblés pour le vaccin Penta3"
+      label_pt: "Crianças-alvo para a vacina Penta3"
+
+    penta3_tot:
+      snt_var_name: penta3_tot
+      label_en: "Children vaccinated with Penta3"
+      label_fr: "Enfants vaccinés avec le Penta3"
+      label_pt: "Crianças vacinadas com Penta3"
+
+    penta3_cov:
+      snt_var_name: penta3_cov
+      label_en: "Penta3 coverage (%)"
+      label_fr: "Couverture Penta3 (%)"
+      label_pt: "Cobertura Penta3 (%)"
+
+    mr1_targ:
+      snt_var_name: mr1_targ
+      label_en: "Children targeted for MR1 vaccine"
+      label_fr: "Enfants ciblés pour le vaccin MR1"
+      label_pt: "Crianças-alvo para a vacina MR1"
+
+    mr1_tot:
+      snt_var_name: mr1_tot
+      label_en: "Children vaccinated with MR1"
+      label_fr: "Enfants vaccinés avec le MR1"
+      label_pt: "Crianças vacinadas com MR1"
+
+    mr1_cov:
+      snt_var_name: mr1_cov
+      label_en: "MR1 coverage (%)"
+      label_fr: "Couverture MR1 (%)"
+      label_pt: "Cobertura MR1 (%)"
+
+    mr2_targ:
+      snt_var_name: mr2_targ
+      label_en: "Children targeted for MR2 vaccine"
+      label_fr: "Enfants ciblés pour le vaccin MR2"
+      label_pt: "Crianças-alvo para a vacina MR2"
+
+    mr2_tot:
+      snt_var_name: mr2_tot
+      label_en: "Children vaccinated with MR2"
+      label_fr: "Enfants vaccinés avec le MR2"
+      label_pt: "Crianças vacinadas com MR2"
+
+    mr2_cov:
+      snt_var_name: mr2_cov
+      label_en: "MR2 coverage (%)"
+      label_fr: "Couverture MR2 (%)"
+      label_pt: "Cobertura MR2 (%)"
+
+  # ── Antenatal care (ANC) and IPTp ─────────────────────────────────────────────
+  anc_iptp:
+    label_en: "Antenatal care (ANC) and IPTp"
+    label_fr: "Consultations prénatales (CPN) et TPIp"
+    label_pt: "Cuidados prénatais (CPN) e IPTp"
+
+    anc1:
+      snt_var_name: anc1
+      label_en: "ANC1 visits"
+      label_fr: "Consultations CPN1"
+      label_pt: "Consultas CPN1"
+
+    anc2:
+      snt_var_name: anc2
+      label_en: "ANC2 visits"
+      label_fr: "Consultations CPN2"
+      label_pt: "Consultas CPN2"
+
+    anc3:
+      snt_var_name: anc3
+      label_en: "ANC3 visits"
+      label_fr: "Consultations CPN3"
+      label_pt: "Consultas CPN3"
+
+    anc4:
+      snt_var_name: anc4
+      label_en: "ANC4 visits"
+      label_fr: "Consultations CPN4"
+      label_pt: "Consultas CPN4"
+
+    iptp1:
+      snt_var_name: iptp1
+      label_en: "Women who received IPTp1"
+      label_fr: "Femmes ayant reçu le SP1"
+      label_pt: "Mulheres que receberam IPTp1"
+
+    iptp2:
+      snt_var_name: iptp2
+      label_en: "Women who received IPTp2"
+      label_fr: "Femmes ayant reçu le SP2"
+      label_pt: "Mulheres que receberam IPTp2"
+
+    iptp3:
+      snt_var_name: iptp3
+      label_en: "Women who received IPTp3"
+      label_fr: "Femmes ayant reçu le SP3"
+      label_pt: "Mulheres que receberam IPTp3"
+
+    iptp4:
+      snt_var_name: iptp4
+      label_en: "Women who received IPTp4"
+      label_fr: "Femmes ayant reçu le SP4"
+      label_pt: "Mulheres que receberam IPTp4"
+
+    iptp5:
+      snt_var_name: iptp5
+      label_en: "Women who received IPTp5"
+      label_fr: "Femmes ayant reçu le SP5"
+      label_pt: "Mulheres que receberam IPTp5"
+
+    llins_anc:
+      snt_var_name: llins_anc
+      label_en: "LLINs distributed during ANC visits"
+      label_fr: "MII distribuées pendant les visites CPN"
+      label_pt: "MILD distribuídas durante as consultas CPN"
+
+    llins_epi:
+      snt_var_name: llins_epi
+      label_en: "LLINs distributed through EPI"
+      label_fr: "MII distribuées via PEV"
+      label_pt: "MILD distribuídas via PAI"
+
+  # ── LLIN campaign distribution ────────────────────────────────────────────────
+  llins_campaign:
+    label_en: "LLIN campaign distribution"
+    label_fr: "Distribution de MII lors des campagnes"
+    label_pt: "Distribuição de MILD nas campanhas"
+
+    campaign_id:
+      snt_var_name: campaign_id
+      label_en: "Campaign identifier"
+      label_fr: "Identifiant de campagne"
+      label_pt: "Identificador da campanha"
+
+    year:
+      snt_var_name: year
+      label_en: "Year of LLIN campaign"
+      label_fr: "Année de la campagne MII"
+      label_pt: "Ano da campanha de MILD"
+
+    month:
+      snt_var_name: month
+      label_en: "Month when the campaign happened"
+      label_fr: "Mois de la campagne"
+      label_pt: "Mês da campanha"
+
+    llins_targ:
+      snt_var_name: llins_targ
+      label_en: "Target population"
+      label_fr: "Population cible"
+      label_pt: "População-alvo"
+
+    llins_num:
+      snt_var_name: llins_num
+      label_en: "Number of nets distributed"
+      label_fr: "Nombre de MII distribuées"
+      label_pt: "Número de MILD distribuídas"
+
+    llins_popcov:
+      snt_var_name: llins_popcov
+      label_en: "People covered (1 net per 2 people)"
+      label_fr: "Population couverte (1 MII pour 2 personnes)"
+      label_pt: "População coberta (1 MILD por 2 pessoas)"
+
+    llins_infants:
+      snt_var_name: llins_infants
+      label_en: "Nets distributed to infants"
+      label_fr: "MII distribuées aux nourrissons"
+      label_pt: "MILD distribuídas a lactentes"
+
+    llins_preg:
+      snt_var_name: llins_preg
+      label_en: "Nets distributed to pregnant women"
+      label_fr: "MII distribuées aux femmes enceintes"
+      label_pt: "MILD distribuídas a gestantes"
+
+    llins_hh_cov:
+      snt_var_name: llins_hh_cov
+      label_en: "Household coverage (%)"
+      label_fr: "Couverture des ménages (%)"
+      label_pt: "Cobertura dos agregados familiares (%)"
+
+  # ── Indoor residual spraying (IRS) ────────────────────────────────────────────
+  irs_campaign:
+    label_en: "Indoor residual spraying (IRS) campaigns"
+    label_fr: "Campagnes de pulvérisation intra-domiciliaire (PID)"
+    label_pt: "Campanhas de pulverização intradomiciliar (PID)"
+
+    irs_round:
+      snt_var_name: irs_round
+      label_en: "IRS round number"
+      label_fr: "Numéro du cycle PID"
+      label_pt: "Número da rodada de PID"
+
+    insecticide:
+      snt_var_name: insecticide
+      label_en: "Insecticide used"
+      label_fr: "Insecticide utilisé"
+      label_pt: "Inseticida utilizado"
+
+    irs_partner:
+      snt_var_name: irs_partner
+      label_en: "Implementing partner"
+      label_fr: "Partenaire d'exécution"
+      label_pt: "Parceiro executor"
+
+    irs_hh_targ:
+      snt_var_name: irs_hh_targ
+      label_en: "Target households for IRS"
+      label_fr: "Ménages ciblés pour PID"
+      label_pt: "Agregados familiares-alvo para PID"
+
+    irs_hh_num:
+      snt_var_name: irs_hh_num
+      label_en: "Households sprayed"
+      label_fr: "Ménages pulvérisés"
+      label_pt: "Agregados familiares pulverizados"
+
+    irs_hh_cov:
+      snt_var_name: irs_hh_cov
+      label_en: "Household coverage (%)"
+      label_fr: "Couverture des ménages (%)"
+      label_pt: "Cobertura dos agregados familiares (%)"
+
+    irs_pop_targ:
+      snt_var_name: irs_pop_targ
+      label_en: "People targeted for IRS"
+      label_fr: "Population ciblée pour PID"
+      label_pt: "População-alvo para PID"
+
+    irs_pop_prot:
+      snt_var_name: irs_pop_prot
+      label_en: "People protected by IRS"
+      label_fr: "Population protégée par PID"
+      label_pt: "População protegida por PID"
+
+    irs_pop_cov:
+      snt_var_name: irs_pop_cov
+      label_en: "Population coverage (%)"
+      label_fr: "Couverture de la population (%)"
+      label_pt: "Cobertura populacional (%)"
+
+  # ── Seasonal Malaria Chemoprevention (SMC) ────────────────────────────────────
+  smc_campaign:
+    label_en: "Seasonal malaria chemoprevention (SMC) campaigns"
+    label_fr: "Campagnes de chimioprévention saisonnière du paludisme"
+    label_pt: "Campanhas de quimioprevenção sazonal da malária"
+
+    smc1_targ:
+      snt_var_name: smc1_targ
+      label_en: "Children targeted for SMC round 1"
+      label_fr: "Enfants ciblés – tour 1"
+      label_pt: "Crianças-alvo – rodada 1"
+
+    smc1_num:
+      snt_var_name: smc1_num
+      label_en: "Children covered during SMC round 1"
+      label_fr: "Enfants couverts – tour 1"
+      label_pt: "Crianças cobertas – rodada 1"
+
+    smc2_targ:
+      snt_var_name: smc2_targ
+      label_en: "Children targeted for SMC round 2"
+      label_fr: "Enfants ciblés – tour 2"
+      label_pt: "Crianças-alvo – rodada 2"
+
+    smc2_num:
+      snt_var_name: smc2_num
+      label_en: "Children covered during SMC round 2"
+      label_fr: "Enfants couverts – tour 2"
+      label_pt: "Crianças cobertas – rodada 2"
+
+    smc3_targ:
+      snt_var_name: smc3_targ
+      label_en: "Children targeted for SMC round 3"
+      label_fr: "Enfants ciblés – tour 3"
+      label_pt: "Crianças-alvo – rodada 3"
+
+    smc3_num:
+      snt_var_name: smc3_num
+      label_en: "Children covered during SMC round 3"
+      label_fr: "Enfants couverts – tour 3"
+      label_pt: "Crianças cobertas – rodada 3"
+
+    smc4_targ:
+      snt_var_name: smc4_targ
+      label_en: "Children targeted for SMC round 4"
+      label_fr: "Enfants ciblés – tour 4"
+      label_pt: "Crianças-alvo – rodada 4"
+
+    smc4_num:
+      snt_var_name: smc4_num
+      label_en: "Children covered during SMC round 4"
+      label_fr: "Enfants couverts – tour 4"
+      label_pt: "Crianças cobertas – rodada 4"
+
+    smc_coverage:
+      snt_var_name: smc_coverage
+      label_en: "Overall SMC coverage (%)"
+      label_fr: "Couverture SMC globale (%)"
+      label_pt: "Cobertura global de SMC (%)"
+
+  # ── Mass Drug Administration (MDA) ────────────────────────────────────────────
+  mda_campaign:
+    label_en: "Mass drug administration (MDA) campaigns"
+    label_fr: "Campagnes d'administration massive de médicaments (AMM)"
+    label_pt: "Campanhas de administração em massa de medicamentos (AMM)"
+
+    mda_targ:
+      snt_var_name: mda_targ
+      label_en: "People targeted for MDA"
+      label_fr: "Population ciblée pour AMM"
+      label_pt: "População-alvo para AMM"
+
+    mda_num:
+      snt_var_name: mda_num
+      label_en: "People who received MDA"
+      label_fr: "Population ayant reçu les médicaments"
+      label_pt: "População que recebeu os medicamentos"
+
+    mda_cov:
+      snt_var_name: mda_cov
+      label_en: "MDA coverage (%)"
+      label_fr: "Couverture AMM (%)"
+      label_pt: "Cobertura AMM (%)"
+
+stock_management:
+  _description: "Commodity availability, usage, and reporting."
+  label_en: "Commodity and stock management"
+  label_fr: "Gestion des produits et des stocks"
+  label_pt: "Gestão de produtos e de stocks"
+
+  # ── Availability ──────────────────────────────────────────────────────────────
+  rdt_disp:
+    snt_var_name: rdt_disp
+    label_en: "RDTs available"
+    label_fr: "TDR disponibles"
+    label_pt: "RDT disponíveis"
+
+  act_disp:
+    snt_var_name: act_disp
+    label_en: "ACTs available"
+    label_fr: "ACT disponibles"
+    label_pt: "ACT disponíveis"
+
+  art_disp:
+    snt_var_name: art_disp
+    label_en: "Artesunate available"
+    label_fr: "Artésunate disponible"
+    label_pt: "Artesunato disponível"
+
+  quin_disp:
+    snt_var_name: quin_disp
+    label_en: "Quinine available"
+    label_fr: "Quinine disponible"
+    label_pt: "Quinina disponível"
+
+  sp_disp:
+    snt_var_name: sp_disp
+    label_en: "Sulfadoxine-Pyrimethamine available (IPTp)"
+    label_fr: "Sulfadoxine-Pyriméthamine disponible (TPIp)"
+    label_pt: "Sulfadoxina-Pirimetamina disponível (IPTp)"
+
+  # ── Stockouts ────────────────────────────────────────────────────────────────
+  rdt_stockout:
+    snt_var_name: rdt_stockout
+    label_en: "RDT stockout"
+    label_fr: "Rupture de stock de TDR"
+    label_pt: "Ruptura de stock de RDT"
+
+  act_stockout:
+    snt_var_name: act_stockout
+    label_en: "ACT stockout"
+    label_fr: "Rupture de stock d'ACT"
+    label_pt: "Ruptura de stock de ACT"
+
+  art_stockout:
+    snt_var_name: art_stockout
+    label_en: "Artesunate stockout"
+    label_fr: "Rupture de stock d'artésunate"
+    label_pt: "Ruptura de stock de artesunato"
+
+  quin_stockout:
+    snt_var_name: quin_stockout
+    label_en: "Quinine stockout"
+    label_fr: "Rupture de stock de quinine"
+    label_pt: "Ruptura de stock de quinina"
+
+  sp_stockout:
+    snt_var_name: sp_stockout
+    label_en: "Sulfadoxine-Pyrimethamine stockout (IPTp)"
+    label_fr: "Rupture de stock de Sulfadoxine-Pyriméthamine (TPIp)"
+    label_pt: "Ruptura de stock de Sulfadoxina-Pirimetamina (IPTp)"
+
+  # ── Consumption and usage ────────────────────────────────────────────────────
+  rdt_used:
+    snt_var_name: rdt_used
+    label_en: "RDTs used (consumed)"
+    label_fr: "TDR utilisés (consommés)"
+    label_pt: "RDT utilizados (consumidos)"
+
+  act_used:
+    snt_var_name: act_used
+    label_en: "ACTs used (dispensed)"
+    label_fr: "ACT utilisés (délivrés)"
+    label_pt: "ACT utilizados (dispensados)"
+
+  art_used:
+    snt_var_name: art_used
+    label_en: "Artesunate doses used"
+    label_fr: "Doses d'artésunate utilisées"
+    label_pt: "Doses de artesunato utilizadas"
+
+  quin_used:
+    snt_var_name: quin_used
+    label_en: "Quinine doses used"
+    label_fr: "Doses de quinine utilisées"
+    label_pt: "Doses de quinina utilizadas"
+
+  sp_used:
+    snt_var_name: sp_used
+    label_en: "Sulfadoxine-Pyrimethamine doses used (IPTp)"
+    label_fr: "Doses de Sulfadoxine-Pyriméthamine utilisées (TPIp)"
+    label_pt: "Doses de Sulfadoxina-Pirimetamina utilizadas (IPTp)"
+
+  # ── Deliveries and distribution ──────────────────────────────────────────────
+  rdt_recv:
+    snt_var_name: rdt_recv
+    label_en: "RDTs received during the month"
+    label_fr: "TDR reçus durant le mois"
+    label_pt: "RDT recebidos durante o mês"
+
+  act_recv:
+    snt_var_name: act_recv
+    label_en: "ACTs received during the month"
+    label_fr: "ACT reçus durant le mois"
+    label_pt: "ACT recebidos durante o mês"
+
+  art_recv:
+    snt_var_name: art_recv
+    label_en: "Artesunate received during the month"
+    label_fr: "Artésunate reçu durant le mois"
+    label_pt: "Artesunato recebido durante o mês"
+
+  quin_recv:
+    snt_var_name: quin_recv
+    label_en: "Quinine received during the month"
+    label_fr: "Quinine reçue durant le mois"
+    label_pt: "Quinina recebida durante o mês"
+
+  sp_recv:
+    snt_var_name: sp_recv
+    label_en: "Sulfadoxine-Pyrimethamine received during the month"
+    label_fr: "Sulfadoxine-Pyriméthamine reçue durant le mois"
+    label_pt: "Sulfadoxina-Pirimetamina recebida durante o mês"
+
+  # ── Quantities distributed or issued ─────────────────────────────────────────
+  rdt_dist:
+    snt_var_name: rdt_dist
+    label_en: "RDTs distributed to facilities"
+    label_fr: "TDR distribués aux formations sanitaires"
+    label_pt: "RDT distribuídos às unidades sanitárias"
+
+  act_dist:
+    snt_var_name: act_dist
+    label_en: "ACTs distributed to facilities"
+    label_fr: "ACT distribués aux formations sanitaires"
+    label_pt: "ACT distribuídos às unidades sanitárias"
+
+  art_dist:
+    snt_var_name: art_dist
+    label_en: "Artesunate distributed to facilities"
+    label_fr: "Artésunate distribué aux formations sanitaires"
+    label_pt: "Artesunato distribuído às unidades sanitárias"
+
+  quin_dist:
+    snt_var_name: quin_dist
+    label_en: "Quinine distributed to facilities"
+    label_fr: "Quinine distribuée aux formations sanitaires"
+    label_pt: "Quinina distribuída às unidades sanitárias"
+
+  sp_dist:
+    snt_var_name: sp_dist
+    label_en: "Sulfadoxine-Pyrimethamine distributed to facilities"
+    label_fr: "Sulfadoxine-Pyriméthamine distribuée aux formations sanitaires"
+    label_pt: "Sulfadoxina-Pirimetamina distribuída às unidades sanitárias"
+
+  # ── Reporting and stock status ───────────────────────────────────────────────
+  stock_reported:
+    snt_var_name: stock_reported
+    label_en: "Facilities that reported stock data"
+    label_fr: "Formations sanitaires ayant rapporté les données de stock"
+    label_pt: "Unidades sanitárias que reportaram dados de stock"
+
+  stock_complete:
+    snt_var_name: stock_complete
+    label_en: "Facilities with complete stock reports"
+    label_fr: "Formations sanitaires avec rapports complets de stock"
+    label_pt: "Unidades sanitárias com relatórios de stock completos"
+
+  stockout_days_rdt:
+    snt_var_name: stockout_days_rdt
+    label_en: "Days with RDT stockout"
+    label_fr: "Jours de rupture de stock de TDR"
+    label_pt: "Dias de ruptura de stock de RDT"
+
+  stockout_days_act:
+    snt_var_name: stockout_days_act
+    label_en: "Days with ACT stockout"
+    label_fr: "Jours de rupture de stock d'ACT"
+    label_pt: "Dias de ruptura de stock de ACT"
+
+anemia:
+  _description: "Anemia-related service and outcome indicators."
+  label_en: "Anemia indicators"
+  label_fr: "Indicateurs d'anémie"
+  label_pt: "Indicadores de anemia"
+
+  anout:
+    snt_var_name: anout
+    label_en: "Anemic outpatients"
+    label_fr: "Consultations externes pour anémie"
+    label_pt: "Consultas externas por anemia"
+    disagg: ["age_groups", "population_groups", "sectors"]
+
+  anadm:
+    snt_var_name: anadm
+    label_en: "Severe anemia admissions"
+    label_fr: "Admissions pour anémie sévère"
+    label_pt: "Internações por anemia grave"
+    disagg: ["age_groups", "population_groups", "sectors"]
+
+  andth:
+    snt_var_name: andth
+    label_en: "Anemia deaths"
+    label_fr: "Décès dus à l'anémie"
+    label_pt: "Óbitos por anemia"
+    disagg: ["age_groups", "population_groups", "sectors"]
+
+  anprev:
+    snt_var_name: anprev
+    label_en: "Anemia prevalence among"
+    label_fr: "Prévalence de l'anémie chez"
+    label_pt: "Prevalência de anemia entre"
+    disagg: ["age_groups", "population_groups", "sectors"]
+
+schema:
+  _description: "Standardized disaggregation schema used across indicators."
+  label_en: "Standard disaggregation schema"
+  label_fr: "Schéma standard de désagrégation"
+  label_pt: "Esquema padrão de desagregação"
+
+  # ── Age groups ────────────────────────────────────────────────────────────────
+  age_groups:
+    u1:
+      label_en: "Under 1 year"
+      label_fr: "Moins de 1 an"
+      label_pt: "Menos de 1 ano"
+    u5:
+      label_en: "Under 5 years"
+      label_fr: "Moins de 5 ans"
+      label_pt: "Menos de 5 anos"
+    ov5:
+      label_en: "5 years and above"
+      label_fr: "5 ans et plus"
+      label_pt: "5 anos e mais"
+    ov15:
+      label_en: "15 years and above"
+      label_fr: "15 ans et plus"
+      label_pt: "15 anos e mais"
+
+  # ── Population groups ─────────────────────────────────────────────────────────
+  population_groups:
+    preg:
+      label_en: "Pregnant women"
+      label_fr: "Femmes enceintes"
+      label_pt: "Mulheres grávidas"
+    lact:
+      label_en: "Lactating women"
+      label_fr: "Femmes allaitantes"
+      label_pt: "Mulheres lactantes"
+    child:
+      label_en: "Children under 5 years"
+      label_fr: "Enfants de moins de 5 ans"
+      label_pt: "Crianças com menos de 5 anos"
+    adult:
+      label_en: "Adults (15 years and above)"
+      label_fr: "Adultes (15 ans et plus)"
+      label_pt: "Adultos (15 anos e mais)"
+
+  # ── Sectors ───────────────────────────────────────────────────────────────────
+  sectors:
+    pub:
+      label_en: "Public sector"
+      label_fr: "Secteur public"
+      label_pt: "Setor público"
+    priv:
+      label_en: "Private sector"
+      label_fr: "Secteur privé"
+      label_pt: "Setor privado"
+    comm:
+      label_en: "Community"
+      label_fr: "Communautaire"
+      label_pt: "Comunitário"
+
+  # ── Test types ────────────────────────────────────────────────────────────────
+  test_types:
+    rdt:
+      label_en: "RDT test"
+      label_fr: "Test TDR"
+      label_pt: "Teste RDT"
+    mic:
+      label_en: "Microscopy test"
+      label_fr: "Test par frottis"
+      label_pt: "Teste de microscopia"
+
+  # ── Service levels ────────────────────────────────────────────────────────────
+  service_levels:
+    chw:
+      label_en: "Community level (CHW)"
+      label_fr: "Niveau communautaire (ASC)"
+      label_pt: "Nível comunitário (ASC)"
+    opd:
+      label_en: "Outpatient department (OPD)"
+      label_fr: "Consultations externes (CS)"
+      label_pt: "Consultas externas (CS)"
+    ipd:
+      label_en: "Inpatient department (IPD)"
+      label_fr: "Hospitalisations (HP)"
+      label_pt: "Internações (HP)"
+
+  # ── Sex ───────────────────────────────────────────────────────────────────────
+  sex:
+    male:
+      label_en: "Male"
+      label_fr: "Homme"
+      label_pt: "Masculino"
+    female:
+      label_en: "Female"
+      label_fr: "Femme"
+      label_pt: "Feminino"
+    unknown:
+      label_en: "Unknown sex"
+      label_fr: "Sexe inconnu"
+      label_pt: "Sexo desconhecido"
