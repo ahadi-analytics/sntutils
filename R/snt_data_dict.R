@@ -19,11 +19,14 @@
 #'   - `disagg`: character vector of applicable disaggregations (if available)
 #'
 #' @examples
+#'
+#' \dontrun{
 #' # Load all variable metadata
 #' sntutils::snt_data_dict()
 #'
 #' # Load only routine_data variables
 #' sntutils::snt_data_dict(domain = "routine_data")
+#'}
 #'
 #' @export
 snt_data_dict <- function(

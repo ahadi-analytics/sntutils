@@ -183,6 +183,7 @@ globalVariables(
     "prop",
     "reason",
     "residual_iqr",
+    "label", "path",
     "residual_mad",
     "residual_mean",
     ".x_axis_var",

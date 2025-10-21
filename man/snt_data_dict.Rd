@@ -32,10 +32,13 @@ single domain (e.g. \code{"routine_data"}, \code{"stock_management"}) to filter
 the returned results.
 }
 \examples{
+
+\dontrun{
 # Load all variable metadata
 sntutils::snt_data_dict()
 
 # Load only routine_data variables
 sntutils::snt_data_dict(domain = "routine_data")
+}
 
 }
