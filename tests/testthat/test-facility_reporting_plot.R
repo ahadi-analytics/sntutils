@@ -456,7 +456,7 @@ test_that("classify_facility_activity validates new parameters", {
       key_indicators = "test",
       method = "invalid_method"
     ),
-    "should be one of"
+    "method must be"
   )
 
   # Test invalid reporting_rule

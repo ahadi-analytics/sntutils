@@ -158,7 +158,6 @@
 #' )
 #'}
 #'
-
 #' @export
 consistency_check <- function(data,
                               inputs = NULL,
