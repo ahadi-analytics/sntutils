@@ -11,6 +11,9 @@ calculate_reporting_metrics(
   y_var = NULL,
   hf_col = NULL,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  method = 3,
+  nonreport_window = 6,
+  reporting_rule = "any_non_na",
   weighting = FALSE,
   weight_var = NULL,
   weight_window = 12,
@@ -36,6 +39,17 @@ IDs. Required only for scenario 1.}
 \item{key_indicators}{Optional. Character vector of indicators used to define
 facility activity in scenario 1. Defaults to
 \code{c("allout", "conf", "test", "treat", "pres")}.}
+
+\item{method}{Character or numeric. Classification method for facility activity
+status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
+Defaults to 3. See \code{\link{classify_facility_activity}} for details.}
+
+\item{nonreport_window}{Integer. Minimum number of consecutive non-reporting
+months to classify a facility as inactive in method 3. Defaults to 6.}
+
+\item{reporting_rule}{Character. Defines what counts as reporting:
+\code{"any_non_na"} (default, counts NA as non-reporting, 0 counts as reported)
+or \code{"positive_only"} (requires >0 value to count as reported).}
 
 \item{weighting}{Logical. Whether to use weighted reporting rates. When TRUE,
 facilities are weighted by their typical size, giving more importance to
@@ -146,8 +160,9 @@ Then:
 }
 }
 \examples{
+# Example with dates instead of month names for compatibility
 hf_data <- data.frame(
-  month = rep(c("Jan", "Feb", "Mar"), each = 10),
+  month = rep(as.Date(c("2024-01-01", "2024-02-01", "2024-03-01")), each = 10),
   district = rep(c("North", "South"), each = 5, times = 3),
   facility_id = rep(1:5, times = 6),
   conf = c(
@@ -168,14 +183,15 @@ hf_data <- data.frame(
 )
 
 # Scenario 1: Proportion of active facilities reporting
-# any data
+# any data (using numeric method)
 calculate_reporting_metrics(
   data = hf_data,
   vars_of_interest = c("conf"),
   x_var = "month",
   y_var = "district",
   hf_col = "facility_id",
-  key_indicators = c("allout", "conf", "pres")
+  key_indicators = c("allout", "conf", "pres"),
+  method = 3  # Can also use "method3"
 )
 
 # Scenario 2: Reporting rate by month and district
@@ -192,6 +208,7 @@ calculate_reporting_metrics(
   vars_of_interest = c("conf"),
   x_var = "month"
 )
+
 
 # Example with weighted reporting rate
 # Create data with facilities of different sizes
