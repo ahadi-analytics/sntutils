@@ -106,8 +106,11 @@ for the consensus flag to call an outlier. Default \code{2}.}
 \code{"standard"} (lean + per-method flags + bounds + seasonality mode),
 \code{"audit"} (all columns for full reproducibility). Default \code{"standard"}.}
 
-\item{seasonal_pool_years}{Rolling history window (in years) for same-month
-pooling when \code{time_mode = "by_month"}. Default \code{5}.}
+\item{seasonal_pool_years}{Total window size (in years) for same-month
+pooling when \code{time_mode = "by_month"}. The window is centered on the
+target year, looking both backward and forward in time (e.g., with
+\code{seasonal_pool_years = 5}, compares with +/-2 years for each side).
+Default \code{5}.}
 
 \item{min_years_per_month}{Minimum distinct years required in the same-month
 pool before moving to a fallback. Default \code{3}.}
@@ -164,10 +167,11 @@ one step toward lenient.
 and record \code{reason} (\code{low_reporting}, \code{insufficient_n},
 \code{insufficient_seasonal_history}).
 \item Seasonality (if \code{time_mode = "by_month"}): ladder applied in order:
-same-month (rolling \code{seasonal_pool_years}), neighbours (m +/- 1 with
-weights 2:1), residual (remove month fixed effects), across-time (with
-strictness shift), then exclusion if still inadequate. Each row records
-\code{seasonality_mode_used}, window text, and any fallback reason.
+same-month (+/-\code{seasonal_pool_years/2} years, excluding target year),
+neighbours (months m-1, m, m+1 with weights 1:2:1 within the same
++/- years window), residual (remove month fixed effects), across-time
+(with strictness shift), then exclusion if still inadequate. Each row
+records \code{seasonality_mode_used}, window text, and any fallback reason.
 \item Flagging: each method classifies rows respecting guardrails and unstable
 scales (when \code{sd}, \code{mad}, or \code{iqr} equals zero the method is suppressed
 and marked \code{unstable_scale}).
@@ -200,7 +204,8 @@ variable reporting completeness or frequent facility additions.
 \strong{Seasonality ladder thresholds}
 \itemize{
 \item same-month requires \code{min_years_per_month} and \code{min_n} within the
-\code{seasonal_pool_years} window; otherwise fall back as above.
+bidirectional \code{seasonal_pool_years} window (centered on target year);
+otherwise fall back as described above.
 }
 
 The returned tibble always contains identifiers, scale statistics, bounds,
