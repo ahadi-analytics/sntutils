@@ -54,7 +54,7 @@ Three activity classification methods are supported:
 \itemize{
 \item \strong{Method 1 (Permanent activation):} Facility is active from first
 report onwards, remains active afterwards.
-\item \strong{Method 2 (First–Last activation):} Facility is active only between
+\item \strong{Method 2 (First-Last activation):} Facility is active only between
 first and last report dates.
 \item \strong{Method 3 (Dynamic):} Facility is active, but becomes inactive if
 it misses \code{nonreport_window} consecutive months. Reactivates if reporting

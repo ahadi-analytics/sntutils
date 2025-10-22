@@ -2,7 +2,7 @@
 % Please edit documentation in R/outlier_detection.R
 \name{detect_outliers}
 \alias{detect_outliers}
-\title{Detect outliers with guardrails, consensus, and seasonal fallbacks}
+\title{Detect high outliers with guardrails, consensus, and seasonal fallbacks}
 \usage{
 detect_outliers(
   data,
@@ -144,12 +144,14 @@ applied) \code{activeness_applied} and \code{key_indicators_used}.
 }
 \description{
 \code{detect_outliers()} evaluates a numeric indicator by administrative unit and
-time using three methods (mean +/- SD, median +/- MAD, Tukey IQR).
-It enforces reporting and sample-size guardrails, supports strictness
-presets, and when requested applies a seasonality ladder
-(same-month -> neighbours -> residual -> across-time) to select stable
-comparison pools. It returns per-method flags (optional), a consensus
-classification, scale statistics, and metadata recording any fallback used.
+time using three methods (mean + SD, median + MAD, Tukey upper fence) to
+identify unusually HIGH values only (potential outbreaks or data anomalies).
+Low values are NOT flagged as outliers. It enforces reporting and sample-size
+guardrails, supports strictness presets, and when requested applies a
+seasonality ladder (same-month -> neighbours -> residual -> across-time) to
+select stable comparison pools. It returns per-method flags (optional), a
+consensus classification, scale statistics, and metadata recording any
+fallback used.
 }
 \details{
 \strong{Workflow}
@@ -172,9 +174,9 @@ neighbours (months m-1, m, m+1 with weights 1:2:1 within the same
 +/- years window), residual (remove month fixed effects), across-time
 (with strictness shift), then exclusion if still inadequate. Each row
 records \code{seasonality_mode_used}, window text, and any fallback reason.
-\item Flagging: each method classifies rows respecting guardrails and unstable
-scales (when \code{sd}, \code{mad}, or \code{iqr} equals zero the method is suppressed
-and marked \code{unstable_scale}).
+\item Flagging: each method checks if values exceed the UPPER threshold only
+(e.g., mean + multiplier×SD). Low values are never flagged. Methods are
+suppressed when scales are unstable (\code{sd}, \code{mad}, or \code{iqr} equals zero).
 \item Consensus: final \code{outlier_flag_consensus} requires at least
 \code{consensus_rule} methods to agree over available (non-suppressed) methods.
 }
@@ -193,13 +195,16 @@ the comparison pool for outlier detection. This step improves
 interpretability of results and reduces false positives in areas with
 variable reporting completeness or frequent facility additions.
 
-\strong{Presets}
+\strong{Presets} (for high outliers only)
 \itemize{
-\item lenient: SD 4.0; MAD constant 1.4826, MAD mult 12; IQR 3.0
-\item balanced: SD 3.0; MAD constant 1.4826, MAD mult 9; IQR 2.0
-\item strict: SD 2.5; MAD constant 1.4826, MAD mult 6; IQR 1.5
+\item lenient: values > mean + 4.0×SD, median + 12×MAD, or Q3 + 3.0×IQR
+\item balanced: values > mean + 3.0×SD, median + 9×MAD, or Q3 + 2.0×IQR
+\item strict: values > mean + 2.5×SD, median + 6×MAD, or Q3 + 1.5×IQR
 \item advanced: use user-supplied multipliers
 }
+
+Note: Only values ABOVE the upper thresholds are flagged. Low values are
+always classified as "normal" regardless of how far below the mean/median.
 
 \strong{Seasonality ladder thresholds}
 \itemize{
@@ -215,6 +220,9 @@ included alongside the consensus.
 }
 \examples{
 \dontrun{
+# NOTE: Only HIGH values are flagged as outliers (e.g., disease outbreaks).
+# Low values are always considered "normal".
+
 # 1) Minimal consensus output at adm1-only level
 detect_outliers(
   data = malaria_data,

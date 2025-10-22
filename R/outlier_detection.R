@@ -1,17 +1,15 @@
-# sntutils/R/outlier_detection.R
-# orchestrates outlier detection and reporting utilities.
-# anchors the public API for identifying anomalous malaria indicators.
-# RELEVANT FILES:R/write_snt_data.R,R/process_rasters.R
-#' Detect outliers with guardrails, consensus, and seasonal fallbacks
+#' Detect high outliers with guardrails, consensus, and seasonal fallbacks
 #'
 #' @description
 #' `detect_outliers()` evaluates a numeric indicator by administrative unit and
-#' time using three methods (mean +/- SD, median +/- MAD, Tukey IQR).
-#' It enforces reporting and sample-size guardrails, supports strictness
-#' presets, and when requested applies a seasonality ladder
-#' (same-month -> neighbours -> residual -> across-time) to select stable
-#' comparison pools. It returns per-method flags (optional), a consensus
-#' classification, scale statistics, and metadata recording any fallback used.
+#' time using three methods (mean + SD, median + MAD, Tukey upper fence) to
+#' identify unusually HIGH values only (potential outbreaks or data anomalies).
+#' Low values are NOT flagged as outliers. It enforces reporting and sample-size
+#' guardrails, supports strictness presets, and when requested applies a
+#' seasonality ladder (same-month -> neighbours -> residual -> across-time) to
+#' select stable comparison pools. It returns per-method flags (optional), a
+#' consensus classification, scale statistics, and metadata recording any
+#' fallback used.
 #'
 #' @param data Data frame containing the indicator to analyse.
 #' @param column Name of the numeric column to evaluate.
@@ -113,9 +111,9 @@
 #'    +/- years window), residual (remove month fixed effects), across-time
 #'    (with strictness shift), then exclusion if still inadequate. Each row
 #'    records `seasonality_mode_used`, window text, and any fallback reason.
-#' 6) Flagging: each method classifies rows respecting guardrails and unstable
-#'    scales (when `sd`, `mad`, or `iqr` equals zero the method is suppressed
-#'    and marked `unstable_scale`).
+#' 6) Flagging: each method checks if values exceed the UPPER threshold only
+#'    (e.g., mean + multiplier×SD). Low values are never flagged. Methods are
+#'    suppressed when scales are unstable (`sd`, `mad`, or `iqr` equals zero).
 #' 7) Consensus: final `outlier_flag_consensus` requires at least
 #'    `consensus_rule` methods to agree over available (non-suppressed) methods.
 #'
@@ -133,11 +131,14 @@
 #' interpretability of results and reduces false positives in areas with
 #' variable reporting completeness or frequent facility additions.
 #'
-#' **Presets**
-#' - lenient: SD 4.0; MAD constant 1.4826, MAD mult 12; IQR 3.0
-#' - balanced: SD 3.0; MAD constant 1.4826, MAD mult 9; IQR 2.0
-#' - strict: SD 2.5; MAD constant 1.4826, MAD mult 6; IQR 1.5
+#' **Presets** (for high outliers only)
+#' - lenient: values > mean + 4.0×SD, median + 12×MAD, or Q3 + 3.0×IQR
+#' - balanced: values > mean + 3.0×SD, median + 9×MAD, or Q3 + 2.0×IQR
+#' - strict: values > mean + 2.5×SD, median + 6×MAD, or Q3 + 1.5×IQR
 #' - advanced: use user-supplied multipliers
+#'
+#' Note: Only values ABOVE the upper thresholds are flagged. Low values are
+#' always classified as "normal" regardless of how far below the mean/median.
 #'
 #' **Seasonality ladder thresholds**
 #' - same-month requires `min_years_per_month` and `min_n` within the
@@ -160,6 +161,9 @@
 #'
 #' @examples
 #' \dontrun{
+#' # NOTE: Only HIGH values are flagged as outliers (e.g., disease outbreaks).
+#' # Low values are always considered "normal".
+#'
 #' # 1) Minimal consensus output at adm1-only level
 #' detect_outliers(
 #'   data = malaria_data,
@@ -1110,7 +1114,8 @@ detect_outliers <- function(
 #' Create Outlier Detection Plots
 #'
 #' This function creates plots to visualize outliers in data using the same
-#' detection methods as `detect_outliers()`. The plotting function inherits
+#' detection methods as `detect_outliers()`. Only values above the upper
+#' thresholds are highlighted as outliers. The plotting function inherits
 #' all parameters from the detection function for seamless integration.
 #'
 #' @inheritParams detect_outliers
@@ -2646,8 +2651,7 @@ outlier_plot <- function(
           is.na(.outlier_value) |
             is.na(mean_lower) |
             is.na(mean_upper) ~ "insufficient_evidence",
-          .outlier_value < mean_lower |
-            .outlier_value > mean_upper ~ "outlier",
+          .outlier_value > mean_upper ~ "outlier",
           TRUE ~ "normal"
         )
       )
@@ -2662,8 +2666,7 @@ outlier_plot <- function(
           is.na(.outlier_value) |
             is.na(median_lower) |
             is.na(median_upper) ~ "insufficient_evidence",
-          .outlier_value < median_lower |
-            .outlier_value > median_upper ~ "outlier",
+          .outlier_value > median_upper ~ "outlier",
           TRUE ~ "normal"
         )
       )
@@ -2678,8 +2681,7 @@ outlier_plot <- function(
           is.na(.outlier_value) |
             is.na(iqr_lower) |
             is.na(iqr_upper) ~ "insufficient_evidence",
-          .outlier_value < iqr_lower |
-            .outlier_value > iqr_upper ~ "outlier",
+          .outlier_value > iqr_upper ~ "outlier",
           TRUE ~ "normal"
         )
       )
@@ -3013,10 +3015,10 @@ outlier_plot <- function(
   if (params$seasonal_pool_years %% 2 != 0) {
     years_before <- years_before + 1
   }
-  
+
   window_start <- target$.outlier_year - years_before
   window_end <- target$.outlier_year + years_after
-  
+
   pool <- dplyr::filter(
     group_data,
     .outlier_month == target$.outlier_month,
@@ -3037,7 +3039,7 @@ outlier_plot <- function(
   years_available <- unique(pool$.outlier_year)
   eligible <- nrow(pool) >= params$min_obs_per_seasonal_bucket &&
     length(years_available) >= params$min_years_per_month
-  
+
   # Build description showing bidirectional window
   if (nrow(pool) > 0) {
     desc <- glue::glue(
@@ -3049,7 +3051,7 @@ outlier_plot <- function(
       "Month {target$.outlier_month}, no same-month history within +/-{years_before} years"
     )
   }
-  
+
   list(pool = pool, eligible = eligible, desc = desc)
 }
 
@@ -3067,10 +3069,10 @@ outlier_plot <- function(
   if (params$seasonal_pool_years %% 2 != 0) {
     years_before <- years_before + 1
   }
-  
+
   window_start <- target$.outlier_year - years_before
   window_end <- target$.outlier_year + years_after
-  
+
   neighbor_months <- ((target$.outlier_month + c(-1, 0, 1) - 1) %% 12) + 1
   pool <- dplyr::filter(
     group_data,
@@ -3094,7 +3096,7 @@ outlier_plot <- function(
   obs <- sum(pool$.season_weight)
   eligible <- obs >= params$min_obs_per_seasonal_bucket
   month_names <- paste(sort(unique(neighbor_months)), collapse = "/")
-  
+
   # Build description showing bidirectional window
   if (nrow(pool) > 0) {
     desc <- glue::glue(
@@ -3106,7 +3108,7 @@ outlier_plot <- function(
       "Months {month_names}, no neighbor data within +/-{years_before} years"
     )
   }
-  
+
   list(pool = pool, eligible = eligible, desc = desc)
 }
 
@@ -3885,7 +3887,7 @@ outlier_plot <- function(
     dplyr::group_by(.outlier_month, .outlier_year) |>
     dplyr::group_modify(function(year_month_data, key) {
       target_year <- key$.outlier_year
-      
+
       # Calculate window for both past and future years
       years_before <- floor(params$seasonal_pool_years / 2)
       years_after <- floor(params$seasonal_pool_years / 2)
@@ -3893,7 +3895,7 @@ outlier_plot <- function(
       if (params$seasonal_pool_years %% 2 != 0) {
         years_before <- years_before + 1
       }
-      
+
       window_start <- target_year - years_before
       window_end <- target_year + years_after
 
@@ -4604,8 +4606,7 @@ outlier_plot <- function(
           is.na(mean_lower) |
           is.na(mean_upper) ~
           "insufficient_evidence",
-        comparison_value < mean_lower |
-          comparison_value > mean_upper ~
+        comparison_value > mean_upper ~
           "outlier",
         TRUE ~ "normal"
       ),
@@ -4614,8 +4615,7 @@ outlier_plot <- function(
         unstable_median ~ "unstable_scale",
         is.na(comparison_value) | is.na(median_lower) | is.na(median_upper) ~
           "insufficient_evidence",
-        comparison_value < median_lower |
-          comparison_value > median_upper ~
+        comparison_value > median_upper ~
           "outlier",
         TRUE ~ "normal"
       ),
@@ -4624,8 +4624,7 @@ outlier_plot <- function(
         unstable_iqr ~ "unstable_scale",
         is.na(comparison_value) | is.na(iqr_lower) | is.na(iqr_upper) ~
           "insufficient_evidence",
-        comparison_value < iqr_lower |
-          comparison_value > iqr_upper ~
+        comparison_value > iqr_upper ~
           "outlier",
         TRUE ~ "normal"
       )
