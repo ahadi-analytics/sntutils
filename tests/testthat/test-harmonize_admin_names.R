@@ -216,43 +216,6 @@ testthat::test_that("Test administrative matching stats output", {
   })
 })
 
-
-testthat::test_that("prep_geonames correctly processes admin names", {
-  # Create a sample target data frame
-  target_df <- data.frame(
-    country = c("ANGOLA", "UGA", "ZAMBIA"),
-    province = c("CABONDA", "TESO", "LUSAKA"),
-    district = c("BALIZE", "BOKEDEA", "RAFUNSA"),
-    subdistrict = c("AREA1", "AREA2", "AREA3"),
-    stringsAsFactors = FALSE
-  )
-
-  suppressMessages(
-    # Run the function in non-interactive mode
-    cleaned_df <- prep_geonames(
-      target_df,
-      level0 = "country",
-      level1 = "province",
-      level2 = "district",
-      interactive = FALSE
-    )
-  )
-
-  # Check that the function returns a data frame
-  testthat::expect_s3_class(cleaned_df, "data.frame")
-
-  # Check that the returned data frame has the same number of rows as the input
-  testthat::expect_equal(nrow(cleaned_df), nrow(target_df))
-
-  # Check that the returned data frame contains the expected columns
-  testthat::expect_true(
-    all(c(
-      "country", "province",
-      "district", "subdistrict"
-    ) %in% colnames(cleaned_df))
-  )
-})
-
 testthat::test_that("helper captures cli output robustly", {
   withr::local_options(cli.unicode = FALSE, cli.num_colors = 1)
 

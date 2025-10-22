@@ -116,12 +116,21 @@ target_df <- data.frame(
   subdistrict = c("AREA1", "AREA2", "AREA3")
 )
 
+# Dummy lookup data with correct spellings
+lookup_df <- data.frame(
+  country = c("ANGOLA", "ANGOLA", "UGANDA", "UGANDA", "ZAMBIA", "ZAMBIA"),
+  province = c("CABINDA", "CABINDA", "TESO", "TESO", "LUSAKA", "LUSAKA"),
+  district = c("BELIZE", "BUCO-ZAU", "BUKEDEA", "KUMI", "KAFUE", "LUSAKA"),
+  stringsAsFactors = FALSE
+)
+
 # Interactively clean geonames
 prep_geonames(
   target_df,
+  lookup_df = lookup_df,
   level0 = "country", level1 = "province",
   level2 = "district",
-  interactive = FALSE # replace with TRUE for interactivty
+  interactive = FALSE # replace with TRUE for interactivity
 )
 }
 
