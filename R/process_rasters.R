@@ -871,8 +871,7 @@ normalize_raster_by_polygon <- function(raster, shp, id_col) {
 #'          sums are used. The IHME data provides high-resolution (5 x 5 km)
 #'          estimates of under-5 mortality across LMICs.
 #'
-#' @source \url{https://ghdx.healthdata.org/record/ihme-data/
-#'      lmic-under5-mortality-rate-geospatial-estimates-2000-2017}
+#' @source \url{https://ghdx.healthdata.org/record/ihme-data/lmic-under5-mortality-rate-geospatial-estimates-2000-2017}
 #'
 #' @examples
 #' \dontrun{
