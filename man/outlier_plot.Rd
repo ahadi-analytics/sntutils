@@ -114,8 +114,11 @@ If TRUE, uses binary classification ("Active", "Non-Active"). If FALSE
 \item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3})
 for the consensus flag to call an outlier. Default \code{2}.}
 
-\item{seasonal_pool_years}{Rolling history window (in years) for same-month
-pooling when \code{time_mode = "by_month"}. Default \code{5}.}
+\item{seasonal_pool_years}{Total window size (in years) for same-month
+pooling when \code{time_mode = "by_month"}. The window is centered on the
+target year, looking both backward and forward in time (e.g., with
+\code{seasonal_pool_years = 5}, compares with +/-2 years for each side).
+Default \code{5}.}
 
 \item{min_years_per_month}{Minimum distinct years required in the same-month
 pool before moving to a fallback. Default \code{3}.}
