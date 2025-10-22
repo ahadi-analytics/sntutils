@@ -1449,23 +1449,15 @@ prep_geonames <- function(
 
   # Get the internal shapefile if lookup data is not provided
   if (is.null(lookup_df)) {
-    lookup_df <- sntutils::shp_global
-
-    if (!is.null(level0)) {
-      lookup_df <- dplyr::rename(lookup_df, !!level0 := ADM0_NAME)
-    }
-    if (!is.null(level1)) {
-      lookup_df <- dplyr::rename(lookup_df, !!level1 := ADM1_NAME)
-    }
-    if (!is.null(level2)) {
-      lookup_df <- dplyr::rename(lookup_df, !!level2 := ADM2_NAME)
-    }
-    if (!is.null(level3)) {
-      lookup_df <- dplyr::rename(lookup_df, !!level3 := ADM3_NAME)
-    }
-    if (!is.null(level4)) {
-      lookup_df <- dplyr::rename(lookup_df, !!level4 := ADM4_NAME)
-    }
+    cli::cli_abort(
+      c(
+        "No lookup data provided.",
+        "i" = "The internal WHO shapefile (shp_global) has been removed from this package.",
+        "i" = "Please provide your own lookup data using the 'lookup_df' parameter.",
+        "i" = "You can download WHO administrative boundaries from:",
+        "i" = "https://hub.arcgis.com/datasets/WHO::polio-administrative-boundaries"
+      )
+    )
   }
 
   # Create the levels vector
