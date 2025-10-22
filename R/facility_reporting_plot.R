@@ -10,8 +10,9 @@
 #'   "date".
 #' @param key_indicators Character vector with columns defining reporting
 #'   activity. Defaults to `c("test", "pres", "conf")`.
-#' @param method Character. One of `"method1"`, `"method2"`, `"method3"`, or
-#'   `"all"`. See Details. Defaults to `"method1"`.
+#' @param method Character or numeric. Classification method - can be numeric 
+#'   (1, 2, 3) or character ("method1", "method2", "method3", "all"). 
+#'   See Details. Defaults to 1.
 #' @param nonreport_window Integer. Minimum number of consecutive non-reporting
 #'   months to classify a facility as inactive in method 3. Defaults to 6.
 #' @param reporting_rule Character. Defines what counts as reporting:
@@ -70,16 +71,34 @@ classify_facility_activity <- function(
   hf_col,
   date_col = "date",
   key_indicators = c("test", "pres", "conf"),
-  method = "method1",
+  method = 1,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
   binary_classification = FALSE
 ) {
+  # Normalize method parameter to accept both numeric and character
+  if (is.numeric(method)) {
+    if (!method %in% 1:3) {
+      cli::cli_abort(c(
+        "!" = "method must be 1, 2, or 3 when numeric",
+        "i" = "You provided: {method}"
+      ))
+    }
+    method <- paste0("method", method)
+  } else if (is.character(method)) {
+    # Accept both "method1" and "1" formats
+    if (method %in% c("1", "2", "3")) {
+      method <- paste0("method", method)
+    } else if (!method %in% c("method1", "method2", "method3", "all")) {
+      cli::cli_abort(c(
+        "!" = "method must be 'method1', 'method2', 'method3', 'all', or numeric 1, 2, 3",
+        "i" = "You provided: {method}"
+      ))
+    }
+  } else {
+    cli::cli_abort("method must be numeric (1, 2, 3) or character")
+  }
   reporting_rule <- match.arg(reporting_rule, choices = c("any_non_na", "positive_only"))
-  method <- match.arg(
-    method,
-    choices = c("method1", "method2", "method3", "all")
-  )
 
   if (!base::is.data.frame(data)) {
     cli::cli_abort("`data` must be a data.frame.")
@@ -326,9 +345,9 @@ flagged_panel <- flagged_panel |>
 #'   "date".
 #' @param key_indicators Character vector with columns defining reporting
 #'   activity. Defaults to `c("test", "pres", "conf")`.
-#' @param method Character. One of `"method1"`, `"method2"`, `"method3"`, or
-#'   `"all"`. Classification method for facility activity status. Defaults to
-#'   `"method1"`.
+#' @param method Character or numeric. Classification method - can be numeric 
+#'   (1, 2, 3) or character ("method1", "method2", "method3", "all"). 
+#'   Defaults to 1.
 #' @param nonreport_window Integer. Minimum number of consecutive non-reporting
 #'   months to classify a facility as inactive in method 3. Defaults to 6.
 #' @param reporting_rule Character. Defines what counts as reporting:
@@ -411,7 +430,7 @@ facility_reporting_plot <- function(
   hf_col,
   date_col = "date",
   key_indicators = c("test", "pres", "conf"),
-  method = "method1",
+  method = 1,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
   binary_classification = FALSE,
@@ -581,12 +600,37 @@ facility_reporting_plot <- function(
     )
   }
 
+  # Normalize method parameter first
+  if (is.numeric(method)) {
+    if (!method %in% 1:3) {
+      cli::cli_abort(c(
+        "!" = "method must be 1, 2, or 3 when numeric",
+        "i" = "You provided: {method}"
+      ))
+    }
+    method_normalized <- paste0("method", method)
+  } else if (is.character(method)) {
+    # Accept both "method1" and "1" formats
+    if (method %in% c("1", "2", "3")) {
+      method_normalized <- paste0("method", method)
+    } else if (!method %in% c("method1", "method2", "method3")) {
+      cli::cli_abort(c(
+        "!" = "method must be 'method1', 'method2', 'method3', or numeric 1, 2, 3",
+        "i" = "You provided: {method}"
+      ))
+    } else {
+      method_normalized <- method
+    }
+  } else {
+    cli::cli_abort("method must be numeric (1, 2, 3) or character")
+  }
+
   routine_reporting <- classify_facility_activity(
     data = data,
     hf_col = hf_col,
     date_col = date_col,
     key_indicators = key_indicators,
-    method = method,
+    method = method_normalized,
     nonreport_window = nonreport_window,
     reporting_rule = reporting_rule,
     binary_classification = binary_classification
@@ -647,7 +691,7 @@ facility_reporting_plot <- function(
     method3 = "Method 3: dynamic activation and inactivation"
   )
 
-  current_method_desc <- method_descriptions[[method]]
+  current_method_desc <- method_descriptions[[method_normalized]]
   if (is.null(current_method_desc)) {
     current_method_desc <- method_descriptions[["method1"]]
   }
@@ -939,7 +983,7 @@ facility_reporting_plot <- function(
 
     file_base <- make_slug(base_label)
     date_range_slug <- make_slug(date_range_text)
-    method_slug <- make_slug(method)
+    method_slug <- make_slug(method_normalized)
 
     # Add facet column to filename if provided
     if (!is.null(facet_col)) {

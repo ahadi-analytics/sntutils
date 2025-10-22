@@ -9,7 +9,7 @@ facility_reporting_plot(
   hf_col,
   date_col = "date",
   key_indicators = c("test", "pres", "conf"),
-  method = "method1",
+  method = 1,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
   binary_classification = FALSE,
@@ -45,9 +45,9 @@ facility_reporting_plot(
 \item{key_indicators}{Character vector with columns defining reporting
 activity. Defaults to \code{c("test", "pres", "conf")}.}
 
-\item{method}{Character. One of \code{"method1"}, \code{"method2"}, \code{"method3"}, or
-\code{"all"}. Classification method for facility activity status. Defaults to
-\code{"method1"}.}
+\item{method}{Character or numeric. Classification method - can be numeric
+(1, 2, 3) or character ("method1", "method2", "method3", "all").
+Defaults to 1.}
 
 \item{nonreport_window}{Integer. Minimum number of consecutive non-reporting
 months to classify a facility as inactive in method 3. Defaults to 6.}
