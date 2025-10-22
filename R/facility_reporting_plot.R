@@ -10,8 +10,8 @@
 #'   "date".
 #' @param key_indicators Character vector with columns defining reporting
 #'   activity. Defaults to `c("test", "pres", "conf")`.
-#' @param method Character or numeric. Classification method - can be numeric 
-#'   (1, 2, 3) or character ("method1", "method2", "method3", "all"). 
+#' @param method Character or numeric. Classification method - can be numeric
+#'   (1, 2, 3) or character ("method1", "method2", "method3", "all").
 #'   See Details. Defaults to 1.
 #' @param nonreport_window Integer. Minimum number of consecutive non-reporting
 #'   months to classify a facility as inactive in method 3. Defaults to 6.
@@ -29,7 +29,7 @@
 #' \itemize{
 #'   \item **Method 1 (Permanent activation):** Facility is active from first
 #'   report onwards, remains active afterwards.
-#'   \item **Method 2 (First–Last activation):** Facility is active only between
+#'   \item **Method 2 (First-Last activation):** Facility is active only between
 #'   first and last report dates.
 #'   \item **Method 3 (Dynamic):** Facility is active, but becomes inactive if
 #'   it misses `nonreport_window` consecutive months. Reactivates if reporting
@@ -225,7 +225,7 @@ flagged_panel <- flagged_panel |>
     activity_status_method3 = {
       n_obs <- length(reported_any)
       status <- character(n_obs)
-      
+
       # Find all reporting months
       all_reports <- which(reported_any)
 
@@ -243,23 +243,23 @@ flagged_panel <- flagged_panel |>
             # A month is active if:
             # 1. It's within nonreport_window after a report AND
             # 2. There's no large gap (> nonreport_window) between surrounding reports
-            
+
             # Find previous and next report
             prev_reports <- all_reports[all_reports < i]
             next_reports <- all_reports[all_reports > i]
-            
+
             is_active <- FALSE
-            
+
             if (length(prev_reports) > 0) {
               last_report <- max(prev_reports)
               months_since_last <- i - last_report
-              
+
               if (months_since_last <= nonreport_window) {
                 # Within window of last report
                 if (length(next_reports) > 0) {
                   next_report <- min(next_reports)
                   gap_between_reports <- next_report - last_report
-                  
+
                   # Only stay active if the gap between reports is reasonable
                   # If gap > nonreport_window, facility goes inactive in between
                   if (gap_between_reports > nonreport_window) {
@@ -275,7 +275,7 @@ flagged_panel <- flagged_panel |>
                 }
               }
             }
-            
+
             if (is_active) {
               status[i] <- "Active Health Facility - Not Reporting"
             } else {
@@ -345,8 +345,8 @@ flagged_panel <- flagged_panel |>
 #'   "date".
 #' @param key_indicators Character vector with columns defining reporting
 #'   activity. Defaults to `c("test", "pres", "conf")`.
-#' @param method Character or numeric. Classification method - can be numeric 
-#'   (1, 2, 3) or character ("method1", "method2", "method3", "all"). 
+#' @param method Character or numeric. Classification method - can be numeric
+#'   (1, 2, 3) or character ("method1", "method2", "method3", "all").
 #'   Defaults to 1.
 #' @param nonreport_window Integer. Minimum number of consecutive non-reporting
 #'   months to classify a facility as inactive in method 3. Defaults to 6.
@@ -615,7 +615,8 @@ facility_reporting_plot <- function(
       method_normalized <- paste0("method", method)
     } else if (!method %in% c("method1", "method2", "method3")) {
       cli::cli_abort(c(
-        "!" = "method must be 'method1', 'method2', 'method3', or numeric 1, 2, 3",
+        "!" =
+          "method must be 'method1', 'method2', 'method3', or numeric 1, 2, 3",
         "i" = "You provided: {method}"
       ))
     } else {
@@ -1063,4 +1064,223 @@ facility_reporting_plot <- function(
   } else {
     return(invisible(plot_object))
   }
+}
+
+#' Compare facility activity classification methods (multilingual)
+#'
+#' Runs three classification methods and produces pairwise comparison plots.
+#' Optionally saves the output to file with auto-language filenames.
+#'
+#' @param data Facility reporting dataset.
+#' @param hf_col Health facility ID column.
+#' @param date_col Date column.
+#' @param key_indicators Indicators used for activity classification.
+#' @param agg_level Character vector specifying spatial/administrative columns
+#'   to aggregate by (e.g., "adm2" or c("adm1", "adm2")).
+#'   Default "adm1" and "adm2".
+#' @param nonreport_window Window size for non-reporting definition.
+#' @param language Output language: "en" (English), "fr" (French), "pt"
+#'        (Portuguese).
+#' @param plot_path Directory where plot should be saved (NULL = don't save).
+#' @param width Plot width (default 12).
+#' @param height Plot height (default 6).
+#' @param units Units for width/height ("in", "cm", "mm"). Default "in".
+#' @param dpi Resolution in dots per inch. Default 300.
+#' @param scale Multiplicative scale factor for size. Default 1.
+#' @param compress_image Logical. Compress PNG using `compress_png()` after
+#'   saving. Defaults to FALSE.
+#'
+#' @return A patchwork object with three scatter plots.
+#' @examples
+#' \dontrun{
+#' compare_methods_plot(
+#'   dhis2_hf, "hf_uid", "date", vars_of_interest,
+#'   agg_level = "adm2",
+#'   nonreport_window = 6,
+#'   language = "fr",
+#'   plot_path = "outputs/"
+#' )
+#'
+#' # aggregate by both adm1 and adm2
+#' compare_methods_plot(
+#'   dhis2_hf, "hf_uid", "date", vars_of_interest,
+#'   agg_level = c("adm1", "adm2"),
+#'   language = "en"
+#' )
+#' }
+#' @export
+compare_methods_plot <- function(
+  data,
+  hf_col,
+  date_col,
+  key_indicators,
+  agg_level = c("adm1", "adm2"),
+  nonreport_window = 6,
+  language = "en",
+  plot_path = NULL,
+  width = 15,
+  height = 6,
+  units = "in",
+  dpi = 300,
+  scale = 1,
+  compress_image = FALSE
+) {
+  # translations
+  titles <- list(
+    en = paste0(
+      "Comparison of Methods for Classifying ",
+      "Health Facility Reporting Activity"
+    ),
+    fr = paste0(
+      "Comparaison des m\u00e9thodes de classification de ",
+      "l'activit\u00e9 de rapportage des FOSA"
+    ),
+    pt = paste0(
+      "Compara\u00e7\u00e3o dos m\u00e9todos de classifica\u00e7\u00e3o da ",
+      "atividade de reporte das unidades de sa\u00fade"
+    )
+  )
+
+  word_method <- list(
+    en = "Method",
+    fr = "M\u00e9thode",
+    pt = "M\u00e9todo"
+  )
+
+  xlabs <- list(
+    en = " reporting",
+    fr = " en rapportage",
+    pt = " em reporte"
+  )
+
+  ylabs <- xlabs
+
+  # helper to run one method
+  run_method <- function(m) {
+    sntutils::classify_facility_activity(
+      data = data,
+      method = m,
+      hf_col = hf_col,
+      date_col = date_col,
+      key_indicators = key_indicators,
+      binary_classification = TRUE,
+      nonreport_window = nonreport_window
+    ) |>
+      dplyr::select(-dplyr::all_of(agg_level)) |>
+      dplyr::left_join(
+        dplyr::distinct(
+          data,
+          dplyr::across(dplyr::all_of(c(agg_level, hf_col)))
+        ),
+        by = setNames("hf_uid", hf_col)
+      ) |>
+      dplyr::group_by(
+        dplyr::across(dplyr::all_of(c(agg_level, date_col)))
+      ) |>
+      dplyr::summarise(
+        n_active = sum(activity_status == "Active", na.rm = TRUE),
+        n_total = dplyr::n_distinct(!!rlang::sym(hf_col)),
+        reprate = n_active / n_total,
+        .groups = "drop"
+      ) |>
+      dplyr::mutate(method = paste(word_method[[language]], m))
+  }
+
+  # run three methods
+  meths <- purrr::map_dfr(1:3, run_method)
+
+  # pivot wide
+  meths_wide <- meths |>
+    dplyr::select(
+      dplyr::all_of(c(agg_level, date_col)),
+      method,
+      reprate
+    ) |>
+    tidyr::pivot_wider(names_from = method, values_from = reprate)
+
+  # plotting helper
+  make_plot <- function(xcol, ycol, title_text, color_choice) {
+    ggplot2::ggplot(
+      meths_wide,
+      ggplot2::aes(x = .data[[xcol]], y = .data[[ycol]])
+    ) +
+      ggplot2::geom_point(alpha = 0.7, size = 2, color = color_choice) +
+      ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
+      ggplot2::coord_equal() +
+      ggplot2::theme_minimal() +
+      ggplot2::labs(
+        title = title_text,
+        x = paste0("\n", xcol, xlabs[[language]]),
+        y = paste0(ycol, ylabs[[language]], "\n")
+      ) +
+      ggplot2::theme(
+        plot.margin = grid::unit(c(1, 1, 1, 1), "cm"),
+        panel.border = ggplot2::element_rect(
+          color = "black",
+          fill = NA,
+          size = 1
+        )
+      )
+  }
+
+  # build three plots
+  p1 <- make_plot(
+    paste(word_method[[language]], "1"),
+    paste(word_method[[language]], "2"),
+    paste(word_method[[language]], "1 vs", word_method[[language]], "2"),
+    "#1b9e77"
+  )
+
+  p2 <- make_plot(
+    paste(word_method[[language]], "2"),
+    paste(word_method[[language]], "3"),
+    paste(word_method[[language]], "2 vs", word_method[[language]], "3"),
+    "#d95f02"
+  )
+
+  p3 <- make_plot(
+    paste(word_method[[language]], "1"),
+    paste(word_method[[language]], "3"),
+    paste(word_method[[language]], "1 vs", word_method[[language]], "3"),
+    "#7570b3"
+  )
+
+  # combine
+  final_plot <- (p1 + p2 + p3) +
+    patchwork::plot_annotation(
+      title = titles[[language]]
+    )
+
+  # auto-save if plot_path provided
+  if (!is.null(plot_path)) {
+    # ensure trailing slash
+    plot_path <- ifelse(
+      grepl("/$", plot_path),
+      plot_path,
+      paste0(plot_path, "/")
+    )
+    filename <- switch(
+      language,
+      en = "comparison_health_facility_reporting_rate.png",
+      fr = "comparaison_taux_rapportage_fosa.png",
+      pt = "comparacao_taxa_reporte_unidades_saude.png"
+    )
+    ggplot2::ggsave(
+      filename = paste0(plot_path, filename),
+      plot = final_plot,
+      width = width,
+      height = height,
+      units = units,
+      dpi = dpi,
+      scale = scale
+    )
+
+    if (compress_image) {
+      sntutils::compress_png(
+        path = paste0(plot_path, filename)
+      )
+    }
+  }
+
+  return(final_plot)
 }

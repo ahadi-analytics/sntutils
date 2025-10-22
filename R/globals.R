@@ -118,6 +118,8 @@ globalVariables(
     "is_inconsistent",
     "difference_sd",
     "n_missing",
+    "method",
+    "n_active",
     "total",
     "percent_missing",
     "column_type",

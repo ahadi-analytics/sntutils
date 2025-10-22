@@ -189,7 +189,8 @@ methods are specified, returns a named list of ggplot objects
 }
 \description{
 This function creates plots to visualize outliers in data using the same
-detection methods as \code{detect_outliers()}. The plotting function inherits
+detection methods as \code{detect_outliers()}. Only values above the upper
+thresholds are highlighted as outliers. The plotting function inherits
 all parameters from the detection function for seamless integration.
 }
 \details{
