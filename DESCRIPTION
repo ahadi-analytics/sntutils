@@ -9,7 +9,6 @@ Authors@R: c(
            email = "myusuf@appliedhealthanalytics.org",
            comment = c(ORCID = "0000-0002-9339-4613",
                       second_email = "mohamedayusuf87@gmail.com")))
-Author: Mohamed A. Yusuf [aut, cre]
 Maintainer: Mohamed A. Yusuf <myusuf@appliedhealthanalytics.org>
 Description: A helper package for the Subnational Tailoring (SNT) process which includes a number of utility functions to help users with data cleaning, management, visualization, and analysis.
 License: CC BY 4.0

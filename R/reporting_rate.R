@@ -38,6 +38,14 @@
 #'   averaging weights.
 #' @param cold_start Character. Strategy for filling weights when history is
 #'   insufficient. Either "median_within_y" or "median_global".
+#' @param method Character or numeric. Classification method for facility activity
+#'   status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
+#'   Defaults to 3. See \code{\link{classify_facility_activity}} for details.
+#' @param nonreport_window Integer. Minimum number of consecutive non-reporting
+#'   months to classify a facility as inactive in method 3. Defaults to 6.
+#' @param reporting_rule Character. Defines what counts as reporting:
+#'   `"any_non_na"` (default, counts NA as non-reporting, 0 counts as reported)
+#'   or `"positive_only"` (requires >0 value to count as reported).
 #' @param weighting Logical. Whether to use weighted reporting rates. When TRUE,
 #'   facilities are weighted by their typical size, giving more importance to
 #'   larger facilities in the overall reporting rate calculation. This provides
@@ -108,8 +116,9 @@
 #' - Weighted reporting rate \\u2248 84% (reflecting that most patient volume is covered)
 #'
 #' @examples
+#' # Example with dates instead of month names for compatibility
 #' hf_data <- data.frame(
-#'   month = rep(c("Jan", "Feb", "Mar"), each = 10),
+#'   month = rep(as.Date(c("2024-01-01", "2024-02-01", "2024-03-01")), each = 10),
 #'   district = rep(c("North", "South"), each = 5, times = 3),
 #'   facility_id = rep(1:5, times = 6),
 #'   conf = c(
@@ -130,14 +139,15 @@
 #' )
 #'
 #' # Scenario 1: Proportion of active facilities reporting
-#' # any data
+#' # any data (using numeric method)
 #' calculate_reporting_metrics(
 #'   data = hf_data,
 #'   vars_of_interest = c("conf"),
 #'   x_var = "month",
 #'   y_var = "district",
 #'   hf_col = "facility_id",
-#'   key_indicators = c("allout", "conf", "pres")
+#'   key_indicators = c("allout", "conf", "pres"),
+#'   method = 3  # Can also use "method3"
 #' )
 #'
 #' # Scenario 2: Reporting rate by month and district
@@ -154,6 +164,7 @@
 #'   vars_of_interest = c("conf"),
 #'   x_var = "month"
 #' )
+#'
 #'
 #' # Example with weighted reporting rate
 #' # Create data with facilities of different sizes
@@ -217,6 +228,9 @@ calculate_reporting_metrics <- function(
   y_var = NULL,
   hf_col = NULL,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  method = 3,
+  nonreport_window = 6,
+  reporting_rule = "any_non_na",
   weighting = FALSE,
   weight_var = NULL,
   weight_window = 12,
@@ -227,6 +241,9 @@ calculate_reporting_metrics <- function(
   if (weighting && !requireNamespace("slider", quietly = TRUE)) {
     cli::cli_abort("'slider' package is required when weighting = TRUE")
   }
+
+  # Normalize method parameter to accept both numeric and character
+  method <- .normalize_method(method)
 
   if (!is.data.frame(data)) {
     cli::cli_abort(c(
@@ -433,31 +450,128 @@ calculate_reporting_metrics <- function(
       dplyr::select(dplyr::all_of(c(hf_col, x_var, y_var, "weight", "typical_size")))
   }
 
-  if (!is.null(hf_col) && !is.null(key_indicators)) {
+  # Check if key_indicators columns exist in the data
+  key_indicators_available <- !is.null(key_indicators) && length(key_indicators) > 0 && all(key_indicators %in% names(data))
 
-    # Reported any for key_indicators
-    data <- data |>
-      dplyr::mutate(
-        reported_any = dplyr::if_any(
-          dplyr::any_of(key_indicators),
-          ~ !is.na(.x)
+  if (!is.null(hf_col) && !is.null(key_indicators) && key_indicators_available) {
+
+    # Use classify_facility_activity to determine facility status
+    # Need to ensure data has a date column for classify_facility_activity
+    if (x_var == "date" || "date" %in% names(data)) {
+      # If x_var is already "date" or data has a "date" column, use it
+      date_col_name <- if (x_var == "date") x_var else "date"
+    } else {
+      # Create a temporary date column from x_var
+      # This handles cases where x_var might be "month", "yearmon", etc.
+      date_col_name <- ".temp_date_col"
+
+      # Try to convert x_var to date format
+      temp_dates <- tryCatch({
+        # First check if it's already a Date
+        if (inherits(data[[x_var]], "Date")) {
+          data[[x_var]]
+        } else if (is.numeric(data[[x_var]]) || inherits(data[[x_var]], "yearmon")) {
+          # Handle numeric years or zoo::yearmon
+          as.Date(paste0(data[[x_var]], "-01-01"))
+        } else {
+          # Try to parse as date string
+          as.Date(data[[x_var]])
+        }
+      }, error = function(e) {
+        # If direct conversion fails, try with common month formats
+        tryCatch({
+          # Check for month names like "Jan", "Feb", etc.
+          if (all(data[[x_var]] %in% month.abb) || all(data[[x_var]] %in% month.name)) {
+            # Need year information - look for a year column
+            if ("year" %in% names(data)) {
+              month_nums <- match(data[[x_var]], month.abb)
+              if (any(is.na(month_nums))) {
+                month_nums <- match(data[[x_var]], month.name)
+              }
+              return(as.Date(paste(data$year, month_nums, "01", sep = "-")))
+            } else {
+              # Use current year as default
+              month_nums <- match(data[[x_var]], month.abb)
+              if (any(is.na(month_nums))) {
+                month_nums <- match(data[[x_var]], month.name)
+              }
+              return(as.Date(paste(format(Sys.Date(), "%Y"), month_nums, "01", sep = "-")))
+            }
+          } else {
+            # Try lubridate-style parsing if available
+            if (requireNamespace("lubridate", quietly = TRUE)) {
+              parsed <- lubridate::parse_date_time(data[[x_var]], orders = c("ymd", "dmy", "mdy", "ym", "my"))
+              return(as.Date(parsed))  # Convert POSIXct to Date
+            } else {
+              stop("Cannot parse dates")
+            }
+          }
+        }, error = function(e2) {
+          cli::cli_abort(c(
+            "!" = "Cannot convert {x_var} to date format for facility classification",
+            "i" = "The column contains values like: {paste(utils::head(unique(data[[x_var]]), 3), collapse = ', ')}",
+            "i" = "Consider providing data with a proper date column or ensure {x_var} is in a standard date format"
+          ))
+        })
+      })
+
+      data[[date_col_name]] <- temp_dates
+    }
+
+    # Get activity classification for facilities
+    classified_data <- classify_facility_activity(
+      data = data,
+      hf_col = hf_col,
+      date_col = date_col_name,
+      key_indicators = key_indicators,
+      method = method,
+      nonreport_window = nonreport_window,
+      reporting_rule = reporting_rule,
+      binary_classification = TRUE  # We want Active/Inactive for denominator
+    )
+
+    # Merge back the activity status
+    # We need to handle the join based on whether we created a temp column
+    if (date_col_name == ".temp_date_col") {
+      # For temporary date columns, we need to match on both hf_col and the original x_var
+      # The classified_data has the temp column, but we join on the original data structure
+      data <- data |>
+        dplyr::left_join(
+          classified_data |>
+            dplyr::select(dplyr::all_of(c(hf_col, date_col_name, "activity_status"))),
+          by = c(hf_col, date_col_name)
+        ) |>
+        dplyr::mutate(
+          # Facility is in denominator if it's active
+          include_in_denom = activity_status == "Active"
         )
-      )
+    } else {
+      # For regular date columns, join normally
+      join_cols <- c(hf_col, date_col_name)
+      data <- data |>
+        dplyr::left_join(
+          classified_data |>
+            dplyr::select(dplyr::all_of(c(join_cols, "activity_status"))),
+          by = join_cols
+        ) |>
+        dplyr::mutate(
+          # Facility is in denominator if it's active
+          include_in_denom = activity_status == "Active"
+        )
+    }
 
-    # Get first reporting month per HF
-    first_reporting <- data |>
-      dplyr::filter(reported_any) |>
-      dplyr::group_by(dplyr::across(dplyr::any_of(hf_col))) |>
-      dplyr::summarise(
-        first_report_month = min(.data[[x_var]], na.rm = TRUE),
-        .groups = "drop"
-      )
-
-    # Join and filter only those eligible for that month
+    # Clean up temporary column if we created one
+    if (date_col_name == ".temp_date_col" && date_col_name %in% names(data)) {
+      data[[date_col_name]] <- NULL
+    }
+  } else if (!is.null(hf_col)) {
+    # If key_indicators aren't available but we have hf_col,
+    # include all facilities in the denominator
     data <- data |>
-      dplyr::left_join(first_reporting, by = hf_col) |>
-      dplyr::mutate(include_in_denom = first_report_month <= .data[[x_var]])
+      dplyr::mutate(include_in_denom = TRUE)
+  }
 
+  if (!is.null(hf_col)) {
     # Aggregate
     if (weighting && !is.null(weight_data)) {
       # Join with weight data
@@ -602,6 +716,34 @@ calculate_reporting_metrics <- function(
   result
 }
 
+# Internal helper to normalize method parameter
+#' @noRd
+.normalize_method <- function(method) {
+  if (is.numeric(method)) {
+    if (!method %in% 1:3) {
+      cli::cli_abort(c(
+        "!" = "method must be 1, 2, or 3 when numeric",
+        "i" = "You provided: {method}"
+      ))
+    }
+    paste0("method", method)
+  } else if (is.character(method)) {
+    # Accept both "method1" and "1" formats
+    if (method %in% c("1", "2", "3")) {
+      paste0("method", method)
+    } else if (!method %in% c("method1", "method2", "method3")) {
+      cli::cli_abort(c(
+        "!" = "method must be 'method1', 'method2', 'method3', or numeric 1, 2, 3",
+        "i" = "You provided: {method}"
+      ))
+    } else {
+      method
+    }
+  } else {
+    cli::cli_abort("method must be numeric (1, 2, 3) or character")
+  }
+}
+
 #' Prepare data for reporting rate or missing data visualization
 #'
 #' This function processes health facility data to prepare it for visualizing
@@ -635,12 +777,20 @@ calculate_reporting_metrics <- function(
 #'   its own weight. Default is TRUE.
 #' @param cold_start Character. Method for handling facilities with insufficient
 #'   history. Options: "median_within_y" (default) or "median_global".
+#' @param method Character or numeric. Classification method for facility activity
+#'   status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
+#'   Defaults to 3. See \code{\link{classify_facility_activity}} for details.
+#' @param nonreport_window Integer. Minimum number of consecutive non-reporting
+#'   months to classify a facility as inactive in method 3. Defaults to 6.
+#' @param reporting_rule Character. Defines what counts as reporting:
+#'   `"any_non_na"` (default, counts NA as non-reporting, 0 counts as reported)
+#'   or `"positive_only"` (requires >0 value to count as reported).
 #'
 #' @return A list with plot_data and plotting metadata
 #' @examples
 #' # Sample data
 #' hf_data <- data.frame(
-#'   month = rep(c("Jan", "Feb", "Mar"), each = 10),
+#'   month = rep(as.Date(c("2024-01-01", "2024-02-01", "2024-03-01")), each = 10),
 #'   district = rep(c("North", "South"), each = 5, times = 3),
 #'   facility_id = rep(1:5, times = 6),
 #'   malaria = c(
@@ -694,12 +844,18 @@ prepare_plot_data <- function(
   hf_col = NULL,
   use_reprate = TRUE,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  method = 3,
+  nonreport_window = 6,
+  reporting_rule = "any_non_na",
   weighting = FALSE,
   weight_var = NULL,
   weight_window = 12,
   exclude_current_x = TRUE,
   cold_start = "median_within_y"
 ) {
+
+  # Normalize method parameter to accept both numeric and character
+  method <- .normalize_method(method)
 
   # Input validation
   if (!is.data.frame(data)) {
@@ -826,6 +982,9 @@ prepare_plot_data <- function(
     y_var = y_var,
     hf_col = if (by_facility) hf_col else NULL,
     key_indicators = key_indicators,
+    method = method,
+    nonreport_window = nonreport_window,
+    reporting_rule = reporting_rule,
     weighting = weighting,
     weight_var = weight_var,
     weight_window = weight_window,
@@ -894,6 +1053,14 @@ prepare_plot_data <- function(
 #'   calculation. Defaults to TRUE.
 #' @param cold_start Character. Method for handling initial periods:
 #'   "median_within_y" (default) or "median_global".
+#' @param method Character or numeric. Classification method for facility activity
+#'   status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
+#'   Defaults to 3. See \code{\link{classify_facility_activity}} for details.
+#' @param nonreport_window Integer. Minimum number of consecutive non-reporting
+#'   months to classify a facility as inactive in method 3. Defaults to 6.
+#' @param reporting_rule Character. Defines what counts as reporting:
+#'   `"any_non_na"` (default, counts NA as non-reporting, 0 counts as reported)
+#'   or `"positive_only"` (requires >0 value to count as reported).
 #' @param target_language A character string specifying the language for plot
 #'   labels. Defaults to "en" (English). Use ISO 639-1 language codes.
 #' @param source_language Source language code. If NULL, auto-detection is used.
@@ -927,7 +1094,7 @@ prepare_plot_data <- function(
 #' @examples
 #' # Sample data
 #' hf_data <- data.frame(
-#'   month = rep(c("Jan", "Feb", "Mar"), each = 10),
+#'   month = rep(as.Date(c("2024-01-01", "2024-02-01", "2024-03-01")), each = 10),
 #'   district = rep(c("North", "South"), each = 5, times = 3),
 #'   facility_id = rep(1:5, times = 6),
 #'   malaria = c(
@@ -973,6 +1140,9 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 key_indicators = c("allout", "conf",
                                                   "test", "treat",
                                                   "pres"),
+                                method = 3,
+                                nonreport_window = 6,
+                                reporting_rule = "any_non_na",
                                 use_reprate = TRUE,
                                 full_range = TRUE,
                                 weighting = FALSE,
@@ -995,6 +1165,10 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 show_plot = TRUE,
                                 y_axis_label = NULL,
                                 ...) {
+
+  # Normalize method parameter to accept both numeric and character
+  method <- .normalize_method(method)
+
   # Input validation
   if (is.null(x_var) || !x_var %in% names(data)) {
     cli::cli_abort(c(
@@ -1043,6 +1217,9 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     hf_col = hf_col,
     use_reprate = use_reprate,
     key_indicators = key_indicators,
+    method = method,
+    nonreport_window = nonreport_window,
+    reporting_rule = reporting_rule,
     weighting = weighting,
     weight_var = weight_var,
     weight_window = weight_window,
@@ -1895,6 +2072,14 @@ create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
 #'   Default is TRUE.
 #' @param cold_start Character. Cold-start strategy ("median_within_y" or "median_global").
 #'   Default is "median_within_y".
+#' @param method Character or numeric. Classification method for facility activity
+#'   status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
+#'   Defaults to 3. See \code{\link{classify_facility_activity}} for details.
+#' @param nonreport_window Integer. Minimum number of consecutive non-reporting
+#'   months to classify a facility as inactive in method 3. Defaults to 6.
+#' @param reporting_rule Character. Defines what counts as reporting:
+#'   `"any_non_na"` (default, counts NA as non-reporting, 0 counts as reported)
+#'   or `"positive_only"` (requires >0 value to count as reported).
 #' @param fill_palette Character. Not used - kept for backward compatibility.
 #'   Color palette is automatically selected based on use_reprate parameter
 #'   to match reporting_rate_plot() styling.
@@ -1951,6 +2136,9 @@ reporting_rate_map <- function(
   hf_col = NULL,
   use_reprate = TRUE,
   full_range = TRUE,
+  method = 3,
+  nonreport_window = 6,
+  reporting_rule = "any_non_na",
   weighting = FALSE,
   weight_var = NULL,
   weight_window = 12,
@@ -1974,6 +2162,9 @@ reporting_rate_map <- function(
   show_plot = TRUE,
   ...
 ) {
+  # Normalize method parameter to accept both numeric and character
+  method <- .normalize_method(method)
+
   # Ensure required packages
   ensure_packages(c("ggplot2", "sf"))
 
@@ -1997,6 +2188,9 @@ reporting_rate_map <- function(
     x_var = x_var,
     y_var = adm_var,
     hf_col = hf_col,
+    method = method,
+    nonreport_window = nonreport_window,
+    reporting_rule = reporting_rule,
     weighting = weighting,
     weight_var = weight_var,
     weight_window = weight_window,

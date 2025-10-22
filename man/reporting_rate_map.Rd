@@ -13,6 +13,9 @@ reporting_rate_map(
   hf_col = NULL,
   use_reprate = TRUE,
   full_range = TRUE,
+  method = 3,
+  nonreport_window = 6,
+  reporting_rule = "any_non_na",
   weighting = FALSE,
   weight_var = NULL,
   weight_window = 12,
@@ -57,6 +60,17 @@ if FALSE, plot missing rate (facilities that didn't report). Default is TRUE.}
 
 \item{full_range}{Logical. If TRUE, the fill scale will use the full range from 0 to 100.
 If FALSE, the fill scale will use the range of values present in the data. Default is TRUE.}
+
+\item{method}{Character or numeric. Classification method for facility activity
+status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
+Defaults to 3. See \code{\link{classify_facility_activity}} for details.}
+
+\item{nonreport_window}{Integer. Minimum number of consecutive non-reporting
+months to classify a facility as inactive in method 3. Defaults to 6.}
+
+\item{reporting_rule}{Character. Defines what counts as reporting:
+\code{"any_non_na"} (default, counts NA as non-reporting, 0 counts as reported)
+or \code{"positive_only"} (requires >0 value to count as reported).}
 
 \item{weighting}{Logical. If TRUE, compute weighted reporting rates based on
 facility size. Default is FALSE.}
