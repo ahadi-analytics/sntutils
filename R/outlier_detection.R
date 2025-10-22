@@ -71,8 +71,11 @@
 #'   `"standard"` (lean + per-method flags + bounds + seasonality mode),
 #'   `"audit"` (all columns for full reproducibility). Default `"standard"`.
 #'
-#' @param seasonal_pool_years Rolling history window (in years) for same-month
-#'   pooling when `time_mode = "by_month"`. Default `5`.
+#' @param seasonal_pool_years Total window size (in years) for same-month
+#'   pooling when `time_mode = "by_month"`. The window is centered on the
+#'   target year, looking both backward and forward in time (e.g., with
+#'   `seasonal_pool_years = 5`, compares with +/-2 years for each side).
+#'   Default `5`.
 #' @param min_years_per_month Minimum distinct years required in the same-month
 #'   pool before moving to a fallback. Default `3`.
 #'
@@ -105,10 +108,11 @@
 #'    and record `reason` (`low_reporting`, `insufficient_n`,
 #'    `insufficient_seasonal_history`).
 #' 5) Seasonality (if `time_mode = "by_month"`): ladder applied in order:
-#'    same-month (rolling `seasonal_pool_years`), neighbours (m +/- 1 with
-#'    weights 2:1), residual (remove month fixed effects), across-time (with
-#'    strictness shift), then exclusion if still inadequate. Each row records
-#'    `seasonality_mode_used`, window text, and any fallback reason.
+#'    same-month (+/-`seasonal_pool_years/2` years, excluding target year),
+#'    neighbours (months m-1, m, m+1 with weights 1:2:1 within the same
+#'    +/- years window), residual (remove month fixed effects), across-time
+#'    (with strictness shift), then exclusion if still inadequate. Each row
+#'    records `seasonality_mode_used`, window text, and any fallback reason.
 #' 6) Flagging: each method classifies rows respecting guardrails and unstable
 #'    scales (when `sd`, `mad`, or `iqr` equals zero the method is suppressed
 #'    and marked `unstable_scale`).
@@ -137,7 +141,8 @@
 #'
 #' **Seasonality ladder thresholds**
 #' - same-month requires `min_years_per_month` and `min_n` within the
-#'   `seasonal_pool_years` window; otherwise fall back as above.
+#'   bidirectional `seasonal_pool_years` window (centered on target year);
+#'   otherwise fall back as described above.
 #'
 #' The returned tibble always contains identifiers, scale statistics, bounds,
 #' strictness and seasonality metadata, and the guardrail reason. When
@@ -3001,12 +3006,24 @@ outlier_plot <- function(
 #' @param params list
 #' @noRd
 .seasonality_primary_pool <- function(group_data, target, params) {
-  window_start <- target$.outlier_year - params$seasonal_pool_years + 1
+  # Calculate window for both past and future years
+  years_before <- floor(params$seasonal_pool_years / 2)
+  years_after <- floor(params$seasonal_pool_years / 2)
+  # If odd number of years, add the extra year to the past
+  if (params$seasonal_pool_years %% 2 != 0) {
+    years_before <- years_before + 1
+  }
+  
+  window_start <- target$.outlier_year - years_before
+  window_end <- target$.outlier_year + years_after
+  
   pool <- dplyr::filter(
     group_data,
     .outlier_month == target$.outlier_month,
     .outlier_year >= window_start,
-    .outlier_year <= target$.outlier_year
+    .outlier_year <= window_end,
+    # Exclude the target year itself from the pool
+    .outlier_year != target$.outlier_year
   )
   if (nrow(pool) == 0) {
     return(list(
@@ -3020,10 +3037,19 @@ outlier_plot <- function(
   years_available <- unique(pool$.outlier_year)
   eligible <- nrow(pool) >= params$min_obs_per_seasonal_bucket &&
     length(years_available) >= params$min_years_per_month
-  desc <- glue::glue(
-    "Month {target$.outlier_month}, {min(pool$.outlier_year, na.rm = TRUE)}-",
-    "{max(pool$.outlier_year, na.rm = TRUE)}; same-month window"
-  )
+  
+  # Build description showing bidirectional window
+  if (nrow(pool) > 0) {
+    desc <- glue::glue(
+      "Month {target$.outlier_month}, {min(pool$.outlier_year, na.rm = TRUE)}-",
+      "{max(pool$.outlier_year, na.rm = TRUE)} (+/-{years_before} years); same-month window"
+    )
+  } else {
+    desc <- glue::glue(
+      "Month {target$.outlier_month}, no same-month history within +/-{years_before} years"
+    )
+  }
+  
   list(pool = pool, eligible = eligible, desc = desc)
 }
 
@@ -3034,13 +3060,25 @@ outlier_plot <- function(
 #' @param params list
 #' @noRd
 .seasonality_neighbors_pool <- function(group_data, target, params) {
-  window_start <- target$.outlier_year - params$seasonal_pool_years + 1
+  # Calculate window for both past and future years
+  years_before <- floor(params$seasonal_pool_years / 2)
+  years_after <- floor(params$seasonal_pool_years / 2)
+  # If odd number of years, add the extra year to the past
+  if (params$seasonal_pool_years %% 2 != 0) {
+    years_before <- years_before + 1
+  }
+  
+  window_start <- target$.outlier_year - years_before
+  window_end <- target$.outlier_year + years_after
+  
   neighbor_months <- ((target$.outlier_month + c(-1, 0, 1) - 1) %% 12) + 1
   pool <- dplyr::filter(
     group_data,
     .outlier_month %in% neighbor_months,
     .outlier_year >= window_start,
-    .outlier_year <= target$.outlier_year
+    .outlier_year <= window_end,
+    # For neighbors, we include the target year's same month but not its neighbor months
+    !(.outlier_year == target$.outlier_year & .outlier_month != target$.outlier_month)
   )
   if (nrow(pool) == 0) {
     return(list(pool = pool, eligible = FALSE, desc = "No neighbor data"))
@@ -3056,10 +3094,19 @@ outlier_plot <- function(
   obs <- sum(pool$.season_weight)
   eligible <- obs >= params$min_obs_per_seasonal_bucket
   month_names <- paste(sort(unique(neighbor_months)), collapse = "/")
-  desc <- glue::glue(
-    "Months {month_names}, {min(pool$.outlier_year, na.rm = TRUE)}-",
-    "{max(pool$.outlier_year, na.rm = TRUE)}; neighbors weights 2/1"
-  )
+  
+  # Build description showing bidirectional window
+  if (nrow(pool) > 0) {
+    desc <- glue::glue(
+      "Months {month_names}, {min(pool$.outlier_year, na.rm = TRUE)}-",
+      "{max(pool$.outlier_year, na.rm = TRUE)} (+/-{years_before} years); neighbors weights 2/1"
+    )
+  } else {
+    desc <- glue::glue(
+      "Months {month_names}, no neighbor data within +/-{years_before} years"
+    )
+  }
+  
   list(pool = pool, eligible = eligible, desc = desc)
 }
 
@@ -3838,14 +3885,26 @@ outlier_plot <- function(
     dplyr::group_by(.outlier_month, .outlier_year) |>
     dplyr::group_modify(function(year_month_data, key) {
       target_year <- key$.outlier_year
-      window_start <- target_year - params$seasonal_pool_years + 1
+      
+      # Calculate window for both past and future years
+      years_before <- floor(params$seasonal_pool_years / 2)
+      years_after <- floor(params$seasonal_pool_years / 2)
+      # If odd number of years, add the extra year to the past
+      if (params$seasonal_pool_years %% 2 != 0) {
+        years_before <- years_before + 1
+      }
+      
+      window_start <- target_year - years_before
+      window_end <- target_year + years_after
 
-      # get pool data for this month within the rolling window
+      # get pool data for this month within the bidirectional window
       pool_data <- group_data |>
         dplyr::filter(
           .outlier_month == key$.outlier_month,
           .outlier_year >= window_start,
-          .outlier_year <= target_year
+          .outlier_year <= window_end,
+          # Exclude the target year itself from the pool
+          .outlier_year != target_year
         )
 
       if (nrow(pool_data) == 0) {
@@ -3914,7 +3973,7 @@ outlier_plot <- function(
           min(pool_data$.outlier_year, na.rm = TRUE),
           "-",
           max(pool_data$.outlier_year, na.rm = TRUE),
-          "; same-month window"
+          " (+/-", years_before, " years); same-month window"
         ),
         mean = mean_val,
         sd = sd_val,
