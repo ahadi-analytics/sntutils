@@ -3460,7 +3460,7 @@ outlier_plot <- function(
   }
   
   # Add outlier date columns for efficient filtering
-  dt[, `:=`(
+  dt[, data.table::`:=`(
     .outlier_year = .detect_year,
     .outlier_month = .detect_month,
     .outlier_yearmon = .detect_yearmon
@@ -5212,7 +5212,7 @@ outlier_plot <- function(
   n_valid <- sum(!is.na(values))
   
   if (n_valid < 8) {  # Minimum required for across-time
-    dt[, `:=`(
+    dt[, data.table::`:=`(
       across_time_stats_eligible = FALSE,
       across_time_stats_n_in_group = n_valid,
       across_time_stats_desc = "Insufficient data",
@@ -5250,7 +5250,7 @@ outlier_plot <- function(
       "unknown"
     }
     
-    dt[, `:=`(
+    dt[, data.table::`:=`(
       across_time_stats_eligible = TRUE,
       across_time_stats_n_in_group = n_valid,
       across_time_stats_desc = paste0("Across-time fallback, ", year_range),
@@ -5333,7 +5333,7 @@ outlier_plot <- function(
   )]
   
   # Calculate bounds based on pool selection
-  dt[, `:=`(
+  dt[, data.table::`:=`(
     mean_lower = data.table::fcase(
       pool_selection == "same_month", mean_lower,
       pool_selection == "neighbors", neighbor_stats_mean_lower,
