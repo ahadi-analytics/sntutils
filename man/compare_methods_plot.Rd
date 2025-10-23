@@ -61,21 +61,3 @@ A patchwork object with three scatter plots.
 Runs three classification methods and produces pairwise comparison plots.
 Optionally saves the output to file with auto-language filenames.
 }
-\examples{
-\dontrun{
-compare_methods_plot(
-  dhis2_hf, "hf_uid", "date", vars_of_interest,
-  agg_level = "adm2",
-  nonreport_window = 6,
-  language = "fr",
-  plot_path = "outputs/"
-)
-
-# aggregate by both adm1 and adm2
-compare_methods_plot(
-  dhis2_hf, "hf_uid", "date", vars_of_interest,
-  agg_level = c("adm1", "adm2"),
-  language = "en"
-)
-}
-}

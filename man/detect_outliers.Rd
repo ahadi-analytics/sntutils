@@ -30,7 +30,8 @@ detect_outliers(
   verbose = TRUE,
   cache_stats = TRUE,
   cache_dir = NULL,
-  spatial_level = NULL
+  spatial_level = NULL,
+  use_datatable = "auto"
 )
 }
 \arguments{
@@ -131,6 +132,12 @@ for analysis (e.g., "hf_uid" for facility-level). When specified,
 \code{admin_levels} defines grouping boundaries while \code{spatial_level} defines
 the unit of analysis. This prevents excessive grouping while maintaining
 spatial granularity. Default is \code{NULL} (uses most granular admin level).}
+
+\item{use_datatable}{Character string controlling data.table usage for
+performance optimization. Options: \code{"auto"} (default - uses data.table for
+datasets > 1000 rows when time_mode = "by_month"), \code{"always"} (force
+data.table), \code{"never"} (force dplyr). data.table provides 5-10x speedup
+for large datasets but requires the data.table package.}
 }
 \value{
 Tibble with outlier classifications and metadata. Columns include:

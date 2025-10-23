@@ -32,13 +32,13 @@ Imports:
     tools,
     fs,
     readr,
-    lubridate
+    lubridate,
+    data.table,
 Suggests:
     arrow,
     archive,
     crayon,
     curl,
-    data.table,
     ecmwfr,
     filelock,
     forcats,
