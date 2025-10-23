@@ -424,6 +424,14 @@ french_malaria_acronyms <- function() {
     out,
     perl = TRUE
   )
+  
+  # Handle "Mean" translation to "Moyenne"  
+  out <- base::gsub(
+    "\\b[Mm][Ee][Aa][Nn]\\b",
+    "Moyenne",
+    out,
+    perl = TRUE
+  )
 
   # iterate rows and replace malaria acronyms
   for (i in base::seq_len(nrow(map_tbl))) {
