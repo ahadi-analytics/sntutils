@@ -1246,10 +1246,8 @@ compare_methods_plot <- function(
   )
 
   # combine
-  final_plot <- (p1 + p2 + p3) +
-    patchwork::plot_annotation(
-      title = titles[[language]]
-    )
+final_plot <- patchwork::wrap_plots(p1, p2, p3) +
+  patchwork::plot_annotation(title = titles[[language]])
 
   # auto-save if plot_path provided
   if (!is.null(plot_path)) {
