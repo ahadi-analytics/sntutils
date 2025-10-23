@@ -1091,23 +1091,6 @@ facility_reporting_plot <- function(
 #'   saving. Defaults to FALSE.
 #'
 #' @return A patchwork object with three scatter plots.
-#' @examples
-#' \dontrun{
-#' compare_methods_plot(
-#'   dhis2_hf, "hf_uid", "date", vars_of_interest,
-#'   agg_level = "adm2",
-#'   nonreport_window = 6,
-#'   language = "fr",
-#'   plot_path = "outputs/"
-#' )
-#'
-#' # aggregate by both adm1 and adm2
-#' compare_methods_plot(
-#'   dhis2_hf, "hf_uid", "date", vars_of_interest,
-#'   agg_level = c("adm1", "adm2"),
-#'   language = "en"
-#' )
-#' }
 #' @export
 compare_methods_plot <- function(
   data,
@@ -1127,24 +1110,15 @@ compare_methods_plot <- function(
 ) {
   # translations
   titles <- list(
-    en = paste0(
-      "Comparison of Methods for Classifying ",
-      "Health Facility Reporting Activity"
-    ),
-    fr = paste0(
-      "Comparaison des m\u00e9thodes de classification de ",
-      "l'activit\u00e9 de rapportage des FOSA"
-    ),
-    pt = paste0(
-      "Compara\u00e7\u00e3o dos m\u00e9todos de classifica\u00e7\u00e3o da ",
-      "atividade de reporte das unidades de sa\u00fade"
-    )
+    en = "Comparison of Methods for Classifying Health Facility Reporting Activity",
+    fr = "Comparaison des méthodes de classification de l'activité de rapportage des FOSA",
+    pt = "Comparação dos métodos de classificação da atividade de reporte das unidades de saúde"
   )
 
   word_method <- list(
     en = "Method",
-    fr = "M\u00e9thode",
-    pt = "M\u00e9todo"
+    fr = "Méthode",
+    pt = "Método"
   )
 
   xlabs <- list(
@@ -1152,7 +1126,6 @@ compare_methods_plot <- function(
     fr = " en rapportage",
     pt = " em reporte"
   )
-
   ylabs <- xlabs
 
   # helper to run one method
@@ -1198,6 +1171,42 @@ compare_methods_plot <- function(
     ) |>
     tidyr::pivot_wider(names_from = method, values_from = reprate)
 
+  # ---- strictness summary for caption ----
+  method_names <- paste(word_method[[language]], 1:3)
+
+  strictness_summary <- meths_wide |>
+    dplyr::rowwise() |>
+    dplyr::mutate(
+      strictest_method = method_names[
+        which.min(
+          dplyr::c_across(dplyr::all_of(method_names))
+        )
+      ]
+    ) |>
+    dplyr::ungroup() |>
+    dplyr::count(strictest_method) |>
+    dplyr::mutate(
+      pct = round(100 * n / sum(n), 1),
+      label = paste0(strictest_method, ": ", pct, "%")
+    )
+
+  # explanatory text translations
+  caption_intro <- switch(
+    language,
+    en =
+      "Proportion of times each method produced the lowest reporting rate:\n",
+    fr = paste0(
+      "Proportion de fois où chaque méthode a",
+      " donné le taux de rapportage le plus bas:\n"
+    ),
+    pt =
+      "Proporção de vezes que cada método apresentou a menor taxa de reporte:\n"
+  )
+
+  caption_text <- paste(
+    caption_intro,
+    paste(strictness_summary$label, collapse = " | ")
+  )
   # plotting helper
   make_plot <- function(xcol, ycol, title_text, color_choice) {
     ggplot2::ggplot(
@@ -1230,14 +1239,12 @@ compare_methods_plot <- function(
     paste(word_method[[language]], "1 vs", word_method[[language]], "2"),
     "#1b9e77"
   )
-
   p2 <- make_plot(
     paste(word_method[[language]], "2"),
     paste(word_method[[language]], "3"),
     paste(word_method[[language]], "2 vs", word_method[[language]], "3"),
     "#d95f02"
   )
-
   p3 <- make_plot(
     paste(word_method[[language]], "1"),
     paste(word_method[[language]], "3"),
@@ -1245,13 +1252,22 @@ compare_methods_plot <- function(
     "#7570b3"
   )
 
-  # combine
-final_plot <- patchwork::wrap_plots(p1, p2, p3) +
-  patchwork::plot_annotation(title = titles[[language]])
+  # combine with caption
+  final_plot <- patchwork::wrap_plots(p1, p2, p3) +
+    patchwork::plot_annotation(
+      title = titles[[language]],
+      caption = caption_text
+    ) +
+    ggplot2::theme(
+      plot.caption = ggplot2::element_text(
+        hjust = 1,
+        size = 9,
+        face = "italic"
+      )
+    )
 
   # auto-save if plot_path provided
   if (!is.null(plot_path)) {
-    # ensure trailing slash
     plot_path <- ifelse(
       grepl("/$", plot_path),
       plot_path,
@@ -1272,11 +1288,8 @@ final_plot <- patchwork::wrap_plots(p1, p2, p3) +
       dpi = dpi,
       scale = scale
     )
-
     if (compress_image) {
-      sntutils::compress_png(
-        path = paste0(plot_path, filename)
-      )
+      sntutils::compress_png(path = paste0(plot_path, filename))
     }
   }
 
