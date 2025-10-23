@@ -1111,14 +1111,14 @@ compare_methods_plot <- function(
   # translations
   titles <- list(
     en = "Comparison of Methods for Classifying Health Facility Reporting Activity",
-    fr = "Comparaison des méthodes de classification de l'activité de rapportage des FOSA",
-    pt = "Comparação dos métodos de classificação da atividade de reporte das unidades de saúde"
+    fr = "Comparaison des m\u00e9thodes de classification de l'activit\u00e9 de rapportage des FOSA",
+    pt = "Compara\u00e7\u00e3o dos m\u00e9todos de classifica\u00e7\u00e3o da atividade de reporte das unidades de sa\u00fade"
   )
 
   word_method <- list(
     en = "Method",
-    fr = "Méthode",
-    pt = "Método"
+    fr = "M\u00e9thode",
+    pt = "M\u00e9todo"
   )
 
   xlabs <- list(
@@ -1184,10 +1184,10 @@ compare_methods_plot <- function(
       ]
     ) |>
     dplyr::ungroup() |>
-    dplyr::count(strictest_method) |>
+    dplyr::count(.data$strictest_method) |>
     dplyr::mutate(
-      pct = round(100 * n / sum(n), 1),
-      label = paste0(strictest_method, ": ", pct, "%")
+      pct = round(100 * .data$n / sum(.data$n), 1),
+      label = paste0(.data$strictest_method, ": ", .data$pct, "%")
     )
 
   # explanatory text translations
@@ -1196,11 +1196,11 @@ compare_methods_plot <- function(
     en =
       "Proportion of times each method produced the lowest reporting rate:\n",
     fr = paste0(
-      "Proportion de fois où chaque méthode a",
-      " donné le taux de rapportage le plus bas:\n"
+      "Proportion de fois o\u00f9 chaque m\u00e9thode a",
+      " donn\u00e9 le taux de rapportage le plus bas:\n"
     ),
     pt =
-      "Proporção de vezes que cada método apresentou a menor taxa de reporte:\n"
+      "Propor\u00e7\u00e3o de vezes que cada m\u00e9todo apresentou a menor taxa de reporte:\n"
   )
 
   caption_text <- paste(
