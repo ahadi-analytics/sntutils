@@ -145,7 +145,7 @@ plot_admin_map_distinct <- function(
         segment.color = NA,
         bg.color = "white",
         bg.r = 0.5,
-        label.padding = grid::unit(1.5, "lines")
+        point.padding = grid::unit(1.5, "lines")
       )
   } else {
     cli::cli_alert_info(
