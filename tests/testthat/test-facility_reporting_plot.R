@@ -317,7 +317,7 @@ test_that("classify_facility_activity method3 correct diagnostics behavior", {
 
   # With new gap-aware logic, facility becomes inactive when gap > nonreport_window
   # Gap from Feb to Sep = 7 months > 6, so inactive Mar-Aug
-  # Gap from Dec to Aug (next year) = 8 months > 6, so inactive Jan-Jul  
+  # Gap from Dec to Aug (next year) = 8 months > 6, so inactive Jan-Jul
   expect_equal(nrow(inactive_periods), 1)  # Two periods but consecutive
   expect_equal(inactive_periods$run_length, 13)  # Mar-Aug 2020 + Jan-Jul 2021
   expect_equal(inactive_periods$start_date, as.Date("2020-03-01"))

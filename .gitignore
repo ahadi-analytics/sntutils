@@ -13,3 +13,4 @@ CLAUDE.md
 .nanocoder/commands/test.md
 agents.config.json
 test-changed-smart.sh
+/src
