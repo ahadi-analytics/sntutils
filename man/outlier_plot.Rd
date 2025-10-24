@@ -8,29 +8,27 @@ outlier_plot(
   data,
   column,
   record_id = "record_id",
-  spatial_level = NULL,
   admin_level = c("adm1", "adm2"),
+  spatial_level = NULL,
   date = "date",
-  time_mode = c("by_month", "across_time", "within_year"),
+  time_mode = c("across_time", "within_year"),
   value_type = c("count", "rate"),
   strictness = c("balanced", "lenient", "strict", "advanced"),
+  methods = c("iqr", "median", "mean", "consensus"),
   sd_multiplier = 3,
   mad_constant = 1.4826,
   mad_multiplier = 9,
   iqr_multiplier = 2,
+  consensus_rule = 2,
   min_n = 8,
   reporting_rate_col = NULL,
   reporting_rate_min = 0.5,
   key_indicators_hf = NULL,
-  binary_classification = FALSE,
-  consensus_rule = 2,
-  seasonal_pool_years = 5,
-  min_years_per_month = 3,
-  methods = c("iqr", "median", "mean", "consensus"),
+  classify_outbreaks = TRUE,
+  outbreak_min_run = 2,
+  outbreak_prop_tolerance = 0.9,
+  outbreak_max_gap = 1,
   year_breaks = 2,
-  cache_stats = TRUE,
-  cache_dir = NULL,
-  verbose = TRUE,
   target_language = "en",
   source_language = "en",
   lang_cache_path = tempdir(),
@@ -44,11 +42,7 @@ outlier_plot(
   plot_height = NULL,
   plot_dpi = 300,
   show_plot = TRUE,
-  classify_outbreaks = TRUE,
-  outbreak_min_run = 2,
-  outbreak_prop_tolerance = 0.9,
-  outbreak_max_gap = 1,
-  use_datatable = "auto"
+  verbose = TRUE
 )
 }
 \arguments{
@@ -58,21 +52,20 @@ outlier_plot(
 
 \item{record_id}{Unique record identifier column.}
 
+\item{admin_level}{Character vector of administrative level columns for
+parallel grouping, ordered from higher to lower resolution.
+Defaults to \code{c("adm1", "adm2")}.}
+
 \item{spatial_level}{Character string specifying the finest spatial unit
 for analysis (e.g., "hf_uid" for facility-level). When specified,
 \code{admin_levels} defines grouping boundaries while \code{spatial_level} defines
 the unit of analysis. This prevents excessive grouping while maintaining
 spatial granularity. Default is \code{NULL} (uses most granular admin level).}
 
-\item{admin_level}{Character vector of administrative level columns for
-parallel grouping, ordered from higher to lower resolution.
-Defaults to \code{c("adm1", "adm2")}. Used for efficient data.table grouping.}
-
 \item{date}{Date column (Date, POSIXt, or parseable character string).
 Year, month, and yearmon are automatically derived from this column.}
 
-\item{time_mode}{Pooling strategy: \code{"across_time"}, \code{"within_year"}, or
-\code{"by_month"}. \code{"by_month"} activates the seasonal fallback ladder.}
+\item{time_mode}{Pooling strategy: \code{"across_time"} or \code{"within_year"}.}
 
 \item{value_type}{Indicator type: \code{"count"} or \code{"rate"}. Counts floor lower
 bounds at 0.}
@@ -80,6 +73,12 @@ bounds at 0.}
 \item{strictness}{Strictness preset: \code{"lenient"}, \code{"balanced"}, \code{"strict"},
 or \code{"advanced"}. Presets map to method multipliers. If not \code{"advanced"},
 any manual multipliers are \strong{ignored}.}
+
+\item{methods}{Character vector specifying which outlier detection methods
+to plot: "iqr" (Interquartile Range), "median" (Median Absolute
+Deviation), "mean" (Mean +/- SD), and/or "consensus".
+Default is \code{c("iqr", "median", "mean", "consensus")}.
+For consensus, at least two other methods must be selected.}
 
 \item{sd_multiplier}{Width (in SD units) for the mean method
 (used only when \code{strictness = "advanced"}).}
@@ -91,6 +90,9 @@ any manual multipliers are \strong{ignored}.}
 
 \item{iqr_multiplier}{Tukey fence multiplier for the IQR method
 (advanced mode).}
+
+\item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3})
+for the consensus flag to call an outlier. Default \code{2}.}
 
 \item{min_n}{Minimum observations required in the active comparison bucket
 before flagging is attempted (applies to any seasonal bucket or fallback).}
@@ -110,43 +112,29 @@ facilities from outlier detection. Inactive facility-months are tagged with
 \code{"allout"}, \code{"test"}, or \code{"conf"}. This adjustment prevents false positives
 caused by facilities that start or stop reporting mid-period.}
 
-\item{binary_classification}{Logical. When \code{key_indicators_hf} is provided,
-determines the classification method passed to \code{classify_facility_activity()}.
-If TRUE, uses binary classification ("Active", "Non-Active"). If FALSE
-(default), uses three-level classification ("Active Reporting",
-"Active Facility - Not Reporting", "Inactive Facility").}
+\item{classify_outbreaks}{Logical. When \code{TRUE} (default), applies outbreak
+classification to distinguish between isolated outliers and sustained
+outbreak patterns. Consecutive outliers meeting the outbreak criteria are
+reclassified from "outlier" to "outbreak". This is particularly useful
+for epidemiological surveillance to identify disease outbreak patterns.
+Set to \code{FALSE} to disable outbreak classification.}
 
-\item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3})
-for the consensus flag to call an outlier. Default \code{2}.}
+\item{outbreak_min_run}{Integer. Minimum number of consecutive outliers
+required to classify as an outbreak (default \code{2}). Must be >= 2.}
 
-\item{seasonal_pool_years}{Total window size (in years) for same-month
-pooling when \code{time_mode = "by_month"}. The window is centered on the
-target year, looking both backward and forward in time (e.g., with
-\code{seasonal_pool_years = 5}, compares with +/-2 years for each side).
-Default \code{5}.}
+\item{outbreak_prop_tolerance}{Numeric. Proportional tolerance for outbreak
+consistency (default \code{0.9}). Values within this tolerance of the run
+median are considered consistent. Range: (0, 1).}
 
-\item{min_years_per_month}{Minimum distinct years required in the same-month
-pool before moving to a fallback. Default \code{3}.}
-
-\item{methods}{Character vector specifying which outlier detection methods
-to plot: "iqr" (Interquartile Range), "median" (Median Absolute
-Deviation), "mean" (Mean +/- SD), and/or "consensus".
-Default is \code{c("iqr", "median", "mean", "consensus")}.
-For consensus, at least two other methods must be selected.}
+\item{outbreak_max_gap}{Integer. Maximum allowed gap (non-outlier months)
+between outliers that can still be considered part of the same outbreak
+(default \code{1}). For example, with \code{outbreak_max_gap = 1}, the pattern
+"outlier-normal-outlier-outlier" would be classified as one outbreak
+of length 3, rather than separate incidents. Set to \code{0} for strict
+consecutive-only outbreaks. Useful for real-world data with reporting gaps.}
 
 \item{year_breaks}{Numeric value specifying the interval for x-axis breaks.
 Default \code{2}. For example, \code{2} shows every second tick and \code{3} every third.}
-
-\item{cache_stats}{Logical. If TRUE, caches computed statistics to improve
-performance on repeated calls with the same data. Default is TRUE.}
-
-\item{cache_dir}{Character string specifying directory for file-based cache.
-If NULL (default), uses project cache directory or tempdir(). Cache persists
-across R sessions for reproducible performance gains.}
-
-\item{verbose}{Logical. When \code{TRUE}, prints an informative summary describing
-methods, pooling, strictness, guardrails, and consensus rule.
-Default is \code{FALSE}.}
 
 \item{target_language}{Character string specifying the language for plot
 labels. Defaults to \code{"en"} (English). Use ISO 639-1 language codes.}
@@ -187,32 +175,9 @@ Default is 300.}
 \item{show_plot}{Logical. If \code{FALSE}, the plot is returned invisibly
 (not displayed). Useful when only saving plots. Default is \code{TRUE}.}
 
-\item{classify_outbreaks}{Logical. When \code{TRUE} (default), applies outbreak
-classification to distinguish between isolated outliers and sustained
-outbreak patterns. Consecutive outliers meeting the outbreak criteria are
-reclassified from "outlier" to "outbreak". This is particularly useful
-for epidemiological surveillance to identify disease outbreak patterns.
-Set to \code{FALSE} to disable outbreak classification.}
-
-\item{outbreak_min_run}{Integer. Minimum number of consecutive outliers
-required to classify as an outbreak (default \code{2}). Must be \u2265 2.}
-
-\item{outbreak_prop_tolerance}{Numeric. Proportional tolerance for outbreak
-consistency (default \code{0.9}). Values within this tolerance of the run
-median are considered consistent. Range: (0, 1).}
-
-\item{outbreak_max_gap}{Integer. Maximum allowed gap (non-outlier months)
-between outliers that can still be considered part of the same outbreak
-(default \code{1}). For example, with \code{outbreak_max_gap = 1}, the pattern
-"outlier-normal-outlier-outlier" would be classified as one outbreak
-of length 3, rather than separate incidents. Set to \code{0} for strict
-consecutive-only outbreaks. Useful for real-world data with reporting gaps.}
-
-\item{use_datatable}{Character string controlling data.table usage for
-performance optimization. Options: \code{"auto"} (default - uses data.table for
-datasets > 1000 rows when time_mode = "by_month"), \code{"always"} (force
-data.table), \code{"never"} (force dplyr). data.table provides 5-10x speedup
-for large datasets but requires the data.table package.}
+\item{verbose}{Logical. When \code{TRUE}, prints an informative summary describing
+methods, pooling, strictness, guardrails, and consensus rule.
+Default is \code{FALSE}.}
 }
 \value{
 If a single method is specified, returns a ggplot object. If multiple
