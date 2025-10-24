@@ -43,7 +43,12 @@ outlier_plot(
   plot_width = NULL,
   plot_height = NULL,
   plot_dpi = 300,
-  show_plot = TRUE
+  show_plot = TRUE,
+  classify_outbreaks = TRUE,
+  outbreak_min_run = 2,
+  outbreak_prop_tolerance = 0.9,
+  outbreak_max_gap = 1,
+  use_datatable = "auto"
 )
 }
 \arguments{
@@ -181,6 +186,33 @@ Default is 300.}
 
 \item{show_plot}{Logical. If \code{FALSE}, the plot is returned invisibly
 (not displayed). Useful when only saving plots. Default is \code{TRUE}.}
+
+\item{classify_outbreaks}{Logical. When \code{TRUE} (default), applies outbreak
+classification to distinguish between isolated outliers and sustained
+outbreak patterns. Consecutive outliers meeting the outbreak criteria are
+reclassified from "outlier" to "outbreak". This is particularly useful
+for epidemiological surveillance to identify disease outbreak patterns.
+Set to \code{FALSE} to disable outbreak classification.}
+
+\item{outbreak_min_run}{Integer. Minimum number of consecutive outliers
+required to classify as an outbreak (default \code{2}). Must be \u2265 2.}
+
+\item{outbreak_prop_tolerance}{Numeric. Proportional tolerance for outbreak
+consistency (default \code{0.9}). Values within this tolerance of the run
+median are considered consistent. Range: (0, 1).}
+
+\item{outbreak_max_gap}{Integer. Maximum allowed gap (non-outlier months)
+between outliers that can still be considered part of the same outbreak
+(default \code{1}). For example, with \code{outbreak_max_gap = 1}, the pattern
+"outlier-normal-outlier-outlier" would be classified as one outbreak
+of length 3, rather than separate incidents. Set to \code{0} for strict
+consecutive-only outbreaks. Useful for real-world data with reporting gaps.}
+
+\item{use_datatable}{Character string controlling data.table usage for
+performance optimization. Options: \code{"auto"} (default - uses data.table for
+datasets > 1000 rows when time_mode = "by_month"), \code{"always"} (force
+data.table), \code{"never"} (force dplyr). data.table provides 5-10x speedup
+for large datasets but requires the data.table package.}
 }
 \value{
 If a single method is specified, returns a ggplot object. If multiple
