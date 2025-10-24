@@ -31,7 +31,11 @@ detect_outliers(
   cache_stats = TRUE,
   cache_dir = NULL,
   spatial_level = NULL,
-  use_datatable = "auto"
+  use_datatable = "auto",
+  classify_outbreaks = TRUE,
+  outbreak_min_run = 2,
+  outbreak_prop_tolerance = 0.5,
+  outbreak_max_gap = 1
 )
 }
 \arguments{
@@ -138,6 +142,27 @@ performance optimization. Options: \code{"auto"} (default - uses data.table for
 datasets > 1000 rows when time_mode = "by_month"), \code{"always"} (force
 data.table), \code{"never"} (force dplyr). data.table provides 5-10x speedup
 for large datasets but requires the data.table package.}
+
+\item{classify_outbreaks}{Logical. When \code{TRUE} (default), applies outbreak
+classification to distinguish between isolated outliers and sustained
+outbreak patterns. Consecutive outliers meeting the outbreak criteria are
+reclassified from "outlier" to "outbreak". This is particularly useful
+for epidemiological surveillance to identify disease outbreak patterns.
+Set to \code{FALSE} to disable outbreak classification.}
+
+\item{outbreak_min_run}{Integer. Minimum number of consecutive outliers
+required to classify as an outbreak (default \code{2}). Must be \u2265 2.}
+
+\item{outbreak_prop_tolerance}{Numeric. Proportional tolerance for outbreak
+consistency (default \code{0.9}). Values within this tolerance of the run
+median are considered consistent. Range: (0, 1).}
+
+\item{outbreak_max_gap}{Integer. Maximum allowed gap (non-outlier months)
+between outliers that can still be considered part of the same outbreak
+(default \code{1}). For example, with \code{outbreak_max_gap = 1}, the pattern
+"outlier-normal-outlier-outlier" would be classified as one outbreak
+of length 3, rather than separate incidents. Set to \code{0} for strict
+consecutive-only outbreaks. Useful for real-world data with reporting gaps.}
 }
 \value{
 Tibble with outlier classifications and metadata. Columns include:
@@ -148,6 +173,14 @@ identifiers (\code{record_id}, admin levels, \code{yearmon}, \code{year}, derive
 (optional), \code{outlier_flag_consensus}, seasonality descriptors, strictness
 multipliers, fallback information, and (if activeness filtering was
 applied) \code{activeness_applied} and \code{key_indicators_used}.
+
+\strong{Outlier flag categories are simplified to three intuitive groups:}
+\itemize{
+\item \code{"normal"}: Values within expected statistical bounds
+\item \code{"outlier"}: Values exceeding thresholds (potential anomalies/outbreaks)
+\item \code{"insufficient_data"}: Various data quality issues preventing determination
+(consolidates insufficient_n, insufficient_evidence, unstable_scale, etc.)
+}
 }
 \description{
 \code{detect_outliers()} evaluates a numeric indicator by administrative unit and
@@ -156,9 +189,11 @@ identify unusually HIGH values only (potential outbreaks or data anomalies).
 Low values are NOT flagged as outliers. It enforces reporting and sample-size
 guardrails, supports strictness presets, and when requested applies a
 seasonality ladder (same-month -> neighbours -> residual -> across-time) to
-select stable comparison pools. It returns per-method flags (optional), a
-consensus classification, scale statistics, and metadata recording any
-fallback used.
+select stable comparison pools. Optional outbreak classification distinguishes
+between isolated outliers and sustained outbreak patterns using gap-aware
+clustering that can bridge short interruptions in the outbreak signal.
+It returns per-method flags (optional), a consensus classification,
+scale statistics, and metadata recording any fallback used.
 }
 \details{
 \strong{Workflow}
@@ -182,7 +217,7 @@ neighbours (months m-1, m, m+1 with weights 1:2:1 within the same
 (with strictness shift), then exclusion if still inadequate. Each row
 records \code{seasonality_mode_used}, window text, and any fallback reason.
 \item Flagging: each method checks if values exceed the UPPER threshold only
-(e.g., mean + multiplier×SD). Low values are never flagged. Methods are
+(e.g., mean + multiplier\u00d7SD). Low values are never flagged. Methods are
 suppressed when scales are unstable (\code{sd}, \code{mad}, or \code{iqr} equals zero).
 \item Consensus: final \code{outlier_flag_consensus} requires at least
 \code{consensus_rule} methods to agree over available (non-suppressed) methods.
@@ -204,9 +239,9 @@ variable reporting completeness or frequent facility additions.
 
 \strong{Presets} (for high outliers only)
 \itemize{
-\item lenient: values > mean + 4.0×SD, median + 12×MAD, or Q3 + 3.0×IQR
-\item balanced: values > mean + 3.0×SD, median + 9×MAD, or Q3 + 2.0×IQR
-\item strict: values > mean + 2.5×SD, median + 6×MAD, or Q3 + 1.5×IQR
+\item lenient: values > mean + 4.0\u00d7SD, median + 12\u00d7MAD, or Q3 + 3.0\u00d7IQR
+\item balanced: values > mean + 3.0\u00d7SD, median + 9\u00d7MAD, or Q3 + 2.0\u00d7IQR
+\item strict: values > mean + 2.5\u00d7SD, median + 6\u00d7MAD, or Q3 + 1.5\u00d7IQR
 \item advanced: use user-supplied multipliers
 }
 
