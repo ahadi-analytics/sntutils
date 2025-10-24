@@ -1,28 +1,25 @@
-#' Detect high outliers with guardrails, consensus, and seasonal fallbacks
+#' Detect outliers with guardrails and consensus
 #'
 #' @description
 #' `detect_outliers()` evaluates a numeric indicator by administrative unit and
 #' time using three methods (mean + SD, median + MAD, Tukey upper fence) to
 #' identify unusually HIGH values only (potential outbreaks or data anomalies).
 #' Low values are NOT flagged as outliers. It enforces reporting and sample-size
-#' guardrails, supports strictness presets, and when requested applies a
-#' seasonality ladder (same-month -> neighbours -> residual -> across-time) to
-#' select stable comparison pools. Optional outbreak classification distinguishes
-#' between isolated outliers and sustained outbreak patterns using gap-aware
-#' clustering that can bridge short interruptions in the outbreak signal.
-#' It returns per-method flags (optional), a consensus classification,
-#' scale statistics, and metadata recording any fallback used.
+#' guardrails, supports strictness presets. Optional outbreak classification
+#' distinguishes between isolated outliers and sustained outbreak patterns using
+#' gap-aware clustering that can bridge short interruptions in the outbreak
+#' signal. It returns per-method flags (optional), a consensus classification,
+#' scale statistics, and metadata.
 #'
 #' @param data Data frame containing the indicator to analyse.
 #' @param column Name of the numeric column to evaluate.
 #' @param record_id Unique record identifier column.
 #' @param admin_level Character vector of administrative level columns for
 #'   parallel grouping, ordered from higher to lower resolution.
-#'   Defaults to `c("adm1", "adm2")`. Used for efficient data.table grouping.
+#'   Defaults to `c("adm1", "adm2")`.
 #' @param date Date column (Date, POSIXt, or parseable character string).
 #'   Year, month, and yearmon are automatically derived from this column.
-#' @param time_mode Pooling strategy: `"across_time"`, `"within_year"`, or
-#'   `"by_month"`. `"by_month"` activates the seasonal fallback ladder.
+#' @param time_mode Pooling strategy: `"across_time"` or `"within_year"`.
 #' @param value_type Indicator type: `"count"` or `"rate"`. Counts floor lower
 #'   bounds at 0.
 #'
@@ -53,12 +50,6 @@
 #'   `"allout"`, `"test"`, or `"conf"`. This adjustment prevents false positives
 #'   caused by facilities that start or stop reporting mid-period.
 #'
-#' @param binary_classification Logical. When `key_indicators_hf` is provided,
-#'   determines the classification method passed to `classify_facility_activity()`.
-#'   If TRUE, uses binary classification ("Active", "Non-Active"). If FALSE
-#'   (default), uses three-level classification ("Active Reporting",
-#'   "Active Facility - Not Reporting", "Inactive Facility").
-#'
 #' @param methods Character vector specifying which outlier detection
 #'   methods to use: "iqr" (Interquartile Range), "median" (Median Absolute
 #'   Deviation), "mean" (Mean +/- SD), and/or "consensus".
@@ -71,32 +62,14 @@
 #'   `"standard"` (lean + per-method flags + bounds + seasonality mode),
 #'   `"audit"` (all columns for full reproducibility). Default `"standard"`.
 #'
-#' @param seasonal_pool_years Total window size (in years) for same-month
-#'   pooling when `time_mode = "by_month"`. The window is centered on the
-#'   target year, looking both backward and forward in time (e.g., with
-#'   `seasonal_pool_years = 5`, compares with +/-2 years for each side).
-#'   Default `5`.
-#' @param min_years_per_month Minimum distinct years required in the same-month
-#'   pool before moving to a fallback. Default `3`.
-#'
 #' @param verbose Logical. When `TRUE`, prints an informative summary showing
 #'   which methods are being applied, the pooling strategy, strictness settings,
 #'   guardrails, and consensus rule. Default is `FALSE`.
-#' @param cache_stats Logical. Cache intermediate statistical calculations
-#'   to improve performance across seasonal pools. Default is `TRUE`.
-#' @param cache_dir Character string specifying directory for file-based cache.
-#'   If NULL (default), uses project cache directory or tempdir(). Cache persists
-#'   across R sessions for reproducible performance gains.
 #' @param spatial_level Character string specifying the finest spatial unit
 #'   for analysis (e.g., "hf_uid" for facility-level). When specified,
 #'   `admin_levels` defines grouping boundaries while `spatial_level` defines
 #'   the unit of analysis. This prevents excessive grouping while maintaining
 #'   spatial granularity. Default is `NULL` (uses most granular admin level).
-#' @param use_datatable Character string controlling data.table usage for
-#'   performance optimization. Options: `"auto"` (default - uses data.table for
-#'   datasets > 1000 rows when time_mode = "by_month"), `"always"` (force
-#'   data.table), `"never"` (force dplyr). data.table provides 5-10x speedup
-#'   for large datasets but requires the data.table package.
 #' @param classify_outbreaks Logical. When `TRUE` (default), applies outbreak
 #'   classification to distinguish between isolated outliers and sustained
 #'   outbreak patterns. Consecutive outliers meeting the outbreak criteria are
@@ -104,7 +77,7 @@
 #'   for epidemiological surveillance to identify disease outbreak patterns.
 #'   Set to `FALSE` to disable outbreak classification.
 #' @param outbreak_min_run Integer. Minimum number of consecutive outliers
-#'   required to classify as an outbreak (default `2`). Must be \u2265 2.
+#'   required to classify as an outbreak (default `2`). Must be >= 2.
 #' @param outbreak_prop_tolerance Numeric. Proportional tolerance for outbreak
 #'   consistency (default `0.9`). Values within this tolerance of the run
 #'   median are considered consistent. Range: (0, 1).
@@ -128,16 +101,11 @@
 #'    one step toward lenient.
 #' 4) Guardrails: rows failing `reporting_rate_min` or `min_n` bypass flagging
 #'    and record `reason` (`low_reporting`, `insufficient_n`,
-#'    `insufficient_seasonal_history`).
-#' 5) Seasonality (if `time_mode = "by_month"`): ladder applied in order:
-#'    same-month (+/-`seasonal_pool_years/2` years, excluding target year),
-#'    neighbours (months m-1, m, m+1 with weights 1:2:1 within the same
-#'    +/- years window), residual (remove month fixed effects), across-time
-#'    (with strictness shift), then exclusion if still inadequate. Each row
-#'    records `seasonality_mode_used`, window text, and any fallback reason.
+#'    `insufficient_data`).
 #' 6) Flagging: each method checks if values exceed the UPPER threshold only
-#'    (e.g., mean + multiplier\u00d7SD). Low values are never flagged. Methods are
-#'    suppressed when scales are unstable (`sd`, `mad`, or `iqr` equals zero).
+#'    (e.g., mean + multiplier x SD). Low values are never flagged. Methods
+#'    are suppressed when scales are unstable (`sd`, `mad`, or `iqr`
+#'    equals zero).
 #' 7) Consensus: final `outlier_flag_consensus` requires at least
 #'    `consensus_rule` methods to agree over available (non-suppressed) methods.
 #'
@@ -156,38 +124,36 @@
 #' variable reporting completeness or frequent facility additions.
 #'
 #' **Presets** (for high outliers only)
-#' - lenient: values > mean + 4.0\u00d7SD, median + 12\u00d7MAD, or Q3 + 3.0\u00d7IQR
-#' - balanced: values > mean + 3.0\u00d7SD, median + 9\u00d7MAD, or Q3 + 2.0\u00d7IQR
-#' - strict: values > mean + 2.5\u00d7SD, median + 6\u00d7MAD, or Q3 + 1.5\u00d7IQR
+#' - lenient: values > mean + 4.0 x SD, median + 12 x MAD,
+#'   or Q3 + 3.0 x IQR
+#' - balanced: values > mean + 3.0 x SD, median + 9 x MAD,
+#'   or Q3 + 2.0 x IQR
+#' - strict: values > mean + 2.5 x SD, median + 6 x MAD,
+#'   or Q3 + 1.5 x IQR
 #' - advanced: use user-supplied multipliers
 #'
 #' Note: Only values ABOVE the upper thresholds are flagged. Low values are
 #' always classified as "normal" regardless of how far below the mean/median.
 #'
-#' **Seasonality ladder thresholds**
-#' - same-month requires `min_years_per_month` and `min_n` within the
-#'   bidirectional `seasonal_pool_years` window (centered on target year);
-#'   otherwise fall back as described above.
-#'
 #' The returned tibble always contains identifiers, scale statistics, bounds,
-#' strictness and seasonality metadata, and the guardrail reason. When
-#' `output_profile = "standard"` or `"audit"`, method-specific flags are
-#' included alongside the consensus.
+#' strictness metadata, and the guardrail reason. When `output_profile =
+#' "standard"` or `"audit"`, method-specific flags are included alongside
+#' the consensus.
 #'
 #' @return Tibble with outlier classifications and metadata. Columns include:
 #'   identifiers (`record_id`, admin levels, `yearmon`, `year`, derived
 #'   `month`), `column_name`, `value`, `value_type`, scale stats (`mean`,
-#'   `sd`, `median`, `mad`, `q1`, `q3`, `iqr`), method bounds, residual stats
-#'   (if residual fallback), `n_in_group`, guardrail `reason`, method flags
-#'   (optional), `outlier_flag_consensus`, seasonality descriptors, strictness
-#'   multipliers, fallback information, and (if activeness filtering was
-#'   applied) `activeness_applied` and `key_indicators_used`.
+#'   `sd`, `median`, `mad`, `q1`, `q3`, `iqr`), method bounds, `n_in_group`,
+#'   guardrail `reason`, method flags (optional), `outlier_flag_consensus`,
+#'   strictness multipliers, and (if activeness filtering was applied)
+#'   `activeness_applied` and `key_indicators_used`.
 #'
 #'   **Outlier flag categories are simplified to three intuitive groups:**
 #'   - `"normal"`: Values within expected statistical bounds
 #'   - `"outlier"`: Values exceeding thresholds (potential anomalies/outbreaks)
-#'   - `"insufficient_data"`: Various data quality issues preventing determination
-#'   (consolidates insufficient_n, insufficient_evidence, unstable_scale, etc.)
+#'   - `"insufficient_data"`: Various data quality issues preventing
+#'    determination (consolidates insufficient_n, insufficient_evidence,
+#'    unstable_scale, etc.)
 #'
 #' @examples
 #' \dontrun{
@@ -204,16 +170,13 @@
 #'   time_mode = "across_time"
 #' )
 #'
-#' # 2) Seasonality with fallbacks
-#' #    (same-month -> neighbours -> residual -> across-time)
+#' # 2) Within-year comparison
 #' detect_outliers(
 #'   data = malaria_data,
 #'   column = "confirmed_cases",
 #'   date = "date",
 #'   admin_levels = c("adm1"),
-#'   time_mode = "by_month",
-#'   seasonal_pool_years = 5,
-#'   min_years_per_month = 3,
+#'   time_mode = "within_year",
 #'   consensus_rule = 2,
 #'   output_profile = "audit"
 #' )
@@ -238,7 +201,7 @@
 #'   column = "conf",
 #'   date = "date",
 #'   admin_levels = c("adm1", "adm2"),
-#'   time_mode = "by_month",
+#'   time_mode = "across_time",
 #'   key_indicators_hf = c("allout", "test", "conf")
 #' )
 #'
@@ -248,49 +211,41 @@
 #'   column = "conf",
 #'   date = "date",
 #'   admin_levels = c("adm1", "adm2"),
-#'   time_mode = "by_month",
-#'   key_indicators_hf = c("allout", "test", "conf"),
-#'   binary_classification = TRUE
+#'   time_mode = "across_time",
+#'   key_indicators_hf = c("allout", "test", "conf")
 #' )
 #' }
 #' @export
 detect_outliers <- function(
-    data,
-    column,
-    record_id = "record_id",
-    admin_level = c("adm1", "adm2"),
-    date = "date",
-    time_mode = c("by_month", "across_time", "within_year"),
-    value_type = c("count", "rate"),
-    strictness = c("balanced", "lenient", "strict", "advanced"),
-    sd_multiplier = 3,
-    mad_constant = 1.4826,
-    mad_multiplier = 9,
-    iqr_multiplier = 2,
-    min_n = 8,
-    reporting_rate_col = NULL,
-    reporting_rate_min = 0.5,
-    key_indicators_hf = NULL,
-    binary_classification = FALSE,
-    methods = c("iqr", "median", "mean", "consensus"),
-    consensus_rule = 2,
-    output_profile = c("standard", "lean", "audit"),
-    seasonal_pool_years = 5,
-    min_years_per_month = 3,
-    verbose = TRUE,
-    cache_stats = TRUE,
-    cache_dir = NULL,
-    spatial_level = NULL,
-    use_datatable = "auto",
-    classify_outbreaks = TRUE,
-    outbreak_min_run = 2,
-    outbreak_prop_tolerance = 0.5,
-    outbreak_max_gap = 1) {
-
+  data,
+  column,
+  record_id = "record_id",
+  admin_level = c("adm1", "adm2"),
+  spatial_level = NULL,
+  date = "date",
+  time_mode = c("across_time", "within_year"),
+  value_type = c("count", "rate"),
+  strictness = c("balanced", "lenient", "strict", "advanced"),
+  methods = c("iqr", "median", "mean", "consensus"),
+  sd_multiplier = 3,
+  mad_constant = 1.4826,
+  mad_multiplier = 9,
+  iqr_multiplier = 2,
+  consensus_rule = 2,
+  output_profile = c("standard", "lean", "audit"),
+  min_n = 8,
+  reporting_rate_col = NULL,
+  reporting_rate_min = 0.5,
+  key_indicators_hf = NULL,
+  classify_outbreaks = TRUE,
+  outbreak_min_run = 2,
+  outbreak_prop_tolerance = 0.5,
+  outbreak_max_gap = 1,
+  verbose = TRUE
+) {
   if (column %in% names(data) && !is.numeric(data[[column]])) {
     cli::cli_abort("Column {.val {column}} must be numeric.")
   }
-
 
   activeness_applied <- FALSE
   n_inactive_skipped <- 0L
@@ -313,7 +268,7 @@ detect_outliers <- function(
       hf_col = record_id,
       date_col = date,
       key_indicators = key_indicators_hf,
-      binary_classification = binary_classification
+      binary_classification = TRUE
     )
     data <- data |>
       dplyr::left_join(
@@ -335,52 +290,7 @@ detect_outliers <- function(
     key_indicators_used <- paste(key_indicators_hf, collapse = ", ")
   }
 
-  # setup caching if enabled - cache the entire detection process
-  if (cache_stats && !is.null(cache_dir)) {
-    cache_config <- .setup_outlier_cache(cache_stats = cache_stats, cache_dir = cache_dir)
-
-    # Create a cached version of the core detection logic
-    if (!is.null(cache_config) && cache_config$enabled) {
-      cached_detection <- memoise::memoise(.core_outlier_detection, cache = cache_config$backend)
-
-      # Call the cached detection with all parameters as cache key
-      return(cached_detection(
-        data = data,
-        column = column,
-        record_id = record_id,
-        admin_level = admin_level,
-        date = date,
-        time_mode = time_mode,
-        value_type = value_type,
-        strictness = strictness,
-        sd_multiplier = sd_multiplier,
-        mad_constant = mad_constant,
-        mad_multiplier = mad_multiplier,
-        iqr_multiplier = iqr_multiplier,
-        min_n = min_n,
-        reporting_rate_col = reporting_rate_col,
-        reporting_rate_min = reporting_rate_min,
-        key_indicators_hf = key_indicators_hf,
-        methods = methods,
-        consensus_rule = consensus_rule,
-        output_profile = output_profile,
-        seasonal_pool_years = seasonal_pool_years,
-        min_years_per_month = min_years_per_month,
-        verbose = verbose,
-        spatial_level = spatial_level,
-        activeness_applied = activeness_applied,
-        n_inactive_skipped = n_inactive_skipped,
-        key_indicators_used = key_indicators_used,
-        use_datatable = use_datatable,
-        classify_outbreaks = classify_outbreaks,
-        outbreak_min_run = outbreak_min_run,
-        outbreak_prop_tolerance = outbreak_prop_tolerance,
-        outbreak_max_gap = outbreak_max_gap
-      ))
-    }
-  }
-
-  # fallback to non-cached execution
+  # execute detection
   .core_outlier_detection(
     data = data,
     column = column,
@@ -401,14 +311,11 @@ detect_outliers <- function(
     methods = methods,
     consensus_rule = consensus_rule,
     output_profile = output_profile,
-    seasonal_pool_years = seasonal_pool_years,
-    min_years_per_month = min_years_per_month,
     verbose = verbose,
     spatial_level = spatial_level,
     activeness_applied = activeness_applied,
     n_inactive_skipped = n_inactive_skipped,
     key_indicators_used = key_indicators_used,
-    use_datatable = use_datatable,
     classify_outbreaks = classify_outbreaks,
     outbreak_min_run = outbreak_min_run,
     outbreak_prop_tolerance = outbreak_prop_tolerance,
@@ -437,7 +344,7 @@ detect_outliers <- function(
     output_profile) {
   resolved_time_mode <- base::match.arg(
     time_mode,
-    c("by_month", "across_time", "within_year")
+    c("across_time", "within_year")
   )
   resolved_value_type <- base::match.arg(
     value_type,
@@ -496,8 +403,6 @@ detect_outliers <- function(
 #' @param min_n minimum observations per bucket
 #' @param reporting_rate_col optional reporting rate column
 #' @param reporting_rate_min minimum reporting rate threshold
-#' @param seasonal_pool_years seasonal history window
-#' @param min_years_per_month minimum seasonal years per month
 #' @return list containing prepared data and pipeline context
 #' @keywords internal
 #' @noRd
@@ -516,11 +421,7 @@ detect_outliers <- function(
     min_n,
     reporting_rate_col,
     reporting_rate_min,
-    seasonal_pool_years,
-    min_years_per_month,
-    cache_stats = TRUE,
-    spatial_level = NULL,
-    use_datatable = "auto") {
+    spatial_level = NULL) {
   if (!date_column %in% names(data)) {
     cli::cli_abort("Date column {.val {date_column}} not found in data.")
   }
@@ -587,7 +488,7 @@ prepared <- data |>
   if (!is.null(spatial_level)) {
     # Detection happens at spatial_level, grouping for efficiency at admin_level
     detection_admin_levels <- c(admin_level, spatial_level)
-    parallel_grouping_levels <- admin_level  # For data.table parallel efficiency
+    parallel_grouping_levels <- admin_level
   } else {
     # Original behavior - use all admin_level for both detection and grouping
     detection_admin_levels <- admin_level
@@ -600,9 +501,11 @@ prepared <- data |>
     record_id
   )
 
-  # Store both levels for different purposes - preserve our carefully crafted levels
-  admin_info$detection_levels <- detection_admin_levels      # What we detect outliers on
-  admin_info$parallel_grouping_levels <- parallel_grouping_levels  # How we group for efficiency
+  # Store both levels for different purposes - preserve our carefully
+  # crafted levels
+  admin_info$detection_levels <- detection_admin_levels   # What we detect outliers on
+  admin_info$parallel_grouping_levels <- parallel_grouping_levels
+  # How we group for efficiency
 
   # Override admin_levels with detection_levels to ensure consistency
   # (.resolve_admin_levels adds record_id which we don't want in our levels)
@@ -624,27 +527,17 @@ prepared <- data |>
     validated$month
   )
 
-  seasonality_params <- list(
-    seasonal_pool_years = seasonal_pool_years,
-    min_years_per_month = min_years_per_month,
-    min_obs_per_seasonal_bucket = min_n,
-    mad_constant = strictness_info$mad_constant
-  )
-
   list(
     prepared_data = prepared_data,
     admin_info = admin_info,
     strictness = strictness_info,
     grouping_cols = grouping_cols,
-    seasonality_params = seasonality_params,
     options = options,
     constraints = list(
       min_n = min_n,
       reporting_rate_min = reporting_rate_min
     ),
-    cache_stats = cache_stats,
-    spatial_level = spatial_level,
-    use_datatable = use_datatable
+    spatial_level = spatial_level
   )
 }
 
@@ -664,49 +557,6 @@ prepared <- data |>
     consensus_rule) {
   time_mode <- context$options$time_mode
 
-  if (time_mode == "by_month") {
-    # Determine whether to use data.table version
-    use_dt <- switch(
-      context$use_datatable,
-      "always" = requireNamespace("data.table", quietly = TRUE),
-      "never" = FALSE,
-      "auto" = requireNamespace("data.table", quietly = TRUE) &&
-               nrow(context$prepared_data) > 1000,
-      FALSE  # default fallback
-    )
-
-    if (use_dt) {
-      return(
-        .run_seasonal_detection_dt(
-          data = context$prepared_data,
-          detection_admin_levels = context$admin_info$detection_levels,
-          parallel_grouping_levels = context$admin_info$parallel_grouping_levels,
-          strictness = context$strictness,
-          params = context$seasonality_params,
-          methods = methods,
-          consensus_rule = consensus_rule,
-          min_n = context$constraints$min_n,
-          reporting_rate_min = context$constraints$reporting_rate_min,
-          value_type = context$options$value_type
-        )
-      )
-    } else {
-      return(
-        .run_seasonal_detection(
-          data = context$prepared_data,
-          detection_admin_levels = context$admin_info$detection_levels,
-          parallel_grouping_levels = context$admin_info$parallel_grouping_levels,
-          strictness = context$strictness,
-          params = context$seasonality_params,
-          methods = methods,
-          consensus_rule = consensus_rule,
-          min_n = context$constraints$min_n,
-          reporting_rate_min = context$constraints$reporting_rate_min,
-          value_type = context$options$value_type
-        )
-      )
-    }
-  }
 
   desc <- switch(
     time_mode,
@@ -1117,15 +967,6 @@ prepared <- data |>
     ""
   )
 
-  if (time_mode == "by_month") {
-    lines <- c(
-      lines,
-      glue::glue(
-        "{cli::col_magenta(cli::style_bold('Seasonality ladder'))}: ",
-        "same-month -> neighbours -> residual -> across-time"
-      )
-    )
-  }
 
   lines <- c(
     lines,
@@ -1453,11 +1294,6 @@ prepared <- data |>
 #' all parameters from the detection function for seamless integration.
 #'
 #' @inheritParams detect_outliers
-#' @param cache_stats Logical. If TRUE, caches computed statistics to improve
-#'   performance on repeated calls with the same data. Default is TRUE.
-#' @param cache_dir Character string specifying directory for file-based cache.
-#'   If NULL (default), uses project cache directory or tempdir(). Cache persists
-#'   across R sessions for reproducible performance gains.
 #' @param methods Character vector specifying which outlier detection methods
 #'   to plot: "iqr" (Interquartile Range), "median" (Median Absolute
 #'   Deviation), "mean" (Mean +/- SD), and/or "consensus".
@@ -1566,29 +1402,27 @@ outlier_plot <- function(
     data,
     column,
     record_id = "record_id",
-    spatial_level = NULL,
     admin_level = c("adm1", "adm2"),
+    spatial_level = NULL,
     date = "date",
-    time_mode = c("by_month", "across_time", "within_year"),
+    time_mode = c("across_time", "within_year"),
     value_type = c("count", "rate"),
     strictness = c("balanced", "lenient", "strict", "advanced"),
+    methods = c("iqr", "median", "mean", "consensus"),
     sd_multiplier = 3,
     mad_constant = 1.4826,
     mad_multiplier = 9,
     iqr_multiplier = 2,
+    consensus_rule = 2,
     min_n = 8,
     reporting_rate_col = NULL,
     reporting_rate_min = 0.5,
     key_indicators_hf = NULL,
-    binary_classification = FALSE,
-    consensus_rule = 2,
-    seasonal_pool_years = 5,
-    min_years_per_month = 3,
-    methods = c("iqr", "median", "mean", "consensus"),
+    classify_outbreaks = TRUE,
+    outbreak_min_run = 2,
+    outbreak_prop_tolerance = 0.9,
+    outbreak_max_gap = 1,
     year_breaks = 2,
-    cache_stats = TRUE,
-    cache_dir = NULL,
-    verbose = TRUE,
     target_language = "en",
     source_language = "en",
     lang_cache_path = tempdir(),
@@ -1602,11 +1436,7 @@ outlier_plot <- function(
     plot_height = NULL,
     plot_dpi = 300,
     show_plot = TRUE,
-    classify_outbreaks = TRUE,
-    outbreak_min_run = 2,
-    outbreak_prop_tolerance = 0.9,
-    outbreak_max_gap = 1,
-    use_datatable = "auto"
+    verbose = TRUE
 ) {
   # match choice arguments
   time_mode <- match.arg(time_mode)
@@ -1668,21 +1498,15 @@ outlier_plot <- function(
       reporting_rate_col = reporting_rate_col,
       reporting_rate_min = reporting_rate_min,
       key_indicators_hf = key_indicators_hf,
-      binary_classification = binary_classification,
-      methods = methods,  # Pass methods to calculate only requested flags
+        methods = methods,  # Pass methods to calculate only requested flags
       consensus_rule = consensus_rule,
       output_profile = "audit",  # Get all flags for individual methods
-      seasonal_pool_years = seasonal_pool_years,
-      min_years_per_month = min_years_per_month,
-      cache_stats = cache_stats,
-      cache_dir = cache_dir,
       verbose = FALSE,  # plot helper prints summary itself
       classify_outbreaks = classify_outbreaks,
       outbreak_min_run = outbreak_min_run,
       outbreak_prop_tolerance = outbreak_prop_tolerance,
-      outbreak_max_gap = outbreak_max_gap,
-      use_datatable = use_datatable
-    )
+      outbreak_max_gap = outbreak_max_gap
+      )
   }
 
   # Show summary box once before creating plots
@@ -2601,47 +2425,6 @@ outlier_plot <- function(
   )
 }
 
-#' shift strictness toward lenient by one level
-#'
-#' @param strictness strictness label
-#' @param sd_multiplier numeric multiplier
-#' @param mad_constant numeric constant
-#' @param mad_multiplier numeric multiplier
-#' @param iqr_multiplier numeric multiplier
-#' @noRd
-.shift_strictness_one_level <- function(
-    strictness,
-    sd_multiplier,
-    mad_constant,
-    mad_multiplier,
-    iqr_multiplier) {
-  levels <- c("strict", "balanced", "lenient")
-  if (strictness == "advanced") {
-    # shift multipliers directly toward lenient defaults
-    return(list(
-      strictness = strictness,
-      sd_multiplier = max(sd_multiplier, 4),
-      mad_constant = mad_constant,
-      mad_multiplier = max(mad_multiplier, 12),
-      iqr_multiplier = max(iqr_multiplier, 3),
-      strictness_shifted = TRUE
-    ))
-  }
-
-  position <- match(strictness, levels, nomatch = length(levels))
-  new_position <- min(position + 1, length(levels))
-  new_strictness <- levels[[new_position]]
-  resolved <- .resolve_strictness(
-    new_strictness,
-    sd_multiplier,
-    mad_constant,
-    mad_multiplier,
-    iqr_multiplier
-  )
-  resolved$strictness_shifted <- TRUE
-  resolved
-}
-
 #' build grouping keys based on time_mode
 #'
 #' @param data data frame
@@ -2700,195 +2483,6 @@ outlier_plot <- function(
     return(as.numeric(pmax(0, lower)))
   }
   as.numeric(lower)
-}
-
-#' compute method bounds for a numeric vector
-#'
-#' @param values numeric vector of pool values
-#' @param strictness list with multipliers
-#' @param value_type type of metric (count/rate)
-#' @noRd
-.calculate_method_bounds <- function(values, strictness, value_type) {
-  cleaned <- values[!is.na(values)]
-  n <- length(cleaned)
-  if (n == 0) {
-    return(list(
-      n = 0,
-      mean = NA_real_,
-      sd = NA_real_,
-      mean_lower = NA_real_,
-      mean_upper = NA_real_,
-      median = NA_real_,
-      mad = NA_real_,
-      median_lower = NA_real_,
-      median_upper = NA_real_,
-      q1 = NA_real_,
-      q3 = NA_real_,
-      iqr = NA_real_,
-      iqr_lower = NA_real_,
-      iqr_upper = NA_real_,
-      unstable_mean = TRUE,
-      unstable_median = TRUE,
-      unstable_iqr = TRUE
-    ))
-  }
-
-  mean_value <- mean(cleaned)
-  sd_value <- stats::sd(cleaned)
-  mean_lower <- mean_value - strictness$sd_multiplier * sd_value
-  mean_upper <- mean_value + strictness$sd_multiplier * sd_value
-  mean_lower <- .apply_lower_bound_floor(mean_lower, value_type)
-
-  median_value <- stats::median(cleaned)
-  mad_value <- stats::mad(
-    cleaned,
-    constant = strictness$mad_constant,
-    na.rm = TRUE
-  )
-  median_lower <- median_value - strictness$mad_multiplier * mad_value
-  median_upper <- median_value + strictness$mad_multiplier * mad_value
-  median_lower <- .apply_lower_bound_floor(median_lower, value_type)
-
-  quantiles <- stats::quantile(cleaned, probs = c(0.25, 0.75), names = FALSE)
-  q1 <- quantiles[1]
-  q3 <- quantiles[2]
-  iqr_value <- q3 - q1
-  iqr_lower <- q1 - strictness$iqr_multiplier * iqr_value
-  iqr_upper <- q3 + strictness$iqr_multiplier * iqr_value
-  iqr_lower <- .apply_lower_bound_floor(iqr_lower, value_type)
-
-  list(
-    n = n,
-    mean = mean_value,
-    sd = sd_value,
-    mean_lower = mean_lower,
-    mean_upper = mean_upper,
-    median = median_value,
-    mad = mad_value,
-    median_lower = median_lower,
-    median_upper = median_upper,
-    q1 = q1,
-    q3 = q3,
-    iqr = iqr_value,
-    iqr_lower = iqr_lower,
-    iqr_upper = iqr_upper,
-    unstable_mean = is.na(sd_value) || sd_value == 0,
-    unstable_median = is.na(mad_value) || mad_value == 0,
-    unstable_iqr = is.na(iqr_value) || iqr_value == 0
-  )
-}
-
-#' apply method flags based on bounds and guardrails
-#'
-#' @param value numeric value for the row
-#' @param bounds list from .calculate_method_bounds
-#' @param guard_reason character reason if guardrail triggered
-#' @param methods character vector of methods to calculate
-#' @noRd
-.flag_outliers_by_method <- function(value, bounds, guard_reason, methods) {
-  result <- list()
-
-  if (!is.na(guard_reason) && guard_reason != "") {
-    if ("mean" %in% methods) result$mean_flag <- guard_reason
-    if ("median" %in% methods) result$median_flag <- guard_reason
-    if ("iqr" %in% methods) result$iqr_flag <- guard_reason
-    return(result)
-  }
-
-  if ("mean" %in% methods) {
-    result$mean_flag <- if (bounds$unstable_mean) {
-      "unstable_scale"
-    } else if (
-        is.na(value) ||
-        is.na(bounds$mean_lower) ||
-        is.na(bounds$mean_upper)
-      ) {
-      "insufficient_evidence"
-    } else if (value < bounds$mean_lower || value > bounds$mean_upper) {
-      "outlier"
-    } else {
-      "normal"
-    }
-  }
-
-  if ("median" %in% methods) {
-    result$median_flag <- if (bounds$unstable_median) {
-      "unstable_scale"
-    } else if (
-        is.na(value) ||
-        is.na(bounds$median_lower) ||
-        is.na(bounds$median_upper)
-      ) {
-      "insufficient_evidence"
-    } else if (value < bounds$median_lower || value > bounds$median_upper) {
-      "outlier"
-    } else {
-      "normal"
-    }
-  }
-
-  if ("iqr" %in% methods) {
-    result$iqr_flag <- if (bounds$unstable_iqr) {
-      "unstable_scale"
-    } else if (
-        is.na(value) ||
-        is.na(bounds$iqr_lower) ||
-        is.na(bounds$iqr_upper)
-      ) {
-      "insufficient_evidence"
-    } else if (value < bounds$iqr_lower || value > bounds$iqr_upper) {
-      "outlier"
-    } else {
-      "normal"
-    }
-  }
-
-  result
-}
-
-#' compute consensus flag given method flags and rule
-#'
-#' @param mean_flag mean method flag (can be NULL if not calculated)
-#' @param median_flag median method flag (can be NULL if not calculated)
-#' @param iqr_flag iqr method flag (can be NULL if not calculated)
-#' @param consensus_rule integer rule
-#' @noRd
-.compute_consensus_flag <- function(
-    mean_flag,
-    median_flag,
-    iqr_flag,
-    consensus_rule) {
-  # only include non-NULL flags
-  flags <- c()
-  if (!is.null(mean_flag)) flags <- c(flags, mean_flag)
-  if (!is.null(median_flag)) flags <- c(flags, median_flag)
-  if (!is.null(iqr_flag)) flags <- c(flags, iqr_flag)
-
-  if (length(flags) == 0) {
-    return("insufficient_evidence")
-  }
-
-  guard_reasons <- c(
-    "low_reporting",
-    "insufficient_n",
-    "insufficient_seasonal_history"
-  )
-  guard_flag <- flags[flags %in% guard_reasons]
-  if (length(guard_flag) > 0) {
-    return(guard_flag[[1]])
-  }
-
-  usable <- flags[!flags %in% c("unstable_scale", guard_reasons)]
-  outlier_votes <- sum(usable == "outlier", na.rm = TRUE)
-  total_votes <- sum(usable %in% c("outlier", "normal"), na.rm = TRUE)
-  if (total_votes == 0) {
-    return("insufficient_evidence")
-  }
-  if (outlier_votes >= consensus_rule) {
-    "outlier"
-  } else {
-    "normal"
-  }
 }
 
 #' run non-seasonal detection path
@@ -3084,1038 +2678,6 @@ outlier_plot <- function(
   combined
 }
 
-#' build subtitle summarising seasonality and guardrails
-#'
-#' @param data plotted data
-#' @param min_n minimum n
-#' @param reporting_rate_min reporting threshold
-#' @noRd
-.format_seasonality_caption <- function(data, min_n, reporting_rate_min) {
-  if (nrow(data) == 0) {
-    return("No data available")
-  }
-  first_row <- data[1, , drop = FALSE]
-  strictness_shift <- if (isTRUE(first_row$strictness_shifted)) {
-    " (shifted)"
-  } else {
-    ""
-  }
-  glue::glue(
-    "Mode: {first_row$seasonality_mode_used} | ",
-    "Window: {first_row$seasonal_window_desc} | ",
-    "Strictness: {first_row$strictness_label}{strictness_shift} | ",
-    "min_n = {min_n} | reporting >= {reporting_rate_min}"
-  )
-}
-
-#' ensure detection output has required columns for plotting
-#'
-#' @param data detection output
-#' @param admin_levels admin columns expected
-#' @noRd
-.validate_plot_inputs <- function(data, admin_levels) {
-  required <- c(
-    "value",
-    "month",
-    "outlier_flag_consensus",
-    "seasonality_mode_used",
-    "seasonal_window_desc"
-  )
-  missing <- required[!required %in% names(data)]
-  if (length(missing) > 0) {
-    cli::cli_abort(
-      "Detection output missing columns required for plotting: {.val {missing}}"
-    )
-  }
-  facet <- if (length(admin_levels) >= 2 && admin_levels[2] %in% names(data)) {
-    admin_levels[2]
-  } else if (admin_levels[1] %in% names(data)) {
-    admin_levels[1]
-  } else {
-    cli::cli_abort("Could not determine facet column from admin levels.")
-  }
-  list(facet_column = facet)
-}
-
-#' adjust french labels for plots
-#'
-#' @param label text to adjust
-#' @param language target language
-#' @noRd
-.translation_qc_labels <- function(label, language) {
-  if (language != "fr") {
-    return(label)
-  }
-  fixer <- base::get0(".enforce_fr_reporting_terms", mode = "function")
-  if (base::is.function(fixer)) {
-    return(fixer(label))
-  }
-  label
-}
-
-#' build ggplot object with colour scheme
-#'
-#' @param data plotting data
-#' @param facet_column column to facet by
-#' @param column target column name
-#' @param yearmon year-month column name
-#' @param year year column name
-#' @param outlier_column column containing flag to colour
-#' @param caption subtitle string
-#' @noRd
-.build_outlier_plot <- function(
-    data,
-    facet_column,
-    column,
-    yearmon,
-    year,
-    outlier_column,
-    caption,
-    target_language,
-    date_breaks = "3 months") {
-  # Binary outlier classification with your specified colors
-  color_values <- c(
-    "TRUE" = "red",      # Outliers
-    "FALSE" = "grey"  # Normal points
-  )
-
-  data <- data |>
-    dplyr::mutate(
-      # Binary classification: TRUE = outlier/outbreak, FALSE = normal
-      .plot_flag = dplyr::case_when(
-        outlier_flag_consensus %in% c("outlier", "outbreak") ~ "TRUE",
-        TRUE ~ "FALSE"
-      ),
-      .plot_date = lubridate::ymd(paste0(.data[[yearmon]], "-01"))
-    ) |>
-    # Sort so outliers (TRUE) are plotted on top
-    dplyr::arrange(.plot_flag)
-
-  title_text <- glue::glue(
-    "Outlier Detection for <b>{column}</b>"
-  )
-
-  subtitle_text <- .translation_qc_labels(caption, target_language)
-
-  ggplot2::ggplot(data) +
-    ggplot2::geom_point(
-      ggplot2::aes(
-        x = .plot_date,
-        y = value,
-        color = .plot_flag
-      ),
-      alpha = 0.7,  # Add transparency to show density patterns
-      size = 2
-    ) +
-    ggplot2::scale_color_manual(
-      name = .translation_qc_labels(
-        "Outlier classification",
-        target_language
-      ),
-      values = color_values,
-      breaks = names(color_values)
-    ) +
-    ggplot2::scale_x_date(
-      date_breaks = date_breaks,
-      labels = function(x) {
-        sntutils::translate_yearmon(
-          x,
-          language = target_language,
-          format = "%Y-%m"
-        )
-      }
-    ) +
-    ggplot2::labs(
-      title = title_text,
-      subtitle = subtitle_text,
-      x = paste0("\n", yearmon),
-      y = paste0(column, "\n")
-    ) +
-    ggplot2::facet_wrap(
-      stats::as.formula(paste("~", facet_column)),
-      scales = "free_y"
-    ) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-      legend.position = "bottom",
-      plot.title = ggtext::element_markdown(),
-      plot.subtitle = ggplot2::element_text(size = 9)
-    )
-}
-
-
-# seasonality helpers extracted from outlier_detection_seasonality.R
-# implements seasonal pooling ladder with audit metadata
-# RELEVANT FILES:R/outlier_detection.R,R/outlier_detection_helpers.R
-
-#' select seasonal pool using fallback ladder
-#'
-#' @param group_data data for a single admin group
-#' @param row_index row index within group_data
-#' @param params list of tuning parameters
-#' @param strictness list with multiplier settings
-#' @noRd
-.select_seasonal_pool <- function(group_data, row_index, params, strictness) {
-  target <- group_data[row_index, , drop = FALSE]
-  pool_primary <- .seasonality_primary_pool(group_data, target, params)
-  if (pool_primary$eligible) {
-    return(.seasonality_result(
-      mode_used = "same_month",
-      pool = pool_primary$pool,
-      desc = pool_primary$desc,
-      strictness = strictness,
-      fallback = FALSE
-    ))
-  }
-
-  pool_neighbors <- .seasonality_neighbors_pool(group_data, target, params)
-  if (pool_neighbors$eligible) {
-    return(.seasonality_result(
-      mode_used = "neighbors",
-      pool = pool_neighbors$pool,
-      desc = pool_neighbors$desc,
-      strictness = strictness,
-      fallback = TRUE,
-      fallback_reason = "same_month_insufficient"
-    ))
-  }
-
-  pool_residual <- .seasonality_residual_pool(group_data, target, params)
-  if (pool_residual$eligible) {
-    return(.seasonality_result(
-      mode_used = "residual",
-      pool = pool_residual$pool,
-      desc = pool_residual$desc,
-      strictness = strictness,
-      fallback = TRUE,
-      fallback_reason = "neighbors_insufficient",
-      residual_stats = pool_residual$residual_stats
-    ))
-  }
-
-  pool_across <- .seasonality_across_time_pool(
-    group_data,
-    target,
-    params,
-    strictness
-  )
-  if (pool_across$eligible) {
-    return(pool_across$result)
-  }
-
-  list(
-    pool = NULL,
-    mode_used = "none",
-    desc = pool_primary$desc,
-    strictness = strictness,
-    strictness_shifted = pool_across$strictness_shifted,
-    fallback_applied = TRUE,
-    fallback_reason = "insufficient_seasonal_history",
-    residual_stats = NULL
-  )
-}
-
-#' default seasonality result structure
-#'
-#' @param mode_used character
-#' @param pool data frame or NULL
-#' @param desc description text
-#' @param strictness list with multipliers
-#' @param fallback logical
-#' @param fallback_reason character
-#' @param residual_stats optional list
-#' @noRd
-.seasonality_result <- function(
-    mode_used,
-    pool,
-    desc,
-    strictness,
-    fallback,
-    fallback_reason = NA_character_,
-    residual_stats = NULL) {
-  list(
-    pool = pool,
-    mode_used = mode_used,
-    desc = desc,
-    strictness = strictness,
-    strictness_shifted = isTRUE(strictness$strictness_shifted),
-    fallback_applied = fallback,
-    fallback_reason = fallback_reason,
-    residual_stats = residual_stats
-  )
-}
-
-#' same-month seasonal pool
-#'
-#' @param group_data data frame
-#' @param target row data
-#' @param params list
-#' @noRd
-.seasonality_primary_pool <- function(group_data, target, params) {
-  # Calculate window for both past and future years
-  years_before <- floor(params$seasonal_pool_years / 2)
-  years_after <- floor(params$seasonal_pool_years / 2)
-  # If odd number of years, add the extra year to the past
-  if (params$seasonal_pool_years %% 2 != 0) {
-    years_before <- years_before + 1
-  }
-
-  window_start <- target$.outlier_year - years_before
-  window_end <- target$.outlier_year + years_after
-
-  pool <- dplyr::filter(
-    group_data,
-    .outlier_month == target$.outlier_month,
-    .outlier_year >= window_start,
-    .outlier_year <= window_end,
-    # Exclude the target year itself from the pool
-    .outlier_year != target$.outlier_year
-  )
-  if (nrow(pool) == 0) {
-    return(list(
-      pool = pool,
-      eligible = FALSE,
-      desc = glue::glue(
-        "Month {target$.outlier_month}, no same-month history"
-      )
-    ))
-  }
-  years_available <- unique(pool$.outlier_year)
-  eligible <- nrow(pool) >= params$min_obs_per_seasonal_bucket &&
-    length(years_available) >= params$min_years_per_month
-
-  # Build description showing bidirectional window
-  if (nrow(pool) > 0) {
-    desc <- glue::glue(
-      "Month {target$.outlier_month}, {min(pool$.outlier_year, na.rm = TRUE)}-",
-      "{max(pool$.outlier_year, na.rm = TRUE)} (+/-{years_before} years); same-month window"
-    )
-  } else {
-    desc <- glue::glue(
-      "Month {target$.outlier_month}, no same-month history within +/-{years_before} years"
-    )
-  }
-
-  list(pool = pool, eligible = eligible, desc = desc)
-}
-
-#' neighbor seasonal pool with weights
-#'
-#' @param group_data data frame
-#' @param target row data
-#' @param params list
-#' @noRd
-.seasonality_neighbors_pool <- function(group_data, target, params) {
-  # Calculate window for both past and future years
-  years_before <- floor(params$seasonal_pool_years / 2)
-  years_after <- floor(params$seasonal_pool_years / 2)
-  # If odd number of years, add the extra year to the past
-  if (params$seasonal_pool_years %% 2 != 0) {
-    years_before <- years_before + 1
-  }
-
-  window_start <- target$.outlier_year - years_before
-  window_end <- target$.outlier_year + years_after
-
-  neighbor_months <- ((target$.outlier_month + c(-1, 0, 1) - 1) %% 12) + 1
-  pool <- dplyr::filter(
-    group_data,
-    .outlier_month %in% neighbor_months,
-    .outlier_year >= window_start,
-    .outlier_year <= window_end,
-    # For neighbors, we include the target year's same month but not its neighbor months
-    !(.outlier_year == target$.outlier_year & .outlier_month != target$.outlier_month)
-  )
-  if (nrow(pool) == 0) {
-    return(list(pool = pool, eligible = FALSE, desc = "No neighbor data"))
-  }
-  pool <- pool |>
-    dplyr::mutate(
-      .season_weight = dplyr::if_else(
-        .outlier_month == target$.outlier_month,
-        2L,
-        1L
-      )
-    )
-  obs <- sum(pool$.season_weight)
-  eligible <- obs >= params$min_obs_per_seasonal_bucket
-  month_names <- paste(sort(unique(neighbor_months)), collapse = "/")
-
-  # Build description showing bidirectional window
-  if (nrow(pool) > 0) {
-    desc <- glue::glue(
-      "Months {month_names}, {min(pool$.outlier_year, na.rm = TRUE)}-",
-      "{max(pool$.outlier_year, na.rm = TRUE)} (+/-{years_before} years); neighbors weights 2/1"
-    )
-  } else {
-    desc <- glue::glue(
-      "Months {month_names}, no neighbor data within +/-{years_before} years"
-    )
-  }
-
-  list(pool = pool, eligible = eligible, desc = desc)
-}
-
-#' residual seasonal pool
-#'
-#' @param group_data data frame
-#' @param target row data
-#' @param params list
-#' @noRd
-.seasonality_residual_pool <- function(group_data, target, params) {
-  if (nrow(group_data) < params$min_obs_per_seasonal_bucket) {
-    return(list(
-      pool = NULL,
-      eligible = FALSE,
-      desc = "Insufficient residual data"
-    ))
-  }
-
-  month_means <- dplyr::summarise(
-    dplyr::group_by(group_data, .outlier_month),
-    month_mean = mean(.outlier_value, na.rm = TRUE),
-    .groups = "drop"
-  )
-  residuals <- dplyr::left_join(
-    group_data,
-    month_means,
-    by = ".outlier_month"
-  ) |>
-    dplyr::mutate(
-      .residual_value = .outlier_value - month_mean
-    )
-  row_month_mean <- dplyr::filter(
-    month_means,
-    .outlier_month == target$.outlier_month
-  )$month_mean
-  if (length(row_month_mean) == 0 || is.na(row_month_mean)) {
-    row_residual <- NA_real_
-  } else {
-    row_residual <- target$.outlier_value - row_month_mean
-  }
-  # Safe min/max calculation for year range
-  years <- group_data$.outlier_year[!is.na(group_data$.outlier_year)]
-  if (length(years) > 0) {
-    year_range <- paste0(min(years), "-", max(years))
-  } else {
-    year_range <- "unknown"
-  }
-
-  desc <- glue::glue(
-    "Residual pooled, months fixed; {year_range}"
-  )
-  residual_stats <- list(
-    residual_sd = stats::sd(residuals$.residual_value, na.rm = TRUE),
-    residual_mad = stats::mad(
-      residuals$.residual_value,
-      constant = params$mad_constant,
-      na.rm = TRUE
-    ),
-    residual_iqr = stats::IQR(residuals$.residual_value, na.rm = TRUE)
-  )
-  list(
-    pool = residuals,
-    eligible = nrow(residuals) >= params$min_obs_per_seasonal_bucket,
-    desc = desc,
-    residual_stats = c(residual_stats, list(row_residual = row_residual))
-  )
-}
-
-#' across-time fallback pool
-#'
-#' @param group_data data frame
-#' @param target row data
-#' @param params list
-#' @param strictness list
-#' @noRd
-.seasonality_across_time_pool <- function(
-    group_data,
-    target,
-    params,
-    strictness) {
-  if (nrow(group_data) < params$min_obs_per_seasonal_bucket) {
-    return(list(
-      eligible = FALSE,
-      result = list(
-        pool = NULL,
-        mode_used = "none",
-        desc = "Across-time insufficient",
-        strictness_shifted = FALSE
-      )
-    ))
-  }
-  shifted <- .shift_strictness_one_level(
-    strictness$strictness,
-    strictness$sd_multiplier,
-    strictness$mad_constant,
-    strictness$mad_multiplier,
-    strictness$iqr_multiplier
-  )
-  # Safe min/max calculation for year range
-  years <- group_data$.outlier_year[!is.na(group_data$.outlier_year)]
-  if (length(years) > 0) {
-    year_range <- paste0(min(years), "-", max(years))
-  } else {
-    year_range <- "unknown"
-  }
-
-  desc <- glue::glue(
-    "Across-time fallback, {year_range}"
-  )
-  list(
-    eligible = TRUE,
-    strictness_shifted = TRUE,
-    result = .seasonality_result(
-      mode_used = "across_time_fallback",
-      pool = group_data,
-      desc = desc,
-      strictness = shifted,
-      fallback = TRUE,
-      fallback_reason = "residual_insufficient"
-    )
-  )
-}
-
-#' run seasonal detection with fallback ladder
-#'
-#' @param data prepared data with derived columns
-#' @param admin_levels character vector of admin columns
-#' @param strictness list with multiplier settings
-#' @param params list of seasonality parameters
-#' @param methods character vector of methods to calculate
-#' @param consensus_rule integer consensus rule
-#' @param min_n minimum observations per bucket
-#' @param reporting_rate_min minimum reporting rate
-#' @param value_type value type string
-#' @noRd
-.run_seasonal_detection <- function(
-    data,
-    detection_admin_levels,
-    parallel_grouping_levels = detection_admin_levels,
-    strictness,
-    params,
-    methods,
-    consensus_rule,
-    min_n,
-    reporting_rate_min,
-    value_type) {
-  # Setup data.table threading for improved performance
-  if (requireNamespace("data.table", quietly = TRUE)) {
-    .setup_dt_threads()
-    on.exit(.reset_dt_threads())
-  }
-
-  # Calculate spatial_col at function level to avoid scoping issues
-  spatial_col <- setdiff(detection_admin_levels, parallel_grouping_levels)
-
-  # Use parallel_grouping_levels for efficient grouping (e.g., by district)
-  # This avoids creating 188k+ facility-level groups for better performance
-  grouped <- dplyr::group_by(
-    data,
-    dplyr::across(dplyr::all_of(parallel_grouping_levels))
-  )
-
-  # Debug: Show how many groups we're processing
-  n_groups <- dplyr::n_groups(grouped)
-  level_desc <- if (length(parallel_grouping_levels) > 0) {
-    paste(parallel_grouping_levels, collapse="/")
-  } else {
-    "admin"
-  }
-  cli::cli_inform("Processing {n_groups} groups at {level_desc} level")
-
-  grouped |>
-    dplyr::summarise(
-      .results = list({
-        # Get the data for this group using pick
-        group_data <- dplyr::pick(dplyr::everything())
-
-        # Safety check for empty groups
-        if (nrow(group_data) == 0) {
-          return(dplyr::tibble())
-        }
-
-        # Sort data within this geographic group
-        group_data <- dplyr::arrange(
-          group_data,
-          .outlier_year,
-          .outlier_month,
-          .outlier_yearmon
-        )
-
-        # Debug spatial col calculation
-        if (getOption("sntutils.debug_grouping", FALSE)) {
-          cli::cli_inform("DEBUG (dplyr): detection_admin_levels = {paste(detection_admin_levels, collapse='/')}")
-          cli::cli_inform("DEBUG (dplyr): parallel_grouping_levels = {paste(parallel_grouping_levels, collapse='/')}")
-          cli::cli_inform("DEBUG (dplyr): spatial_col = {paste(spatial_col, collapse='/') %||% 'EMPTY'}")
-        }
-
-        if (length(spatial_col) > 0) {
-          # Process with spatial grouping using nested summarise
-          # Use the columns directly to avoid complex scoping
-          spatial_grouped <- dplyr::group_by(group_data, !!!rlang::syms(spatial_col))
-
-          spatial_results <- spatial_grouped |>
-            dplyr::summarise(
-              .spatial_results = list({
-                spatial_data <- dplyr::pick(dplyr::everything())
-
-                # Compute caches
-                same_month_cache <- .cache_same_month_pools(
-                  spatial_data,
-                  params,
-                  strictness,
-                  value_type
-                )
-                neighbors_cache <- .cache_neighbors_pools(
-                  same_month_cache,
-                  params,
-                  strictness,
-                  value_type
-                )
-                residual_cache <- .cache_residual_pools(
-                  spatial_data,
-                  params,
-                  strictness,
-                  value_type
-                )
-                across_time_cache <- .cache_across_time_pools(
-                  spatial_data,
-                  strictness,
-                  value_type
-                )
-
-                # Apply detection
-                .select_pools_vectorized(
-                  spatial_data,
-                  same_month_cache,
-                  neighbors_cache,
-                  residual_cache,
-                  across_time_cache,
-                  params,
-                  methods,
-                  reporting_rate_min,
-                  min_n,
-                  consensus_rule
-                )
-              }),
-              .groups = "drop"
-            ) |>
-            tidyr::unnest(.spatial_results)
-
-          spatial_results
-        } else {
-          # No spatial level - process entire group
-          same_month_cache <- .cache_same_month_pools(
-            group_data,
-            params,
-            strictness,
-            value_type
-          )
-          neighbors_cache <- .cache_neighbors_pools(
-            same_month_cache,
-            params,
-            strictness,
-            value_type
-          )
-          residual_cache <- .cache_residual_pools(
-            group_data,
-            params,
-            strictness,
-            value_type
-          )
-          across_time_cache <- .cache_across_time_pools(
-            group_data,
-            strictness,
-            value_type
-          )
-
-          .select_pools_vectorized(
-            group_data,
-            same_month_cache,
-            neighbors_cache,
-            residual_cache,
-            across_time_cache,
-            params,
-            methods,
-            reporting_rate_min,
-            min_n,
-            consensus_rule
-          )
-        }
-      }),
-      .groups = "drop"
-    ) |>
-    tidyr::unnest(.results) |>
-    dplyr::mutate(
-      seasonality_mode_requested = "by_month"
-    )
-}
-
-#' run seasonal detection with fallback ladder using data.table
-#'
-#' @param data prepared data with derived columns
-#' @param detection_admin_levels character vector of admin columns for detection
-#' @param parallel_grouping_levels character vector of admin columns for parallel grouping
-#' @param strictness list with multiplier settings
-#' @param params list of seasonality parameters
-#' @param methods character vector of methods to calculate
-#' @param consensus_rule integer consensus rule
-#' @param min_n minimum observations per bucket
-#' @param reporting_rate_min minimum reporting rate
-#' @param value_type value type string
-#' @importFrom data.table as.data.table setkey setDT .SD .N :=
-#' @noRd
-.run_seasonal_detection_dt <- function(
-    data,
-    detection_admin_levels,
-    parallel_grouping_levels = detection_admin_levels,
-    strictness,
-    params,
-    methods,
-    consensus_rule,
-    min_n,
-    reporting_rate_min,
-    value_type) {
-
-  # Setup data.table threading for improved performance
-  .setup_dt_threads()
-  on.exit(.reset_dt_threads())
-
-  # Convert to data.table
-  dt <- data.table::as.data.table(data)
-
-  # Set keys for efficient grouping
-  if (length(parallel_grouping_levels) > 0) {
-    data.table::setkeyv(dt, parallel_grouping_levels)
-  }
-
-  # Add outlier date columns for efficient filtering
-  dt[, `:=`(
-    .outlier_year = .detect_year,
-    .outlier_month = .detect_month,
-    .outlier_yearmon = .detect_yearmon
-  )]
-
-  # Count groups for progress reporting
-  if (length(parallel_grouping_levels) > 0) {
-    n_groups <- dt[, .N, by = parallel_grouping_levels][, .N]
-  } else {
-    n_groups <- 1L
-  }
-
-
-  level_desc <- if (length(parallel_grouping_levels) > 0) {
-    paste(parallel_grouping_levels, collapse="/")
-  } else {
-    "overall data"
-  }
-
-  # Show comprehensive status with nice formatting
-  cli::cli_div(theme = list(
-    span.field = list(color = "cyan"),
-    span.value = list(color = "yellow", "font-weight" = "bold")
-  ))
-
-  # Clarify that we're grouping for efficiency but detecting at a finer level
-  if (length(detection_admin_levels) > length(parallel_grouping_levels)) {
-    spatial_desc <- setdiff(detection_admin_levels, parallel_grouping_levels)
-    cli::cli_h3("Outlier detection setup")
-    cli::cli_bullets(c(
-      "*" = "{.field Data points:} {.value {format(nrow(dt), big.mark = ',')}}",
-      "*" = "{.field Processing groups:} {.value {format(n_groups, big.mark = ',')}} at {.field {level_desc}} level",
-      "*" = "{.field Detection level:} {.field {paste(spatial_desc, collapse='/')}} within each group",
-      "*" = "{.field Seasonality:} {.value {params$seasonal_pool_years}} year window",
-      "*" = "{.field Methods:} {.value {paste(methods, collapse=', ')}}"
-    ))
-  } else {
-    cli::cli_h3("Outlier detection setup")
-    cli::cli_bullets(c(
-      "*" = "{.field Data points:} {.value {format(nrow(dt), big.mark = ',')}}",
-      "*" = "{.field Processing groups:} {.value {format(n_groups, big.mark = ',')}} at {.field {level_desc}}",
-      "*" = "{.field Seasonality:} {.value {params$seasonal_pool_years}} year window",
-      "*" = "{.field Methods:} {.value {paste(methods, collapse=', ')}}"
-    ))
-  }
-
-  cli::cli_end()
-
-  # Set up progress bar
-  cli_id <- cli::cli_progress_bar(
-    name = "Detecting outliers",
-    total = n_groups,
-    type = "iterator",
-    format = "{cli::pb_spin} {cli::pb_name} {cli::pb_bar} {cli::pb_current}/{cli::pb_total} | {cli::pb_percent} | ETA: {cli::pb_eta}",
-    format_done = "{.green \u2713} Processed {cli::pb_total} groups in {cli::pb_elapsed}",
-    format_failed = "{.red \u2717} Failed after {cli::pb_current}/{cli::pb_total} groups",
-    clear = TRUE,
-    auto_terminate = TRUE
-  )
-
-  # Counter for progress updates
-  .progress_counter <- 0L
-
-  # Process each group efficiently with data.table
-  if (length(parallel_grouping_levels) > 0) {
-    # Group by parallel levels
-    result <- dt[, {
-      # Update progress
-      .progress_counter <<- .progress_counter + 1L
-      cli::cli_progress_update(id = cli_id)
-      # Sort data within this geographic group
-      sorted_data <- .SD[order(.outlier_year, .outlier_month, .outlier_yearmon)]
-
-      # Within this geographic group, detect outliers at the spatial level
-      spatial_col <- setdiff(detection_admin_levels, parallel_grouping_levels)
-
-      if (length(spatial_col) > 0) {
-        # Process each spatial unit within this geographic group
-        sorted_data[, {
-          # Compute seasonal caches using data.table operations
-          same_month_cache <- .cache_same_month_pools_dt(
-            .SD, params, strictness, value_type
-          )
-          neighbors_cache <- .cache_neighbors_pools_dt(
-            same_month_cache, params, strictness, value_type
-          )
-          residual_cache <- .cache_residual_pools_dt(
-            .SD, params, strictness, value_type
-          )
-          across_time_cache <- .cache_across_time_pools_dt(
-            .SD, strictness, value_type
-          )
-
-          # Apply outlier detection
-          .select_pools_vectorized_dt(
-            .SD,
-            same_month_cache,
-            neighbors_cache,
-            residual_cache,
-            across_time_cache,
-            params,
-            methods,
-            reporting_rate_min,
-            min_n,
-            consensus_rule
-          )
-        }, by = spatial_col]
-      } else {
-        # No spatial level specified, use original logic
-        same_month_cache <- .cache_same_month_pools_dt(
-          sorted_data, params, strictness, value_type
-        )
-        neighbors_cache <- .cache_neighbors_pools_dt(
-          same_month_cache, params, strictness, value_type
-        )
-        residual_cache <- .cache_residual_pools_dt(
-          sorted_data, params, strictness, value_type
-        )
-        across_time_cache <- .cache_across_time_pools_dt(
-          sorted_data, strictness, value_type
-        )
-
-        .select_pools_vectorized_dt(
-          sorted_data,
-          same_month_cache,
-          neighbors_cache,
-          residual_cache,
-          across_time_cache,
-          params,
-          methods,
-          reporting_rate_min,
-          min_n,
-          consensus_rule
-        )
-      }
-    }, by = parallel_grouping_levels]
-  } else {
-    # No grouping needed - update progress for single group
-    cli::cli_progress_update(id = cli_id)
-
-    sorted_data <- dt[order(.outlier_year, .outlier_month, .outlier_yearmon)]
-
-    # Compute caches
-    same_month_cache <- .cache_same_month_pools_dt(
-      sorted_data, params, strictness, value_type
-    )
-    neighbors_cache <- .cache_neighbors_pools_dt(
-      same_month_cache, params, strictness, value_type
-    )
-    residual_cache <- .cache_residual_pools_dt(
-      sorted_data, params, strictness, value_type
-    )
-    across_time_cache <- .cache_across_time_pools_dt(
-      sorted_data, strictness, value_type
-    )
-
-    # Apply detection
-    result <- .select_pools_vectorized_dt(
-      sorted_data,
-      same_month_cache,
-      neighbors_cache,
-      residual_cache,
-      across_time_cache,
-      params,
-      methods,
-      reporting_rate_min,
-      min_n,
-      consensus_rule
-    )
-  }
-
-  # Complete progress bar
-  cli::cli_progress_done(id = cli_id)
-
-  # Add seasonality mode
-  result[, seasonality_mode_requested := "by_month"]
-
-  # Convert back to tibble for consistency
-  dplyr::as_tibble(result)
-}
-
-
-#' setup data.table threads for optimal performance
-#'
-#' @keywords internal
-#' @noRd
-.setup_dt_threads <- function() {
-  if (!requireNamespace("data.table", quietly = TRUE)) {
-    cli::cli_inform("data.table not available - parallel processing disabled")
-    return(invisible(NULL))
-  }
-
-  # Get number of cores safely
-  n_cores <- .get_cores_safe()
-
-  # Use n-1 cores to leave one for system
-  threads_to_use <- max(1, n_cores - 1)
-
-  # Set data.table threads
-  data.table::setDTthreads(threads_to_use)
-
-  # Verify and report
-  actual_threads <- data.table::getDTthreads()
-  cli::cli_inform("data.table threading: {actual_threads}/{n_cores} threads (detected {n_cores} cores)")
-}
-
-#' safely detect number of cores across platforms
-#'
-#' @return integer number of cores
-#' @keywords internal
-#' @noRd
-.get_cores_safe <- function() {
-  tryCatch({
-    # Try parallel package first
-    if (requireNamespace("parallel", quietly = TRUE)) {
-      cores <- parallel::detectCores(logical = FALSE)
-      if (!is.na(cores) && cores > 0) return(cores)
-    }
-
-    # Platform-specific fallbacks
-    if (.Platform$OS.type == "windows") {
-      cores <- as.integer(Sys.getenv("NUMBER_OF_PROCESSORS"))
-      if (!is.na(cores) && cores > 0) return(cores)
-    } else {
-      # Unix-like (Linux/macOS)
-      cores <- system("nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1", intern = TRUE)
-      cores <- as.integer(cores[1])
-      if (!is.na(cores) && cores > 0) return(cores)
-    }
-
-    return(1L)
-  }, error = function(e) 1L)
-}
-
-#' reset data.table threads to default
-#'
-#' @keywords internal
-#' @noRd
-.reset_dt_threads <- function() {
-  if (requireNamespace("data.table", quietly = TRUE)) {
-    data.table::setDTthreads(0)  # 0 = reset to default
-  }
-}
-
-#' setup file-based caching for outlier detection functions
-#'
-#' @param cache_stats logical flag to enable caching
-#' @param cache_dir path to cache directory (if NULL, uses default)
-#' @return list with cache objects or NULL if caching disabled
-#' @keywords internal
-#' @noRd
-.setup_outlier_cache <- function(cache_stats = TRUE, cache_dir = NULL) {
-  if (!cache_stats) {
-    return(NULL)
-  }
-
-  if (!requireNamespace("memoise", quietly = TRUE)) {
-    cli::cli_warn("memoise package not available - caching disabled")
-    return(NULL)
-  }
-
-  # Set default cache directory if not provided
-  if (is.null(cache_dir)) {
-    if (requireNamespace("here", quietly = TRUE)) {
-      cache_dir <- here::here("cache", "outlier_cache")
-    } else {
-      cache_dir <- file.path(tempdir(), "outlier_cache")
-    }
-  }
-
-  # Create cache directory if it doesn't exist
-  if (!dir.exists(cache_dir)) {
-    dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
-  }
-
-  # Create filesystem cache backend
-  cache_backend <- memoise::cache_filesystem(cache_dir)
-
-  # Create list of cached function names to return
-  list(
-    backend = cache_backend,
-    dir = cache_dir,
-    enabled = TRUE
-  )
-}
-
-#' apply caching to key outlier detection functions
-#'
-#' @param cache_config cache configuration from .setup_outlier_cache
-#' @return invisible NULL (functions are memoised in parent environment)
-#' @keywords internal
-#' @noRd
-.apply_outlier_caching <- function(cache_config) {
-  if (is.null(cache_config) || !cache_config$enabled) {
-    return(invisible(NULL))
-  }
-
-  # Apply caching to expensive functions that exist
-  cache_backend <- cache_config$backend
-  parent_env <- parent.frame()
-
-  # Cache the main expensive detection functions
-  if (exists(".run_seasonal_detection", envir = parent_env, inherits = FALSE)) {
-    assign(".run_seasonal_detection",
-           memoise::memoise(.run_seasonal_detection, cache = cache_backend),
-           envir = parent_env)
-  }
-
-  if (exists(".run_non_seasonal_detection", envir = parent_env, inherits = FALSE)) {
-    assign(".run_non_seasonal_detection",
-           memoise::memoise(.run_non_seasonal_detection, cache = cache_backend),
-           envir = parent_env)
-  }
-
-  # Cache utility functions
-  if (exists(".parse_date_column", envir = parent_env, inherits = FALSE)) {
-    assign(".parse_date_column",
-           memoise::memoise(.parse_date_column, cache = cache_backend),
-           envir = parent_env)
-  }
-
-  invisible(NULL)
-}
-
 #' parse date column into year, month, and yearmon components
 #'
 #' @param date_values vector of date values
@@ -4262,7 +2824,6 @@ outlier_plot <- function(
     activeness_applied,
     n_inactive_skipped,
     key_indicators_used,
-    use_datatable = "auto",
     classify_outbreaks = TRUE,
     outbreak_min_run = 2,
     outbreak_prop_tolerance = 0.9,
@@ -4305,11 +2866,7 @@ outlier_plot <- function(
     min_n = min_n,
     reporting_rate_col = reporting_rate_col,
     reporting_rate_min = reporting_rate_min,
-    seasonal_pool_years = seasonal_pool_years,
-    min_years_per_month = min_years_per_month,
-    cache_stats = FALSE,  # Don't cache within cached function
-    spatial_level = spatial_level,
-    use_datatable = use_datatable
+    spatial_level = spatial_level
   )
 
   # Use execute_outlier_detection to handle data.table decision
@@ -4444,1712 +3001,4 @@ outlier_plot <- function(
     outlier_votes >= consensus_rule ~ "outlier",
     TRUE ~ "normal"
   )
-}
-
-# optimized seasonal detection cache functions ============================
-
-#' cache same-month pools for all (month, year) combinations
-#'
-#' @param group_data data for one admin group
-#' @param params seasonality parameters
-#' @param strictness strictness settings
-#' @param value_type value type string
-#' @noRd
-.cache_same_month_pools <- function(
-    group_data,
-    params,
-    strictness,
-    value_type) {
-  group_data |>
-    dplyr::group_by(.outlier_month, .outlier_year) |>
-    dplyr::group_modify(function(year_month_data, key) {
-      target_year <- key$.outlier_year
-
-      # Calculate window for both past and future years
-      years_before <- floor(params$seasonal_pool_years / 2)
-      years_after <- floor(params$seasonal_pool_years / 2)
-      # If odd number of years, add the extra year to the past
-      if (params$seasonal_pool_years %% 2 != 0) {
-        years_before <- years_before + 1
-      }
-
-      window_start <- target_year - years_before
-      window_end <- target_year + years_after
-
-      # get pool data for this month within the bidirectional window
-      pool_data <- group_data |>
-        dplyr::filter(
-          .outlier_month == key$.outlier_month,
-          .outlier_year >= window_start,
-          .outlier_year <= window_end,
-          # Exclude the target year itself from the pool
-          .outlier_year != target_year
-        )
-
-      if (nrow(pool_data) == 0) {
-        return(dplyr::tibble(
-          eligible = FALSE,
-          n_in_group = 0L,
-          desc = paste0(
-            "Month ",
-            key$.outlier_month,
-            ", no same-month history"
-          ),
-          mean = NA_real_,
-          sd = NA_real_,
-          mean_lower = NA_real_,
-          mean_upper = NA_real_,
-          median = NA_real_,
-          mad = NA_real_,
-          median_lower = NA_real_,
-          median_upper = NA_real_,
-          q1 = NA_real_,
-          q3 = NA_real_,
-          iqr = NA_real_,
-          iqr_lower = NA_real_,
-          iqr_upper = NA_real_,
-          unstable_mean = TRUE,
-          unstable_median = TRUE,
-          unstable_iqr = TRUE
-        ))
-      }
-
-      years_available <- length(unique(pool_data$.outlier_year))
-      eligible <- nrow(pool_data) >= params$min_obs_per_seasonal_bucket &
-        years_available >= params$min_years_per_month
-
-      # compute statistics directly
-      n_vals <- nrow(pool_data)
-      mean_val <- mean(pool_data$.outlier_value, na.rm = TRUE)
-      sd_val <- stats::sd(pool_data$.outlier_value, na.rm = TRUE)
-      median_val <- stats::median(pool_data$.outlier_value, na.rm = TRUE)
-      mad_val <- stats::mad(
-        pool_data$.outlier_value,
-        constant = strictness$mad_constant,
-        na.rm = TRUE
-      )
-      q1_val <- stats::quantile(
-        pool_data$.outlier_value,
-        probs = 0.25,
-        na.rm = TRUE,
-        names = FALSE
-      )
-      q3_val <- stats::quantile(
-        pool_data$.outlier_value,
-        probs = 0.75,
-        na.rm = TRUE,
-        names = FALSE
-      )
-      iqr_val <- q3_val - q1_val
-
-      dplyr::tibble(
-        eligible = eligible,
-        n_in_group = as.integer(n_vals),
-        desc = paste0(
-          "Month ",
-          key$.outlier_month,
-          ", ",
-          min(pool_data$.outlier_year, na.rm = TRUE),
-          "-",
-          max(pool_data$.outlier_year, na.rm = TRUE),
-          " (+/-", years_before, " years); same-month window"
-        ),
-        mean = mean_val,
-        sd = sd_val,
-        mean_lower = .apply_lower_bound_floor(
-          mean_val - strictness$sd_multiplier * sd_val,
-          value_type
-        ),
-        mean_upper = mean_val + strictness$sd_multiplier * sd_val,
-        median = median_val,
-        mad = mad_val,
-        median_lower = .apply_lower_bound_floor(
-          median_val - strictness$mad_multiplier * mad_val,
-          value_type
-        ),
-        median_upper = median_val + strictness$mad_multiplier * mad_val,
-        q1 = q1_val,
-        q3 = q3_val,
-        iqr = iqr_val,
-        iqr_lower = .apply_lower_bound_floor(
-          q1_val - strictness$iqr_multiplier * iqr_val,
-          value_type
-        ),
-        iqr_upper = q3_val + strictness$iqr_multiplier * iqr_val,
-        unstable_mean = is.na(sd_val) | sd_val == 0,
-        unstable_median = is.na(mad_val) | mad_val == 0,
-        unstable_iqr = is.na(iqr_val) | iqr_val == 0
-      )
-    }) |>
-    dplyr::ungroup()
-}
-
-#' cache neighbor pools using weighted formulas (no vector replication)
-#'
-#' @param same_month_cache output from .cache_same_month_pools
-#' @param params seasonality parameters
-#' @param strictness strictness settings
-#' @param value_type value type string
-#' @noRd
-.cache_neighbors_pools <- function(
-    same_month_cache,
-    params,
-    strictness,
-    value_type) {
-  same_month_cache |>
-    dplyr::group_by(.outlier_year) |>
-    dplyr::group_modify(function(year_data, key) {
-      target_year <- key$.outlier_year
-
-      # get neighbor months for each target month
-      year_data |>
-        dplyr::rowwise() |>
-        dplyr::mutate(
-          neighbor_months = list(
-            ((.outlier_month + c(-1, 0, 1) - 1) %% 12) + 1
-          ),
-          # get stats from same-month cache for neighbors
-          neighbor_stats = list({
-            neighbor_data <- same_month_cache |>
-              dplyr::filter(
-                .outlier_month %in% neighbor_months,
-                .outlier_year == target_year,
-                eligible
-              )
-
-            if (nrow(neighbor_data) == 0) {
-              list(
-                eligible = FALSE,
-                n_in_group = 0L,
-                desc = "No neighbor data",
-                mean = NA_real_,
-                median = NA_real_,
-                mean_lower = NA_real_,
-                mean_upper = NA_real_,
-                median_lower = NA_real_,
-                median_upper = NA_real_,
-                q1 = NA_real_,
-                q3 = NA_real_,
-                iqr_lower = NA_real_,
-                iqr_upper = NA_real_,
-                unstable_mean = TRUE,
-                unstable_median = TRUE,
-                unstable_iqr = TRUE
-              )
-            } else {
-              # weighted combination: same month weight 2, others weight 1
-              weights <- ifelse(
-                neighbor_data$.outlier_month == .outlier_month,
-                2,
-                1
-              )
-              total_weight <- sum(weights)
-
-              if (total_weight >= params$min_obs_per_seasonal_bucket) {
-                # weighted means for bounds calculation
-                weighted_mean <- sum(
-                  neighbor_data$mean * weights,
-                  na.rm = TRUE
-                ) / total_weight
-                weighted_median <- sum(
-                  neighbor_data$median * weights,
-                  na.rm = TRUE
-                ) / total_weight
-
-                month_names <- paste(
-                  sort(unique(neighbor_data$.outlier_month)),
-                  collapse = "/"
-                )
-
-                list(
-                  eligible = TRUE,
-                  n_in_group = as.integer(total_weight),
-                  desc = paste0(
-                    "Months ",
-                    month_names,
-                    "; neighbors weights 2/1"
-                  ),
-                  mean = weighted_mean,
-                  median = weighted_median,
-                  # use approximate bounds from weighted centers
-                  mean_lower = .apply_lower_bound_floor(
-                    weighted_mean -
-                      strictness$sd_multiplier *
-                        mean(neighbor_data$sd, na.rm = TRUE),
-                    value_type
-                  ),
-                  mean_upper = weighted_mean +
-                    strictness$sd_multiplier *
-                      mean(neighbor_data$sd, na.rm = TRUE),
-                  median_lower = .apply_lower_bound_floor(
-                    weighted_median -
-                      strictness$mad_multiplier *
-                        mean(neighbor_data$mad, na.rm = TRUE),
-                    value_type
-                  ),
-                  median_upper = weighted_median +
-                    strictness$mad_multiplier *
-                      mean(neighbor_data$mad, na.rm = TRUE),
-                  q1 = mean(neighbor_data$q1, na.rm = TRUE),
-                  q3 = mean(neighbor_data$q3, na.rm = TRUE),
-                  iqr_lower = .apply_lower_bound_floor(
-                    mean(neighbor_data$q1, na.rm = TRUE) -
-                      strictness$iqr_multiplier *
-                        mean(neighbor_data$iqr, na.rm = TRUE),
-                    value_type
-                  ),
-                  iqr_upper = mean(neighbor_data$q3, na.rm = TRUE) +
-                    strictness$iqr_multiplier *
-                      mean(neighbor_data$iqr, na.rm = TRUE),
-                  unstable_mean = any(neighbor_data$unstable_mean),
-                  unstable_median = any(neighbor_data$unstable_median),
-                  unstable_iqr = any(neighbor_data$unstable_iqr)
-                )
-              } else {
-                list(
-                  eligible = FALSE,
-                  n_in_group = as.integer(total_weight),
-                  desc = "Insufficient neighbor data",
-                  mean = NA_real_,
-                  median = NA_real_,
-                  mean_lower = NA_real_,
-                  mean_upper = NA_real_,
-                  median_lower = NA_real_,
-                  median_upper = NA_real_,
-                  q1 = NA_real_,
-                  q3 = NA_real_,
-                  iqr_lower = NA_real_,
-                  iqr_upper = NA_real_,
-                  unstable_mean = TRUE,
-                  unstable_median = TRUE,
-                  unstable_iqr = TRUE
-                )
-              }
-            }
-          })
-        ) |>
-        dplyr::ungroup() |>
-        tidyr::unnest_wider(neighbor_stats, names_sep = "_") |>
-        dplyr::select(-neighbor_months)
-    }) |>
-    dplyr::ungroup()
-}
-
-#' cache residual pools by year (computed once per group)
-#'
-#' @param group_data data for one admin group
-#' @param params seasonality parameters
-#' @param strictness strictness settings
-#' @param value_type value type string
-#' @noRd
-.cache_residual_pools <- function(group_data, params, strictness, value_type) {
-  # compute month means once for the whole group
-  month_means <- group_data |>
-    dplyr::group_by(.outlier_month) |>
-    dplyr::summarise(
-      month_mean = mean(.outlier_value, na.rm = TRUE),
-      .groups = "drop"
-    )
-
-  # add residuals to group_data
-  group_with_residuals <- group_data |>
-    dplyr::left_join(month_means, by = ".outlier_month") |>
-    dplyr::mutate(.residual_value = .outlier_value - month_mean)
-
-  # compute residual stats by year
-  group_with_residuals |>
-    dplyr::group_by(.outlier_year) |>
-    dplyr::summarise(
-      eligible = dplyr::n() >= params$min_obs_per_seasonal_bucket,
-      n_in_group = as.integer(dplyr::n()),
-      desc = paste0("Residual pooled, months fixed; ",
-                   min(.outlier_year, na.rm = TRUE), "-",
-                   max(.outlier_year, na.rm = TRUE)),
-      residual_sd = stats::sd(.residual_value, na.rm = TRUE),
-      residual_mad = stats::mad(
-        .residual_value,
-        constant = strictness$mad_constant,
-        na.rm = TRUE
-      ),
-      residual_iqr = stats::IQR(.residual_value, na.rm = TRUE),
-      residual_mean = mean(.residual_value, na.rm = TRUE),
-      residual_median = stats::median(.residual_value, na.rm = TRUE),
-      residual_q1 = stats::quantile(
-        .residual_value,
-        probs = 0.25,
-        na.rm = TRUE,
-        names = FALSE
-      ),
-      residual_q3 = stats::quantile(
-        .residual_value,
-        probs = 0.75,
-        na.rm = TRUE,
-        names = FALSE
-      ),
-      .groups = "drop"
-    ) |>
-    dplyr::mutate(
-      mean_lower = residual_mean - strictness$sd_multiplier * residual_sd,
-      mean_upper = residual_mean + strictness$sd_multiplier * residual_sd,
-      median_lower = residual_median - strictness$mad_multiplier * residual_mad,
-      median_upper = residual_median + strictness$mad_multiplier * residual_mad,
-      iqr_lower = residual_q1 - strictness$iqr_multiplier * residual_iqr,
-      iqr_upper = residual_q3 + strictness$iqr_multiplier * residual_iqr,
-      unstable_mean = is.na(residual_sd) | residual_sd == 0,
-      unstable_median = is.na(residual_mad) | residual_mad == 0,
-      unstable_iqr = is.na(residual_iqr) | residual_iqr == 0
-    )
-}
-
-#' cache across-time pools (one per group)
-#'
-#' @param group_data data for one admin group
-#' @param strictness strictness settings
-#' @param value_type value type string
-#' @noRd
-.cache_across_time_pools <- function(group_data, strictness, value_type) {
-  # shift strictness toward lenient
-  shifted_strictness <- .shift_strictness_one_level(
-    strictness$strictness,
-    strictness$sd_multiplier,
-    strictness$mad_constant,
-    strictness$mad_multiplier,
-    strictness$iqr_multiplier
-  )
-
-  # compute across-time stats for the whole group
-  n_vals <- nrow(group_data)
-  mean_val <- mean(group_data$.outlier_value, na.rm = TRUE)
-  sd_val <- stats::sd(group_data$.outlier_value, na.rm = TRUE)
-  median_val <- stats::median(group_data$.outlier_value, na.rm = TRUE)
-  mad_val <- stats::mad(
-    group_data$.outlier_value,
-    constant = shifted_strictness$mad_constant,
-    na.rm = TRUE
-  )
-  q1_val <- stats::quantile(
-    group_data$.outlier_value,
-    probs = 0.25,
-    na.rm = TRUE,
-    names = FALSE
-  )
-  q3_val <- stats::quantile(
-    group_data$.outlier_value,
-    probs = 0.75,
-    na.rm = TRUE,
-    names = FALSE
-  )
-  iqr_val <- q3_val - q1_val
-
-  dplyr::tibble(
-    eligible = TRUE,
-    n_in_group = as.integer(n_vals),
-    desc = paste0(
-      "Across-time fallback, ",
-      if (length(group_data$.outlier_year[!is.na(group_data$.outlier_year)]) > 0) {
-        paste0(
-          min(group_data$.outlier_year, na.rm = TRUE),
-          "-",
-          max(group_data$.outlier_year, na.rm = TRUE)
-        )
-      } else {
-        "unknown-years"
-      }
-    ),
-    mean = mean_val,
-    sd = sd_val,
-    mean_lower = .apply_lower_bound_floor(
-      mean_val - shifted_strictness$sd_multiplier * sd_val,
-      value_type
-    ),
-    mean_upper = mean_val + shifted_strictness$sd_multiplier * sd_val,
-    median = median_val,
-    mad = mad_val,
-    median_lower = .apply_lower_bound_floor(
-      median_val - shifted_strictness$mad_multiplier * mad_val,
-      value_type
-    ),
-    median_upper = median_val + shifted_strictness$mad_multiplier * mad_val,
-    q1 = q1_val,
-    q3 = q3_val,
-    iqr = iqr_val,
-    iqr_lower = .apply_lower_bound_floor(
-      q1_val - shifted_strictness$iqr_multiplier * iqr_val,
-      value_type
-    ),
-    iqr_upper = q3_val + shifted_strictness$iqr_multiplier * iqr_val,
-    unstable_mean = is.na(sd_val) | sd_val == 0,
-    unstable_median = is.na(mad_val) | mad_val == 0,
-    unstable_iqr = is.na(iqr_val) | iqr_val == 0,
-    strictness_label = shifted_strictness$strictness,
-    strictness_shifted = TRUE,
-    sd_multiplier = shifted_strictness$sd_multiplier,
-    mad_constant = shifted_strictness$mad_constant,
-    mad_multiplier = shifted_strictness$mad_multiplier,
-    iqr_multiplier = shifted_strictness$iqr_multiplier
-  )
-}
-
-#' vectorized pool selection using precomputed caches
-#'
-#' @param group_data original group data
-#' @param same_month_cache same-month pool cache
-#' @param neighbors_cache neighbors pool cache
-#' @param residual_cache residual pool cache
-#' @param across_time_cache across-time pool cache
-#' @param params seasonality parameters
-#' @param methods character vector of methods to calculate
-#' @param reporting_rate_min minimum reporting rate
-#' @param min_n minimum observations
-#' @param consensus_rule consensus rule
-#' @noRd
-.select_pools_vectorized <- function(
-  group_data,
-  same_month_cache,
-  neighbors_cache,
-  residual_cache,
-  across_time_cache,
-  params,
-  methods,
-  reporting_rate_min,
-  min_n,
-  consensus_rule
-) {
-  # join all pool caches to group_data
-  combined <- group_data |>
-    # same-month pool
-    dplyr::left_join(
-      same_month_cache |>
-        dplyr::select(
-          .outlier_month,
-          .outlier_year,
-          same_eligible = eligible,
-          same_n = n_in_group,
-          same_desc = desc,
-          same_mean_lower = mean_lower,
-          same_mean_upper = mean_upper,
-          same_median_lower = median_lower,
-          same_median_upper = median_upper,
-          same_iqr_lower = iqr_lower,
-          same_iqr_upper = iqr_upper,
-          same_unstable_mean = unstable_mean,
-          same_unstable_median = unstable_median,
-          same_unstable_iqr = unstable_iqr
-        ),
-      by = c(".outlier_month", ".outlier_year")
-    ) |>
-    # neighbors pool
-    dplyr::left_join(
-      neighbors_cache |>
-        dplyr::select(
-          .outlier_month,
-          .outlier_year,
-          neighbor_eligible = neighbor_stats_eligible,
-          neighbor_n = neighbor_stats_n_in_group,
-          neighbor_desc = neighbor_stats_desc,
-          neighbor_mean_lower = neighbor_stats_mean_lower,
-          neighbor_mean_upper = neighbor_stats_mean_upper,
-          neighbor_median_lower = neighbor_stats_median_lower,
-          neighbor_median_upper = neighbor_stats_median_upper,
-          neighbor_iqr_lower = neighbor_stats_iqr_lower,
-          neighbor_iqr_upper = neighbor_stats_iqr_upper,
-          neighbor_unstable_mean = neighbor_stats_unstable_mean,
-          neighbor_unstable_median = neighbor_stats_unstable_median,
-          neighbor_unstable_iqr = neighbor_stats_unstable_iqr
-        ),
-      by = c(".outlier_month", ".outlier_year")
-    ) |>
-    # residual pool
-    dplyr::left_join(
-      residual_cache |>
-        dplyr::select(
-          .outlier_year,
-          residual_eligible = eligible,
-          residual_n = n_in_group,
-          residual_desc = desc,
-          residual_mean_lower = mean_lower,
-          residual_mean_upper = mean_upper,
-          residual_median_lower = median_lower,
-          residual_median_upper = median_upper,
-          residual_iqr_lower = iqr_lower,
-          residual_iqr_upper = iqr_upper,
-          residual_unstable_mean = unstable_mean,
-          residual_unstable_median = unstable_median,
-          residual_unstable_iqr = unstable_iqr,
-          residual_sd,
-          residual_mad,
-          residual_iqr
-        ),
-      by = ".outlier_year"
-    ) |>
-    # across-time pool (same for all rows)
-    dplyr::mutate(
-      across_eligible = across_time_cache$eligible,
-      across_n = across_time_cache$n_in_group,
-      across_desc = across_time_cache$desc,
-      across_mean_lower = across_time_cache$mean_lower,
-      across_mean_upper = across_time_cache$mean_upper,
-      across_median_lower = across_time_cache$median_lower,
-      across_median_upper = across_time_cache$median_upper,
-      across_iqr_lower = across_time_cache$iqr_lower,
-      across_iqr_upper = across_time_cache$iqr_upper,
-      across_unstable_mean = across_time_cache$unstable_mean,
-      across_unstable_median = across_time_cache$unstable_median,
-      across_unstable_iqr = across_time_cache$unstable_iqr,
-      across_strictness_label = across_time_cache$strictness_label,
-      across_strictness_shifted = across_time_cache$strictness_shifted,
-      across_sd_multiplier = across_time_cache$sd_multiplier,
-      across_mad_constant = across_time_cache$mad_constant,
-      across_mad_multiplier = across_time_cache$mad_multiplier,
-      across_iqr_multiplier = across_time_cache$iqr_multiplier
-    ) |>
-    # vectorized pool selection using ladder logic
-    dplyr::mutate(
-      # reporting guardrail first
-      reporting_reason = .guardrail_reason(
-        n = rep(Inf, dplyr::n()),
-        reporting = .outlier_reporting,
-        min_n = NA_real_,
-        reporting_threshold = reporting_rate_min
-      ),
-
-      # select first eligible pool in ladder order
-      pool_mode = dplyr::case_when(
-        !is.na(reporting_reason) ~ "guard",
-        same_eligible & same_n >= min_n ~ "same_month",
-        neighbor_eligible & neighbor_n >= min_n ~ "neighbors",
-        residual_eligible & residual_n >= min_n ~ "residual",
-        across_eligible & across_n >= min_n ~ "across_time",
-        TRUE ~ "insufficient_seasonal_history"
-      ),
-
-      # pick bounds based on selected pool
-      mean_lower = dplyr::case_when(
-        pool_mode == "same_month" ~ same_mean_lower,
-        pool_mode == "neighbors" ~ neighbor_mean_lower,
-        pool_mode == "residual" ~ residual_mean_lower,
-        pool_mode == "across_time" ~ across_mean_lower,
-        TRUE ~ NA_real_
-      ),
-      mean_upper = dplyr::case_when(
-        pool_mode == "same_month" ~ same_mean_upper,
-        pool_mode == "neighbors" ~ neighbor_mean_upper,
-        pool_mode == "residual" ~ residual_mean_upper,
-        pool_mode == "across_time" ~ across_mean_upper,
-        TRUE ~ NA_real_
-      ),
-      median_lower = dplyr::case_when(
-        pool_mode == "same_month" ~ same_median_lower,
-        pool_mode == "neighbors" ~ neighbor_median_lower,
-        pool_mode == "residual" ~ residual_median_lower,
-        pool_mode == "across_time" ~ across_median_lower,
-        TRUE ~ NA_real_
-      ),
-      median_upper = dplyr::case_when(
-        pool_mode == "same_month" ~ same_median_upper,
-        pool_mode == "neighbors" ~ neighbor_median_upper,
-        pool_mode == "residual" ~ residual_median_upper,
-        pool_mode == "across_time" ~ across_median_upper,
-        TRUE ~ NA_real_
-      ),
-      iqr_lower = dplyr::case_when(
-        pool_mode == "same_month" ~ same_iqr_lower,
-        pool_mode == "neighbors" ~ neighbor_iqr_lower,
-        pool_mode == "residual" ~ residual_iqr_lower,
-        pool_mode == "across_time" ~ across_iqr_lower,
-        TRUE ~ NA_real_
-      ),
-      iqr_upper = dplyr::case_when(
-        pool_mode == "same_month" ~ same_iqr_upper,
-        pool_mode == "neighbors" ~ neighbor_iqr_upper,
-        pool_mode == "residual" ~ residual_iqr_upper,
-        pool_mode == "across_time" ~ across_iqr_upper,
-        TRUE ~ NA_real_
-      ),
-
-      # pick unstable flags
-      unstable_mean = dplyr::case_when(
-        pool_mode == "same_month" ~ same_unstable_mean,
-        pool_mode == "neighbors" ~ neighbor_unstable_mean,
-        pool_mode == "residual" ~ residual_unstable_mean,
-        pool_mode == "across_time" ~ across_unstable_mean,
-        TRUE ~ TRUE
-      ),
-      unstable_median = dplyr::case_when(
-        pool_mode == "same_month" ~ same_unstable_median,
-        pool_mode == "neighbors" ~ neighbor_unstable_median,
-        pool_mode == "residual" ~ residual_unstable_median,
-        pool_mode == "across_time" ~ across_unstable_median,
-        TRUE ~ TRUE
-      ),
-      unstable_iqr = dplyr::case_when(
-        pool_mode == "same_month" ~ same_unstable_iqr,
-        pool_mode == "neighbors" ~ neighbor_unstable_iqr,
-        pool_mode == "residual" ~ residual_unstable_iqr,
-        pool_mode == "across_time" ~ across_unstable_iqr,
-        TRUE ~ TRUE
-      ),
-
-      # pick n_in_group
-      n_in_group = dplyr::case_when(
-        pool_mode == "same_month" ~ same_n,
-        pool_mode == "neighbors" ~ neighbor_n,
-        pool_mode == "residual" ~ residual_n,
-        pool_mode == "across_time" ~ across_n,
-        TRUE ~ 0L
-      ),
-
-      # pick descriptions and metadata
-      seasonal_window_desc = dplyr::case_when(
-        pool_mode == "same_month" ~ same_desc,
-        pool_mode == "neighbors" ~ neighbor_desc,
-        pool_mode == "residual" ~ residual_desc,
-        pool_mode == "across_time" ~ across_desc,
-        TRUE ~ "Insufficient seasonal history"
-      ),
-
-      seasonality_mode_used = pool_mode,
-
-      fallback_applied = pool_mode != "same_month" & pool_mode != "guard",
-      fallback_reason = dplyr::case_when(
-        pool_mode == "neighbors" ~ "same_month_insufficient",
-        pool_mode == "residual" ~ "neighbors_insufficient",
-        pool_mode == "across_time" ~ "residual_insufficient",
-        pool_mode == "insufficient_seasonal_history" ~
-          "insufficient_seasonal_history",
-        TRUE ~ NA_character_
-      ),
-
-      strictness_label = dplyr::case_when(
-        pool_mode == "across_time" ~ across_strictness_label,
-        TRUE ~ "balanced" # default for other modes
-      ),
-      strictness_shifted = pool_mode == "across_time",
-
-      sd_multiplier = dplyr::case_when(
-        pool_mode == "across_time" ~ across_sd_multiplier,
-        TRUE ~ 3.0 # default
-      ),
-      mad_constant = dplyr::case_when(
-        pool_mode == "across_time" ~ across_mad_constant,
-        TRUE ~ 1.4826
-      ),
-      mad_multiplier = dplyr::case_when(
-        pool_mode == "across_time" ~ across_mad_multiplier,
-        TRUE ~ 9.0
-      ),
-      iqr_multiplier = dplyr::case_when(
-        pool_mode == "across_time" ~ across_iqr_multiplier,
-        TRUE ~ 2.0
-      ),
-
-      # guardrail reason
-      reason = dplyr::case_when(
-        !is.na(reporting_reason) ~ reporting_reason,
-        pool_mode == "insufficient_seasonal_history" ~
-          "insufficient_seasonal_history",
-        n_in_group < min_n ~ "insufficient_n",
-        TRUE ~ NA_character_
-      )
-    ) |>
-    # vectorized flag calculations using the selected bounds
-    dplyr::mutate(
-      # adjust comparison value for residual mode
-      comparison_value = dplyr::case_when(
-        pool_mode == "residual" ~
-          {
-            # compute residual for each row
-            month_means_lookup <- group_data |>
-              dplyr::group_by(.outlier_month) |>
-              dplyr::summarise(
-                month_mean = mean(.outlier_value, na.rm = TRUE),
-                .groups = "drop"
-              )
-
-            row_month_mean <- month_means_lookup$month_mean[match(
-              .outlier_month,
-              month_means_lookup$.outlier_month
-            )]
-            .outlier_value - row_month_mean
-          },
-        TRUE ~ .outlier_value
-      ),
-
-      # vectorized flag calculations
-      mean_flag = dplyr::case_when(
-        !is.na(reason) & reason != "" ~ reason,
-        unstable_mean ~ "unstable_scale",
-        is.na(comparison_value) |
-          is.na(mean_lower) |
-          is.na(mean_upper) ~
-          "insufficient_evidence",
-        comparison_value > mean_upper ~
-          "outlier",
-        TRUE ~ "normal"
-      ),
-      median_flag = dplyr::case_when(
-        !is.na(reason) & reason != "" ~ reason,
-        unstable_median ~ "unstable_scale",
-        is.na(comparison_value) | is.na(median_lower) | is.na(median_upper) ~
-          "insufficient_evidence",
-        comparison_value > median_upper ~
-          "outlier",
-        TRUE ~ "normal"
-      ),
-      iqr_flag = dplyr::case_when(
-        !is.na(reason) & reason != "" ~ reason,
-        unstable_iqr ~ "unstable_scale",
-        is.na(comparison_value) | is.na(iqr_lower) | is.na(iqr_upper) ~
-          "insufficient_evidence",
-        comparison_value > iqr_upper ~
-          "outlier",
-        TRUE ~ "normal"
-      )
-    ) |>
-    # vectorized consensus calculation
-    dplyr::mutate(
-      outlier_flag_consensus = .vectorized_consensus_flag(
-        mean_flag,
-        median_flag,
-        iqr_flag,
-        consensus_rule
-      ),
-
-      # add missing columns with defaults
-      mean = NA_real_,
-      sd = NA_real_,
-      median = NA_real_,
-      mad = NA_real_,
-      q1 = NA_real_,
-      q3 = NA_real_,
-      iqr = NA_real_,
-      mean_upper = dplyr::coalesce(mean_upper, NA_real_),
-      median_upper = dplyr::coalesce(median_upper, NA_real_),
-      iqr_upper = dplyr::coalesce(iqr_upper, NA_real_),
-      residual_sd = dplyr::coalesce(residual_sd, NA_real_),
-      residual_mad = dplyr::coalesce(residual_mad, NA_real_),
-      residual_iqr = dplyr::coalesce(residual_iqr, NA_real_),
-
-      # finalize reason
-      reason = dplyr::case_when(
-        !is.na(reason) ~ reason,
-        mean_flag == "unstable_scale" &
-          median_flag == "unstable_scale" &
-          iqr_flag == "unstable_scale" ~
-          "unstable_scale",
-        TRUE ~ NA_character_
-      )
-    ) |>
-    # keep all columns from original data plus outlier detection results
-    dplyr::select(
-      .outlier_value,
-      .outlier_year,
-      .outlier_month,
-      .outlier_yearmon,
-      .outlier_reporting,
-      dplyr::everything()
-    )
-
-  combined
-}
-
-# data.table cache functions --------------------------------------------------
-
-#' cache same month pools using data.table
-#'
-#' @param group_data data.table for one admin group
-#' @param params seasonality parameters
-#' @param strictness strictness settings
-#' @param value_type value type string
-#' @importFrom data.table .N .SD
-#' @noRd
-.cache_same_month_pools_dt <- function(
-    group_data,
-    params,
-    strictness,
-    value_type) {
-
-  # Ensure it's a data.table
-  dt <- data.table::as.data.table(group_data)
-
-  # Calculate statistics by year and month
-  result <- dt[, {
-    target_year <- .outlier_year[1]
-    target_month <- .outlier_month[1]
-
-    # Calculate window for both past and future years
-    years_before <- floor(params$seasonal_pool_years / 2)
-    years_after <- floor(params$seasonal_pool_years / 2)
-    # If odd number of years, add the extra year to the past
-    if (params$seasonal_pool_years %% 2 != 0) {
-      years_before <- years_before + 1
-    }
-
-    window_start <- target_year - years_before
-    window_end <- target_year + years_after
-
-    # get pool data for this month within the bidirectional window
-    pool_data <- dt[.outlier_month == target_month &
-                    .outlier_year >= window_start &
-                    .outlier_year <= window_end &
-                    # Exclude the target year itself from the pool
-                    .outlier_year != target_year]
-
-    if (nrow(pool_data) == 0) {
-      data.table::data.table(
-        eligible = FALSE,
-        n_in_group = 0.0,
-        desc = paste0(
-          "Month ",
-          target_month,
-          ", no same-month history"
-        ),
-        mean = NA_real_,
-        sd = NA_real_,
-        mean_lower = NA_real_,
-        mean_upper = NA_real_,
-        median = NA_real_,
-        mad = NA_real_,
-        median_lower = NA_real_,
-        median_upper = NA_real_,
-        q1 = NA_real_,
-        q3 = NA_real_,
-        iqr = NA_real_,
-        iqr_lower = NA_real_,
-        iqr_upper = NA_real_,
-        unstable_mean = TRUE,
-        unstable_median = TRUE,
-        unstable_iqr = TRUE
-      )
-    } else {
-      years_available <- length(unique(pool_data$.outlier_year))
-      eligible <- nrow(pool_data) >= params$min_obs_per_seasonal_bucket &
-        years_available >= params$min_years_per_month
-
-      # compute statistics directly - ensure all are numeric (double)
-      n_vals <- nrow(pool_data)
-      mean_val <- as.numeric(mean(pool_data$.outlier_value, na.rm = TRUE))
-      sd_val <- as.numeric(stats::sd(pool_data$.outlier_value, na.rm = TRUE))
-      median_val <- as.numeric(stats::median(pool_data$.outlier_value, na.rm = TRUE))
-      mad_val <- as.numeric(stats::mad(
-        pool_data$.outlier_value,
-        constant = strictness$mad_constant,
-        na.rm = TRUE
-      ))
-      q1_val <- as.numeric(stats::quantile(
-        pool_data$.outlier_value,
-        probs = 0.25,
-        na.rm = TRUE,
-        names = FALSE
-      ))
-      q3_val <- as.numeric(stats::quantile(
-        pool_data$.outlier_value,
-        probs = 0.75,
-        na.rm = TRUE,
-        names = FALSE
-      ))
-      iqr_val <- as.numeric(q3_val - q1_val)
-
-      data.table::data.table(
-        eligible = eligible,
-        n_in_group = as.numeric(n_vals),
-        desc = paste0(
-          "Month ",
-          target_month,
-          ", ",
-          min(pool_data$.outlier_year, na.rm = TRUE),
-          "-",
-          max(pool_data$.outlier_year, na.rm = TRUE),
-          " (+/-", years_before, " years); same-month window"
-        ),
-        mean = mean_val,
-        sd = sd_val,
-        mean_lower = .apply_lower_bound_floor(
-          mean_val - strictness$sd_multiplier * sd_val,
-          value_type
-        ),
-        mean_upper = as.numeric(mean_val + strictness$sd_multiplier * sd_val),
-        median = median_val,
-        mad = mad_val,
-        median_lower = .apply_lower_bound_floor(
-          median_val - strictness$mad_multiplier * mad_val,
-          value_type
-        ),
-        median_upper = as.numeric(median_val + strictness$mad_multiplier * mad_val),
-        q1 = q1_val,
-        q3 = q3_val,
-        iqr = iqr_val,
-        iqr_lower = .apply_lower_bound_floor(
-          q1_val - strictness$iqr_multiplier * iqr_val,
-          value_type
-        ),
-        iqr_upper = as.numeric(q3_val + strictness$iqr_multiplier * iqr_val),
-        unstable_mean = is.na(sd_val) | sd_val == 0,
-        unstable_median = is.na(mad_val) | mad_val == 0,
-        unstable_iqr = is.na(iqr_val) | iqr_val == 0
-      )
-    }
-  }, by = .(.outlier_year, .outlier_month)]
-
-  result
-}
-
-#' cache neighbor pools using data.table
-#'
-#' @param same_month_cache data.table output from .cache_same_month_pools_dt
-#' @param params seasonality parameters
-#' @param strictness strictness settings
-#' @param value_type value type string
-#' @importFrom data.table .N .SD
-#' @noRd
-.cache_neighbors_pools_dt <- function(
-    same_month_cache,
-    params,
-    strictness,
-    value_type) {
-
-  # Ensure it's a data.table
-  dt <- data.table::as.data.table(same_month_cache)
-
-  # Process by year
-  result <- dt[, {
-    target_year <- .outlier_year[1]
-
-    # Calculate window for both past and future years
-    years_before <- floor(params$seasonal_pool_years / 2)
-    years_after <- floor(params$seasonal_pool_years / 2)
-    # If odd number of years, add the extra year to the past
-    if (params$seasonal_pool_years %% 2 != 0) {
-      years_before <- years_before + 1
-    }
-
-    window_start <- target_year - years_before
-    window_end <- target_year + years_after
-
-    # For each month in this year, calculate neighbor stats
-    month_results <- lapply(unique(.outlier_month), function(month) {
-      neighbor_months <- (((month + c(-1, 0, 1) - 1) %% 12) + 1)
-
-      # Get stats from same-month cache for neighbors within bidirectional window
-      neighbor_data <- dt[.outlier_month %in% neighbor_months &
-                         .outlier_year >= window_start &
-                         .outlier_year <= window_end &
-                         eligible == TRUE]
-
-      if (nrow(neighbor_data) == 0) {
-        data.table::data.table(
-          .outlier_month = month,
-          neighbor_stats_eligible = FALSE,
-          neighbor_stats_n_in_group = 0.0,
-          neighbor_stats_desc = "No neighbor data",
-          neighbor_stats_mean = NA_real_,
-          neighbor_stats_median = NA_real_,
-          neighbor_stats_mean_lower = NA_real_,
-          neighbor_stats_mean_upper = NA_real_,
-          neighbor_stats_median_lower = NA_real_,
-          neighbor_stats_median_upper = NA_real_,
-          neighbor_stats_q1 = NA_real_,
-          neighbor_stats_q3 = NA_real_,
-          neighbor_stats_iqr_lower = NA_real_,
-          neighbor_stats_iqr_upper = NA_real_,
-          neighbor_stats_unstable_mean = TRUE,
-          neighbor_stats_unstable_median = TRUE,
-          neighbor_stats_unstable_iqr = TRUE
-        )
-      } else {
-        # Weight current month double compared to neighbors
-        weights <- data.table::fifelse(neighbor_data$.outlier_month == month, 2, 1)
-        total_weight <- sum(weights)
-
-        if (total_weight >= params$min_obs_per_seasonal_bucket) {
-          # Weighted means for bounds calculation
-          weighted_mean <- sum(neighbor_data$mean * weights, na.rm = TRUE) / total_weight
-          weighted_median <- sum(neighbor_data$median * weights, na.rm = TRUE) / total_weight
-
-          month_names <- paste(sort(unique(neighbor_data$.outlier_month)), collapse = "/")
-          year_min <- min(neighbor_data$.outlier_year, na.rm = TRUE)
-          year_max <- max(neighbor_data$.outlier_year, na.rm = TRUE)
-
-          data.table::data.table(
-            .outlier_month = month,
-            neighbor_stats_eligible = TRUE,
-            neighbor_stats_n_in_group = as.double(total_weight),
-            neighbor_stats_desc = paste0(
-              "Months ", month_names, ", ", year_min, "-", year_max,
-              " (+/-", years_before, " years); neighbors weights 2/1"
-            ),
-            neighbor_stats_mean = weighted_mean,
-            neighbor_stats_median = weighted_median,
-            neighbor_stats_mean_lower = .apply_lower_bound_floor(
-              weighted_mean - strictness$sd_multiplier * mean(neighbor_data$sd, na.rm = TRUE),
-              value_type
-            ),
-            neighbor_stats_mean_upper = weighted_mean +
-              strictness$sd_multiplier * mean(neighbor_data$sd, na.rm = TRUE),
-            neighbor_stats_median_lower = .apply_lower_bound_floor(
-              weighted_median - strictness$mad_multiplier * mean(neighbor_data$mad, na.rm = TRUE),
-              value_type
-            ),
-            neighbor_stats_median_upper = weighted_median +
-              strictness$mad_multiplier * mean(neighbor_data$mad, na.rm = TRUE),
-            neighbor_stats_q1 = mean(neighbor_data$q1, na.rm = TRUE),
-            neighbor_stats_q3 = mean(neighbor_data$q3, na.rm = TRUE),
-            neighbor_stats_iqr_lower = .apply_lower_bound_floor(
-              mean(neighbor_data$q1, na.rm = TRUE) -
-                strictness$iqr_multiplier * mean(neighbor_data$iqr, na.rm = TRUE),
-              value_type
-            ),
-            neighbor_stats_iqr_upper = mean(neighbor_data$q3, na.rm = TRUE) +
-              strictness$iqr_multiplier * mean(neighbor_data$iqr, na.rm = TRUE),
-            neighbor_stats_unstable_mean = any(neighbor_data$unstable_mean),
-            neighbor_stats_unstable_median = any(neighbor_data$unstable_median),
-            neighbor_stats_unstable_iqr = any(neighbor_data$unstable_iqr)
-          )
-        } else {
-          data.table::data.table(
-            .outlier_month = month,
-            neighbor_stats_eligible = FALSE,
-            neighbor_stats_n_in_group = as.double(total_weight),
-            neighbor_stats_desc = "Insufficient neighbor data",
-            neighbor_stats_mean = NA_real_,
-            neighbor_stats_median = NA_real_,
-            neighbor_stats_mean_lower = NA_real_,
-            neighbor_stats_mean_upper = NA_real_,
-            neighbor_stats_median_lower = NA_real_,
-            neighbor_stats_median_upper = NA_real_,
-            neighbor_stats_q1 = NA_real_,
-            neighbor_stats_q3 = NA_real_,
-            neighbor_stats_iqr_lower = NA_real_,
-            neighbor_stats_iqr_upper = NA_real_,
-            neighbor_stats_unstable_mean = TRUE,
-            neighbor_stats_unstable_median = TRUE,
-            neighbor_stats_unstable_iqr = TRUE
-          )
-        }
-      }
-    })
-    # Return the combined results
-    data.table::rbindlist(month_results)
-  }, by = .outlier_year]
-
-  # Merge back with original data
-  dt[result, on = c(".outlier_month", ".outlier_year")]
-}
-
-#' cache residual pools using data.table
-#'
-#' @param group_data data.table for one admin group
-#' @param params seasonality parameters
-#' @param strictness strictness settings
-#' @param value_type value type string
-#' @importFrom data.table .N .SD
-#' @noRd
-.cache_residual_pools_dt <- function(
-    group_data,
-    params,
-    strictness,
-    value_type) {
-
-  # Ensure it's a data.table
-  dt <- data.table::as.data.table(group_data)
-
-  # compute month means once for the whole group
-  month_means <- dt[, .(month_mean = mean(.outlier_value, na.rm = TRUE)), by = .outlier_month]
-
-  # add residuals to group_data
-  dt[month_means, .residual_value := .outlier_value - i.month_mean, on = ".outlier_month"]
-
-  # compute residual stats by year
-  result <- dt[, {
-    if (.N < params$min_obs_per_seasonal_bucket) {
-      data.table::data.table(
-        eligible = FALSE,
-        n_in_group = as.numeric(.N),
-        desc = paste0("Residual pooled, months fixed; insufficient data"),
-        residual_sd = NA_real_,
-        residual_mad = NA_real_,
-        residual_iqr = NA_real_,
-        residual_mean = NA_real_,
-        residual_median = NA_real_,
-        residual_q1 = NA_real_,
-        residual_q3 = NA_real_,
-        mean = NA_real_,
-        sd = NA_real_,
-        median = NA_real_,
-        mad = NA_real_,
-        mean_lower = NA_real_,
-        mean_upper = NA_real_,
-        median_lower = NA_real_,
-        median_upper = NA_real_,
-        q1 = NA_real_,
-        q3 = NA_real_,
-        iqr = NA_real_,
-        iqr_lower = NA_real_,
-        iqr_upper = NA_real_,
-        unstable_mean = TRUE,
-        unstable_median = TRUE,
-        unstable_iqr = TRUE
-      )
-    } else {
-      # Calculate residual statistics
-      residual_values <- .residual_value[!is.na(.residual_value)]
-      n_valid <- length(residual_values)
-
-      residual_sd_val <- as.numeric(stats::sd(residual_values, na.rm = TRUE))
-      residual_mad_val <- as.numeric(stats::mad(
-        residual_values,
-        constant = strictness$mad_constant,
-        na.rm = TRUE
-      ))
-      residual_iqr_val <- as.numeric(stats::IQR(residual_values, na.rm = TRUE))
-      residual_mean_val <- as.numeric(mean(residual_values, na.rm = TRUE))
-      residual_median_val <- as.numeric(stats::median(residual_values, na.rm = TRUE))
-      residual_q1_val <- as.numeric(stats::quantile(
-        residual_values,
-        probs = 0.25,
-        na.rm = TRUE,
-        names = FALSE
-      ))
-      residual_q3_val <- as.numeric(stats::quantile(
-        residual_values,
-        probs = 0.75,
-        na.rm = TRUE,
-        names = FALSE
-      ))
-
-      # Get year range for description
-      year_min <- min(.outlier_year, na.rm = TRUE)
-      year_max <- max(.outlier_year, na.rm = TRUE)
-
-      data.table::data.table(
-        eligible = n_valid >= params$min_obs_per_seasonal_bucket,
-        n_in_group = as.numeric(n_valid),
-        desc = paste0("Residual pooled, months fixed; ", year_min, "-", year_max),
-        residual_sd = residual_sd_val,
-        residual_mad = residual_mad_val,
-        residual_iqr = residual_iqr_val,
-        residual_mean = residual_mean_val,
-        residual_median = residual_median_val,
-        residual_q1 = residual_q1_val,
-        residual_q3 = residual_q3_val,
-        mean = residual_mean_val,
-        sd = residual_sd_val,
-        median = residual_median_val,
-        mad = residual_mad_val,
-        mean_lower = as.numeric(residual_mean_val - strictness$sd_multiplier * residual_sd_val),
-        mean_upper = as.numeric(residual_mean_val + strictness$sd_multiplier * residual_sd_val),
-        median_lower = as.numeric(residual_median_val - strictness$mad_multiplier * residual_mad_val),
-        median_upper = as.numeric(residual_median_val + strictness$mad_multiplier * residual_mad_val),
-        q1 = residual_q1_val,
-        q3 = residual_q3_val,
-        iqr = residual_iqr_val,
-        iqr_lower = as.numeric(residual_q1_val - strictness$iqr_multiplier * residual_iqr_val),
-        iqr_upper = as.numeric(residual_q3_val + strictness$iqr_multiplier * residual_iqr_val),
-        unstable_mean = is.na(residual_sd_val) | residual_sd_val == 0,
-        unstable_median = is.na(residual_mad_val) | residual_mad_val == 0,
-        unstable_iqr = is.na(residual_iqr_val) | residual_iqr_val == 0
-      )
-    }
-  }, by = .outlier_year]
-
-  result
-}
-
-#' cache across time pools using data.table
-#'
-#' @param group_data data.table for one admin group
-#' @param strictness strictness settings
-#' @param value_type value type string
-#' @importFrom data.table .N :=
-#' @noRd
-.cache_across_time_pools_dt <- function(
-    group_data,
-    strictness,
-    value_type) {
-
-  # Ensure it's a data.table
-  dt <- data.table::as.data.table(group_data)
-
-  # Calculate across all time
-  values <- dt$.outlier_value
-  n_valid <- sum(!is.na(values))
-
-  if (n_valid < 8) {  # Minimum required for across-time
-    dt[, `:=`(
-      across_time_stats_eligible = FALSE,
-      across_time_stats_n_in_group = as.double(n_valid),
-      across_time_stats_desc = "Insufficient data",
-      across_time_stats_mean = NA_real_,
-      across_time_stats_median = NA_real_,
-      across_time_stats_mean_lower = NA_real_,
-      across_time_stats_mean_upper = NA_real_,
-      across_time_stats_median_lower = NA_real_,
-      across_time_stats_median_upper = NA_real_,
-      across_time_stats_q1 = NA_real_,
-      across_time_stats_q3 = NA_real_,
-      across_time_stats_iqr_lower = NA_real_,
-      across_time_stats_iqr_upper = NA_real_,
-      across_time_stats_unstable_mean = TRUE,
-      across_time_stats_unstable_median = TRUE,
-      across_time_stats_unstable_iqr = TRUE
-    )]
-  } else {
-    # Calculate statistics - ensure all are numeric (double)
-    mean_val <- as.numeric(mean(values, na.rm = TRUE))
-    sd_val <- as.numeric(sd(values, na.rm = TRUE))
-    median_val <- as.numeric(median(values, na.rm = TRUE))
-    # Shift strictness for across-time
-    shifted <- .shift_strictness_one_level(
-      strictness$strictness,
-      strictness$sd_multiplier,
-      strictness$mad_constant,
-      strictness$mad_multiplier,
-      strictness$iqr_multiplier
-    )
-    mad_val <- as.numeric(mad(values, center = median_val,
-                   constant = shifted$mad_constant, na.rm = TRUE))
-    q1_val <- as.numeric(quantile(values, 0.25, na.rm = TRUE, names = FALSE))
-    q3_val <- as.numeric(quantile(values, 0.75, na.rm = TRUE, names = FALSE))
-    iqr_val <- as.numeric(q3_val - q1_val)
-
-    years <- sort(unique(dt$.outlier_year))
-    year_range <- if (length(years) > 0) {
-      paste0(min(years), "-", max(years))
-    } else {
-      "unknown"
-    }
-
-    dt[, `:=`(
-      across_time_stats_eligible = TRUE,
-      across_time_stats_n_in_group = as.double(n_valid),
-      across_time_stats_desc = paste0("Across-time fallback, ", year_range),
-      across_time_stats_mean = mean_val,
-      across_time_stats_median = median_val,
-      across_time_stats_mean_lower = .apply_lower_bound_floor(
-        mean_val - shifted$sd_multiplier * sd_val,
-        value_type
-      ),
-      across_time_stats_mean_upper = as.numeric(mean_val + shifted$sd_multiplier * sd_val),
-      across_time_stats_median_lower = .apply_lower_bound_floor(
-        median_val - shifted$mad_multiplier * mad_val,
-        value_type
-      ),
-      across_time_stats_median_upper = as.numeric(median_val + shifted$mad_multiplier * mad_val),
-      across_time_stats_q1 = q1_val,
-      across_time_stats_q3 = q3_val,
-      across_time_stats_iqr_lower = .apply_lower_bound_floor(
-        q1_val - shifted$iqr_multiplier * iqr_val,
-        value_type
-      ),
-      across_time_stats_iqr_upper = as.numeric(q3_val + shifted$iqr_multiplier * iqr_val),
-      across_time_stats_unstable_mean = is.na(sd_val) | sd_val == 0,
-      across_time_stats_unstable_median = is.na(mad_val) | mad_val == 0,
-      across_time_stats_unstable_iqr = is.na(iqr_val) | iqr_val == 0
-    )]
-  }
-
-  dt
-}
-
-#' select pools vectorized using data.table
-#'
-#' @param prepared_data data.table with value column
-#' @param same_month_cache same month cache data.table
-#' @param neighbors_cache neighbors cache data.table
-#' @param residual_cache residual cache data.table
-#' @param across_time_cache across time cache data.table
-#' @param params seasonality parameters
-#' @param methods methods to use
-#' @param reporting_rate_min minimum reporting rate
-#' @param min_n minimum observations
-#' @param consensus_rule consensus threshold
-#' @importFrom data.table .N fcase fifelse :=
-#' @noRd
-.select_pools_vectorized_dt <- function(
-    prepared_data,
-    same_month_cache,
-    neighbors_cache,
-    residual_cache,
-    across_time_cache,
-    params,
-    methods,
-    reporting_rate_min,
-    min_n,
-    consensus_rule) {
-
-  # Ensure data.table
-  dt <- data.table::as.data.table(prepared_data)
-
-  # attach seasonal cache statistics before ladder selection
-  same_cols <- c(
-    "eligible", "n_in_group", "desc", "mean_lower", "mean_upper",
-    "median_lower", "median_upper", "iqr_lower", "iqr_upper",
-    "unstable_mean", "unstable_median", "unstable_iqr"
-  )
-  # Debug: check before join
-  if (getOption("sntutils.debug_grouping", FALSE)) {
-    cli::cli_inform("BEFORE JOIN - main data bounds: mean_lower = {dt$mean_lower[1] %||% 'NULL'}")
-    cli::cli_inform("Cache has bounds: mean_lower = {same_month_cache$mean_lower[1] %||% 'NULL'}")
-  }
-
-  dt[
-    same_month_cache,
-    c("eligible", "n_in_group", "desc", "mean_lower", "mean_upper",
-      "median_lower", "median_upper", "iqr_lower", "iqr_upper",
-      "unstable_mean", "unstable_median", "unstable_iqr") := list(
-        i.eligible, i.n_in_group, i.desc, i.mean_lower, i.mean_upper,
-        i.median_lower, i.median_upper, i.iqr_lower, i.iqr_upper,
-        i.unstable_mean, i.unstable_median, i.unstable_iqr
-      ),
-    on = c(".outlier_month", ".outlier_year")
-  ]
-
-  # Debug: check after join
-  if (getOption("sntutils.debug_grouping", FALSE)) {
-    cli::cli_inform("AFTER JOIN - main data bounds: mean_lower = {dt$mean_lower[1] %||% 'NULL'}")
-  }
-
-  neighbor_cols <- c(
-    "neighbor_stats_eligible", "neighbor_stats_n_in_group",
-    "neighbor_stats_desc", "neighbor_stats_mean_lower",
-    "neighbor_stats_mean_upper", "neighbor_stats_median_lower",
-    "neighbor_stats_median_upper", "neighbor_stats_iqr_lower",
-    "neighbor_stats_iqr_upper", "neighbor_stats_unstable_mean",
-    "neighbor_stats_unstable_median", "neighbor_stats_unstable_iqr"
-  )
-  dt[
-    neighbors_cache,
-    c("neighbor_stats_eligible", "neighbor_stats_n_in_group",
-      "neighbor_stats_desc", "neighbor_stats_mean_lower",
-      "neighbor_stats_mean_upper", "neighbor_stats_median_lower",
-      "neighbor_stats_median_upper", "neighbor_stats_iqr_lower",
-      "neighbor_stats_iqr_upper", "neighbor_stats_unstable_mean",
-      "neighbor_stats_unstable_median", "neighbor_stats_unstable_iqr") := list(
-        i.neighbor_stats_eligible, i.neighbor_stats_n_in_group,
-        i.neighbor_stats_desc, i.neighbor_stats_mean_lower,
-        i.neighbor_stats_mean_upper, i.neighbor_stats_median_lower,
-        i.neighbor_stats_median_upper, i.neighbor_stats_iqr_lower,
-        i.neighbor_stats_iqr_upper, i.neighbor_stats_unstable_mean,
-        i.neighbor_stats_unstable_median, i.neighbor_stats_unstable_iqr
-      ),
-    on = c(".outlier_month", ".outlier_year")
-  ]
-
-  # Join residual cache by year (not month)
-  if (nrow(residual_cache) > 0) {
-    dt[residual_cache,
-       `:=`(eligible_residual = i.eligible,
-            n_in_group_residual = i.n_in_group,
-            desc_residual = i.desc,
-            mean_lower_residual = i.mean_lower,
-            mean_upper_residual = i.mean_upper,
-            median_lower_residual = i.median_lower,
-            median_upper_residual = i.median_upper,
-            iqr_lower_residual = i.iqr_lower,
-            iqr_upper_residual = i.iqr_upper,
-            unstable_mean_residual = i.unstable_mean,
-            unstable_median_residual = i.unstable_median,
-            unstable_iqr_residual = i.unstable_iqr,
-            residual_sd = i.residual_sd,
-            residual_mad = i.residual_mad,
-            residual_iqr = i.residual_iqr),
-       on = ".outlier_year"]
-  }
-
-  across_cols <- c(
-    "across_time_stats_eligible", "across_time_stats_n_in_group",
-    "across_time_stats_desc", "across_time_stats_mean_lower",
-    "across_time_stats_mean_upper", "across_time_stats_median_lower",
-    "across_time_stats_median_upper", "across_time_stats_iqr_lower",
-    "across_time_stats_iqr_upper", "across_time_stats_unstable_mean",
-    "across_time_stats_unstable_median", "across_time_stats_unstable_iqr"
-  )
-  if (nrow(across_time_cache) > 0) {
-    dt[, (across_cols) := across_time_cache[, across_cols, with = FALSE]]
-  } else {
-    dt[, (across_cols) := list(
-      FALSE, 0.0, "Insufficient data", NA_real_, NA_real_,
-      NA_real_, NA_real_, NA_real_, NA_real_, TRUE, TRUE, TRUE
-    )]
-  }
-
-  # Apply guardrail checks first
-  dt[, reporting_reason := .guardrail_reason(
-    n = rep(Inf, .N),
-    reporting = .outlier_reporting,
-    min_n = NA_real_,
-    reporting_threshold = reporting_rate_min
-  )]
-
-  # Determine pool selection using data.table's fcase with ladder logic
-  dt[, pool_selection := data.table::fcase(
-    # Check reporting rate first
-    !is.na(reporting_reason), "guard",
-
-    # First try same month
-    eligible == TRUE & n_in_group >= min_n, "same_month",
-
-    # Then try neighbors
-    neighbor_stats_eligible == TRUE & neighbor_stats_n_in_group >= min_n, "neighbors",
-
-    # Then try residual
-    !is.na(eligible_residual) & eligible_residual == TRUE & n_in_group_residual >= min_n, "residual",
-
-    # Finally across time
-    !is.na(across_time_stats_eligible) & across_time_stats_eligible == TRUE &
-      across_time_stats_n_in_group >= min_n, "across_time",
-
-    # Default: not eligible
-    default = "insufficient_seasonal_history"
-  )]
-
-  # Calculate bounds based on pool selection
-  dt[, `:=`(
-    mean_lower = data.table::fcase(
-      pool_selection == "same_month", mean_lower,
-      pool_selection == "neighbors", neighbor_stats_mean_lower,
-      pool_selection == "residual", mean_lower_residual,
-      pool_selection == "across_time", across_time_stats_mean_lower,
-      default = NA_real_
-    ),
-    mean_upper = data.table::fcase(
-      pool_selection == "same_month", mean_upper,
-      pool_selection == "neighbors", neighbor_stats_mean_upper,
-      pool_selection == "residual", mean_upper_residual,
-      pool_selection == "across_time", across_time_stats_mean_upper,
-      default = NA_real_
-    ),
-    median_lower = data.table::fcase(
-      pool_selection == "same_month", median_lower,
-      pool_selection == "neighbors", neighbor_stats_median_lower,
-      pool_selection == "residual", median_lower_residual,
-      pool_selection == "across_time", across_time_stats_median_lower,
-      default = NA_real_
-    ),
-    median_upper = data.table::fcase(
-      pool_selection == "same_month", median_upper,
-      pool_selection == "neighbors", neighbor_stats_median_upper,
-      pool_selection == "residual", median_upper_residual,
-      pool_selection == "across_time", across_time_stats_median_upper,
-      default = NA_real_
-    ),
-    iqr_lower = data.table::fcase(
-      pool_selection == "same_month", iqr_lower,
-      pool_selection == "neighbors", neighbor_stats_iqr_lower,
-      pool_selection == "residual", iqr_lower_residual,
-      pool_selection == "across_time", across_time_stats_iqr_lower,
-      default = NA_real_
-    ),
-    iqr_upper = data.table::fcase(
-      pool_selection == "same_month", iqr_upper,
-      pool_selection == "neighbors", neighbor_stats_iqr_upper,
-      pool_selection == "residual", iqr_upper_residual,
-      pool_selection == "across_time", across_time_stats_iqr_upper,
-      default = NA_real_
-    ),
-    n_in_group = data.table::fcase(
-      pool_selection == "same_month", as.numeric(n_in_group),
-      pool_selection == "neighbors", as.numeric(neighbor_stats_n_in_group),
-      pool_selection == "residual", as.numeric(n_in_group_residual),
-      pool_selection == "across_time", as.numeric(across_time_stats_n_in_group),
-      default = 0.0
-    ),
-    seasonal_window_desc = data.table::fcase(
-      pool_selection == "same_month", desc,
-      pool_selection == "neighbors", neighbor_stats_desc,
-      pool_selection == "residual", desc_residual,
-      pool_selection == "across_time", across_time_stats_desc,
-      default = "Not eligible"
-    ),
-    seasonality_mode_used = data.table::fcase(
-      pool_selection %in% c("same_month", "neighbors", "residual"), "by_month",
-      pool_selection == "across_time", "across_time",
-      default = NA_character_
-    )
-  )]
-
-  # Get unstable flags and reason based on selected pool
-  dt[, `:=`(
-    unstable_mean = data.table::fcase(
-      pool_selection == "same_month", unstable_mean,
-      pool_selection == "neighbors", neighbor_stats_unstable_mean,
-      pool_selection == "residual", !is.na(unstable_mean_residual) & unstable_mean_residual,
-      pool_selection == "across_time", across_time_stats_unstable_mean,
-      default = TRUE
-    ),
-    unstable_median = data.table::fcase(
-      pool_selection == "same_month", unstable_median,
-      pool_selection == "neighbors", neighbor_stats_unstable_median,
-      pool_selection == "residual", !is.na(unstable_median_residual) & unstable_median_residual,
-      pool_selection == "across_time", across_time_stats_unstable_median,
-      default = TRUE
-    ),
-    unstable_iqr = data.table::fcase(
-      pool_selection == "same_month", unstable_iqr,
-      pool_selection == "neighbors", neighbor_stats_unstable_iqr,
-      pool_selection == "residual", !is.na(unstable_iqr_residual) & unstable_iqr_residual,
-      pool_selection == "across_time", across_time_stats_unstable_iqr,
-      default = TRUE
-    ),
-    reason = data.table::fcase(
-      !is.na(reporting_reason), reporting_reason,
-      pool_selection == "insufficient_seasonal_history", "insufficient_seasonal_history",
-      n_in_group < min_n, "insufficient_n",
-      default = NA_character_
-    )
-  )]
-
-  # Calculate comparison value for residual mode - ensure it's numeric
-  dt[, comparison_value := as.numeric(.outlier_value)]
-  if (nrow(dt[pool_selection == "residual"]) > 0) {
-    # Get month means for residual calculation
-    month_means_dt <- dt[, .(month_mean = mean(.outlier_value, na.rm = TRUE)), by = .outlier_month]
-    dt[month_means_dt, comparison_value := data.table::fifelse(
-      pool_selection == "residual",
-      as.numeric(.outlier_value - i.month_mean),
-      comparison_value
-    ), on = ".outlier_month"]
-  }
-
-  # Apply outlier detection methods
-  if ("mean" %in% methods) {
-    dt[, mean_flag := data.table::fcase(
-      !is.na(reason) & reason != "", reason,
-      unstable_mean, "unstable_scale",
-      is.na(comparison_value) | is.na(mean_lower) | is.na(mean_upper), "insufficient_evidence",
-      comparison_value > mean_upper, "outlier",
-      default = "normal"
-    )]
-  }
-
-  if ("median" %in% methods) {
-    dt[, median_flag := data.table::fcase(
-      !is.na(reason) & reason != "", reason,
-      unstable_median, "unstable_scale",
-      is.na(comparison_value) | is.na(median_lower) | is.na(median_upper), "insufficient_evidence",
-      comparison_value > median_upper, "outlier",
-      default = "normal"
-    )]
-  }
-
-  if ("iqr" %in% methods) {
-    dt[, iqr_flag := data.table::fcase(
-      !is.na(reason) & reason != "", reason,
-      unstable_iqr, "unstable_scale",
-      is.na(comparison_value) | is.na(iqr_lower) | is.na(iqr_upper), "insufficient_evidence",
-      comparison_value > iqr_upper, "outlier",
-      default = "normal"
-    )]
-  }
-
-  # Calculate consensus using the vectorized function
-  if ("consensus" %in% methods) {
-    dt[, outlier_flag_consensus := .vectorized_consensus_flag(
-      if ("mean" %in% methods) mean_flag else NULL,
-      if ("median" %in% methods) median_flag else NULL,
-      if ("iqr" %in% methods) iqr_flag else NULL,
-      consensus_rule
-    )]
-
-    # Update reason if not already set
-    dt[, reason := data.table::fcase(
-      !is.na(reason), reason,
-      mean_flag == "unstable_scale" & median_flag == "unstable_scale" &
-        iqr_flag == "unstable_scale", "unstable_scale",
-      default = NA_character_
-    )]
-  }
-
-  # Add all missing metadata columns
-  dt[, `:=`(
-    # Map pool_selection to seasonality_mode_used
-    seasonality_mode_used = data.table::fcase(
-      pool_selection == "same_month", "same_month",
-      pool_selection == "neighbors", "neighbors",
-      pool_selection == "residual", "residual",
-      pool_selection == "across_time", "across_time_fallback",
-      default = "none"
-    ),
-
-    fallback_applied = pool_selection != "same_month" & pool_selection != "guard",
-    fallback_reason = data.table::fcase(
-      pool_selection == "neighbors", "same_month_insufficient",
-      pool_selection == "residual", "neighbors_insufficient",
-      pool_selection == "across_time", "residual_insufficient",
-      pool_selection == "insufficient_seasonal_history", "insufficient_seasonal_history",
-      default = NA_character_
-    ),
-
-    # Add strictness metadata (defaulting to balanced for most modes)
-    strictness_label = data.table::fifelse(
-      pool_selection == "across_time" & !is.na(across_time_stats_eligible),
-      "balanced", # Would need to track shifted strictness from across_time_cache
-      "balanced"
-    ),
-    strictness_shifted = pool_selection == "across_time",
-
-    # Add scale statistics columns with NA defaults
-    mean = NA_real_,
-    sd = NA_real_,
-    median = NA_real_,
-    mad = NA_real_,
-    q1 = NA_real_,
-    q3 = NA_real_,
-    iqr = NA_real_,
-
-    # Add multiplier parameters (hardcoded as they're not passed to this function)
-    # These match the default "balanced" strictness values
-    sd_multiplier = 3,
-    mad_constant = 1.4826,
-    mad_multiplier = 9,
-    iqr_multiplier = 2,
-
-    # Ensure residual stats exist
-    residual_sd = data.table::fifelse(
-      pool_selection == "residual",
-      data.table::fifelse(!is.na(residual_sd), residual_sd, NA_real_),
-      NA_real_
-    ),
-    residual_mad = data.table::fifelse(
-      pool_selection == "residual",
-      data.table::fifelse(!is.na(residual_mad), residual_mad, NA_real_),
-      NA_real_
-    ),
-    residual_iqr = data.table::fifelse(
-      pool_selection == "residual",
-      data.table::fifelse(!is.na(residual_iqr), residual_iqr, NA_real_),
-      NA_real_
-    )
-  )]
-
-  # Clean up intermediate columns
-  cols_to_keep <- c(
-    names(prepared_data),
-    "mean_flag", "median_flag", "iqr_flag", "outlier_flag_consensus",
-    "reason",
-    "mean", "sd", "median", "mad", "q1", "q3", "iqr",
-    "mean_lower", "mean_upper", "median_lower", "median_upper",
-    "iqr_lower", "iqr_upper", "n_in_group",
-    "sd_multiplier", "mad_constant", "mad_multiplier", "iqr_multiplier",
-    "residual_sd", "residual_mad", "residual_iqr",
-    "seasonality_mode_used", "seasonal_window_desc",
-    "fallback_applied", "fallback_reason",
-    "strictness_label", "strictness_shifted"
-  )
-
-  # Rename flag columns to match dplyr output
-  if ("mean" %in% methods && "mean_flag" %in% names(dt)) {
-    data.table::setnames(dt, "mean_flag", "outlier_flag_mean")
-  }
-  if ("median" %in% methods && "median_flag" %in% names(dt)) {
-    data.table::setnames(dt, "median_flag", "outlier_flag_median")
-  }
-  if ("iqr" %in% methods && "iqr_flag" %in% names(dt)) {
-    data.table::setnames(dt, "iqr_flag", "outlier_flag_iqr")
-  }
-
-  # Update cols_to_keep with renamed columns
-  cols_to_keep <- gsub("^(mean|median|iqr)_flag$", "outlier_flag_\\1", cols_to_keep)
-
-  dt[, .SD, .SDcols = intersect(names(dt), cols_to_keep)]
 }

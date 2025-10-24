@@ -2,40 +2,34 @@
 % Please edit documentation in R/outlier_detection.R
 \name{detect_outliers}
 \alias{detect_outliers}
-\title{Detect high outliers with guardrails, consensus, and seasonal fallbacks}
+\title{Detect outliers with guardrails and consensus}
 \usage{
 detect_outliers(
   data,
   column,
   record_id = "record_id",
   admin_level = c("adm1", "adm2"),
+  spatial_level = NULL,
   date = "date",
-  time_mode = c("by_month", "across_time", "within_year"),
+  time_mode = c("across_time", "within_year"),
   value_type = c("count", "rate"),
   strictness = c("balanced", "lenient", "strict", "advanced"),
+  methods = c("iqr", "median", "mean", "consensus"),
   sd_multiplier = 3,
   mad_constant = 1.4826,
   mad_multiplier = 9,
   iqr_multiplier = 2,
+  consensus_rule = 2,
+  output_profile = c("standard", "lean", "audit"),
   min_n = 8,
   reporting_rate_col = NULL,
   reporting_rate_min = 0.5,
   key_indicators_hf = NULL,
-  binary_classification = FALSE,
-  methods = c("iqr", "median", "mean", "consensus"),
-  consensus_rule = 2,
-  output_profile = c("standard", "lean", "audit"),
-  seasonal_pool_years = 5,
-  min_years_per_month = 3,
-  verbose = TRUE,
-  cache_stats = TRUE,
-  cache_dir = NULL,
-  spatial_level = NULL,
-  use_datatable = "auto",
   classify_outbreaks = TRUE,
   outbreak_min_run = 2,
   outbreak_prop_tolerance = 0.5,
-  outbreak_max_gap = 1
+  outbreak_max_gap = 1,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -47,13 +41,18 @@ detect_outliers(
 
 \item{admin_level}{Character vector of administrative level columns for
 parallel grouping, ordered from higher to lower resolution.
-Defaults to \code{c("adm1", "adm2")}. Used for efficient data.table grouping.}
+Defaults to \code{c("adm1", "adm2")}.}
+
+\item{spatial_level}{Character string specifying the finest spatial unit
+for analysis (e.g., "hf_uid" for facility-level). When specified,
+\code{admin_levels} defines grouping boundaries while \code{spatial_level} defines
+the unit of analysis. This prevents excessive grouping while maintaining
+spatial granularity. Default is \code{NULL} (uses most granular admin level).}
 
 \item{date}{Date column (Date, POSIXt, or parseable character string).
 Year, month, and yearmon are automatically derived from this column.}
 
-\item{time_mode}{Pooling strategy: \code{"across_time"}, \code{"within_year"}, or
-\code{"by_month"}. \code{"by_month"} activates the seasonal fallback ladder.}
+\item{time_mode}{Pooling strategy: \code{"across_time"} or \code{"within_year"}.}
 
 \item{value_type}{Indicator type: \code{"count"} or \code{"rate"}. Counts floor lower
 bounds at 0.}
@@ -61,6 +60,12 @@ bounds at 0.}
 \item{strictness}{Strictness preset: \code{"lenient"}, \code{"balanced"}, \code{"strict"},
 or \code{"advanced"}. Presets map to method multipliers. If not \code{"advanced"},
 any manual multipliers are \strong{ignored}.}
+
+\item{methods}{Character vector specifying which outlier detection
+methods to use: "iqr" (Interquartile Range), "median" (Median Absolute
+Deviation), "mean" (Mean +/- SD), and/or "consensus".
+Default is \code{c("iqr", "median", "mean", "consensus")}.
+For consensus, at least two other methods must be selected.}
 
 \item{sd_multiplier}{Width (in SD units) for the mean method
 (used only when \code{strictness = "advanced"}).}
@@ -72,6 +77,14 @@ any manual multipliers are \strong{ignored}.}
 
 \item{iqr_multiplier}{Tukey fence multiplier for the IQR method
 (advanced mode).}
+
+\item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3})
+for the consensus flag to call an outlier. Default \code{2}.}
+
+\item{output_profile}{Controls the amount of detail returned:
+\code{"lean"} (minimal columns: id, admin, date, value, consensus flag, reason),
+\code{"standard"} (lean + per-method flags + bounds + seasonality mode),
+\code{"audit"} (all columns for full reproducibility). Default \code{"standard"}.}
 
 \item{min_n}{Minimum observations required in the active comparison bucket
 before flagging is attempted (applies to any seasonal bucket or fallback).}
@@ -91,58 +104,6 @@ facilities from outlier detection. Inactive facility-months are tagged with
 \code{"allout"}, \code{"test"}, or \code{"conf"}. This adjustment prevents false positives
 caused by facilities that start or stop reporting mid-period.}
 
-\item{binary_classification}{Logical. When \code{key_indicators_hf} is provided,
-determines the classification method passed to \code{classify_facility_activity()}.
-If TRUE, uses binary classification ("Active", "Non-Active"). If FALSE
-(default), uses three-level classification ("Active Reporting",
-"Active Facility - Not Reporting", "Inactive Facility").}
-
-\item{methods}{Character vector specifying which outlier detection
-methods to use: "iqr" (Interquartile Range), "median" (Median Absolute
-Deviation), "mean" (Mean +/- SD), and/or "consensus".
-Default is \code{c("iqr", "median", "mean", "consensus")}.
-For consensus, at least two other methods must be selected.}
-
-\item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3})
-for the consensus flag to call an outlier. Default \code{2}.}
-
-\item{output_profile}{Controls the amount of detail returned:
-\code{"lean"} (minimal columns: id, admin, date, value, consensus flag, reason),
-\code{"standard"} (lean + per-method flags + bounds + seasonality mode),
-\code{"audit"} (all columns for full reproducibility). Default \code{"standard"}.}
-
-\item{seasonal_pool_years}{Total window size (in years) for same-month
-pooling when \code{time_mode = "by_month"}. The window is centered on the
-target year, looking both backward and forward in time (e.g., with
-\code{seasonal_pool_years = 5}, compares with +/-2 years for each side).
-Default \code{5}.}
-
-\item{min_years_per_month}{Minimum distinct years required in the same-month
-pool before moving to a fallback. Default \code{3}.}
-
-\item{verbose}{Logical. When \code{TRUE}, prints an informative summary showing
-which methods are being applied, the pooling strategy, strictness settings,
-guardrails, and consensus rule. Default is \code{FALSE}.}
-
-\item{cache_stats}{Logical. Cache intermediate statistical calculations
-to improve performance across seasonal pools. Default is \code{TRUE}.}
-
-\item{cache_dir}{Character string specifying directory for file-based cache.
-If NULL (default), uses project cache directory or tempdir(). Cache persists
-across R sessions for reproducible performance gains.}
-
-\item{spatial_level}{Character string specifying the finest spatial unit
-for analysis (e.g., "hf_uid" for facility-level). When specified,
-\code{admin_levels} defines grouping boundaries while \code{spatial_level} defines
-the unit of analysis. This prevents excessive grouping while maintaining
-spatial granularity. Default is \code{NULL} (uses most granular admin level).}
-
-\item{use_datatable}{Character string controlling data.table usage for
-performance optimization. Options: \code{"auto"} (default - uses data.table for
-datasets > 1000 rows when time_mode = "by_month"), \code{"always"} (force
-data.table), \code{"never"} (force dplyr). data.table provides 5-10x speedup
-for large datasets but requires the data.table package.}
-
 \item{classify_outbreaks}{Logical. When \code{TRUE} (default), applies outbreak
 classification to distinguish between isolated outliers and sustained
 outbreak patterns. Consecutive outliers meeting the outbreak criteria are
@@ -151,7 +112,7 @@ for epidemiological surveillance to identify disease outbreak patterns.
 Set to \code{FALSE} to disable outbreak classification.}
 
 \item{outbreak_min_run}{Integer. Minimum number of consecutive outliers
-required to classify as an outbreak (default \code{2}). Must be \u2265 2.}
+required to classify as an outbreak (default \code{2}). Must be >= 2.}
 
 \item{outbreak_prop_tolerance}{Numeric. Proportional tolerance for outbreak
 consistency (default \code{0.9}). Values within this tolerance of the run
@@ -163,23 +124,27 @@ between outliers that can still be considered part of the same outbreak
 "outlier-normal-outlier-outlier" would be classified as one outbreak
 of length 3, rather than separate incidents. Set to \code{0} for strict
 consecutive-only outbreaks. Useful for real-world data with reporting gaps.}
+
+\item{verbose}{Logical. When \code{TRUE}, prints an informative summary showing
+which methods are being applied, the pooling strategy, strictness settings,
+guardrails, and consensus rule. Default is \code{FALSE}.}
 }
 \value{
 Tibble with outlier classifications and metadata. Columns include:
 identifiers (\code{record_id}, admin levels, \code{yearmon}, \code{year}, derived
 \code{month}), \code{column_name}, \code{value}, \code{value_type}, scale stats (\code{mean},
-\code{sd}, \code{median}, \code{mad}, \code{q1}, \code{q3}, \code{iqr}), method bounds, residual stats
-(if residual fallback), \code{n_in_group}, guardrail \code{reason}, method flags
-(optional), \code{outlier_flag_consensus}, seasonality descriptors, strictness
-multipliers, fallback information, and (if activeness filtering was
-applied) \code{activeness_applied} and \code{key_indicators_used}.
+\code{sd}, \code{median}, \code{mad}, \code{q1}, \code{q3}, \code{iqr}), method bounds, \code{n_in_group},
+guardrail \code{reason}, method flags (optional), \code{outlier_flag_consensus},
+strictness multipliers, and (if activeness filtering was applied)
+\code{activeness_applied} and \code{key_indicators_used}.
 
 \strong{Outlier flag categories are simplified to three intuitive groups:}
 \itemize{
 \item \code{"normal"}: Values within expected statistical bounds
 \item \code{"outlier"}: Values exceeding thresholds (potential anomalies/outbreaks)
-\item \code{"insufficient_data"}: Various data quality issues preventing determination
-(consolidates insufficient_n, insufficient_evidence, unstable_scale, etc.)
+\item \code{"insufficient_data"}: Various data quality issues preventing
+determination (consolidates insufficient_n, insufficient_evidence,
+unstable_scale, etc.)
 }
 }
 \description{
@@ -187,13 +152,11 @@ applied) \code{activeness_applied} and \code{key_indicators_used}.
 time using three methods (mean + SD, median + MAD, Tukey upper fence) to
 identify unusually HIGH values only (potential outbreaks or data anomalies).
 Low values are NOT flagged as outliers. It enforces reporting and sample-size
-guardrails, supports strictness presets, and when requested applies a
-seasonality ladder (same-month -> neighbours -> residual -> across-time) to
-select stable comparison pools. Optional outbreak classification distinguishes
-between isolated outliers and sustained outbreak patterns using gap-aware
-clustering that can bridge short interruptions in the outbreak signal.
-It returns per-method flags (optional), a consensus classification,
-scale statistics, and metadata recording any fallback used.
+guardrails, supports strictness presets. Optional outbreak classification
+distinguishes between isolated outliers and sustained outbreak patterns using
+gap-aware clustering that can bridge short interruptions in the outbreak
+signal. It returns per-method flags (optional), a consensus classification,
+scale statistics, and metadata.
 }
 \details{
 \strong{Workflow}
@@ -209,16 +172,11 @@ honours manual multipliers. On across-time fallback the strictness shifts
 one step toward lenient.
 \item Guardrails: rows failing \code{reporting_rate_min} or \code{min_n} bypass flagging
 and record \code{reason} (\code{low_reporting}, \code{insufficient_n},
-\code{insufficient_seasonal_history}).
-\item Seasonality (if \code{time_mode = "by_month"}): ladder applied in order:
-same-month (+/-\code{seasonal_pool_years/2} years, excluding target year),
-neighbours (months m-1, m, m+1 with weights 1:2:1 within the same
-+/- years window), residual (remove month fixed effects), across-time
-(with strictness shift), then exclusion if still inadequate. Each row
-records \code{seasonality_mode_used}, window text, and any fallback reason.
+\code{insufficient_data}).
 \item Flagging: each method checks if values exceed the UPPER threshold only
-(e.g., mean + multiplier\u00d7SD). Low values are never flagged. Methods are
-suppressed when scales are unstable (\code{sd}, \code{mad}, or \code{iqr} equals zero).
+(e.g., mean + multiplier x SD). Low values are never flagged. Methods
+are suppressed when scales are unstable (\code{sd}, \code{mad}, or \code{iqr}
+equals zero).
 \item Consensus: final \code{outlier_flag_consensus} requires at least
 \code{consensus_rule} methods to agree over available (non-suppressed) methods.
 }
@@ -239,26 +197,21 @@ variable reporting completeness or frequent facility additions.
 
 \strong{Presets} (for high outliers only)
 \itemize{
-\item lenient: values > mean + 4.0\u00d7SD, median + 12\u00d7MAD, or Q3 + 3.0\u00d7IQR
-\item balanced: values > mean + 3.0\u00d7SD, median + 9\u00d7MAD, or Q3 + 2.0\u00d7IQR
-\item strict: values > mean + 2.5\u00d7SD, median + 6\u00d7MAD, or Q3 + 1.5\u00d7IQR
+\item lenient: values > mean + 4.0 x SD, median + 12 x MAD,
+or Q3 + 3.0 x IQR
+\item balanced: values > mean + 3.0 x SD, median + 9 x MAD,
+or Q3 + 2.0 x IQR
+\item strict: values > mean + 2.5 x SD, median + 6 x MAD,
+or Q3 + 1.5 x IQR
 \item advanced: use user-supplied multipliers
 }
 
 Note: Only values ABOVE the upper thresholds are flagged. Low values are
 always classified as "normal" regardless of how far below the mean/median.
 
-\strong{Seasonality ladder thresholds}
-\itemize{
-\item same-month requires \code{min_years_per_month} and \code{min_n} within the
-bidirectional \code{seasonal_pool_years} window (centered on target year);
-otherwise fall back as described above.
-}
-
 The returned tibble always contains identifiers, scale statistics, bounds,
-strictness and seasonality metadata, and the guardrail reason. When
-\code{output_profile = "standard"} or \code{"audit"}, method-specific flags are
-included alongside the consensus.
+strictness metadata, and the guardrail reason. When \code{output_profile = "standard"} or \code{"audit"}, method-specific flags are included alongside
+the consensus.
 }
 \examples{
 \dontrun{
@@ -275,16 +228,13 @@ detect_outliers(
   time_mode = "across_time"
 )
 
-# 2) Seasonality with fallbacks
-#    (same-month -> neighbours -> residual -> across-time)
+# 2) Within-year comparison
 detect_outliers(
   data = malaria_data,
   column = "confirmed_cases",
   date = "date",
   admin_levels = c("adm1"),
-  time_mode = "by_month",
-  seasonal_pool_years = 5,
-  min_years_per_month = 3,
+  time_mode = "within_year",
   consensus_rule = 2,
   output_profile = "audit"
 )
@@ -309,7 +259,7 @@ detect_outliers(
   column = "conf",
   date = "date",
   admin_levels = c("adm1", "adm2"),
-  time_mode = "by_month",
+  time_mode = "across_time",
   key_indicators_hf = c("allout", "test", "conf")
 )
 
@@ -319,9 +269,8 @@ detect_outliers(
   column = "conf",
   date = "date",
   admin_levels = c("adm1", "adm2"),
-  time_mode = "by_month",
-  key_indicators_hf = c("allout", "test", "conf"),
-  binary_classification = TRUE
+  time_mode = "across_time",
+  key_indicators_hf = c("allout", "test", "conf")
 )
 }
 }
