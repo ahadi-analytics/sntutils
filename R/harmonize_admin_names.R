@@ -1010,7 +1010,7 @@ apply_case_mapping <- function(df, case_mapping, levels) {
           by = stats::setNames("uppercase", level)
         ) |>
         dplyr::mutate(
-          !!level := dplyr::coalesce(original, .data[[level]])
+          !!rlang::sym(level) := dplyr::coalesce(original, .data[[level]])
         ) |>
         dplyr::select(-original)
     }
@@ -1262,7 +1262,6 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
 #' )
 #' }
 #'
-#' @importFrom rlang :=
 #' @export
 prep_geonames <- function(
   target_df,
@@ -1611,8 +1610,8 @@ prep_geonames <- function(
           by = stats::setNames("name_to_match", level0)
         ) |>
         dplyr::mutate(
-          !!level0 := stringr::str_replace_all(!!rlang::sym(level0), "\n", ""),
-          !!level0 := dplyr::coalesce(level0_prepped, .data[[level0]])
+          !!rlang::sym(level0) := stringr::str_replace_all(!!rlang::sym(level0), "\n", ""),
+          !!rlang::sym(level0) := dplyr::coalesce(level0_prepped, .data[[level0]])
         )
     }
 
@@ -1628,8 +1627,8 @@ prep_geonames <- function(
           )
         ) |>
         dplyr::mutate(
-          !!level1 := stringr::str_replace_all(!!rlang::sym(level1), "\n", ""),
-          !!level1 := dplyr::coalesce(level1_prepped, .data[[level1]])
+          !!rlang::sym(level1) := stringr::str_replace_all(!!rlang::sym(level1), "\n", ""),
+          !!rlang::sym(level1) := dplyr::coalesce(level1_prepped, .data[[level1]])
         )
     }
 
@@ -1650,8 +1649,8 @@ prep_geonames <- function(
           )
         ) |>
         dplyr::mutate(
-          !!level2 := stringr::str_replace_all(!!rlang::sym(level2), "\n", ""),
-          !!level2 := dplyr::coalesce(level2_prepped, .data[[level2]])
+          !!rlang::sym(level2) := stringr::str_replace_all(!!rlang::sym(level2), "\n", ""),
+          !!rlang::sym(level2) := dplyr::coalesce(level2_prepped, .data[[level2]])
         )
     }
 
@@ -1678,8 +1677,8 @@ prep_geonames <- function(
           )
         ) |>
         dplyr::mutate(
-          !!level3 := stringr::str_replace_all(!!rlang::sym(level3), "\n", ""),
-          !!level3 := dplyr::coalesce(level3_prepped, .data[[level3]])
+          !!rlang::sym(level3) := stringr::str_replace_all(!!rlang::sym(level3), "\n", ""),
+          !!rlang::sym(level3) := dplyr::coalesce(level3_prepped, .data[[level3]])
         )
     }
 
@@ -1708,8 +1707,8 @@ prep_geonames <- function(
           )
         ) |>
         dplyr::mutate(
-          !!level4 := stringr::str_replace_all(!!rlang::sym(level4), "\n", ""),
-          !!level4 := dplyr::coalesce(level4_prepped, .data[[level4]])
+          !!rlang::sym(level4) := stringr::str_replace_all(!!rlang::sym(level4), "\n", ""),
+          !!rlang::sym(level4) := dplyr::coalesce(level4_prepped, .data[[level4]])
         )
     }
 
@@ -1976,13 +1975,13 @@ prep_geonames <- function(
         dplyr::left_join(
           replacement_df |>
             dplyr::select(
-              !!level := name_to_match,
+              !!rlang::sym(level) := name_to_match,
               replacement
             ),
           by = level
         ) |>
         dplyr::mutate(
-          !!level := ifelse(
+          !!rlang::sym(level) := ifelse(
             is.na(replacement),
             .data[[level]],
             replacement
@@ -2221,7 +2220,7 @@ impute_higher_admin <- function(target_df,
                                 lookup_higher_col) {
   target_df <- target_df |>
     dplyr::mutate(
-      !!target_higher_col := dplyr::recode(
+      !!rlang::sym(target_higher_col) := dplyr::recode(
         .data[[target_lower_col]],
         !!!stats::setNames(
           lookup_df[[lookup_higher_col]],
