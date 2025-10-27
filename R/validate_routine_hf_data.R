@@ -1,14 +1,3 @@
-#' Validate health facility data comprehensively
-#' Global variables for R CMD check
-#'
-#' @name global_vars
-#' @keywords internal
-#' @noRd
-utils::globalVariables(c(
-  "has_activeness_data", "periods_with_data", "total_periods",
-  "activeness_category", "reporting_rate", "has_data"
-))
-
 #'
 #' Orchestrates a suite of validation checks on routine HF data. It standardizes
 #' column resolution, selects indicators, runs missing/duplicate/future/logic/
@@ -48,12 +37,12 @@ utils::globalVariables(c(
 #' @param min_reporting_rate numeric. Minimum reporting rate threshold. Default 0.5.
 #' @param outlier_methods character. Any of c("iqr","median","mean").
 #' @param time_mode character. Time mode for outlier detection: "across_time" or "within_year". Default "across_time".
-#' @param strictness character. Outlier detection strictness: "balanced", "lenient", "strict", "advanced". Default "advanced".
-#' @param sd_multiplier numeric. Standard deviation multiplier for outlier detection. Default 2.
+#' @param strictness character. Outlier detection strictness: "balanced", "lenient", "strict", "advanced". Default "balanced".
+#' @param sd_multiplier numeric. Standard deviation multiplier for outlier detection. Default 3.
 #' @param mad_constant numeric. MAD constant for outlier detection. Default 1.4826.
-#' @param mad_multiplier numeric. MAD multiplier for outlier detection. Default 6.
-#' @param iqr_multiplier numeric. IQR multiplier for outlier detection. Default 1.5.
-#' @param min_n numeric. Minimum sample size for outlier detection. Default 3.
+#' @param mad_multiplier numeric. MAD multiplier for outlier detection. Default 9.
+#' @param iqr_multiplier numeric. IQR multiplier for outlier detection. Default 2.
+#' @param min_n numeric. Minimum sample size for outlier detection. Default 8.
 #' @param consensus_rule numeric. Number of methods that must agree for consensus outlier flag. Default 1.
 #' @param save_results logical. Save outputs. Default FALSE.
 #' @param output_path character|NULL. Required if save_results.
@@ -106,11 +95,11 @@ validate_routine_hf_data <- function(
   outlier_methods = c("iqr", "median", "mean"),
   time_mode = "across_time",
   strictness = "balanced",
-  sd_multiplier = 2,
+  sd_multiplier = 3,
   mad_constant = 1.4826,
-  mad_multiplier = 6,
-  iqr_multiplier = 1.5,
-  min_n = 3,
+  mad_multiplier = 9,
+  iqr_multiplier = 2,
+  min_n = 8,
   consensus_rule = 1,
   save_results = FALSE,
   output_path = NULL,
@@ -973,6 +962,13 @@ validate_routine_hf_data <- function(
             dplyr::if_any(dplyr::all_of(flags), ~ .x == "outlier")
           ) |>
           dplyr::mutate(indicator_source = ind) |>
+          # slim down to essential columns
+          dplyr::select(dplyr::any_of(c(
+            id_col, "record_id", date_col, "date", 
+            "adm0", "adm1", "adm2", "adm3", 
+            "value", "indicator_source",
+            flags
+          ))) |>
           sntutils::auto_parse_types()
 
         if (verbose && base::nrow(keep) > 0) {
