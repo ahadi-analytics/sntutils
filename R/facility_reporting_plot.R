@@ -20,6 +20,9 @@
 #'   or `"positive_only"` (requires >0 value to count as reported).
 #' @param binary_classification Logical. If TRUE, collapses categories into
 #'   "Active" vs "Inactive". Defaults to FALSE.
+#' @param trailing_tolerance Logical. If TRUE, Method 3 keeps a facility
+#'   "Active - Not Reporting" for up to `nonreport_window` months after the last
+#'   report. If FALSE, it becomes Inactive immediately after the last report.
 #'
 #' @return Data frame with original columns plus reporting and activity status.
 #' If `method = "all"`, includes all three activity classification columns.
@@ -42,29 +45,6 @@
 #'   \item `"positive_only"`: Only values strictly >0 count as reported.
 #' }
 #'
-#' @examples
-#' toy_data <- tibble::tibble(
-#'   hf_uid = rep(c("HF1", "HF2"), each = 6),
-#'   date = rep(
-#'     seq(as.Date("2024-01-01"), by = "month", length.out = 6),
-#'     2
-#'   ),
-#'   test = c(NA, 1, 0, 0, NA, 0,  NA, NA, 0, 1, 0, 0),
-#'   pres = c(NA, 0, 1, NA, NA, 0,  0, NA, NA, 0, 1, NA),
-#'   conf = c(NA, 0, NA, 1, 0, NA,  0, 0, NA, NA, 0, 1)
-#' )
-#'
-#' classified <- classify_facility_activity(
-#'   data = toy_data,
-#'   hf_col = "hf_uid",
-#'   key_indicators = c("test", "pres", "conf"),
-#'   method = "all",
-#'   nonreport_window = 2,
-#'   reporting_rule = "any_non_na"
-#' )
-#'
-#' dplyr::count(classified, activity_status_method1)
-#'
 #' @export
 classify_facility_activity <- function(
   data,
@@ -74,72 +54,62 @@ classify_facility_activity <- function(
   method = 1,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
-  binary_classification = FALSE
+  binary_classification = FALSE,
+  trailing_tolerance = FALSE
 ) {
-  # Normalize method parameter to accept both numeric and character
+  # --- validation ---
   if (is.numeric(method)) {
     if (!method %in% 1:3) {
-      cli::cli_abort(c(
-        "!" = "method must be 1, 2, or 3 when numeric",
-        "i" = "You provided: {method}"
-      ))
+      cli::cli_abort("method must be 1, 2, or 3 when numeric")
     }
     method <- paste0("method", method)
   } else if (is.character(method)) {
-    # Accept both "method1" and "1" formats
     if (method %in% c("1", "2", "3")) {
       method <- paste0("method", method)
     } else if (!method %in% c("method1", "method2", "method3", "all")) {
-      cli::cli_abort(c(
-        "!" = "method must be 'method1', 'method2', 'method3', 'all', or numeric 1, 2, 3",
-        "i" = "You provided: {method}"
-      ))
+      cli::cli_abort("method must be 'method1', 'method2', 'method3', 'all'")
     }
   } else {
     cli::cli_abort("method must be numeric (1, 2, 3) or character")
   }
-  reporting_rule <- match.arg(reporting_rule, choices = c("any_non_na", "positive_only"))
 
-  if (!base::is.data.frame(data)) {
+  reporting_rule <- match.arg(
+    reporting_rule,
+    c("any_non_na", "positive_only")
+  )
+
+  if (!is.data.frame(data)) {
     cli::cli_abort("`data` must be a data.frame.")
   }
 
   if (
-    !base::is.numeric(nonreport_window) ||
-    base::length(nonreport_window) != 1L ||
-    base::is.na(nonreport_window) ||
-    nonreport_window < 1
+    !is.numeric(nonreport_window) ||
+      length(nonreport_window) != 1L ||
+      is.na(nonreport_window) ||
+      nonreport_window < 1
   ) {
     cli::cli_abort("`nonreport_window` must be a positive integer.")
   }
-  nonreport_window <- base::as.integer(nonreport_window)
+  nonreport_window <- as.integer(nonreport_window)
 
-  required_cols <- base::c(hf_col, date_col, key_indicators)
-  missing_cols <- base::setdiff(required_cols, base::names(data))
-  if (base::length(missing_cols) > 0L) {
+  required_cols <- c(hf_col, date_col, key_indicators)
+  missing_cols <- setdiff(required_cols, names(data))
+  if (length(missing_cols) > 0L) {
     cli::cli_abort("missing required columns: {missing_cols}")
-  }
-
-  if (base::all(base::is.na(data[[date_col]]))) {
-    cli::cli_abort("`{date_col}` cannot be entirely missing.")
   }
 
   data <- data |>
     dplyr::mutate(
       !!rlang::sym(date_col) := lubridate::floor_date(
-        base::as.Date(.data[[date_col]]),
-        unit = "month"
+        as.Date(.data[[date_col]]),
+        "month"
       )
     )
 
-  if (base::all(base::is.na(data[[date_col]]))) {
-    cli::cli_abort("Unable to derive month floor from `{date_col}`.")
-  }
-
-  facility_ids <- base::unique(data[[hf_col]])
-  date_min <- base::min(data[[date_col]], na.rm = TRUE)
-  date_max <- base::max(data[[date_col]], na.rm = TRUE)
-  month_sequence <- base::seq(date_min, date_max, by = "month")
+  facility_ids <- unique(data[[hf_col]])
+  date_min <- min(data[[date_col]], na.rm = TRUE)
+  date_max <- max(data[[date_col]], na.rm = TRUE)
+  month_sequence <- seq(date_min, date_max, by = "month")
 
   complete_panel <- tidyr::expand_grid(
     .facility = facility_ids,
@@ -150,8 +120,7 @@ classify_facility_activity <- function(
       !!rlang::sym(date_col) := .month
     )
 
-  filtered_source <- data |>
-    dplyr::select(dplyr::all_of(required_cols))
+  filtered_source <- data |> dplyr::select(dplyr::all_of(required_cols))
 
   flagged_panel <- complete_panel |>
     dplyr::left_join(filtered_source, by = c(hf_col, date_col)) |>
@@ -161,7 +130,7 @@ classify_facility_activity <- function(
         ~ if (reporting_rule == "any_non_na") {
           !is.na(.x)
         } else {
-          !is.na(.x) & .x > 0
+          (!is.na(.x) & .x > 0)
         }
       )
     )
@@ -185,22 +154,21 @@ classify_facility_activity <- function(
   flagged_panel <- flagged_panel |>
     dplyr::left_join(first_last, by = hf_col) |>
     dplyr::group_by(.data[[hf_col]]) |>
-    dplyr::mutate(
-      has_ever_reported = dplyr::cumany(reported_any)
-    ) |>
+    dplyr::mutate(has_ever_reported = dplyr::cumany(reported_any)) |>
     dplyr::ungroup()
 
-  # Method 1
+  # --- method 1 ---
   flagged_panel <- flagged_panel |>
     dplyr::mutate(
       activity_status_method1 = dplyr::case_when(
         reported_any ~ "Active Reporting",
-        has_ever_reported ~ "Active Health Facility - Not Reporting",
+        !reported_any & .data[[date_col]] >= first_reporting_date ~
+          "Active Health Facility - Not Reporting",
         TRUE ~ "Inactive Health Facility"
       )
     )
 
-  # Method 2
+  # --- method 2 ---
   flagged_panel <- flagged_panel |>
     dplyr::mutate(
       activity_status_method2 = dplyr::case_when(
@@ -217,122 +185,94 @@ classify_facility_activity <- function(
       )
     )
 
-  # Method 3 (Dynamic)
-flagged_panel <- flagged_panel |>
-  dplyr::arrange(.data[[hf_col]], .data[[date_col]]) |>
-  dplyr::group_by(.data[[hf_col]]) |>
-  dplyr::mutate(
-    activity_status_method3 = {
-      n_obs <- length(reported_any)
-      status <- character(n_obs)
+  # --- method 3 (Dynamic) ---
+  flagged_panel <- flagged_panel |>
+    dplyr::arrange(.data[[hf_col]], .data[[date_col]]) |>
+    dplyr::group_by(.data[[hf_col]]) |>
+    dplyr::mutate(
+      activity_status_method3 = {
+        reports <- .data[["reported_any"]]
+        n_obs <- length(reports)
+        status <- rep("Inactive Health Facility", n_obs)
 
-      # Find all reporting months
-      all_reports <- which(reported_any)
+        if (any(reports)) {
+          report_idx <- which(reports)
+          first_rep <- min(report_idx)
+          last_rep <- max(report_idx)
 
-      for (i in seq_len(n_obs)) {
-        if (reported_any[i]) {
-          # reporting this month - facility is active
-          status[i] <- "Active Reporting"
-        } else {
-          # not reporting this month
-          if (length(all_reports) == 0) {
-            # never reported - inactive
-            status[i] <- "Inactive Health Facility"
-          } else {
-            # Check if this month should be active
-            # A month is active if:
-            # 1. It's within nonreport_window after a report AND
-            # 2. There's no large gap (> nonreport_window) between surrounding reports
-
-            # Find previous and next report
-            prev_reports <- all_reports[all_reports < i]
-            next_reports <- all_reports[all_reports > i]
-
-            is_active <- FALSE
-
-            if (length(prev_reports) > 0) {
-              last_report <- max(prev_reports)
-              months_since_last <- i - last_report
-
-              if (months_since_last <= nonreport_window) {
-                # Within window of last report
-                if (length(next_reports) > 0) {
-                  next_report <- min(next_reports)
-                  gap_between_reports <- next_report - last_report
-
-                  # Only stay active if the gap between reports is reasonable
-                  # If gap > nonreport_window, facility goes inactive in between
-                  if (gap_between_reports > nonreport_window) {
-                    # Large gap - only stay active right after the last report
-                    is_active <- FALSE
-                  } else {
-                    # Small gap - stay active throughout
-                    is_active <- TRUE
-                  }
-                } else {
-                  # No future reports - stay active for nonreport_window after last report
-                  is_active <- TRUE
-                }
-              }
-            }
-
-            if (is_active) {
-              status[i] <- "Active Health Facility - Not Reporting"
-            } else {
+          for (i in seq_len(n_obs)) {
+            if (i < first_rep) {
               status[i] <- "Inactive Health Facility"
+            } else if (i %in% report_idx) {
+              status[i] <- "Active Reporting"
+            } else if (i > last_rep) {
+              if (
+                trailing_tolerance &&
+                  (i - last_rep) <= nonreport_window
+              ) {
+                status[i] <- "Active Health Facility - Not Reporting"
+              } else {
+                status[i] <- "Inactive Health Facility"
+              }
+            } else {
+              prev_rep <- max(report_idx[report_idx < i])
+              next_rep <- min(report_idx[report_idx > i])
+              gap <- next_rep - prev_rep
+
+              if (gap <= nonreport_window) {
+                status[i] <- "Active Health Facility - Not Reporting"
+              } else {
+                status[i] <- "Inactive Health Facility"
+              }
             }
           }
         }
+        status
       }
-      status
-    }
-  ) |>
-  dplyr::ungroup()
+    ) |>
+    dplyr::ungroup()
 
-  # Apply binary classification collapse if requested
+  # --- binary collapse ---
   if (binary_classification) {
     flagged_panel <- flagged_panel |>
       dplyr::mutate(
         dplyr::across(
           dplyr::starts_with("activity_status_"),
           ~ dplyr::case_when(
-            .x %in% c("Active Reporting", "Active Health Facility - Not Reporting") ~
-              "Active",
+            .x %in%
+              c(
+                "Active Reporting",
+                "Active Health Facility - Not Reporting"
+              ) ~ "Active",
             TRUE ~ "Inactive"
           )
         )
       )
   }
 
-  extra_cols <- base::setdiff(
-    base::names(data),
-    base::c(hf_col, date_col, key_indicators)
-  )
-
-  if (base::length(extra_cols) > 0L) {
+  # --- keep extras ---
+  extra_cols <- setdiff(names(data), c(hf_col, date_col, key_indicators))
+  if (length(extra_cols) > 0L) {
     extra_data <- data |>
       dplyr::select(dplyr::all_of(c(hf_col, date_col, extra_cols))) |>
       dplyr::distinct()
-
     flagged_panel <- flagged_panel |>
       dplyr::left_join(extra_data, by = c(hf_col, date_col))
   }
 
   result <- flagged_panel
-
-  # Restrict output
   if (method != "all") {
     keep_col <- paste0("activity_status_", method)
-    # Remove other activity_status columns but keep everything else
-    other_activity_cols <- names(result)[grepl("^activity_status_", names(result)) & names(result) != keep_col]
+    other_cols <- names(result)[
+      grepl("^activity_status_", names(result)) & names(result) != keep_col
+    ]
     result <- result |>
-      dplyr::select(-dplyr::all_of(other_activity_cols)) |>
+      dplyr::select(-dplyr::all_of(other_cols)) |>
       dplyr::rename(activity_status = dplyr::all_of(keep_col))
   }
 
   result
 }
-
 
 #' Plot monthly reporting activity by health facility
 #'
@@ -1110,9 +1050,18 @@ compare_methods_plot <- function(
 ) {
   # translations
   titles <- list(
-    en = "Comparison of Methods for Classifying Health Facility Reporting Activity",
-    fr = "Comparaison des m\u00e9thodes de classification de l'activit\u00e9 de rapportage des FOSA",
-    pt = "Compara\u00e7\u00e3o dos m\u00e9todos de classifica\u00e7\u00e3o da atividade de reporte das unidades de sa\u00fade"
+    en = paste0(
+      "Comparison of Methods for Classifying Health ",
+      "Facility Reporting Activity"
+    ),
+    fr = paste0(
+      "Comparaison des m\u00e9thodes de classification ",
+      "de l'activit\u00e9 de rapportage des FOSA"
+    ),
+    pt = paste0(
+      "Compara\u00e7\u00e3o dos m\u00e9todos de classifica\u00e7\u00e3o da ",
+      "atividade de reporte das unidades de sa\u00fade"
+    )
   )
 
   word_method <- list(
@@ -1193,14 +1142,15 @@ compare_methods_plot <- function(
   # explanatory text translations
   caption_intro <- switch(
     language,
-    en =
-      "Proportion of times each method produced the lowest reporting rate:\n",
+    en = "Proportion of times each method produced the lowest reporting rate:\n",
     fr = paste0(
       "Proportion de fois o\u00f9 chaque m\u00e9thode a",
       " donn\u00e9 le taux de rapportage le plus bas:\n"
     ),
-    pt =
-      "Propor\u00e7\u00e3o de vezes que cada m\u00e9todo apresentou a menor taxa de reporte:\n"
+    pt = paste0(
+      "Propor\u00e7\u00e3o de vezes que cada m\u00e9todo apresentou ",
+      "a menor taxa de reporte:\n"
+    )
   )
 
   caption_text <- paste(
@@ -1227,7 +1177,7 @@ compare_methods_plot <- function(
         panel.border = ggplot2::element_rect(
           color = "black",
           fill = NA,
-          size = 1
+          linewidth = 1
         )
       )
   }
@@ -1255,8 +1205,8 @@ compare_methods_plot <- function(
   # combine with caption
   final_plot <- patchwork::wrap_plots(p1, p2, p3) +
     patchwork::plot_annotation(
-      title = titles[[language]],
-      caption = caption_text
+      title = titles[[language]]
+      # caption = caption_text
     ) +
     ggplot2::theme(
       plot.caption = ggplot2::element_text(

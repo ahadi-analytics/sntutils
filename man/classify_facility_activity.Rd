@@ -12,7 +12,8 @@ classify_facility_activity(
   method = 1,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
-  binary_classification = FALSE
+  binary_classification = FALSE,
+  trailing_tolerance = FALSE
 )
 }
 \arguments{
@@ -39,6 +40,10 @@ or \code{"positive_only"} (requires >0 value to count as reported).}
 
 \item{binary_classification}{Logical. If TRUE, collapses categories into
 "Active" vs "Inactive". Defaults to FALSE.}
+
+\item{trailing_tolerance}{Logical. If TRUE, Method 3 keeps a facility
+"Active - Not Reporting" for up to \code{nonreport_window} months after the last
+report. If FALSE, it becomes Inactive immediately after the last report.}
 }
 \value{
 Data frame with original columns plus reporting and activity status.
@@ -66,28 +71,4 @@ The \code{reporting_rule} parameter controls how reporting is flagged:
 \item \code{"any_non_na"}: Any non-missing value counts as reported (including 0).
 \item \code{"positive_only"}: Only values strictly >0 count as reported.
 }
-}
-\examples{
-toy_data <- tibble::tibble(
-  hf_uid = rep(c("HF1", "HF2"), each = 6),
-  date = rep(
-    seq(as.Date("2024-01-01"), by = "month", length.out = 6),
-    2
-  ),
-  test = c(NA, 1, 0, 0, NA, 0,  NA, NA, 0, 1, 0, 0),
-  pres = c(NA, 0, 1, NA, NA, 0,  0, NA, NA, 0, 1, NA),
-  conf = c(NA, 0, NA, 1, 0, NA,  0, 0, NA, NA, 0, 1)
-)
-
-classified <- classify_facility_activity(
-  data = toy_data,
-  hf_col = "hf_uid",
-  key_indicators = c("test", "pres", "conf"),
-  method = "all",
-  nonreport_window = 2,
-  reporting_rule = "any_non_na"
-)
-
-dplyr::count(classified, activity_status_method1)
-
 }
