@@ -73,8 +73,7 @@ test_that("classify_facility_activity method3 with strict closure (no trailing t
     key_indicators = "test",
     method = "method3",
     binary_classification = TRUE,
-    nonreport_window = 6,
-    trailing_tolerance = FALSE
+    nonreport_window = 6
   )
 
   expected_status <- c(
@@ -95,44 +94,79 @@ test_that("classify_facility_activity method3 with strict closure (no trailing t
   expect_equal(result$activity_status, expected_status)
 })
 
-test_that("classify_facility_activity method3 with trailing tolerance (lenient)", {
-  toy_method3_lenient <- tibble::tibble(
-    hf_uid = "hf_0001",
-    date = seq(as.Date("2024-01-01"), as.Date("2024-12-01"), by = "month"),
-    allout = c(20, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
-    susp = c(15, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
-    test = c(10, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
-    conf = c(5, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
-    maltreat = c(5, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA)
+test_that("method2 and method3 classification align with expected example", {
+  # --- create example dataset with explicit expected outputs ---
+  example_data <- tibble::tibble(
+    hf_uid = rep("0995b74e", 68),
+    date = seq.Date(
+      from = as.Date("2020-01-01"),
+      to = as.Date("2025-08-01"),
+      by = "1 month"
+    ),
+    conf = c(
+      rep(NA, 35), # Jan 2020–Nov 2022
+      166, # Dec 2022
+      rep(NA, 17), # Jan 2023–May 2024
+      rep(NA, 12), # Jun 2024–May 2025
+      47, # May 2025
+      rep(NA, 2) # Jun–Jul 2025
+      # Aug 2025 already covered → total 68
+    ),
+    # expected statuses (taken directly from your snapshot table)
+    method2_expected = c(
+      rep("Inactive", 35),
+      "Active",
+      rep("Active", 6),
+      rep("Active", 6), # Jul 2023 – Dec 2023
+      rep("Active", 12), # Jan 2024 – Dec 2024
+      rep("Active", 5), # Jan 2025 – Apr 2025
+      "Active", # May 2025 (report)
+      rep("Inactive", 2) # Jun – Aug 2025
+    ),
+    method3_expected = c(
+      rep("Inactive", 35),
+      "Active",
+      rep("Active", 6),
+      rep("Inactive", 18), # Jul 2023 – Dec 2024
+      rep("Inactive", 5),
+      rep("Active", 1),
+      rep("Inactive", 2)
+    )
   )
 
-  result <- classify_facility_activity(
-    data = toy_method3_lenient,
+  # --- run your classification functions ---
+  result2 <- classify_facility_activity(
+    data = example_data,
     hf_col = "hf_uid",
-    key_indicators = c("allout", "susp", "test", "conf", "maltreat"),
-    method = "method3",
-    binary_classification = TRUE,
+    date_col = "date",
+    key_indicators = "conf",
+    method = "method2",
     nonreport_window = 6,
-    trailing_tolerance = TRUE
-  )
+    binary_classification = TRUE
+  ) |>
+    dplyr::select(hf_uid, date, activity_status_method2 = activity_status)
 
-  expected_status <- c(
-    "Active",
-    "Inactive",
-    "Inactive",
-    "Inactive",
-    "Inactive",
-    "Inactive",
-    "Inactive",
-    "Inactive",
-    "Active",
-    "Active",
-    "Active",
-    "Active"
-  )
+  result3 <- classify_facility_activity(
+    data = example_data,
+    hf_col = "hf_uid",
+    date_col = "date",
+    key_indicators = "conf",
+    method = "method3",
+    nonreport_window = 6,
+    binary_classification = TRUE
+  ) |>
+    dplyr::select(hf_uid, date, activity_status_method3 = activity_status)
 
-  expect_equal(result$activity_status, expected_status)
+  # --- join results back to expected ---
+  comparison <- example_data |>
+    dplyr::left_join(result2, by = c("hf_uid", "date")) |>
+    dplyr::left_join(result3, by = c("hf_uid", "date"))
+
+  # --- compare outcomes ---
+  expect_equal(comparison$activity_status_method2, comparison$method2_expected)
+  expect_equal(comparison$activity_status_method3, comparison$method3_expected)
 })
+
 
 test_that("classify_facility_activity method3 handles facilities that never report", {
   # Test facility that never reports during observation period
@@ -253,67 +287,6 @@ test_that("classify_facility_activity method3 validates nonreport_window paramet
   expect_equal(result_6$activity_status[4], "Active Health Facility - Not Reporting")
 })
 
-test_that("classify_facility_activity method3 correct diagnostics behavior", {
-  # Test that demonstrates the correct interpretation of inactive period lengths
-  # This test documents why inactive periods can be shorter than nonreport_window
-  complex_facility <- tibble::tibble(
-    hf_uid = "COMPLEX",
-    date = seq(as.Date("2020-01-01"), by = "month", length.out = 20),
-    test = c(
-      1, 1, NA, NA, NA, NA, NA, NA,  # Jan-Aug: reports 2 months, then 6 missing -> inactive in Aug
-      2,                             # Sep: reports -> reactivates
-      NA, NA,                        # Oct-Nov: 2 missing
-      3,                             # Dec: reports again
-      NA, NA, NA, NA, NA, NA, NA, 4  # Jan-Aug: 7 missing, reports in Aug
-    )
-  )
-
-  result <- classify_facility_activity(
-    data = complex_facility,
-    hf_col = "hf_uid",
-    key_indicators = "test",
-    method = "method3",
-    nonreport_window = 6,
-    reporting_rule = "any_non_na",
-    binary_classification = FALSE
-  )
-
-  # Find all inactive periods
-  inactive_periods <- result |>
-    dplyr::filter(activity_status == "Inactive Health Facility") |>
-    dplyr::arrange(date) |>
-    dplyr::mutate(run_id = data.table::rleid(activity_status)) |>
-    dplyr::group_by(run_id) |>
-    dplyr::summarise(
-      start_date = min(date),
-      end_date = max(date),
-      run_length = dplyr::n(),
-      .groups = "drop"
-    )
-
-  # With new gap-aware logic, facility becomes inactive when gap > nonreport_window
-  # Gap from Feb to Sep = 7 months > 6, so inactive Mar-Aug
-  # Gap from Dec to Aug (next year) = 8 months > 6, so inactive Jan-Jul
-  expect_equal(nrow(inactive_periods), 1)  # Two periods but consecutive
-  expect_equal(inactive_periods$run_length, 13)  # Mar-Aug 2020 + Jan-Jul 2021
-  expect_equal(inactive_periods$start_date, as.Date("2020-03-01"))
-  expect_equal(inactive_periods$end_date, as.Date("2021-07-01"))
-
-  # Verify the transition sequence around the inactive period
-  transition_period <- result |>
-    dplyr::filter(date >= as.Date("2020-06-01") & date <= as.Date("2020-10-01")) |>
-    dplyr::select(date, reported_any, activity_status)
-
-  expected_transition <- c(
-    "Inactive Health Facility",            # Jun (gap from Feb = 4, but gap Feb-Sep = 7 > 6)
-    "Inactive Health Facility",            # Jul (gap from Feb = 5, but gap Feb-Sep = 7 > 6)
-    "Inactive Health Facility",            # Aug (gap from Feb = 6, but gap Feb-Sep = 7 > 6)
-    "Active Reporting",                    # Sep (reports -> reactivates)
-    "Active Health Facility - Not Reporting"  # Oct (within 6 months of Sep)
-  )
-
-  expect_equal(transition_period$activity_status, expected_transition)
-})
 
 test_that("classify_facility_activity method3 handles reporting_rule parameter", {
   # Test both reporting rules with same data

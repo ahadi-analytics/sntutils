@@ -168,57 +168,50 @@ classify_facility_activity <- function(
       )
     )
 
-  # --- method 2 ---
-  flagged_panel <- flagged_panel |>
-    dplyr::mutate(
-      activity_status_method2 = dplyr::case_when(
-        is.na(first_reporting_date) ~ "Inactive Health Facility",
-        .data[[date_col]] >= first_reporting_date &
-          .data[[date_col]] <= last_reporting_date &
-          reported_any ~
-          "Active Reporting",
-        .data[[date_col]] >= first_reporting_date &
-          .data[[date_col]] <= last_reporting_date &
-          !reported_any ~
-          "Active Health Facility - Not Reporting",
-        TRUE ~ "Inactive Health Facility"
-      )
+# --- method 2 (inclusive window) ---
+flagged_panel <- flagged_panel |>
+  dplyr::mutate(
+    activity_status_method2 = dplyr::case_when(
+      is.na(first_reporting_date) ~ "Inactive Health Facility",
+      .data[[date_col]] >= first_reporting_date &
+        .data[[date_col]] <= last_reporting_date &
+        reported_any ~ "Active Reporting",
+      .data[[date_col]] >= first_reporting_date &
+        .data[[date_col]] <= last_reporting_date &
+        !reported_any ~ "Active Health Facility - Not Reporting",
+      TRUE ~ "Inactive Health Facility"
     )
+  )
 
-  # --- method 3 (Dynamic) ---
-  flagged_panel <- flagged_panel |>
-    dplyr::arrange(.data[[hf_col]], .data[[date_col]]) |>
-    dplyr::group_by(.data[[hf_col]]) |>
-    dplyr::mutate(
-      activity_status_method3 = {
-        reports <- .data[["reported_any"]]
-        n_obs <- length(reports)
-        status <- rep("Inactive Health Facility", n_obs)
+# --- method 3 (Dynamic) ---
+flagged_panel <- flagged_panel |>
+  dplyr::arrange(.data[[hf_col]], .data[[date_col]]) |>
+  dplyr::group_by(.data[[hf_col]]) |>
+  dplyr::mutate(
+    activity_status_method3 = {
+      reports <- which(reported_any)
+      n_obs <- length(reported_any)
+      status <- rep("Inactive Health Facility", n_obs)
 
-        if (any(reports)) {
-          report_idx <- which(reports)
-          first_rep <- min(report_idx)
-          last_rep <- max(report_idx)
+      if (length(reports) > 0) {
+        last_report_index <- max(reports)
 
-          for (i in seq_len(n_obs)) {
-            if (i < first_rep) {
-              status[i] <- "Inactive Health Facility"
-            } else if (i %in% report_idx) {
-              status[i] <- "Active Reporting"
-            } else if (i > last_rep) {
-              if (
-                trailing_tolerance &&
-                  (i - last_rep) <= nonreport_window
-              ) {
+        for (i in seq_len(n_obs)) {
+          if (i %in% reports) {
+            status[i] <- "Active Reporting"
+          } else if (any(reports < i)) {
+            last_rep <- max(reports[reports < i])
+            gap <- i - last_rep
+
+            if (i > last_report_index) {
+              # after final report: allow tolerance window
+              if (trailing_tolerance && gap <= nonreport_window) {
                 status[i] <- "Active Health Facility - Not Reporting"
               } else {
                 status[i] <- "Inactive Health Facility"
               }
             } else {
-              prev_rep <- max(report_idx[report_idx < i])
-              next_rep <- min(report_idx[report_idx > i])
-              gap <- next_rep - prev_rep
-
+              # within the series before final report
               if (gap <= nonreport_window) {
                 status[i] <- "Active Health Facility - Not Reporting"
               } else {
@@ -227,10 +220,11 @@ classify_facility_activity <- function(
             }
           }
         }
-        status
       }
-    ) |>
-    dplyr::ungroup()
+      status
+    }
+  ) |>
+  dplyr::ungroup()
 
   # --- binary collapse ---
   if (binary_classification) {
@@ -251,14 +245,20 @@ classify_facility_activity <- function(
   }
 
   # --- keep extras ---
-  extra_cols <- setdiff(names(data), c(hf_col, date_col, key_indicators))
-  if (length(extra_cols) > 0L) {
-    extra_data <- data |>
-      dplyr::select(dplyr::all_of(c(hf_col, date_col, extra_cols))) |>
-      dplyr::distinct()
-    flagged_panel <- flagged_panel |>
-      dplyr::left_join(extra_data, by = c(hf_col, date_col))
-  }
+extra_cols <- setdiff(names(data), c(hf_col, date_col, key_indicators))
+
+if (length(extra_cols) > 0L) {
+  extra_data <- data |>
+    dplyr::select(dplyr::all_of(c(hf_col, date_col, extra_cols))) |>
+    dplyr::distinct(
+      !!rlang::sym(hf_col),
+      !!rlang::sym(date_col),
+      .keep_all = TRUE
+    )
+
+  flagged_panel <- flagged_panel |>
+    dplyr::left_join(extra_data, by = c(hf_col, date_col))
+}
 
   result <- flagged_panel
   if (method != "all") {
