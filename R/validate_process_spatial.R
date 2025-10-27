@@ -725,9 +725,9 @@ validate_process_spatial <- function(
     )
 
   # Create admin-level GUIDs for each available admin level
-  available_admin_levels <- names(admin_mapping)
+  available_admin_level <- names(admin_mapping)
 
-  for (admin_level in available_admin_levels) {
+  for (admin_level in available_admin_level) {
     guid_col <- paste0(admin_level, "_guid")
 
     if (admin_level %in% names(shp)) {
