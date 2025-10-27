@@ -1008,8 +1008,9 @@ facility_reporting_plot <- function(
 
 #' Compare facility activity classification methods (multilingual)
 #'
-#' Runs three classification methods and produces pairwise comparison plots.
-#' Optionally saves the output to file with auto-language filenames.
+#' Runs three classification methods and produces pairwise comparison plots,
+#' plus a time-series plot of active facilities over time. Optionally saves
+#' the output to file with auto-language filenames.
 #'
 #' @param data Facility reporting dataset.
 #' @param hf_col Health facility ID column.
@@ -1019,10 +1020,12 @@ facility_reporting_plot <- function(
 #'   to aggregate by (e.g., "adm2" or c("adm1", "adm2")).
 #'   Default "adm1" and "adm2".
 #' @param nonreport_window Window size for non-reporting definition.
+#' @param trailing_tolerance Logical. If TRUE, Method 3 applies lenient
+#'   trailing-gap tolerance. If FALSE, strict closure. Default FALSE.
 #' @param language Output language: "en" (English), "fr" (French), "pt"
 #'        (Portuguese).
 #' @param plot_path Directory where plot should be saved (NULL = don't save).
-#' @param width Plot width (default 12).
+#' @param width Plot width (default 15).
 #' @param height Plot height (default 6).
 #' @param units Units for width/height ("in", "cm", "mm"). Default "in".
 #' @param dpi Resolution in dots per inch. Default 300.
@@ -1030,7 +1033,7 @@ facility_reporting_plot <- function(
 #' @param compress_image Logical. Compress PNG using `compress_png()` after
 #'   saving. Defaults to FALSE.
 #'
-#' @return A patchwork object with three scatter plots.
+#' @return A patchwork object with scatterplots and a time-series plot.
 #' @export
 compare_methods_plot <- function(
   data,
@@ -1039,13 +1042,14 @@ compare_methods_plot <- function(
   key_indicators,
   agg_level = c("adm1", "adm2"),
   nonreport_window = 6,
+  trailing_tolerance = FALSE,
   language = "en",
   plot_path = NULL,
-  width = 15,
-  height = 6,
+  width = 16,
+  height = 12,
   units = "in",
   dpi = 300,
-  scale = 1,
+  scale = .85,
   compress_image = FALSE
 ) {
   # translations
@@ -1064,18 +1068,24 @@ compare_methods_plot <- function(
     )
   )
 
-  word_method <- list(
-    en = "Method",
-    fr = "M\u00e9thode",
-    pt = "M\u00e9todo"
+  word_method <- list(en = "Method", fr = "Méthode", pt = "Método")
+
+  xlabs <- list(en = " reporting", fr = " en rapportage", pt = " em reporte")
+  ylabs <- xlabs
+
+  y_active_facilities <- switch(
+    language,
+    en = "Active facilities",
+    fr = "FOSA actives",
+    pt = "Unidades de saúde ativas"
   )
 
-  xlabs <- list(
-    en = " reporting",
-    fr = " en rapportage",
-    pt = " em reporte"
+  x_time_axis <- switch(
+    language,
+    en = "Month (over time)",
+    fr = "Mois (au fil du temps)",
+    pt = "Mês (ao longo do tempo)"
   )
-  ylabs <- xlabs
 
   # helper to run one method
   run_method <- function(m) {
@@ -1086,7 +1096,8 @@ compare_methods_plot <- function(
       date_col = date_col,
       key_indicators = key_indicators,
       binary_classification = TRUE,
-      nonreport_window = nonreport_window
+      nonreport_window = nonreport_window,
+      trailing_tolerance = ifelse(m == "method3", trailing_tolerance, FALSE)
     ) |>
       dplyr::select(-dplyr::all_of(agg_level)) |>
       dplyr::left_join(
@@ -1108,56 +1119,15 @@ compare_methods_plot <- function(
       dplyr::mutate(method = paste(word_method[[language]], m))
   }
 
-  # run three methods
+  # run methods 1–3 (method3 respects trailing_tolerance)
   meths <- purrr::map_dfr(1:3, run_method)
 
-  # pivot wide
+  # pivot wide for scatterplots
   meths_wide <- meths |>
-    dplyr::select(
-      dplyr::all_of(c(agg_level, date_col)),
-      method,
-      reprate
-    ) |>
+    dplyr::select(dplyr::all_of(c(agg_level, date_col)), method, reprate) |>
     tidyr::pivot_wider(names_from = method, values_from = reprate)
 
-  # ---- strictness summary for caption ----
-  method_names <- paste(word_method[[language]], 1:3)
-
-  strictness_summary <- meths_wide |>
-    dplyr::rowwise() |>
-    dplyr::mutate(
-      strictest_method = method_names[
-        which.min(
-          dplyr::c_across(dplyr::all_of(method_names))
-        )
-      ]
-    ) |>
-    dplyr::ungroup() |>
-    dplyr::count(.data$strictest_method) |>
-    dplyr::mutate(
-      pct = round(100 * .data$n / sum(.data$n), 1),
-      label = paste0(.data$strictest_method, ": ", .data$pct, "%")
-    )
-
-  # explanatory text translations
-  caption_intro <- switch(
-    language,
-    en = "Proportion of times each method produced the lowest reporting rate:\n",
-    fr = paste0(
-      "Proportion de fois o\u00f9 chaque m\u00e9thode a",
-      " donn\u00e9 le taux de rapportage le plus bas:\n"
-    ),
-    pt = paste0(
-      "Propor\u00e7\u00e3o de vezes que cada m\u00e9todo apresentou ",
-      "a menor taxa de reporte:\n"
-    )
-  )
-
-  caption_text <- paste(
-    caption_intro,
-    paste(strictness_summary$label, collapse = " | ")
-  )
-  # plotting helper
+  # ---- scatterplots ----
   make_plot <- function(xcol, ycol, title_text, color_choice) {
     ggplot2::ggplot(
       meths_wide,
@@ -1173,7 +1143,7 @@ compare_methods_plot <- function(
         y = paste0(ycol, ylabs[[language]], "\n")
       ) +
       ggplot2::theme(
-        plot.margin = grid::unit(c(1, 1, 1, 1), "cm"),
+        plot.margin = grid::unit(c(.5, .5, .5, .5), "cm"),
         panel.border = ggplot2::element_rect(
           color = "black",
           fill = NA,
@@ -1182,7 +1152,6 @@ compare_methods_plot <- function(
       )
   }
 
-  # build three plots
   p1 <- make_plot(
     paste(word_method[[language]], "1"),
     paste(word_method[[language]], "2"),
@@ -1202,18 +1171,49 @@ compare_methods_plot <- function(
     "#7570b3"
   )
 
-  # combine with caption
-  final_plot <- patchwork::wrap_plots(p1, p2, p3) +
-    patchwork::plot_annotation(
-      title = titles[[language]]
-      # caption = caption_text
+  # ---- time-series plot of active facilities ----
+  active_over_time <- meths |>
+    dplyr::group_by(.data[[date_col]], method) |>
+    dplyr::summarise(n_active = sum(n_active, na.rm = TRUE), .groups = "drop")
+
+  time_plot <- ggplot2::ggplot(
+    active_over_time,
+    ggplot2::aes(
+      x = .data[[date_col]],
+      y = n_active,
+      color = method,
+      linetype = method
+    )
+  ) +
+    ggplot2::geom_line(linewidth = 1) +
+    ggplot2::geom_point() +
+    ggplot2::theme_minimal() +
+    ggplot2::labs(
+      title = switch(
+        language,
+        en = "Number of Active Facilities Over Time by Method",
+        fr = "Nombre de FOSA actives au fil du temps selon la méthode",
+        pt = "Número de unidades de saúde ativas ao longo do tempo por método"
+      ),
+      x = x_time_axis,
+      y = y_active_facilities,
+      color = word_method[[language]],
+      linetype = word_method[[language]]
     ) +
     ggplot2::theme(
-      plot.caption = ggplot2::element_text(
-        hjust = 1,
-        size = 9,
-        face = "italic"
+      plot.margin = grid::unit(c(-0.2, 0.2, 0.2, 0.2), "cm"),
+      panel.border = ggplot2::element_rect(
+        color = "black",
+        fill = NA,
+        linewidth = 1
       )
+    )
+
+  # ---- combine plots ----
+  final_plot <- (patchwork::wrap_plots(p1, p2, p3, nrow = 1) /
+    time_plot) +
+    patchwork::plot_annotation(
+      title = titles[[language]]
     )
 
   # auto-save if plot_path provided
