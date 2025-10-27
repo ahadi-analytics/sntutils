@@ -31,6 +31,7 @@ facility_reporting_plot(
   plot_height = 15,
   plot_dpi = 300,
   show_plot = TRUE,
+  trailing_tolerance = FALSE,
   ...
 )
 }
@@ -113,6 +114,10 @@ Default is 300.}
 
 \item{show_plot}{Logical. If FALSE, the plot is returned invisibly (not
 displayed). Useful when only saving plots. Default is TRUE.}
+
+\item{trailing_tolerance}{Logical. If TRUE, Method 3 keeps a facility
+"Active - Not Reporting" for up to \code{nonreport_window} months after the last
+report. If FALSE, it becomes Inactive immediately after the last report.}
 
 \item{...}{Additional arguments passed to internal functions.}
 }
