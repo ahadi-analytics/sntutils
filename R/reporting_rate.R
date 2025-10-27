@@ -2180,7 +2180,7 @@ reporting_rate_map <- function(
   # Extract trailing_tolerance from dots or set default
   dots <- list(...)
   trailing_tolerance <- dots$trailing_tolerance %||% FALSE
-  
+
   # Normalize method parameter to accept both numeric and character
   method <- .normalize_method(method)
 

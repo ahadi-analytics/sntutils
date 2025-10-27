@@ -334,6 +334,9 @@ classify_facility_activity <- function(
 #' @param show_plot Logical. If FALSE, the plot is returned invisibly (not
 #'   displayed). Useful when only saving plots. Default is TRUE.
 #' @param ... Additional arguments passed to internal functions.
+#' @param trailing_tolerance Logical. If TRUE, Method 3 keeps a facility
+#'   "Active - Not Reporting" for up to `nonreport_window` months after the last
+#'   report. If FALSE, it becomes Inactive immediately after the last report.
 #'
 #' @return A ggplot object visualising facility reporting activity.
 #' @examples
@@ -392,12 +395,13 @@ facility_reporting_plot <- function(
   plot_height = 15,
   plot_dpi = 300,
   show_plot = TRUE,
+  trailing_tolerance = FALSE,
   ...
 ) {
   # Extract trailing_tolerance from dots or set default
   dots <- list(...)
   trailing_tolerance <- dots$trailing_tolerance %||% FALSE
-  
+
   ensure_packages(c("ggtext", "scales"))
 
   if (!base::is.data.frame(data)) {
