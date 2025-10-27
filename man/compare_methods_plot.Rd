@@ -11,13 +11,14 @@ compare_methods_plot(
   key_indicators,
   agg_level = c("adm1", "adm2"),
   nonreport_window = 6,
+  trailing_tolerance = FALSE,
   language = "en",
   plot_path = NULL,
-  width = 15,
-  height = 6,
+  width = 16,
+  height = 12,
   units = "in",
   dpi = 300,
-  scale = 1,
+  scale = 0.85,
   compress_image = FALSE
 )
 }
@@ -36,12 +37,15 @@ Default "adm1" and "adm2".}
 
 \item{nonreport_window}{Window size for non-reporting definition.}
 
+\item{trailing_tolerance}{Logical. If TRUE, Method 3 applies lenient
+trailing-gap tolerance. If FALSE, strict closure. Default FALSE.}
+
 \item{language}{Output language: "en" (English), "fr" (French), "pt"
 (Portuguese).}
 
 \item{plot_path}{Directory where plot should be saved (NULL = don't save).}
 
-\item{width}{Plot width (default 12).}
+\item{width}{Plot width (default 15).}
 
 \item{height}{Plot height (default 6).}
 
@@ -55,9 +59,10 @@ Default "adm1" and "adm2".}
 saving. Defaults to FALSE.}
 }
 \value{
-A patchwork object with three scatter plots.
+A patchwork object with scatterplots and a time-series plot.
 }
 \description{
-Runs three classification methods and produces pairwise comparison plots.
-Optionally saves the output to file with auto-language filenames.
+Runs three classification methods and produces pairwise comparison plots,
+plus a time-series plot of active facilities over time. Optionally saves
+the output to file with auto-language filenames.
 }

@@ -25,6 +25,7 @@ detect_outliers(
   reporting_rate_col = NULL,
   reporting_rate_min = 0.5,
   key_indicators_hf = NULL,
+  trailing_tolerance = FALSE,
   classify_outbreaks = TRUE,
   outbreak_min_run = 2,
   outbreak_prop_tolerance = 0.5,
@@ -103,6 +104,10 @@ facilities from outlier detection. Inactive facility-months are tagged with
 (default), activeness filtering is skipped. Typical indicators include
 \code{"allout"}, \code{"test"}, or \code{"conf"}. This adjustment prevents false positives
 caused by facilities that start or stop reporting mid-period.}
+
+\item{trailing_tolerance}{Logical. If TRUE, Method 3 keeps a facility
+active during months where it fails to report if those months occur at
+the end of the time series. Defaults to FALSE.}
 
 \item{classify_outbreaks}{Logical. When \code{TRUE} (default), applies outbreak
 classification to distinguish between isolated outliers and sustained

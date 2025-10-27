@@ -394,6 +394,10 @@ facility_reporting_plot <- function(
   show_plot = TRUE,
   ...
 ) {
+  # Extract trailing_tolerance from dots or set default
+  dots <- list(...)
+  trailing_tolerance <- dots$trailing_tolerance %||% FALSE
+  
   ensure_packages(c("ggtext", "scales"))
 
   if (!base::is.data.frame(data)) {
@@ -574,7 +578,8 @@ facility_reporting_plot <- function(
     method = method_normalized,
     nonreport_window = nonreport_window,
     reporting_rule = reporting_rule,
-    binary_classification = binary_classification
+    binary_classification = binary_classification,
+    trailing_tolerance = trailing_tolerance
   )
 
   # If facet_col is provided, add it to the routine_reporting data
@@ -1068,7 +1073,7 @@ compare_methods_plot <- function(
     )
   )
 
-  word_method <- list(en = "Method", fr = "Méthode", pt = "Método")
+  word_method <- list(en = "Method", fr = "M\u00e9thode", pt = "M\u00e9todo")
 
   xlabs <- list(en = " reporting", fr = " en rapportage", pt = " em reporte")
   ylabs <- xlabs
@@ -1077,14 +1082,14 @@ compare_methods_plot <- function(
     language,
     en = "Active facilities",
     fr = "FOSA actives",
-    pt = "Unidades de saúde ativas"
+    pt = "Unidades de sa\u00fade ativas"
   )
 
   x_time_axis <- switch(
     language,
     en = "Month (over time)",
     fr = "Mois (au fil du temps)",
-    pt = "Mês (ao longo do tempo)"
+    pt = "M\u00eas (ao longo do tempo)"
   )
 
   # helper to run one method
@@ -1119,7 +1124,7 @@ compare_methods_plot <- function(
       dplyr::mutate(method = paste(word_method[[language]], m))
   }
 
-  # run methods 1–3 (method3 respects trailing_tolerance)
+  # run methods 1-3 (method3 respects trailing_tolerance)
   meths <- purrr::map_dfr(1:3, run_method)
 
   # pivot wide for scatterplots
@@ -1192,8 +1197,8 @@ compare_methods_plot <- function(
       title = switch(
         language,
         en = "Number of Active Facilities Over Time by Method",
-        fr = "Nombre de FOSA actives au fil du temps selon la méthode",
-        pt = "Número de unidades de saúde ativas ao longo do tempo por método"
+        fr = "Nombre de FOSA actives au fil du temps selon la m\u00e9thode",
+        pt = "N\u00famero de unidades de sa\u00fade ativas ao longo do tempo por m\u00e9todo"
       ),
       x = x_time_axis,
       y = y_active_facilities,
