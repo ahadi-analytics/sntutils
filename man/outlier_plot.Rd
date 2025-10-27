@@ -19,7 +19,7 @@ outlier_plot(
   mad_constant = 1.4826,
   mad_multiplier = 9,
   iqr_multiplier = 2,
-  consensus_rule = 2,
+  consensus_rule = 3,
   min_n = 8,
   reporting_rate_col = NULL,
   reporting_rate_min = 0.5,
@@ -27,7 +27,7 @@ outlier_plot(
   classify_outbreaks = TRUE,
   outbreak_min_run = 2,
   outbreak_prop_tolerance = 0.9,
-  outbreak_max_gap = 1,
+  outbreak_max_gap = 12,
   year_breaks = 2,
   target_language = "en",
   source_language = "en",
@@ -58,7 +58,7 @@ Defaults to \code{c("adm1", "adm2")}.}
 
 \item{spatial_level}{Character string specifying the finest spatial unit
 for analysis (e.g., "hf_uid" for facility-level). When specified,
-\code{admin_levels} defines grouping boundaries while \code{spatial_level} defines
+\code{admin_level} defines grouping boundaries while \code{spatial_level} defines
 the unit of analysis. This prevents excessive grouping while maintaining
 spatial granularity. Default is \code{NULL} (uses most granular admin level).}
 
@@ -128,7 +128,7 @@ median are considered consistent. Range: (0, 1).}
 
 \item{outbreak_max_gap}{Integer. Maximum allowed gap (non-outlier months)
 between outliers that can still be considered part of the same outbreak
-(default \code{1}). For example, with \code{outbreak_max_gap = 1}, the pattern
+(default \code{1}). For example, with \code{outbreak_max_gap = 12}, the pattern
 "outlier-normal-outlier-outlier" would be classified as one outbreak
 of length 3, rather than separate incidents. Set to \code{0} for strict
 consecutive-only outbreaks. Useful for real-world data with reporting gaps.}

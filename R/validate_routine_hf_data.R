@@ -16,7 +16,7 @@ utils::globalVariables(c(
 #'
 #' @param data data.frame. Routine facility dataset.
 #' @param id_col character. Unique record id. Default "record_id".
-#' @param facility_col character. Facility id. Default "hf_id".
+#' @param facility_col character. Facility id. Default "hf_uid".
 #' @param date_col character. Date column. Default "date".
 #' @param yearmon_col character. Year-month col. Default "yearmon".
 #' @param year_col character. Year col. Default "year".
@@ -35,9 +35,16 @@ utils::globalVariables(c(
 #' @param check_outliers logical. Default TRUE.
 #' @param check_facility_activeness logical. Check facility activeness. Default TRUE.
 #' @param hf_name_col character. Facility name column. Default "hf".
-#' @param hf_uid_col character. Facility UID column. Default "hf_uid".
 #' @param key_indicators character|NULL. Key indicators for activeness check.
 #'   If NULL, uses all indicators. Default NULL.
+#' @param activeness_method character or numeric. Classification method for facility activity
+#'   status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
+#'   Defaults to 3. See \code{\link{classify_facility_activity}} for details.
+#' @param nonreport_window integer. Minimum number of consecutive non-reporting
+#'   months to classify a facility as inactive in method 3. Defaults to 6.
+#' @param reporting_rule character. Defines what counts as reporting for activeness:
+#'   "any_non_na" (default, counts NA as non-reporting, 0 counts as reported)
+#'   or "positive_only" (requires >0 value to count as reported).
 #' @param min_reporting_rate numeric. Minimum reporting rate threshold. Default 0.5.
 #' @param outlier_methods character. Any of c("iqr","median","mean").
 #' @param time_mode character. Time mode for outlier detection: "across_time" or "within_year". Default "across_time".
@@ -76,7 +83,7 @@ utils::globalVariables(c(
 validate_routine_hf_data <- function(
   data,
   id_col = "record_id",
-  facility_col = "hf_id",
+  facility_col = "hf_uid",
   date_col = "date",
   yearmon_col = "yearmon",
   year_col = "year",
@@ -91,12 +98,14 @@ validate_routine_hf_data <- function(
   check_outliers = TRUE,
   check_facility_activeness = TRUE,
   hf_name_col = "hf",
-  hf_uid_col = "hf_uid",
   key_indicators = NULL,
+  activeness_method = 3,
+  nonreport_window = 6,
+  reporting_rule = "any_non_na",
   min_reporting_rate = 0.5,
   outlier_methods = c("iqr", "median", "mean"),
   time_mode = "across_time",
-  strictness = "advanced",
+  strictness = "balanced",
   sd_multiplier = 2,
   mad_constant = 1.4826,
   mad_multiplier = 6,
@@ -233,7 +242,14 @@ validate_routine_hf_data <- function(
       month_col = cols$month_col,
       indicators = indicators_use,
       methods = outlier_methods,
+      time_mode = time_mode,
+      strictness = strictness,
+      sd_multiplier = sd_multiplier,
+      mad_constant = mad_constant,
+      mad_multiplier = mad_multiplier,
       iqr_multiplier = iqr_multiplier,
+      min_n = min_n,
+      consensus_rule = consensus_rule,
       verbose = verbose
     )
     results[["Outliers"]] <- out$combined
@@ -248,11 +264,13 @@ validate_routine_hf_data <- function(
       facility_col = cols$facility_col,
       date_col = cols$date_col,
       hf_name_col = hf_name_col,
-      hf_uid_col = hf_uid_col,
       yearmon_col = cols$yearmon_col,
       admin_cols = cols$admin_cols,
       indicators = indicators_use,
       key_indicators = key_indicators,
+      activeness_method = activeness_method,
+      nonreport_window = nonreport_window,
+      reporting_rule = reporting_rule,
       min_reporting_rate = min_reporting_rate,
       verbose = verbose
     )
@@ -339,13 +357,13 @@ validate_routine_hf_data <- function(
   if (length(bad_methods) > 0) {
     cli::cli_abort("Unsupported `outlier_methods`: {bad_methods}.")
   }
-  
+
   # validate time_mode
   allowed_time_modes <- c("across_time", "within_year")
   if (!time_mode %in% allowed_time_modes) {
     cli::cli_abort("`time_mode` must be one of: {allowed_time_modes}.")
   }
-  
+
   # validate strictness
   allowed_strictness <- c("balanced", "lenient", "strict", "advanced")
   if (!strictness %in% allowed_strictness) {
@@ -858,7 +876,14 @@ validate_routine_hf_data <- function(
                              month_col,
                              indicators,
                              methods,
+                             time_mode,
+                             strictness,
+                             sd_multiplier,
+                             mad_constant,
+                             mad_multiplier,
                              iqr_multiplier,
+                             min_n,
+                             consensus_rule,
                              verbose) {
   admin_present <- adm_cols[adm_cols %in% names(data)]
   req <- c(
@@ -915,7 +940,7 @@ validate_routine_hf_data <- function(
           data = data,
           column = ind,
           record_id = id_col,
-          admin_levels = admin_use,
+          admin_level = admin_use,
           date = date_col,
           time_mode = time_mode,
           value_type = value_type,
@@ -1242,21 +1267,23 @@ validate_routine_hf_data <- function(
                                        facility_col,
                                        date_col,
                                        hf_name_col,
-                                       hf_uid_col,
                                        yearmon_col,
                                        admin_cols,
                                        indicators,
                                        key_indicators,
+                                       activeness_method,
+                                       nonreport_window,
+                                       reporting_rule,
                                        min_reporting_rate,
                                        verbose) {
   # check if required columns exist
-  required_cols <- c(hf_name_col, hf_uid_col)
+  required_cols <- c(hf_name_col, facility_col)
   present_cols <- required_cols[required_cols %in% base::names(data)]
 
   if (base::length(present_cols) == 0) {
     if (verbose) {
       cli::cli_h2("Check 6: Facility Activeness")
-      cli::cli_warn("Required columns ({hf_name_col}, {hf_uid_col}) not found. Skipping facility activeness check.")
+      cli::cli_warn("Required columns ({hf_name_col}, {facility_col}) not found. Skipping facility activeness check.")
     }
     row <- tibble::tibble(
       check = "HF Activeness",
@@ -1300,38 +1327,51 @@ validate_routine_hf_data <- function(
     ))
   }
 
-  # build overall facility activeness summary first (more efficient)
-  facility_summary <- data |>
-    dplyr::mutate(
-      has_activeness_data = dplyr::if_any(dplyr::all_of(activeness_indicators), ~ !base::is.na(.x))
-    ) |>
+  # use classify_facility_activity for proper activeness assessment
+  activity_classification <- sntutils::classify_facility_activity(
+    data = data,
+    hf_col = facility_col,
+    date_col = date_col,
+    key_indicators = activeness_indicators,
+    method = activeness_method,
+    nonreport_window = nonreport_window,
+    reporting_rule = reporting_rule,
+    binary_classification = TRUE
+  )
+
+  # build overall facility activeness summary
+  facility_summary <- activity_classification |>
     dplyr::group_by(dplyr::across(dplyr::all_of(c(present_cols, admin_present)))) |>
     dplyr::summarise(
       total_periods = dplyr::n(),
-      periods_with_data = base::sum(has_activeness_data),
-      reporting_rate = periods_with_data / total_periods,
+      periods_active = base::sum(.data[["activity_status"]] == "Active", na.rm = TRUE),
+      reporting_rate = periods_active / total_periods,
       first_reported = if (date_col %in% base::names(data)) {
-        if (base::any(has_activeness_data)) {
-          base::min(.data[[date_col]][has_activeness_data], na.rm = TRUE)
+        active_periods <- .data[["activity_status"]] == "Active"
+        if (base::any(active_periods, na.rm = TRUE)) {
+          base::min(.data[[date_col]][active_periods], na.rm = TRUE)
         } else {
           as.Date(NA)
         }
       } else {
-        if (base::any(has_activeness_data)) {
-          base::min(base::as.character(.data[[yearmon_col]])[has_activeness_data], na.rm = TRUE)
+        active_periods <- .data[["activity_status"]] == "Active"
+        if (base::any(active_periods, na.rm = TRUE)) {
+          base::min(base::as.character(.data[[yearmon_col]])[active_periods], na.rm = TRUE)
         } else {
           NA_character_
         }
       },
       last_reported = if (date_col %in% base::names(data)) {
-        if (base::any(has_activeness_data)) {
-          base::max(.data[[date_col]][has_activeness_data], na.rm = TRUE)
+        active_periods <- .data[["activity_status"]] == "Active"
+        if (base::any(active_periods, na.rm = TRUE)) {
+          base::max(.data[[date_col]][active_periods], na.rm = TRUE)
         } else {
           as.Date(NA)
         }
       } else {
-        if (base::any(has_activeness_data)) {
-          base::max(base::as.character(.data[[yearmon_col]])[has_activeness_data], na.rm = TRUE)
+        active_periods <- .data[["activity_status"]] == "Active"
+        if (base::any(active_periods, na.rm = TRUE)) {
+          base::max(base::as.character(.data[[yearmon_col]])[active_periods], na.rm = TRUE)
         } else {
           NA_character_
         }
@@ -1356,14 +1396,9 @@ validate_routine_hf_data <- function(
 
   # build focused facility activeness over time table (only problematic facilities)
   if (base::nrow(problematic_facilities) > 0) {
-    activeness_over_time <- data |>
+    activeness_over_time <- activity_classification |>
       dplyr::semi_join(problematic_facilities, by = present_cols) |>
-      dplyr::group_by(dplyr::across(dplyr::all_of(c(present_cols, admin_present, yearmon_col)))) |>
-      dplyr::summarise(
-        has_data = base::any(dplyr::if_any(dplyr::all_of(activeness_indicators), ~ !base::is.na(.x))),
-        reporting_status = dplyr::if_else(has_data, "reported", "not_reported"),
-        .groups = "drop"
-      ) |>
+      dplyr::select(dplyr::all_of(c(present_cols, admin_present, yearmon_col, "activity_status"))) |>
       dplyr::arrange(dplyr::across(dplyr::all_of(c(present_cols, yearmon_col)))) |>
       sntutils::auto_parse_types()
   } else {

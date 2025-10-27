@@ -15,6 +15,8 @@ create_test_data <- function(n_rows = 100, add_issues = TRUE) {
   data <- tibble::tibble(
     record_id = paste0("REC", seq_len(n_rows)),
     hf_id = paste0("HF", rep(1:10, length.out = n_rows)),
+    hf_uid = paste0("HF", rep(1:10, length.out = n_rows)),
+    hf = paste0("Health Facility ", rep(1:10, length.out = n_rows)),
     date = sample(dates, n_rows, replace = TRUE),
     yearmon = format(date, "%Y-%m"),
     year = lubridate::year(date),
@@ -98,7 +100,9 @@ testthat::test_that("validate_routine_hf_data returns correct structure", {
       "Future dates",
       "Consistency failures",
       "Consistency details",
-      "Outliers"
+      "Outliers",
+      "HF activeness detail",
+      "HF activeness summary"
     ),
     ignore.order = TRUE
   )
@@ -503,6 +507,8 @@ testthat::test_that("validate_routine_hf_data handles minimal data", {
   data <- tibble::tibble(
     record_id = c("REC1", "REC2", "REC3"),
     hf_id = c("HF1", "HF2", "HF3"),
+    hf_uid = c("HF1", "HF2", "HF3"),
+    hf = c("Health Facility 1", "Health Facility 2", "Health Facility 3"),
     date = rep(Sys.Date(), 3),
     yearmon = format(Sys.Date(), "%Y-%m"),
     year = lubridate::year(Sys.Date()),
@@ -535,7 +541,7 @@ testthat::test_that("validate_routine_hf_data verbose mode works", {
   testthat::expect_output(
     result <- sntutils::validate_routine_hf_data(
       data = data,
-      verbose = TRUE,
+        verbose = TRUE,
       check_outliers = FALSE
     )
   )

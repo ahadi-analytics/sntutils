@@ -19,7 +19,7 @@ detect_outliers(
   mad_constant = 1.4826,
   mad_multiplier = 9,
   iqr_multiplier = 2,
-  consensus_rule = 2,
+  consensus_rule = 3,
   output_profile = c("standard", "lean", "audit"),
   min_n = 8,
   reporting_rate_col = NULL,
@@ -27,8 +27,8 @@ detect_outliers(
   key_indicators_hf = NULL,
   classify_outbreaks = TRUE,
   outbreak_min_run = 2,
-  outbreak_prop_tolerance = 0.5,
-  outbreak_max_gap = 1,
+  outbreak_prop_tolerance = 0.9,
+  outbreak_max_gap = 12,
   verbose = TRUE
 )
 }
@@ -45,7 +45,7 @@ Defaults to \code{c("adm1", "adm2")}.}
 
 \item{spatial_level}{Character string specifying the finest spatial unit
 for analysis (e.g., "hf_uid" for facility-level). When specified,
-\code{admin_levels} defines grouping boundaries while \code{spatial_level} defines
+\code{admin_level} defines grouping boundaries while \code{spatial_level} defines
 the unit of analysis. This prevents excessive grouping while maintaining
 spatial granularity. Default is \code{NULL} (uses most granular admin level).}
 
@@ -120,7 +120,7 @@ median are considered consistent. Range: (0, 1).}
 
 \item{outbreak_max_gap}{Integer. Maximum allowed gap (non-outlier months)
 between outliers that can still be considered part of the same outbreak
-(default \code{1}). For example, with \code{outbreak_max_gap = 1}, the pattern
+(default \code{1}). For example, with \code{outbreak_max_gap = 12}, the pattern
 "outlier-normal-outlier-outlier" would be classified as one outbreak
 of length 3, rather than separate incidents. Set to \code{0} for strict
 consecutive-only outbreaks. Useful for real-world data with reporting gaps.}
@@ -224,7 +224,7 @@ detect_outliers(
   column = "confirmed_cases",
   date = "date",
   record_id = "facility_id",
-  admin_levels = c("adm1"),        # ignore adm2 if not present
+  admin_level = c("adm1"),        # ignore adm2 if not present
   time_mode = "across_time"
 )
 
@@ -233,7 +233,7 @@ detect_outliers(
   data = malaria_data,
   column = "confirmed_cases",
   date = "date",
-  admin_levels = c("adm1"),
+  admin_level = c("adm1"),
   time_mode = "within_year",
   consensus_rule = 2,
   output_profile = "audit"
@@ -258,7 +258,7 @@ detect_outliers(
   data = malaria_data,
   column = "conf",
   date = "date",
-  admin_levels = c("adm1", "adm2"),
+  admin_level = c("adm1", "adm2"),
   time_mode = "across_time",
   key_indicators_hf = c("allout", "test", "conf")
 )
@@ -268,7 +268,7 @@ detect_outliers(
   data = malaria_data,
   column = "conf",
   date = "date",
-  admin_levels = c("adm1", "adm2"),
+  admin_level = c("adm1", "adm2"),
   time_mode = "across_time",
   key_indicators_hf = c("allout", "test", "conf")
 )
