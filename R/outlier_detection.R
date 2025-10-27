@@ -49,6 +49,9 @@
 #'   (default), activeness filtering is skipped. Typical indicators include
 #'   `"allout"`, `"test"`, or `"conf"`. This adjustment prevents false positives
 #'   caused by facilities that start or stop reporting mid-period.
+#' @param trailing_tolerance Logical. If TRUE, Method 3 keeps a facility
+#'   active during months where it fails to report if those months occur at
+#'   the end of the time series. Defaults to FALSE.
 #'
 #' @param methods Character vector specifying which outlier detection
 #'   methods to use: "iqr" (Interquartile Range), "median" (Median Absolute
@@ -237,6 +240,7 @@ detect_outliers <- function(
   reporting_rate_col = NULL,
   reporting_rate_min = 0.5,
   key_indicators_hf = NULL,
+  trailing_tolerance = FALSE,
   classify_outbreaks = TRUE,
   outbreak_min_run = 2,
   outbreak_prop_tolerance = 0.5,
@@ -268,7 +272,8 @@ detect_outliers <- function(
       hf_col = record_id,
       date_col = date,
       key_indicators = key_indicators_hf,
-      binary_classification = TRUE
+      binary_classification = TRUE,
+      trailing_tolerance = trailing_tolerance
     )
     data <- data |>
       dplyr::left_join(
@@ -1418,6 +1423,7 @@ outlier_plot <- function(
     reporting_rate_col = NULL,
     reporting_rate_min = 0.5,
     key_indicators_hf = NULL,
+    trailing_tolerance = FALSE,
     classify_outbreaks = TRUE,
     outbreak_min_run = 2,
     outbreak_prop_tolerance = 0.9,
@@ -1498,6 +1504,7 @@ outlier_plot <- function(
       reporting_rate_col = reporting_rate_col,
       reporting_rate_min = reporting_rate_min,
       key_indicators_hf = key_indicators_hf,
+      trailing_tolerance = trailing_tolerance,
         methods = methods,  # Pass methods to calculate only requested flags
       consensus_rule = consensus_rule,
       output_profile = "audit",  # Get all flags for individual methods
