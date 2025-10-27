@@ -2,7 +2,7 @@ Package: sntutils
 Type: Package
 Title: Utility Functions for Data Preparation and Analysis in Subnational
     Tailoring of Malaria Interventions (SNT)
-Version: 1.11.0
+Version: 1.11.1
 Authors@R: c(
     person("Mohamed A.", "Yusuf",
            role = c("aut", "cre"),

@@ -28,7 +28,14 @@ validate_routine_hf_data(
   key_indicators = NULL,
   min_reporting_rate = 0.5,
   outlier_methods = c("iqr", "median", "mean"),
+  time_mode = "across_time",
+  strictness = "advanced",
+  sd_multiplier = 2,
+  mad_constant = 1.4826,
+  mad_multiplier = 6,
   iqr_multiplier = 1.5,
+  min_n = 3,
+  consensus_rule = 1,
   save_results = FALSE,
   output_path = NULL,
   output_name = "validation_of_hf_routine_data",
@@ -87,7 +94,21 @@ If NULL, uses all indicators. Default NULL.}
 
 \item{outlier_methods}{character. Any of c("iqr","median","mean").}
 
-\item{iqr_multiplier}{numeric. Default 1.5.}
+\item{time_mode}{character. Time mode for outlier detection: "across_time" or "within_year". Default "across_time".}
+
+\item{strictness}{character. Outlier detection strictness: "balanced", "lenient", "strict", "advanced". Default "advanced".}
+
+\item{sd_multiplier}{numeric. Standard deviation multiplier for outlier detection. Default 2.}
+
+\item{mad_constant}{numeric. MAD constant for outlier detection. Default 1.4826.}
+
+\item{mad_multiplier}{numeric. MAD multiplier for outlier detection. Default 6.}
+
+\item{iqr_multiplier}{numeric. IQR multiplier for outlier detection. Default 1.5.}
+
+\item{min_n}{numeric. Minimum sample size for outlier detection. Default 3.}
+
+\item{consensus_rule}{numeric. Number of methods that must agree for consensus outlier flag. Default 1.}
 
 \item{save_results}{logical. Save outputs. Default FALSE.}
 

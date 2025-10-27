@@ -40,7 +40,14 @@ utils::globalVariables(c(
 #'   If NULL, uses all indicators. Default NULL.
 #' @param min_reporting_rate numeric. Minimum reporting rate threshold. Default 0.5.
 #' @param outlier_methods character. Any of c("iqr","median","mean").
-#' @param iqr_multiplier numeric. Default 1.5.
+#' @param time_mode character. Time mode for outlier detection: "across_time" or "within_year". Default "across_time".
+#' @param strictness character. Outlier detection strictness: "balanced", "lenient", "strict", "advanced". Default "advanced".
+#' @param sd_multiplier numeric. Standard deviation multiplier for outlier detection. Default 2.
+#' @param mad_constant numeric. MAD constant for outlier detection. Default 1.4826.
+#' @param mad_multiplier numeric. MAD multiplier for outlier detection. Default 6.
+#' @param iqr_multiplier numeric. IQR multiplier for outlier detection. Default 1.5.
+#' @param min_n numeric. Minimum sample size for outlier detection. Default 3.
+#' @param consensus_rule numeric. Number of methods that must agree for consensus outlier flag. Default 1.
 #' @param save_results logical. Save outputs. Default FALSE.
 #' @param output_path character|NULL. Required if save_results.
 #' @param output_name character. Base output name. Default
@@ -88,7 +95,14 @@ validate_routine_hf_data <- function(
   key_indicators = NULL,
   min_reporting_rate = 0.5,
   outlier_methods = c("iqr", "median", "mean"),
+  time_mode = "across_time",
+  strictness = "advanced",
+  sd_multiplier = 2,
+  mad_constant = 1.4826,
+  mad_multiplier = 6,
   iqr_multiplier = 1.5,
+  min_n = 3,
+  consensus_rule = 1,
   save_results = FALSE,
   output_path = NULL,
   output_name = "validation_of_hf_routine_data",
@@ -103,7 +117,9 @@ validate_routine_hf_data <- function(
     data = data,
     save_results = save_results,
     output_path = output_path,
-    outlier_methods = outlier_methods
+    outlier_methods = outlier_methods,
+    time_mode = time_mode,
+    strictness = strictness
   )
 
   # print quick dataset header
@@ -290,12 +306,16 @@ validate_routine_hf_data <- function(
 #' @param save_results logical.
 #' @param output_path character|NULL.
 #' @param outlier_methods character.
+#' @param time_mode character.
+#' @param strictness character.
 #' @keywords internal
 #' @noRd
 .validate_args <- function(data,
                            save_results,
                            output_path,
-                           outlier_methods) {
+                           outlier_methods,
+                           time_mode,
+                           strictness) {
   # check data frame
   if (!base::is.data.frame(data)) {
     cli::cli_abort("`data` must be a data frame.")
@@ -314,10 +334,22 @@ validate_routine_hf_data <- function(
   }
 
   # validate methods content
-  allowed <- c("iqr", "median", "mean")
-  bad <- setdiff(outlier_methods, allowed)
-  if (length(bad) > 0) {
-    cli::cli_abort("Unsupported `outlier_methods`: {bad}.")
+  allowed_methods <- c("iqr", "median", "mean")
+  bad_methods <- setdiff(outlier_methods, allowed_methods)
+  if (length(bad_methods) > 0) {
+    cli::cli_abort("Unsupported `outlier_methods`: {bad_methods}.")
+  }
+  
+  # validate time_mode
+  allowed_time_modes <- c("across_time", "within_year")
+  if (!time_mode %in% allowed_time_modes) {
+    cli::cli_abort("`time_mode` must be one of: {allowed_time_modes}.")
+  }
+  
+  # validate strictness
+  allowed_strictness <- c("balanced", "lenient", "strict", "advanced")
+  if (!strictness %in% allowed_strictness) {
+    cli::cli_abort("`strictness` must be one of: {allowed_strictness}.")
   }
 }
 
@@ -885,16 +917,16 @@ validate_routine_hf_data <- function(
           record_id = id_col,
           admin_levels = admin_use,
           date = date_col,
-          time_mode = "across_time",
+          time_mode = time_mode,
           value_type = value_type,
-          strictness = "advanced",
-          sd_multiplier = 2,
-          mad_constant = 1.4826,
-          mad_multiplier = 6,
+          strictness = strictness,
+          sd_multiplier = sd_multiplier,
+          mad_constant = mad_constant,
+          mad_multiplier = mad_multiplier,
           iqr_multiplier = iqr_multiplier,
-          min_n = 3,
+          min_n = min_n,
           methods = methods,
-          consensus_rule = 1,
+          consensus_rule = consensus_rule,
           output_profile = "audit",
           verbose = FALSE
         )
