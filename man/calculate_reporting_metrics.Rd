@@ -13,7 +13,6 @@ calculate_reporting_metrics(
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,
   nonreport_window = 6,
-  trailing_tolerance = FALSE,
   reporting_rule = "any_non_na",
   weighting = FALSE,
   weight_var = NULL,
@@ -47,10 +46,6 @@ Defaults to 3. See \code{\link{classify_facility_activity}} for details.}
 
 \item{nonreport_window}{Integer. Minimum number of consecutive non-reporting
 months to classify a facility as inactive in method 3. Defaults to 6.}
-
-\item{trailing_tolerance}{Logical. If TRUE, Method 3 keeps a facility
-active during months where it fails to report if those months occur at
-the end of the time series. Defaults to FALSE.}
 
 \item{reporting_rule}{Character. Defines what counts as reporting:
 \code{"any_non_na"} (default, counts NA as non-reporting, 0 counts as reported)

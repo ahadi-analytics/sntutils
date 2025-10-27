@@ -43,9 +43,6 @@
 #'   Defaults to 3. See \code{\link{classify_facility_activity}} for details.
 #' @param nonreport_window Integer. Minimum number of consecutive non-reporting
 #'   months to classify a facility as inactive in method 3. Defaults to 6.
-#' @param trailing_tolerance Logical. If TRUE, Method 3 keeps a facility
-#'   active during months where it fails to report if those months occur at
-#'   the end of the time series. Defaults to FALSE.
 #' @param reporting_rule Character. Defines what counts as reporting:
 #'   `"any_non_na"` (default, counts NA as non-reporting, 0 counts as reported)
 #'   or `"positive_only"` (requires >0 value to count as reported).
@@ -233,7 +230,6 @@ calculate_reporting_metrics <- function(
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,
   nonreport_window = 6,
-  trailing_tolerance = FALSE,
   reporting_rule = "any_non_na",
   weighting = FALSE,
   weight_var = NULL,
@@ -530,7 +526,6 @@ calculate_reporting_metrics <- function(
       key_indicators = key_indicators,
       method = method,
       nonreport_window = nonreport_window,
-      trailing_tolerance = trailing_tolerance,
       reporting_rule = reporting_rule,
       binary_classification = TRUE  # We want Active/Inactive for denominator
     )
@@ -787,9 +782,6 @@ calculate_reporting_metrics <- function(
 #'   Defaults to 3. See \code{\link{classify_facility_activity}} for details.
 #' @param nonreport_window Integer. Minimum number of consecutive non-reporting
 #'   months to classify a facility as inactive in method 3. Defaults to 6.
-#' @param trailing_tolerance Logical. If TRUE, Method 3 keeps a facility
-#'   active during months where it fails to report if those months occur at
-#'   the end of the time series. Defaults to FALSE.
 #' @param reporting_rule Character. Defines what counts as reporting:
 #'   `"any_non_na"` (default, counts NA as non-reporting, 0 counts as reported)
 #'   or `"positive_only"` (requires >0 value to count as reported).
@@ -854,7 +846,6 @@ prepare_plot_data <- function(
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,
   nonreport_window = 6,
-  trailing_tolerance = FALSE,
   reporting_rule = "any_non_na",
   weighting = FALSE,
   weight_var = NULL,
@@ -993,7 +984,6 @@ prepare_plot_data <- function(
     key_indicators = key_indicators,
     method = method,
     nonreport_window = nonreport_window,
-    trailing_tolerance = trailing_tolerance,
     reporting_rule = reporting_rule,
     weighting = weighting,
     weight_var = weight_var,
@@ -1068,9 +1058,6 @@ prepare_plot_data <- function(
 #'   Defaults to 3. See \code{\link{classify_facility_activity}} for details.
 #' @param nonreport_window Integer. Minimum number of consecutive non-reporting
 #'   months to classify a facility as inactive in method 3. Defaults to 6.
-#' @param trailing_tolerance Logical. If TRUE, Method 3 keeps a facility
-#'   active during months where it fails to report if those months occur at
-#'   the end of the time series. Defaults to FALSE.
 #' @param reporting_rule Character. Defines what counts as reporting:
 #'   `"any_non_na"` (default, counts NA as non-reporting, 0 counts as reported)
 #'   or `"positive_only"` (requires >0 value to count as reported).
@@ -1155,7 +1142,6 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                                   "pres"),
                                 method = 3,
                                 nonreport_window = 6,
-                                trailing_tolerance = FALSE,
                                 reporting_rule = "any_non_na",
                                 use_reprate = TRUE,
                                 full_range = TRUE,
@@ -1233,7 +1219,6 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     key_indicators = key_indicators,
     method = method,
     nonreport_window = nonreport_window,
-    trailing_tolerance = trailing_tolerance,
     reporting_rule = reporting_rule,
     weighting = weighting,
     weight_var = weight_var,
@@ -2177,10 +2162,6 @@ reporting_rate_map <- function(
   show_plot = TRUE,
   ...
 ) {
-  # Extract trailing_tolerance from dots or set default
-  dots <- list(...)
-  trailing_tolerance <- dots$trailing_tolerance %||% FALSE
-
   # Normalize method parameter to accept both numeric and character
   method <- .normalize_method(method)
 
@@ -2209,7 +2190,6 @@ reporting_rate_map <- function(
     hf_col = hf_col,
     method = method,
     nonreport_window = nonreport_window,
-    trailing_tolerance = trailing_tolerance,
     reporting_rule = reporting_rule,
     weighting = weighting,
     weight_var = weight_var,
