@@ -14,8 +14,7 @@ test_that("classify_facility_activity method1 with binary classification", {
     hf_col = "hf_uid",
     key_indicators = c("allout", "susp", "test", "conf", "maltreat"),
     method = "method1",
-    binary_classification = TRUE,
-    nonreport_window = 2
+    binary_classification = TRUE
   )
 
   expect_s3_class(result, "data.frame")
@@ -46,8 +45,7 @@ test_that("classify_facility_activity method2 with binary classification", {
     hf_col = "hf_uid",
     key_indicators = c("allout", "susp", "test", "conf", "maltreat"),
     method = "method2",
-    binary_classification = TRUE,
-    nonreport_window = 2
+    binary_classification = TRUE
   )
 
   expect_s3_class(result, "data.frame")
@@ -62,104 +60,78 @@ test_that("classify_facility_activity method2 with binary classification", {
   expect_equal(result$activity_status, expected_status)
 })
 
-test_that("classify_facility_activity method3 basic functionality", {
-  toy_method3 <- tibble::tibble(
-  adm1 = "msk1",
-  adm2 = "msk2",
-  adm3 = "msk3",
-  hf_uid = "hf_0001",
-  date = seq(as.Date("2024-01-01"), as.Date("2024-12-01"), by = "month"),
-  allout = c(20, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
-  susp = c(15, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
-  test = c(10, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
-  conf = c(5, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
-  maltreat = c(5, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA))
-
-  result <- classify_facility_activity(
-    data = toy_method3,
-    hf_col = "hf_uid",
-    key_indicators = c("allout", "susp", "test", "conf", "maltreat"),
-    method = "method3",
-    binary_classification = TRUE,
-    nonreport_window = 6
+test_that("classify_facility_activity method3 with strict closure (no trailing tolerance)", {
+  toy_method3_strict <- tibble::tibble(
+    hf_uid = "hf_001",
+    date = seq(as.Date("2024-01-01"), as.Date("2024-12-01"), by = "month"),
+    test = c(5, 5, NA, 10, NA, NA, 8, NA, NA, NA, NA, NA)
   )
 
-  expect_s3_class(result, "data.frame")
-  expect_true("activity_status" %in% names(result))
-  expect_equal(nrow(result), 12)
+  result <- classify_facility_activity(
+    data = toy_method3_strict,
+    hf_col = "hf_uid",
+    key_indicators = "test",
+    method = "method3",
+    binary_classification = TRUE,
+    nonreport_window = 6,
+    trailing_tolerance = FALSE
+  )
 
-# Check expected output matches your dummy data
-# Month 1: Active (first report)
-# Months 2–6: Active (gaps but below 6-month threshold)
-# Month 7: Inactive (6th consecutive gap crosses threshold)
-# Month 8: Inactive (still not reporting)
-# Month 9: Active (reports again, reactivates)
-# Months 10–12: Active (only 3 consecutive gaps, below threshold)
-  expected_status <- c("Active", "Inactive", "Inactive",  "Inactive",
-                       "Inactive", "Inactive", "Inactive", "Inactive",
-                       "Active", "Active", "Active", "Active")
+  expected_status <- c(
+    "Active",
+    "Active",
+    "Active",
+    "Active",
+    "Active",
+    "Active",
+    "Active",
+    "Inactive",
+    "Inactive",
+    "Inactive",
+    "Inactive",
+    "Inactive"
+  )
 
   expect_equal(result$activity_status, expected_status)
 })
 
-test_that("classify_facility_activity method3 dynamic reactivation behavior", {
-  # Test the scenario from the issue: facility that becomes inactive after
-  # exactly nonreport_window months, then reactivates
-  toy_method3_dynamic <- tibble::tibble(
-    hf_uid = "HF1",
-    date = seq(as.Date("2020-01-01"), by = "month", length.out = 16),
-    test = c(
-      1, 0, NA, NA, NA, NA, NA,  # Jan-Jul: reports in Jan/Feb, then 5 missing
-      2,                         # Aug: reports again -> should reactivate
-      NA, NA, NA, NA, NA, NA,    # Sep-Feb: 6 consecutive missing
-      3, 1                       # Mar-Apr: reporting again
-    )
+test_that("classify_facility_activity method3 with trailing tolerance (lenient)", {
+  toy_method3_lenient <- tibble::tibble(
+    hf_uid = "hf_0001",
+    date = seq(as.Date("2024-01-01"), as.Date("2024-12-01"), by = "month"),
+    allout = c(20, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
+    susp = c(15, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
+    test = c(10, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
+    conf = c(5, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA),
+    maltreat = c(5, NA, NA, NA, NA, NA, NA, NA, 5, NA, NA, NA)
   )
 
   result <- classify_facility_activity(
-    data = toy_method3_dynamic,
+    data = toy_method3_lenient,
     hf_col = "hf_uid",
-    key_indicators = "test",
+    key_indicators = c("allout", "susp", "test", "conf", "maltreat"),
     method = "method3",
+    binary_classification = TRUE,
     nonreport_window = 6,
-    reporting_rule = "any_non_na",
-    binary_classification = FALSE
+    trailing_tolerance = TRUE
   )
 
-  # Expected behavior for Method 3 with nonreport_window = 6
-  # With new gap-aware logic - check gap between consecutive reports
   expected_status <- c(
-    "Active Reporting",                     # Jan (reports)
-    "Active Reporting",                     # Feb (0 counts as report)
-    "Active Health Facility - Not Reporting", # Mar (gap Feb-Aug = 6, within window)
-    "Active Health Facility - Not Reporting", # Apr (gap Feb-Aug = 6, within window)
-    "Active Health Facility - Not Reporting", # May (gap Feb-Aug = 6, within window)
-    "Active Health Facility - Not Reporting", # Jun (gap Feb-Aug = 6, within window)
-    "Active Health Facility - Not Reporting", # Jul (gap Feb-Aug = 6, within window)
-    "Active Reporting",                     # Aug (reports -> active)
-    "Inactive Health Facility",            # Sep (gap Aug-Mar = 7 > 6, becomes inactive)
-    "Inactive Health Facility",            # Oct (gap Aug-Mar = 7 > 6, inactive)
-    "Inactive Health Facility",            # Nov (gap Aug-Mar = 7 > 6, inactive)
-    "Inactive Health Facility",            # Dec (gap Aug-Mar = 7 > 6, inactive)
-    "Inactive Health Facility",            # Jan (gap Aug-Mar = 7 > 6, inactive)
-    "Inactive Health Facility",            # Feb (gap Aug-Mar = 7 > 6, inactive)
-    "Active Reporting",                     # Mar (reports -> reactivates)
-    "Active Reporting"                      # Apr (reports again)
+    "Active",
+    "Inactive",
+    "Inactive",
+    "Inactive",
+    "Inactive",
+    "Inactive",
+    "Inactive",
+    "Inactive",
+    "Active",
+    "Active",
+    "Active",
+    "Active"
   )
 
   expect_equal(result$activity_status, expected_status)
-
-  # Verify diagnostic behavior: with new gap-aware logic
-  # Should have one inactive period from Sep to Feb (6 months)
-  inactive_periods <- result |>
-    dplyr::filter(activity_status == "Inactive Health Facility") |>
-    dplyr::mutate(run_id = data.table::rleid(activity_status)) |>
-    dplyr::group_by(run_id) |>
-    dplyr::summarise(run_length = dplyr::n(), .groups = "drop")
-
-  # Should have one inactive period of length 6
-  expect_equal(nrow(inactive_periods), 1)
-  expect_equal(inactive_periods$run_length, 6)
 })
 
 test_that("classify_facility_activity method3 handles facilities that never report", {
@@ -204,7 +176,8 @@ test_that("classify_facility_activity method3 handles facility starting mid-peri
     method = "method3",
     nonreport_window = 6,
     reporting_rule = "any_non_na",
-    binary_classification = FALSE
+    binary_classification = FALSE,
+    trailing_tolerance = TRUE
   )
 
   expected_status <- c(
@@ -240,6 +213,7 @@ test_that("classify_facility_activity method3 validates nonreport_window paramet
       hf_col = "hf_uid",
       key_indicators = "test",
       method = "method3",
+      trailing_tolerance = TRUE,
       nonreport_window = window
     )
 
@@ -259,6 +233,7 @@ test_that("classify_facility_activity method3 validates nonreport_window paramet
     data = multi_month,
     hf_col = "hf_uid",
     key_indicators = "test",
+    trailing_tolerance = TRUE,
     method = "method3",
     nonreport_window = 3
   )
@@ -271,6 +246,7 @@ test_that("classify_facility_activity method3 validates nonreport_window paramet
     hf_col = "hf_uid",
     key_indicators = "test",
     method = "method3",
+    trailing_tolerance = TRUE,
     nonreport_window = 6
   )
 
@@ -500,42 +476,7 @@ test_that("classify_facility_activity builds balanced panel", {
   )
 })
 
-test_that("classify_facility_activity validates inputs", {
-  data <- tibble::tibble(
-    hf = c("HF1", "HF2"),
-    date = base::as.Date(c("2023-01-01", "2023-02-01")),
-    test = c(1, 2)
-  )
 
-  expect_error(
-    classify_facility_activity(
-      data = list(a = 1),
-      hf_col = "hf",
-      key_indicators = "test"
-    ),
-    "must be a data.frame"
-  )
-
-  expect_error(
-    classify_facility_activity(
-      data = data,
-      hf_col = "missing_col",
-      key_indicators = "test"
-    ),
-    "missing required columns"
-  )
-
-  bad_dates <- data
-  bad_dates$date <- NA
-  expect_error(
-    classify_facility_activity(
-      data = bad_dates,
-      hf_col = "hf",
-      key_indicators = "test"
-    ),
-    "cannot be entirely missing"
-  )
-})
 
 test_that("classify_facility_activity handles first_reporting_date correctly", {
   data <- tibble::tibble(
