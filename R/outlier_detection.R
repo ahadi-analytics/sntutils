@@ -67,7 +67,7 @@
 #'   guardrails, and consensus rule. Default is `FALSE`.
 #' @param spatial_level Character string specifying the finest spatial unit
 #'   for analysis (e.g., "hf_uid" for facility-level). When specified,
-#'   `admin_levels` defines grouping boundaries while `spatial_level` defines
+#'   `admin_level` defines grouping boundaries while `spatial_level` defines
 #'   the unit of analysis. This prevents excessive grouping while maintaining
 #'   spatial granularity. Default is `NULL` (uses most granular admin level).
 #' @param classify_outbreaks Logical. When `TRUE` (default), applies outbreak
@@ -83,7 +83,7 @@
 #'   median are considered consistent. Range: (0, 1).
 #' @param outbreak_max_gap Integer. Maximum allowed gap (non-outlier months)
 #'   between outliers that can still be considered part of the same outbreak
-#'   (default `1`). For example, with `outbreak_max_gap = 1`, the pattern
+#'   (default `1`). For example, with `outbreak_max_gap = 12`, the pattern
 #'   "outlier-normal-outlier-outlier" would be classified as one outbreak
 #'   of length 3, rather than separate incidents. Set to `0` for strict
 #'   consecutive-only outbreaks. Useful for real-world data with reporting gaps.
@@ -166,7 +166,7 @@
 #'   column = "confirmed_cases",
 #'   date = "date",
 #'   record_id = "facility_id",
-#'   admin_levels = c("adm1"),        # ignore adm2 if not present
+#'   admin_level = c("adm1"),        # ignore adm2 if not present
 #'   time_mode = "across_time"
 #' )
 #'
@@ -175,7 +175,7 @@
 #'   data = malaria_data,
 #'   column = "confirmed_cases",
 #'   date = "date",
-#'   admin_levels = c("adm1"),
+#'   admin_level = c("adm1"),
 #'   time_mode = "within_year",
 #'   consensus_rule = 2,
 #'   output_profile = "audit"
@@ -200,7 +200,7 @@
 #'   data = malaria_data,
 #'   column = "conf",
 #'   date = "date",
-#'   admin_levels = c("adm1", "adm2"),
+#'   admin_level = c("adm1", "adm2"),
 #'   time_mode = "across_time",
 #'   key_indicators_hf = c("allout", "test", "conf")
 #' )
@@ -210,7 +210,7 @@
 #'   data = malaria_data,
 #'   column = "conf",
 #'   date = "date",
-#'   admin_levels = c("adm1", "adm2"),
+#'   admin_level = c("adm1", "adm2"),
 #'   time_mode = "across_time",
 #'   key_indicators_hf = c("allout", "test", "conf")
 #' )
@@ -231,7 +231,7 @@ detect_outliers <- function(
   mad_constant = 1.4826,
   mad_multiplier = 9,
   iqr_multiplier = 2,
-  consensus_rule = 2,
+  consensus_rule = 3,
   output_profile = c("standard", "lean", "audit"),
   min_n = 8,
   reporting_rate_col = NULL,
@@ -239,8 +239,8 @@ detect_outliers <- function(
   key_indicators_hf = NULL,
   classify_outbreaks = TRUE,
   outbreak_min_run = 2,
-  outbreak_prop_tolerance = 0.5,
-  outbreak_max_gap = 1,
+  outbreak_prop_tolerance = 0.9,
+  outbreak_max_gap = 12,
   verbose = TRUE
 ) {
   if (column %in% names(data) && !is.numeric(data[[column]])) {
@@ -392,7 +392,7 @@ detect_outliers <- function(
 #' @param data raw input data
 #' @param column numeric column to evaluate
 #' @param record_id unique record identifier
-#' @param admin_levels admin hierarchy columns
+#' @param admin_level admin hierarchy columns
 #' @param date_column date column name
 #' @param options normalized option list
 #' @param consensus_rule integer consensus rule
@@ -487,29 +487,29 @@ prepared <- data |>
   # Handle spatial_level parameter for proper detection vs grouping
   if (!is.null(spatial_level)) {
     # Detection happens at spatial_level, grouping for efficiency at admin_level
-    detection_admin_levels <- c(admin_level, spatial_level)
+    detection_admin_level <- c(admin_level, spatial_level)
     parallel_grouping_levels <- admin_level
   } else {
     # Original behavior - use all admin_level for both detection and grouping
-    detection_admin_levels <- admin_level
+    detection_admin_level <- admin_level
     parallel_grouping_levels <- admin_level
   }
 
-  admin_info <- .resolve_admin_levels(
+  admin_info <- .resolve_admin_level(
     prepared_data,
-    detection_admin_levels,
+    detection_admin_level,
     record_id
   )
 
   # Store both levels for different purposes - preserve our carefully
   # crafted levels
-  admin_info$detection_levels <- detection_admin_levels   # What we detect outliers on
+  admin_info$detection_levels <- detection_admin_level   # What we detect outliers on
   admin_info$parallel_grouping_levels <- parallel_grouping_levels
   # How we group for efficiency
 
-  # Override admin_levels with detection_levels to ensure consistency
-  # (.resolve_admin_levels adds record_id which we don't want in our levels)
-  admin_info$admin_levels <- detection_admin_levels
+  # Override admin_level with detection_levels to ensure consistency
+  # (.resolve_admin_level adds record_id which we don't want in our levels)
+  admin_info$admin_level <- detection_admin_level
 
   strictness_info <- .resolve_strictness(
     options$strictness,
@@ -660,7 +660,7 @@ prepared <- data |>
       iqr_multiplier = strictness_info$iqr_multiplier,
       time_mode = time_mode,
       reporting_rate = .outlier_reporting,
-      admin_level_used = paste(admin_info$admin_levels, collapse = ", "),
+      admin_level_used = paste(admin_info$admin_level, collapse = ", "),
       activeness_applied = activeness_applied,
       key_indicators_used = key_indicators_used
     )
@@ -678,7 +678,7 @@ prepared <- data |>
   # verbose summary will be displayed after outbreak classification
 
   select_cols <- c(
-    admin_info$admin_levels,
+    admin_info$admin_level,
     ".outlier_year",
     ".outlier_month",
     ".outlier_yearmon",
@@ -751,7 +751,7 @@ prepared <- data |>
     .filter_by_output_profile(
       output_profile,
       record_id,
-      admin_info$admin_levels,
+      admin_info$admin_level,
       "yearmon",
       "year"
     )
@@ -761,7 +761,7 @@ prepared <- data |>
   if (classify_outbreaks && length(flag_columns) > 0) {
     # identify grouping columns for outbreak classification
     # Note: record_id is unique per row, so we use facility-level grouping instead
-    group_columns <- context$admin_info$admin_levels
+    group_columns <- context$admin_info$admin_level
     if ("hf_uid" %in% names(final)) {
       group_columns <- c(group_columns, "hf_uid")
     } else if (record_id %in% names(final) && record_id != "record_id") {
@@ -813,7 +813,7 @@ prepared <- data |>
       methods = methods,
       column = column,
       time_mode = time_mode,
-      admin_levels = admin_info$admin_levels,
+      admin_level = admin_info$admin_level,
       strictness = strictness_label,
       strictness_info = strictness_info,
       min_n = min_n,
@@ -896,7 +896,7 @@ prepared <- data |>
 #' @param detection data frame with outlier results
 #' @param column character. name of column checked
 #' @param time_mode pooling mode used
-#' @param admin_levels character vector of admin level columns
+#' @param admin_level character vector of admin level columns
 #' @param strictness_info list of sd, mad, and iqr multipliers
 #' @param strictness strictness label used
 #' @param min_n minimum observations for flagging
@@ -910,7 +910,7 @@ prepared <- data |>
   detection,
   column,
   time_mode,
-  admin_levels,
+  admin_level,
   strictness_info,
   strictness,
   min_n,
@@ -929,7 +929,7 @@ prepared <- data |>
     "across_time" = "across all time",
     "unknown"
   )
-  level_used <- tail(admin_levels, 1)
+  level_used <- tail(admin_level, 1)
 
   fmt_num <- function(x) {
     cli::col_blue(cli::style_bold(formatC(x, big.mark = ",", digits = 0)))
@@ -944,14 +944,14 @@ prepared <- data |>
   n_skipped_n <- detection |>
     dplyr::filter(reason == "insufficient_n") |>
     dplyr::distinct(
-      dplyr::across(all_of(admin_levels)),
+      dplyr::across(all_of(admin_level)),
       .data[[yearmon_col]]
     ) |>
     nrow()
   n_skipped_rep <- detection |>
     dplyr::filter(reason == "low_reporting") |>
     dplyr::distinct(
-      dplyr::across(all_of(admin_levels)),
+      dplyr::across(all_of(admin_level)),
       .data[[yearmon_col]]
     ) |>
     nrow()
@@ -1413,7 +1413,7 @@ outlier_plot <- function(
     mad_constant = 1.4826,
     mad_multiplier = 9,
     iqr_multiplier = 2,
-    consensus_rule = 2,
+    consensus_rule = 3,
     min_n = 8,
     reporting_rate_col = NULL,
     reporting_rate_min = 0.5,
@@ -1421,7 +1421,7 @@ outlier_plot <- function(
     classify_outbreaks = TRUE,
     outbreak_min_run = 2,
     outbreak_prop_tolerance = 0.9,
-    outbreak_max_gap = 1,
+    outbreak_max_gap = 12,
     year_breaks = 2,
     target_language = "en",
     source_language = "en",
@@ -1448,19 +1448,19 @@ outlier_plot <- function(
   methods <- match.arg(methods, valid_methods, several.ok = TRUE)
 
   # Handle backward compatibility and new parameter structure
-  # spatial_level replaces old admin_levels parameter for detection granularity
+  # spatial_level replaces old admin_level parameter for detection granularity
   # admin_level replaces old plot_admin_level parameter for plotting/grouping
 
   # Set up detection admin levels (for calling detect_outliers)
   if (is.null(spatial_level)) {
     # Default to finest granularity available
-    detection_admin_levels <- admin_level
+    detection_admin_level <- admin_level
   } else {
-    detection_admin_levels <- c(admin_level, spatial_level)
+    detection_admin_level <- c(admin_level, spatial_level)
   }
 
   # Set up plotting admin levels (for aggregation/faceting)
-  plot_admin_levels <- admin_level
+  plot_admin_level <- admin_level
 
   # Check if consensus is requested with sufficient other methods
   if ("consensus" %in% methods) {
@@ -1516,7 +1516,7 @@ outlier_plot <- function(
       methods = methods,
       column = column,
       time_mode = time_mode,
-      admin_levels = admin_level,
+      admin_level = admin_level,
       strictness = strictness,
       strictness_info = list(
         sd_multiplier = sd_multiplier,
@@ -2070,7 +2070,7 @@ outlier_plot <- function(
 #' @param data input data frame
 #' @param column target column name
 #' @param record_id record id column name
-#' @param admin_levels admin columns vector
+#' @param admin_level admin columns vector
 #' @param year year column name
 #' @param yearmon year-month column name
 #' @param month optional month column name
@@ -2349,22 +2349,22 @@ outlier_plot <- function(
 #' resolve admin levels and facet fallback
 #'
 #' @param data data frame
-#' @param admin_levels candidate admin columns
+#' @param admin_level candidate admin columns
 #' @param record_id record id column name
 #' @noRd
-.resolve_admin_levels <- function(data, admin_levels, record_id) {
-  if (is.null(admin_levels) || length(admin_levels) == 0) {
-    cli::cli_abort("{.arg admin_levels} must supply at least one column name.")
+.resolve_admin_level <- function(data, admin_level, record_id) {
+  if (is.null(admin_level) || length(admin_level) == 0) {
+    cli::cli_abort("{.arg admin_level} must supply at least one column name.")
   }
 
-  missing_admin <- admin_levels[!admin_levels %in% names(data)]
-  if (length(missing_admin) == length(admin_levels)) {
+  missing_admin <- admin_level[!admin_level %in% names(data)]
+  if (length(missing_admin) == length(admin_level)) {
     cli::cli_abort(
-      "None of the supplied admin columns {.val {admin_levels}} exist."
+      "None of the supplied admin columns {.val {admin_level}} exist."
     )
   }
 
-  available <- admin_levels[admin_levels %in% names(data)]
+  available <- admin_level[admin_level %in% names(data)]
   if (length(available) == 0) {
     cli::cli_abort("No valid admin columns provided.")
   }
@@ -2376,7 +2376,7 @@ outlier_plot <- function(
   }
 
   list(
-    admin_levels = available,
+    admin_level = available,
     facet_column = facet_column,
     grouping_cols = available,
     id_cols = unique(c(record_id, available))
@@ -2428,13 +2428,13 @@ outlier_plot <- function(
 #' build grouping keys based on time_mode
 #'
 #' @param data data frame
-#' @param admin_levels admin columns
+#' @param admin_level admin columns
 #' @param time_mode time mode string
 #' @param year year column name
 #' @param month month column name
 #' @noRd
-.build_group_keys <- function(data, admin_levels, time_mode, year, month) {
-  base_cols <- admin_levels
+.build_group_keys <- function(data, admin_level, time_mode, year, month) {
+  base_cols <- admin_level
   time_cols <- switch(
     time_mode,
     within_year = c(year),
@@ -2742,7 +2742,7 @@ outlier_plot <- function(
 #' @param data detection results tibble
 #' @param output_profile profile string (lean/standard/audit)
 #' @param record_id record id column name
-#' @param admin_levels admin column names
+#' @param admin_level admin column names
 #' @param yearmon yearmon column name
 #' @param year year column name
 #' @noRd
@@ -2750,11 +2750,11 @@ outlier_plot <- function(
     data,
     output_profile,
     record_id,
-    admin_levels,
+    admin_level,
     yearmon,
     year) {
   # core columns always included
-  core_cols <- c(record_id, admin_levels, yearmon, year, "month")
+  core_cols <- c(record_id, admin_level, yearmon, year, "month")
 
   if (output_profile[1] == "lean") {
     # minimal: record id, admin levels, yearmon, derived year/month,
@@ -2843,11 +2843,11 @@ outlier_plot <- function(
   # Handle spatial_level parameter for proper detection vs grouping
   if (!is.null(spatial_level)) {
     # Detection happens at spatial_level, grouping for efficiency at admin_level
-    detection_admin_levels <- c(admin_level, spatial_level)
+    detection_admin_level <- c(admin_level, spatial_level)
     parallel_grouping_levels <- admin_level  # For data.table parallel efficiency
   } else {
     # Original behavior - use all admin_level for both detection and grouping
-    detection_admin_levels <- admin_level
+    detection_admin_level <- admin_level
     parallel_grouping_levels <- admin_level
   }
 
@@ -2855,7 +2855,7 @@ outlier_plot <- function(
     data = data,
     column = column,
     record_id = record_id,
-    admin_level = admin_level,  # Pass original admin_level, not detection_admin_levels
+    admin_level = admin_level,  # Pass original admin_level, not detection_admin_level
     date_column = date,
     options = options,
     consensus_rule = consensus_rule,
@@ -2898,7 +2898,7 @@ outlier_plot <- function(
     result,
     output_profile,
     record_id,
-    context$admin_info$admin_levels,
+    context$admin_info$admin_level,
     context$yearmon_col,
     context$year_col
   )

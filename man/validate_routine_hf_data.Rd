@@ -9,7 +9,7 @@ outlier checks, compiles a summary, and optionally translates and saves.}
 validate_routine_hf_data(
   data,
   id_col = "record_id",
-  facility_col = "hf_id",
+  facility_col = "hf_uid",
   date_col = "date",
   yearmon_col = "yearmon",
   year_col = "year",
@@ -24,12 +24,14 @@ validate_routine_hf_data(
   check_outliers = TRUE,
   check_facility_activeness = TRUE,
   hf_name_col = "hf",
-  hf_uid_col = "hf_uid",
   key_indicators = NULL,
+  activeness_method = 3,
+  nonreport_window = 6,
+  reporting_rule = "any_non_na",
   min_reporting_rate = 0.5,
   outlier_methods = c("iqr", "median", "mean"),
   time_mode = "across_time",
-  strictness = "advanced",
+  strictness = "balanced",
   sd_multiplier = 2,
   mad_constant = 1.4826,
   mad_multiplier = 6,
@@ -51,7 +53,7 @@ validate_routine_hf_data(
 
 \item{id_col}{character. Unique record id. Default "record_id".}
 
-\item{facility_col}{character. Facility id. Default "hf_id".}
+\item{facility_col}{character. Facility id. Default "hf_uid".}
 
 \item{date_col}{character. Date column. Default "date".}
 
@@ -85,10 +87,19 @@ If NULL, defaults generated from common malaria cascade rules.}
 
 \item{hf_name_col}{character. Facility name column. Default "hf".}
 
-\item{hf_uid_col}{character. Facility UID column. Default "hf_uid".}
-
 \item{key_indicators}{character|NULL. Key indicators for activeness check.
 If NULL, uses all indicators. Default NULL.}
+
+\item{activeness_method}{character or numeric. Classification method for facility activity
+status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
+Defaults to 3. See \code{\link{classify_facility_activity}} for details.}
+
+\item{nonreport_window}{integer. Minimum number of consecutive non-reporting
+months to classify a facility as inactive in method 3. Defaults to 6.}
+
+\item{reporting_rule}{character. Defines what counts as reporting for activeness:
+"any_non_na" (default, counts NA as non-reporting, 0 counts as reported)
+or "positive_only" (requires >0 value to count as reported).}
 
 \item{min_reporting_rate}{numeric. Minimum reporting rate threshold. Default 0.5.}
 
