@@ -418,6 +418,11 @@ facility_reporting_plot <- function(
     cli::cli_abort("`{date_col}` cannot be entirely missing.")
   }
 
+  # Validate facet_col if provided
+  if (!base::is.null(facet_col) && !facet_col %in% base::names(data)) {
+    cli::cli_abort("`facet_col` must be a column in the data. Available columns: {base::paste(base::names(data), collapse = ', ')}")
+  }
+
   data <- data |>
     dplyr::mutate(
       !!rlang::sym(date_col) := lubridate::floor_date(
@@ -574,8 +579,17 @@ facility_reporting_plot <- function(
     cli::cli_abort("method must be numeric (1, 2, 3) or character")
   }
 
+  # If facet_col is provided, include it in the data passed to classify_facility_activity
+  data_for_classification <- data
+  if (!is.null(facet_col)) {
+    # Ensure facet_col is included in the classification data
+    required_cols_with_facet <- base::c(hf_col, date_col, key_indicators, facet_col)
+    data_for_classification <- data |>
+      dplyr::select(dplyr::any_of(required_cols_with_facet))
+  }
+
   routine_reporting <- classify_facility_activity(
-    data = data,
+    data = data_for_classification,
     hf_col = hf_col,
     date_col = date_col,
     key_indicators = key_indicators,
@@ -586,15 +600,9 @@ facility_reporting_plot <- function(
     trailing_tolerance = trailing_tolerance
   )
 
-  # If facet_col is provided, add it to the routine_reporting data
-  if (!is.null(facet_col)) {
-    # Join the facet column from original data
-    facet_data <- data |>
-      dplyr::select(dplyr::all_of(c(hf_col, facet_col))) |>
-      dplyr::distinct()
-
-    routine_reporting <- routine_reporting |>
-      dplyr::left_join(facet_data, by = hf_col)
+  # Verify facet column is present if requested
+  if (!is.null(facet_col) && !facet_col %in% names(routine_reporting)) {
+    cli::cli_abort("Facet column `{facet_col}` was lost during activity classification. This may indicate an issue with the data processing.")
   }
 
   # Count never-reported facilities after creating routine_reporting
