@@ -1,3 +1,33 @@
+#' Universal Console Clearing
+#'
+#' Attempts multiple methods to clear the console across different R environments
+#' including RStudio, VSCode, Positron, and various terminal applications.
+#'
+#' @return Invisible NULL
+#' @keywords internal
+#' @noRd
+.clear_console <- function() {
+  if (!interactive()) return(invisible(NULL))
+
+  # Method 1: Form feed (works in RStudio)
+  cat("\014")
+
+  # Method 2: ANSI escape codes (works in most terminals including VSCode)
+  cat("\033[2J\033[H")
+
+  # Method 3: System call for Unix/Mac terminals
+  if (.Platform$OS.type == "unix") {
+    system("clear", ignore.stdout = TRUE, ignore.stderr = TRUE)
+  }
+
+  # Method 4: System call for Windows
+  if (.Platform$OS.type == "windows") {
+    system("cls", ignore.stdout = TRUE, ignore.stderr = TRUE)
+  }
+
+  invisible(NULL)
+}
+
 #' Save Dataframe Using sntutils Write Function
 #'
 #' Prompts the user for confirmation before saving a dataframe to a file.
@@ -696,8 +726,7 @@ handle_user_interaction <- function(input_data, levels, level,
   while (i <= length(unique_names)) {
     # clear console
     if (clear_console) {
-      cat("\014")
-      cat("\033[2J", "\033[H")
+      .clear_console()
     }
 
     # Define color using crayon function
