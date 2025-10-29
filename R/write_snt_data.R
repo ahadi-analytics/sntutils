@@ -33,7 +33,8 @@
   }
 
   file_formats <- tolower(file_formats)
-  ok_fmts <- c("rds", "csv", "tsv", "xlsx", "parquet", "feather", "qs2", "geojson")
+  ok_fmts <- c("rds", "csv", "tsv", "xlsx",
+  "parquet", "feather", "qs2", "geojson")
   bad <- setdiff(file_formats, ok_fmts)
   if (length(bad) > 0) {
     cli::cli_abort(c(
@@ -439,140 +440,6 @@
   invisible(path)
 }
 
-# hashing ----------------------------------------------------------------------
-
-#' Normalize object for hashing (internal)
-#'
-#' @description
-#' Produces a canonical representation by optionally sorting columns/rows,
-#' dropping `sf` geometry, stringifying dates/factors/list-cols, and
-#' enforcing UTF-8. For `fmt = "xlsx"`, uses Excel preparation rules.
-#'
-#' @param x Object to normalize (data.frame or list of them).
-#' @param fmt Format hint (affects normalization, e.g., "xlsx").
-#' @param ignore_row Logical; if TRUE, order rows deterministically.
-#' @param ignore_col Logical; if TRUE, sort columns by name.
-#' @param ignore_sheet Logical; if TRUE, sort sheet names.
-#' @return A normalized object suitable for stable hashing.
-#' @keywords internal
-#' @noRd
-.normalize_for_hash <- function(
-  x,
-  fmt,
-  ignore_row = TRUE,
-  ignore_col = TRUE,
-  ignore_sheet = TRUE
-) {
-  if (identical(fmt, "xlsx")) {
-    x <- .prepare_for_excel(x)
-  }
-
-  norm_df <- function(df) {
-    if (inherits(df, "sf") && requireNamespace("sf", quietly = TRUE)) {
-      df <- sf::st_drop_geometry(df)
-    }
-
-    df[] <- lapply(df, function(col) {
-      if (is.factor(col)) {
-        return(as.character(col))
-      }
-      if (inherits(col, c("POSIXct", "POSIXt", "Date"))) {
-        return(as.character(col))
-      }
-      if (is.list(col)) {
-        return(vapply(
-          col,
-          function(v) {
-            paste0(
-              utils::capture.output(utils::str(v, give.attr = FALSE)),
-              collapse = " "
-            )
-          },
-          character(1)
-        ))
-      }
-      col
-    })
-
-    if (isTRUE(ignore_col)) {
-      ord_cols <- sort(names(df), method = "radix")
-      df <- df[, ord_cols, drop = FALSE]
-    }
-
-    if (isTRUE(ignore_row) && nrow(df) > 1L && ncol(df) > 0L) {
-      ord <- do.call(order, c(df, list(na.last = TRUE)))
-      if (length(ord) == nrow(df)) {
-        df <- df[ord, , drop = FALSE]
-      }
-      rownames(df) <- NULL
-    }
-
-    .to_utf8(df)
-  }
-
-  if (is.data.frame(x)) {
-    return(norm_df(x))
-  }
-  if (is.list(x)) {
-    dfs <- x[vapply(x, is.data.frame, logical(1))]
-    dfs <- lapply(dfs, norm_df)
-    nm <- names(dfs)
-    if (is.null(nm)) {
-      nm <- paste0("Sheet", seq_along(dfs))
-    }
-    names(dfs) <- nm
-    if (isTRUE(ignore_sheet)) {
-      dfs <- dfs[order(names(dfs))]
-    }
-    return(dfs)
-  }
-  x
-}
-
-#' Compute a stable object hash (internal)
-#'
-#' @description
-#' Normalizes tabular/list objects to a canonical form (sorts columns/rows,
-#' stringifies dates/factors, drops `sf` geometry), then hashes with digest.
-#'
-#' @inheritParams write_snt_data
-#' @param x Object to hash.
-#' @param fmt Format hint (affects normalization, e.g. "xlsx").
-#' @param algo Digest algorithm; default "xxhash64".
-#' @return Character scalar hash.
-#' @keywords internal
-#' @noRd
-.obj_hash <- function(x, fmt, algo = "xxhash64") {
-  nx <- .normalize_for_hash(x, fmt, TRUE, TRUE, TRUE)
-
-  if (!requireNamespace("digest", quietly = TRUE)) {
-    p <- tempfile(fileext = ".bin")
-    on.exit(unlink(p), add = TRUE)
-    con <- file(p, open = "wb")
-    on.exit(try(close(con), silent = TRUE), add = TRUE)
-    serialize(nx, con, version = 3)
-    return(as.character(tools::md5sum(p)))
-  }
-
-  if (
-    !algo %in%
-    c(
-      "crc32",
-      "md5",
-      "sha1",
-      "sha256",
-      "sha512",
-      "xxhash32",
-      "xxhash64",
-      "murmur32"
-    )
-  ) {
-    algo <- "md5"
-  }
-
-  digest::digest(nx, algo = algo, serialize = TRUE)
-}
-
 # atomic write -----------------------------------------------------------------
 
 #' Atomic write helper (internal)
@@ -833,40 +700,6 @@
   removed
 }
 
-# fast file hash ---------------------------------------------------------------
-
-#' Fast file hash (internal)
-#'
-#' @description
-#' Computes a fast file hash using `tools::md5sum` by default, or other
-#' algorithms via `digest` when available.
-#'
-#' @param path Path to an existing file.
-#' @param algo Hash algorithm (e.g., "md5").
-#' @return Lowercase hex digest or `NA_character_` on failure.
-#' @keywords internal
-#' @noRd
-.file_hash <- function(path, algo = "md5") {
-  if (!fs::file_exists(path)) {
-    return(NA_character_)
-  }
-  if (identical(algo, "md5")) {
-    h <- suppressWarnings(tools::md5sum(path))
-    return(tolower(as.character(h[[1]])))
-  }
-  if (requireNamespace("digest", quietly = TRUE)) {
-    raw <- try(
-      readBin(path, what = "raw", n = file.info(path)$size),
-      silent = TRUE
-    )
-    if (inherits(raw, "try-error")) {
-      return(NA_character_)
-    }
-    return(digest::digest(raw, algo = algo, serialize = FALSE))
-  }
-  NA_character_
-}
-
 # main api ---------------------------------------------------------------------
 
 #' Write an object to standardized filenames in one or more formats
@@ -892,7 +725,7 @@
 #' @param overwrite Logical; allow overwrite when not versioned.
 #' @param ... Additional writer-specific arguments
 #'
-#' @return tibble with columns format, path, ok, bytes, hash, message
+#' @return tibble with columns format, path, ok, bytes, message
 #' @examples
 #' # write_snt_data(head(mtcars), tempdir(), "cars", "rds",
 #' #                include_date = FALSE, overwrite = TRUE)
@@ -986,7 +819,6 @@ write_snt_data <- function(
         path = write_path,
         ok = FALSE,
         bytes = NA_real_,
-        hash = NA_character_,
         message = cli::format_message(msg)
       )
       next
@@ -994,14 +826,12 @@ write_snt_data <- function(
 
     ok <- FALSE
     bytes <- NA_real_
-    hash_val <- NA_character_
     err_msg <- NULL
 
         tryCatch(
           {
             .atomic_write(function(p) writer(obj, p, ...), write_path)
             bytes <- suppressWarnings(file.size(write_path))
-            hash_val <- .obj_hash(obj, fmt)
             ok <- TRUE
 
           },
@@ -1046,7 +876,6 @@ write_snt_data <- function(
       path = write_path,
       ok = ok,
       bytes = bytes,
-      hash = hash_val,
       message = if (ok) "ok" else (rlang::`%||%`(err_msg, "error"))
     )
   }
