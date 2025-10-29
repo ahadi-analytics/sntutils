@@ -43,7 +43,7 @@ write_snt_data(
 \item{...}{Additional writer-specific arguments}
 }
 \value{
-tibble with columns format, path, ok, bytes, hash, message
+tibble with columns format, path, ok, bytes, message
 }
 \description{
 Writes an object (data.frame, list of data.frames, sf, etc.) to a directory

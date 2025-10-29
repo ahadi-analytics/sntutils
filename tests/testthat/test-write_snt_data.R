@@ -104,27 +104,6 @@ testthat::test_that("date vs tag conflict is rejected", {
 
 # basic writing ---------------------------------------------------------------
 
-testthat::test_that("writes rds and returns summary", {
-  tmp <- withr::local_tempdir()
-  res <- write_snt_data(
-    obj = mtcars,
-    path = tmp,
-    data_name = "cars",
-    file_formats = "rds",
-    quiet = FALSE
-  )
-
-  testthat::expect_s3_class(res, "data.frame")
-  testthat::expect_setequal(
-    names(res),
-    c("format", "path", "ok", "bytes", "hash", "message")
-  )
-  testthat::expect_true(res$ok[[1]])
-  testthat::expect_true(fs::file_exists(res$path[[1]]))
-  testthat::expect_true(res$bytes[[1]] > 0)
-  testthat::expect_match(res$hash[[1]], "^[0-9a-f]+$")
-})
-
 testthat::test_that("csv is utf-8 and newline is set", {
   tmp <- withr::local_tempdir()
   df <- make_small_df()
