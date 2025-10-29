@@ -17,7 +17,8 @@ prep_geonames(
   method = "jw",
   interactive = TRUE,
   max_options = 200,
-  preserve_case = FALSE
+  preserve_case = FALSE,
+  column_width = 60
 )
 }
 \arguments{
@@ -72,6 +73,12 @@ matching. Default is 200.}
 \item{preserve_case}{Logical; if TRUE, preserves the original case of admin
 names from the lookup data when returning matched values. If FALSE
 (default), returns all admin names in uppercase as before.}
+
+\item{column_width}{Numeric; the maximum width (in characters) for each
+column in the interactive menu. Controls how much text is displayed
+before truncation. Default is 60 characters. Note that the actual
+text display width is approximately 8 characters less to accommodate
+number labels and truncation markers ("...").}
 }
 \value{
 A data frame with cleaned administrative names and saved data frame

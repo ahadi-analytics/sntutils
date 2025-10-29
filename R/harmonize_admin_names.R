@@ -489,7 +489,7 @@ format_choice <- function(index, choice, width) {
 #' @param column_width Width of each column
 #' @return Vector of formatted choice strings, one per row
 #' @noRd
-format_choices <- function(choices, num_columns, column_width = 45) {
+format_choices <- function(choices, num_columns, column_width = 60) {
   num_choices <- length(choices)
   rows_per_column <- ceiling(num_choices / num_columns)
 
@@ -520,6 +520,8 @@ format_choices <- function(choices, num_columns, column_width = 45) {
 #' @param choices_input Vector of option strings to display.
 #' @param special_actions Named list of special actions with string identifiers.
 #' @param prompt String to display for user input prompt.
+#' @param column_width Numeric; the maximum width (in characters) for each
+#'        column in the menu display. Default is 60.
 #'
 #' @return The selected option's identifier (numeric or special action key).
 #' @importFrom cli cli_h1 cli_h2 cli_text cli_alert_warning
@@ -531,7 +533,8 @@ format_choices <- function(choices, num_columns, column_width = 45) {
 #' @keywords internal
 #' @noRd
 display_custom_menu <- function(title, main_header, choices_input,
-                                special_actions, prompt) {
+                                special_actions, prompt,
+                                column_width = 60) {
   cli::cli_h1(main_header)
   cli::cli_h2(title)
 
@@ -539,7 +542,7 @@ display_custom_menu <- function(title, main_header, choices_input,
   num_columns <- if (num_choices > 50) 3 else if (num_choices > 25) 2 else 1
 
   formatted_choices <- format_choices(choices_input, num_columns,
-    column_width = 45
+    column_width = column_width
   )
   cat("\n")
   cat(formatted_choices, sep = "\n")
@@ -641,6 +644,8 @@ calculate_string_distance <- function(
 #'                  prompts; defaults to TRUE.
 #' @param max_options Maximum number of options to display in the menu.
 #'       Default is 200.
+#' @param column_width Numeric; the maximum width (in characters) for each
+#'       column in the interactive menu display. Default is 60.
 #'
 #' @return Data frame of user-selected replacements if any; otherwise,
 #'          provides feedback based on user actions.
@@ -652,7 +657,8 @@ calculate_string_distance <- function(
 #' @noRd
 handle_user_interaction <- function(input_data, levels, level,
                                     clear_console = TRUE,
-                                    max_options) {
+                                    max_options,
+                                    column_width = 60) {
   # Interactivity --------------------------------------------------------------
 
   # set up the messaging prompts at the start of the function
@@ -811,7 +817,8 @@ handle_user_interaction <- function(input_data, levels, level,
       title, main_header,
       replacement_name,
       special_actions,
-      prompt = prompt
+      prompt = prompt,
+      column_width = column_width
     )
 
     # handle user choices ------------------------------------------------------
@@ -825,6 +832,7 @@ handle_user_interaction <- function(input_data, levels, level,
     } else if (user_choice == "s") { # Skip this one
       cli::cli_alert_info("You are skipping this one...")
       i <- i + 1
+      if (clear_console) .clear_console()
       next
     } else if (user_choice == "e") { # Save and exit
       if (length(user_choices) > 0) {
@@ -865,6 +873,7 @@ handle_user_interaction <- function(input_data, levels, level,
         cli::cli_alert_warning("No name entered. Returning to menu...")
       }
       i <- i + 1
+      if (clear_console) .clear_console()
     } else {
       suppressWarnings({
         replace_int <- toupper(replacement_name[as.integer(user_choice)])
@@ -883,6 +892,7 @@ handle_user_interaction <- function(input_data, levels, level,
         )
       })
       i <- i + 1
+      if (clear_console) .clear_console()
     }
   }
 
@@ -890,8 +900,7 @@ handle_user_interaction <- function(input_data, levels, level,
 
   # clear console
   if (clear_console) {
-    cat("\014")
-    cat("\033[2J", "\033[H")
+    .clear_console()
   }
 
   if (length(user_choices) != 0) {
@@ -1214,6 +1223,11 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
 #' @param preserve_case Logical; if TRUE, preserves the original case of admin
 #'        names from the lookup data when returning matched values. If FALSE
 #'        (default), returns all admin names in uppercase as before.
+#' @param column_width Numeric; the maximum width (in characters) for each
+#'        column in the interactive menu. Controls how much text is displayed
+#'        before truncation. Default is 60 characters. Note that the actual
+#'        text display width is approximately 8 characters less to accommodate
+#'        number labels and truncation markers ("...").
 #'
 #' @details
 #' The function performs the following steps:
@@ -1276,7 +1290,8 @@ prep_geonames <- function(
   method = "jw",
   interactive = TRUE,
   max_options = 200,
-  preserve_case = FALSE
+  preserve_case = FALSE,
+  column_width = 60
 ) {
   # Capture the names of the data frames at the beginning
   target_df_name <- paste(deparse(substitute(target_df)), collapse = "")
@@ -1958,7 +1973,8 @@ prep_geonames <- function(
         input_data = top_res,
         levels = levels,
         level = level,
-        max_options = max_options
+        max_options = max_options,
+        column_width = column_width
       )
 
       if (!is.null(replacement_df) && nrow(replacement_df) > 0) {
