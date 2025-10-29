@@ -86,7 +86,9 @@ matching results. Default TRUE.}
 }
 \value{
 A list with results, by_method, dhis2_only, mfl_only,
-target_augmented, summary_table, coverage_summary, and params.
+target_augmented, summary_table, coverage_summary, and params. One-to-one
+matching is always enforced, ensuring each MFL facility is matched by at
+most one DHIS2 facility.
 }
 \description{
 Orchestrates a multi-step matching pipeline between a \emph{target} dataset
