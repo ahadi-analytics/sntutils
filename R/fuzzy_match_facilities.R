@@ -387,8 +387,13 @@ fuzzy_match_facilities <- function(
     dplyr::distinct(dplyr::across(dplyr::all_of(admin_cols)), hf_lookup_raw) |>
     base::nrow()
 
-  mfl_only_count <- base::nrow(cross$mfl_only)
-  n_unique_mfl_matched <- base::nrow(cross$matched_keys)
+  n_unique_mfl_matched <- results |>
+    dplyr::filter(!base::is.na(hf_mfl)) |>
+    dplyr::distinct(hf_mfl) |>
+    base::nrow()
+
+  # calculate mfl_only as simple subtraction: total - matched
+  mfl_only_count <- lookup_total_unique - n_unique_mfl_matched
 
   counts <- list(
     n_exact = base::sum(results$match_method == "exact_admin", na.rm = TRUE),
@@ -1116,11 +1121,11 @@ fuzzy_match_facilities <- function(
   has_metric <- function(metric) metric %in% summary_table$metric
 
   format_primary <- function(label, value) {
-    sprintf("  \u2022 %-24s : %s", label, value)
+    sprintf("  \u2022 %-38s : %s", label, value)
   }
 
   format_secondary <- function(label, value) {
-    sprintf("    \u2013 %-22s : %s", label, value)
+    sprintf("    \u2013 %-36s : %s", label, value)
   }
 
   matched_value <- sprintf(
@@ -1142,13 +1147,13 @@ fuzzy_match_facilities <- function(
     matched_pct_line,
     "",
     format_primary("MFL facilities (total)", fmt_count(mfl_total)),
-    format_secondary("Missing names in MFL", fmt_count(mfl_missing)),
+    format_secondary("Missing names in MFL", fmt_count(mfl_missing, 5)),
     format_secondary(
-      "MFL facilities matched",
+      "MFL facilities matched to DHIS2",
       fmt_with_pct(mfl_matched, mfl_total)
     ),
     format_secondary(
-      "MFL-only facilities",
+      "MFL facilities not matched to DHIS2",
       fmt_with_pct(mfl_only, mfl_total)
     ),
     "",

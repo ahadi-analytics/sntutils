@@ -32,11 +32,11 @@ Imports:
     fs,
     readr,
     lubridate,
+    digest
 Suggests:
     arrow,
     archive,
     crayon,
-    digest,
     curl,
     ecmwfr,
     filelock,

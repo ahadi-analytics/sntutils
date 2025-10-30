@@ -174,6 +174,8 @@ globalVariables(
     "growth_ratio",
     "label",
     "path",
+     "match_pct",
+     "method_rank",
     "prev_pop",
     "prop",
     "periods_active",
