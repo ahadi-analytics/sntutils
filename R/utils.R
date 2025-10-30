@@ -183,6 +183,7 @@ median2 <- function(x) {
 #' @examples
 #' vdigest(c("a", "b", "c"))
 #' vdigest(as.character(iris$Species))
+#' @importFrom digest digest
 #' @export
 vdigest <- Vectorize(digest::digest)
 
