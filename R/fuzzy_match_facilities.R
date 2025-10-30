@@ -3,9 +3,8 @@
 #' @description
 #' Orchestrates a multi-step matching pipeline between a *target* dataset
 #' (e.g., DHIS2 facilities) and a *lookup* dataset (e.g., MFL).
-#' Steps include exact match, interactive stratified match
-#' (using `sntutils::prep_geonames()`), standardized-name match, and
-#' fuzzy match.
+#' Steps include exact match, standardized-name match, fuzzy match,
+#' and interactive stratified match (using `sntutils::prep_geonames()`).
 #' Returns consolidated results and QA summaries.
 #'
 #' @param target_df Tibble/data.frame with facility names and admin columns.
@@ -17,14 +16,14 @@
 #' @param uid_col Character. Column in `target_df` uniquely identifying each
 #'   facility. Default "hf_uid".
 #' @param steps Named logical vector toggling steps:
-#'   c(exact = TRUE, interactive = FALSE, standardization = TRUE, fuzzy = TRUE).
+#'   c(exact = TRUE, standardization = TRUE, fuzzy = TRUE, interactive = FALSE).
 #' @param lookup_cols Character vector of `lookup_df` columns to append to the
 #'   match results and returned target table. Default `character()`.
 #' @param match_interactivity Logical flag forwarded to the interactive
 #'   matching helper. Default `TRUE`.
 #' @param fuzzy_methods Character vector of string distance methods to
 #'   combine. Supported: c("jw", "lv"). Default c("jw", "lv").
-#' @param fuzzy_threshold Integer in 0-100 for acceptance. Default 80.
+#' @param fuzzy_threshold Integer in 0-100 for acceptance. Default 95.
 #' @param score_exact Integer score for exact matches. Default 100.
 #' @param score_standardization Integer score for standardized matches.
 #'   Default 100.
@@ -58,14 +57,14 @@ fuzzy_match_facilities <- function(
   uid_col = "hf_uid",
   steps = c(
     exact = TRUE,
-    interactive = TRUE,
     standardization = TRUE,
-    fuzzy = TRUE
+    fuzzy = TRUE,
+    interactive = TRUE
   ),
   lookup_cols = character(),
   match_interactivity = TRUE,
   fuzzy_methods = c("jw", "lv"),
-  fuzzy_threshold = 80L,
+  fuzzy_threshold = 95L,
   score_exact = 100L,
   score_standardization = 100L,
   score_interactive = 95L,
@@ -216,7 +215,32 @@ fuzzy_match_facilities <- function(
   # ---------------------- remove matched from pool ----------------------------
   pool <- .anti_by_uid(target_valid, matches_exact, uid_col = uid_col)
 
-  # ------ step 2: interactive (via sntutils::prep_geonames + unmatched) -------
+  # ---------------- step 2: standardized-name + admin -------------------------
+  if (base::isTRUE(steps[["standardization"]]) && base::nrow(pool) > 0) {
+    matches_std <- .match_step_standardized(
+      pool = pool,
+      lookup_df = lookup_df,
+      admin_cols = admin_cols,
+      score_standardization = score_standardization,
+      uid_col = uid_col
+    )
+    pool <- .anti_by_uid(pool, matches_std, uid_col = uid_col)
+  }
+
+  # ------------------ step 3: fuzzy within admin groups -----------------------
+  if (base::isTRUE(steps[["fuzzy"]]) && base::nrow(pool) > 0) {
+    matches_fuzzy <- .match_step_fuzzy(
+      pool = pool,
+      lookup_df = lookup_df,
+      admin_cols = admin_cols,
+      fuzzy_methods = fuzzy_methods,
+      fuzzy_threshold = fuzzy_threshold,
+      uid_col = uid_col
+    )
+    pool <- .anti_by_uid(pool, matches_fuzzy, uid_col = uid_col)
+  }
+
+  # ------ step 4: interactive (via sntutils::prep_geonames + unmatched) -------
   if (base::isTRUE(steps[["interactive"]]) && base::nrow(pool) > 0) {
     matches_interactive <- .match_step_interactive(
       pool = pool,
@@ -229,31 +253,6 @@ fuzzy_match_facilities <- function(
       matching_cache_path = matching_cache_path
     )
     pool <- .anti_by_uid(pool, matches_interactive, uid_col = uid_col)
-  }
-
-  # ---------------- step 3: standardized-name + admin -------------------------
-  if (base::isTRUE(steps[["standardization"]]) && base::nrow(pool) > 0) {
-    matches_std <- .match_step_standardized(
-      pool = pool,
-      lookup_df = lookup_df,
-      admin_cols = admin_cols,
-      score_standardization = score_standardization,
-      uid_col = uid_col
-    )
-    pool <- .anti_by_uid(pool, matches_std, uid_col = uid_col)
-  }
-
-  # ------------------ step 4: fuzzy within admin groups -----------------------
-  if (base::isTRUE(steps[["fuzzy"]]) && base::nrow(pool) > 0) {
-    matches_fuzzy <- .match_step_fuzzy(
-      pool = pool,
-      lookup_df = lookup_df,
-      admin_cols = admin_cols,
-      fuzzy_methods = fuzzy_methods,
-      fuzzy_threshold = fuzzy_threshold,
-      uid_col = uid_col
-    )
-    pool <- .anti_by_uid(pool, matches_fuzzy, uid_col = uid_col)
   }
 
   # ------------- step 5: unmatched + missing-name rows ------------------------
@@ -288,9 +287,9 @@ fuzzy_match_facilities <- function(
   # -------------------------- step 6: consolidate -----------------------------
   all_matches <- dplyr::bind_rows(
     matches_exact,
-    matches_interactive,
     matches_std,
-    matches_fuzzy
+    matches_fuzzy,
+    matches_interactive
   )
 
   uids_before_dedup <- all_matches[[uid_col]]
@@ -1172,15 +1171,6 @@ fuzzy_match_facilities <- function(
       )
     )
   }
-  if (has_metric("Interactive matches")) {
-    lines <- c(
-      lines,
-      format_secondary(
-        "Interactive matches",
-        fmt_with_pct(counts$n_interactive, dhis2_total)
-      )
-    )
-  }
   if (has_metric("Standardization matches")) {
     lines <- c(
       lines,
@@ -1196,6 +1186,15 @@ fuzzy_match_facilities <- function(
       format_secondary(
         "Fuzzy matches",
         fmt_with_pct(counts$n_fuzzy, dhis2_total)
+      )
+    )
+  }
+  if (has_metric("Interactive matches")) {
+    lines <- c(
+      lines,
+      format_secondary(
+        "Interactive matches",
+        fmt_with_pct(counts$n_interactive, dhis2_total)
       )
     )
   }
@@ -1296,9 +1295,9 @@ fuzzy_match_facilities <- function(
       "Missing names in DHIS2",
       "Valid DHIS2 facilities",
       "Exact matches (admin)",
-      "Interactive matches",
       "Standardization matches",
       "Fuzzy matches",
+      "Interactive matches",
       "Total matched",
       "Unmatched",
       "MFL-only facilities"
@@ -1310,9 +1309,9 @@ fuzzy_match_facilities <- function(
       counts$n_missing,
       total_valid,
       pct(counts$n_exact, counts$unique_target),
-      pct(counts$n_interactive, counts$unique_target),
       pct(counts$n_standardization, counts$unique_target),
       pct(counts$n_fuzzy, counts$unique_target),
+      pct(counts$n_interactive, counts$unique_target),
       pct(total_matched, counts$unique_target),
       pct(counts$n_unmatched, counts$unique_target),
       pct(counts$n_mfl_only, lookup_n)
@@ -1338,9 +1337,9 @@ fuzzy_match_facilities <- function(
       "Unique DHIS2 facilities with missing names",
       "Unique DHIS2 facilities with valid names",
       "Facilities matched on exact name and admin unit",
-      "Facilities matched through manual interactive review",
       "Facilities matched after name standardization",
       "Facilities matched using fuzzy string similarity",
+      "Facilities matched through manual interactive review",
       "Total facilities successfully matched",
       "Facilities still unmatched after all methods",
       "MFL facilities never matched to any DHIS2 facility"
@@ -1352,9 +1351,9 @@ fuzzy_match_facilities <- function(
       "FS DHIS2 avec noms manquants",
       "FS DHIS2 avec noms valides",
       "FS appari\u00e9es par nom exact et niveau administratif",
-      "FS appari\u00e9es par revue interactive manuelle",
       "FS appari\u00e9es apr\u00e8s standardisation des noms",
       "FS appari\u00e9es par similarit\u00e9 de texte floue",
+      "FS appari\u00e9es par revue interactive manuelle",
       "Total des FS appari\u00e9es avec succ\u00e8s",
       "FS restant non appari\u00e9es apr\u00e8s toutes les m\u00e9thodes",
       "FS MFL jamais appari\u00e9es \u00e0 DHIS2"
@@ -1366,9 +1365,9 @@ fuzzy_match_facilities <- function(
       "Unidades DHIS2 sem nome",
       "Unidades DHIS2 com nomes v\u00e1lidos",
       "Unidades correspondidas por nome exato e n\u00edvel administrativo",
-      "Unidades correspondidas por revis\u00e3o interativa manual",
       "Unidades correspondidas ap\u00f3s padroniza\u00e7\u00e3o de nomes",
       "Unidades correspondidas por similaridade de texto aproximada",
+      "Unidades correspondidas por revis\u00e3o interativa manual",
       "Total de unidades correspondidas com sucesso",
       "Unidades ainda sem correspond\u00eancia ap\u00f3s todos os m\u00e9todos",
       "Unidades MFL nunca correspondidas a DHIS2"

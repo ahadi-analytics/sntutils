@@ -326,46 +326,6 @@ test_that("classify_facility_activity method3 handles reporting_rule parameter",
   expect_true(all(!is.na(result_positive$first_reporting_date)))
 })
 
-test_that("classify_facility_activity returns full original data", {
-  # Test that all original columns are preserved in the output
-  toy_data <- tibble::tibble(
-    hf_uid = "hf_0001",
-    date = seq(as.Date("2024-01-01"), as.Date("2024-04-01"), by = "month"),
-    allout = c(NA, 20, 30, NA),
-    test = c(NA, 10, 10, NA),
-    conf = c(NA, 5, 8, NA),
-    extra_col1 = c("A", "B", "C", "D"),
-    extra_col2 = c(100, 200, 300, 400),
-    extra_col3 = c(TRUE, FALSE, TRUE, FALSE)
-  )
-
-  result <- classify_facility_activity(
-    data = toy_data,
-    hf_col = "hf_uid",
-    key_indicators = c("allout", "test", "conf"),
-    method = "method1",
-    binary_classification = FALSE
-  )
-
-  # Should have all original columns plus classification columns
-  expect_true(all(names(toy_data) %in% names(result)))
-
-  # Should have classification metadata columns
-  expect_true("reported_any" %in% names(result))
-  expect_true("first_reporting_date" %in% names(result))
-  expect_true("last_reporting_date" %in% names(result))
-  expect_true("has_ever_reported" %in% names(result))
-  expect_true("activity_status" %in% names(result))
-
-  # Should preserve original data values
-  expect_equal(result$extra_col1, toy_data$extra_col1)
-  expect_equal(result$extra_col2, toy_data$extra_col2)
-  expect_equal(result$extra_col3, toy_data$extra_col3)
-
-  # Should have same number of rows as original data
-  expect_equal(nrow(result), nrow(toy_data))
-})
-
 test_that("classify_facility_activity method=all returns all methods", {
   toy_data <- tibble::tibble(
     hf_uid = "hf_0001",

@@ -10,11 +10,11 @@ fuzzy_match_facilities(
   admin_cols = c("adm0", "adm1", "adm2"),
   hf_col_name = "hf",
   uid_col = "hf_uid",
-  steps = c(exact = TRUE, interactive = TRUE, standardization = TRUE, fuzzy = TRUE),
+  steps = c(exact = TRUE, standardization = TRUE, fuzzy = TRUE, interactive = TRUE),
   lookup_cols = character(),
   match_interactivity = TRUE,
   fuzzy_methods = c("jw", "lv"),
-  fuzzy_threshold = 80L,
+  fuzzy_threshold = 95L,
   score_exact = 100L,
   score_standardization = 100L,
   score_interactive = 95L,
@@ -42,7 +42,7 @@ frames. Default "hf".}
 facility. Default "hf_uid".}
 
 \item{steps}{Named logical vector toggling steps:
-c(exact = TRUE, interactive = FALSE, standardization = TRUE, fuzzy = TRUE).}
+c(exact = TRUE, standardization = TRUE, fuzzy = TRUE, interactive = FALSE).}
 
 \item{lookup_cols}{Character vector of \code{lookup_df} columns to append to the
 match results and returned target table. Default \code{character()}.}
@@ -53,7 +53,7 @@ matching helper. Default \code{TRUE}.}
 \item{fuzzy_methods}{Character vector of string distance methods to
 combine. Supported: c("jw", "lv"). Default c("jw", "lv").}
 
-\item{fuzzy_threshold}{Integer in 0-100 for acceptance. Default 80.}
+\item{fuzzy_threshold}{Integer in 0-100 for acceptance. Default 95.}
 
 \item{score_exact}{Integer score for exact matches. Default 100.}
 
@@ -93,8 +93,7 @@ most one DHIS2 facility.
 \description{
 Orchestrates a multi-step matching pipeline between a \emph{target} dataset
 (e.g., DHIS2 facilities) and a \emph{lookup} dataset (e.g., MFL).
-Steps include exact match, interactive stratified match
-(using \code{sntutils::prep_geonames()}), standardized-name match, and
-fuzzy match.
+Steps include exact match, standardized-name match, fuzzy match,
+and interactive stratified match (using \code{sntutils::prep_geonames()}).
 Returns consolidated results and QA summaries.
 }
