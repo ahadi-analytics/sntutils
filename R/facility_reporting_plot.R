@@ -248,16 +248,14 @@ flagged_panel <- flagged_panel |>
 extra_cols <- setdiff(names(data), c(hf_col, date_col, key_indicators))
 
 if (length(extra_cols) > 0L) {
+  # Get unique combinations of facility and extra columns (e.g., admin levels)
+  # This ensures we don't lose data when a facility has the same date but different admin values
   extra_data <- data |>
-    dplyr::select(dplyr::all_of(c(hf_col, date_col, extra_cols))) |>
-    dplyr::distinct(
-      !!rlang::sym(hf_col),
-      !!rlang::sym(date_col),
-      .keep_all = TRUE
-    )
+    dplyr::select(dplyr::all_of(c(hf_col, extra_cols))) |>
+    dplyr::distinct()
 
   flagged_panel <- flagged_panel |>
-    dplyr::left_join(extra_data, by = c(hf_col, date_col))
+    dplyr::left_join(extra_data, by = hf_col)
 }
 
   result <- flagged_panel
@@ -1122,7 +1120,7 @@ compare_methods_plot <- function(
           data,
           dplyr::across(dplyr::all_of(c(agg_level, hf_col)))
         ),
-        by = setNames("hf_uid", hf_col)
+        by = hf_col
       ) |>
       dplyr::group_by(
         dplyr::across(dplyr::all_of(c(agg_level, date_col)))
