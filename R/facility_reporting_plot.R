@@ -12,7 +12,6 @@
 #'   activity. Defaults to `c("test", "pres", "conf")`.
 #' @param method Character or numeric. Classification method - can be numeric
 #'   (1, 2, 3) or character ("method1", "method2", "method3", "all").
-#'   See Details. Defaults to 1.
 #' @param nonreport_window Integer. Minimum number of consecutive non-reporting
 #'   months to classify a facility as inactive in method 3. Defaults to 6.
 #' @param reporting_rule Character. Defines what counts as reporting:
@@ -20,9 +19,6 @@
 #'   or `"positive_only"` (requires >0 value to count as reported).
 #' @param binary_classification Logical. If TRUE, collapses categories into
 #'   "Active" vs "Inactive". Defaults to FALSE.
-#' @param trailing_tolerance Logical. If TRUE, Method 3 keeps a facility
-#'   "Active - Not Reporting" for up to `nonreport_window` months after the last
-#'   report. If FALSE, it becomes Inactive immediately after the last report.
 #'
 #' @return Data frame with original columns plus reporting and activity status.
 #' If `method = "all"`, includes all three activity classification columns.
@@ -44,7 +40,8 @@
 #'   \item `"any_non_na"`: Any non-missing value counts as reported (including 0).
 #'   \item `"positive_only"`: Only values strictly >0 count as reported.
 #' }
-#'
+#' @importFrom lubridate %m+%
+#' @importFrom stats ave
 #' @export
 classify_facility_activity <- function(
   data,
@@ -54,8 +51,7 @@ classify_facility_activity <- function(
   method = 1,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
-  binary_classification = FALSE,
-  trailing_tolerance = FALSE
+  binary_classification = FALSE
 ) {
   # --- validation ---
   if (is.numeric(method)) {
@@ -67,16 +63,11 @@ classify_facility_activity <- function(
     if (method %in% c("1", "2", "3")) {
       method <- paste0("method", method)
     } else if (!method %in% c("method1", "method2", "method3", "all")) {
-      cli::cli_abort("method must be 'method1', 'method2', 'method3', 'all'")
+      cli::cli_abort("method must be 'method1', 'method2', 'method3', or 'all'")
     }
-  } else {
-    cli::cli_abort("method must be numeric (1, 2, 3) or character")
   }
 
-  reporting_rule <- match.arg(
-    reporting_rule,
-    c("any_non_na", "positive_only")
-  )
+  reporting_rule <- match.arg(reporting_rule, c("any_non_na", "positive_only"))
 
   if (!is.data.frame(data)) {
     cli::cli_abort("`data` must be a data.frame.")
@@ -90,6 +81,7 @@ classify_facility_activity <- function(
   ) {
     cli::cli_abort("`nonreport_window` must be a positive integer.")
   }
+
   nonreport_window <- as.integer(nonreport_window)
 
   required_cols <- c(hf_col, date_col, key_indicators)
@@ -98,6 +90,7 @@ classify_facility_activity <- function(
     cli::cli_abort("missing required columns: {missing_cols}")
   }
 
+  # --- prepare panel ---
   data <- data |>
     dplyr::mutate(
       !!rlang::sym(date_col) := lubridate::floor_date(
@@ -120,156 +113,226 @@ classify_facility_activity <- function(
       !!rlang::sym(date_col) := .month
     )
 
-  filtered_source <- data |> dplyr::select(dplyr::all_of(required_cols))
+  # --- flag reporting (preserve non-key columns) ---
+non_key_cols <- setdiff(names(data), c(required_cols, key_indicators))
 
-  flagged_panel <- complete_panel |>
-    dplyr::left_join(filtered_source, by = c(hf_col, date_col)) |>
-    dplyr::mutate(
-      reported_any = dplyr::if_any(
-        dplyr::all_of(key_indicators),
-        ~ if (reporting_rule == "any_non_na") {
-          !is.na(.x)
-        } else {
-          (!is.na(.x) & .x > 0)
-        }
-      )
-    )
-
-  first_last <- flagged_panel |>
-    dplyr::group_by(.data[[hf_col]]) |>
-    dplyr::summarise(
-      first_reporting_date = if (any(reported_any)) {
-        min(.data[[date_col]][reported_any], na.rm = TRUE)
+flagged <- data |>
+  # keep indicator + metadata columns
+  dplyr::select(
+    dplyr::all_of(c(hf_col, date_col, key_indicators, non_key_cols))
+  ) |>
+  # ensure one row per facility-month before expanding
+  dplyr::distinct(
+    !!rlang::sym(hf_col),
+    !!rlang::sym(date_col),
+    .keep_all = TRUE
+  ) |>
+  # create full panel
+  dplyr::right_join(complete_panel, by = c(hf_col, date_col)) |>
+  # fill only non-indicator metadata, not key indicators
+  dplyr::group_by(.data[[hf_col]]) |>
+  tidyr::fill(dplyr::all_of(non_key_cols), .direction = "downup") |>
+  dplyr::ungroup() |>
+  # flag reporting status based on chosen rule
+  dplyr::mutate(
+    reported_any = dplyr::if_any(
+      dplyr::all_of(key_indicators),
+      ~ if (reporting_rule == "any_non_na") {
+        !is.na(.x)
       } else {
-        as.Date(NA)
-      },
-      last_reporting_date = if (any(reported_any)) {
-        max(.data[[date_col]][reported_any], na.rm = TRUE)
-      } else {
-        as.Date(NA)
-      },
-      .groups = "drop"
-    )
-
-  flagged_panel <- flagged_panel |>
-    dplyr::left_join(first_last, by = hf_col) |>
-    dplyr::group_by(.data[[hf_col]]) |>
-    dplyr::mutate(has_ever_reported = dplyr::cumany(reported_any)) |>
-    dplyr::ungroup()
+        !is.na(.x) & .x > 0
+      }
+    ),
+    reported_any = dplyr::coalesce(reported_any, FALSE)
+  ) |>
+  # sort chronologically within facility
+  dplyr::arrange(.data[[hf_col]], .data[[date_col]])
 
   # --- method 1 ---
-  flagged_panel <- flagged_panel |>
+  m1 <- flagged |>
+    dplyr::group_by(.data[[hf_col]]) |>
+    dplyr::arrange(.data[[date_col]], .by_group = TRUE) |>
     dplyr::mutate(
+      ever_reported = dplyr::cumany(reported_any),
       activity_status_method1 = dplyr::case_when(
+        !any(reported_any) ~ "Inactive",
+        !ever_reported ~ "Inactive",
         reported_any ~ "Active Reporting",
-        !reported_any & .data[[date_col]] >= first_reporting_date ~
-          "Active Health Facility - Not Reporting",
-        TRUE ~ "Inactive Health Facility"
+        TRUE ~ "Active \u2013 Not Reporting"
       )
-    )
+    ) |>
+    dplyr::ungroup()
 
-# --- method 2 (inclusive window) ---
-flagged_panel <- flagged_panel |>
-  dplyr::mutate(
-    activity_status_method2 = dplyr::case_when(
-      is.na(first_reporting_date) ~ "Inactive Health Facility",
-      .data[[date_col]] >= first_reporting_date &
-        .data[[date_col]] <= last_reporting_date &
-        reported_any ~ "Active Reporting",
-      .data[[date_col]] >= first_reporting_date &
-        .data[[date_col]] <= last_reporting_date &
-        !reported_any ~ "Active Health Facility - Not Reporting",
-      TRUE ~ "Inactive Health Facility"
-    )
-  )
-
-# --- method 3 (Dynamic) ---
-flagged_panel <- flagged_panel |>
-  dplyr::arrange(.data[[hf_col]], .data[[date_col]]) |>
+# --- method 2 (first-last activation) ---
+m2 <- flagged |>
   dplyr::group_by(.data[[hf_col]]) |>
+  dplyr::arrange(.data[[date_col]], .by_group = TRUE) |>
   dplyr::mutate(
-    activity_status_method3 = {
-      reports <- which(reported_any)
-      n_obs <- length(reported_any)
-      status <- rep("Inactive Health Facility", n_obs)
-
-      if (length(reports) > 0) {
-        last_report_index <- max(reports)
-
-        for (i in seq_len(n_obs)) {
-          if (i %in% reports) {
-            status[i] <- "Active Reporting"
-          } else if (any(reports < i)) {
-            last_rep <- max(reports[reports < i])
-            gap <- i - last_rep
-
-            if (i > last_report_index) {
-              # after final report: allow tolerance window
-              if (trailing_tolerance && gap <= nonreport_window) {
-                status[i] <- "Active Health Facility - Not Reporting"
-              } else {
-                status[i] <- "Inactive Health Facility"
-              }
-            } else {
-              # within the series before final report
-              if (gap <= nonreport_window) {
-                status[i] <- "Active Health Facility - Not Reporting"
-              } else {
-                status[i] <- "Inactive Health Facility"
-              }
-            }
-          }
-        }
-      }
-      status
-    }
+    first_reporting_date = if (any(reported_any)) {
+      min(.data[[date_col]][reported_any])
+    } else {
+      as.Date(NA)
+    },
+    last_reporting_date = if (any(reported_any)) {
+      max(.data[[date_col]][reported_any])
+    } else {
+      as.Date(NA)
+    },
+    activity_status_method2 = dplyr::case_when(
+      is.na(first_reporting_date) ~ "Inactive",
+      .data[[date_col]] < first_reporting_date ~ "Inactive",
+      reported_any ~ "Active Reporting",
+      .data[[date_col]] >= first_reporting_date &
+        .data[[date_col]] <= last_reporting_date ~ "Active \u2013 Not Reporting",
+      .data[[date_col]] > last_reporting_date ~ "Active \u2013 Not Reporting",
+      TRUE ~ "Inactive"
+    )
+  ) |>
+  dplyr::mutate(
+    last_date = max(.data[[date_col]]),
+    # handle case with no reports (last_reporting_date = NA)
+    months_since_last_report = dplyr::if_else(
+      is.na(last_reporting_date),
+      Inf,
+      as.integer(
+        lubridate::interval(last_reporting_date, last_date) /
+          lubridate::dmonths(1)
+      )
+    ),
+    activity_status_method2 = dplyr::if_else(
+      !is.na(last_reporting_date) &
+        months_since_last_report >= nonreport_window &
+        .data[[date_col]] > last_reporting_date,
+      "Inactive",
+      activity_status_method2
+    )
   ) |>
   dplyr::ungroup()
 
+  # --- method 3 ---
+m3 <- flagged |>
+  dplyr::group_by(.data[[hf_col]]) |>
+  dplyr::arrange(.data[[date_col]], .by_group = TRUE) |>
+  dplyr::mutate(
+    has_reported = any(reported_any),
+    first_rep = ifelse(
+      has_reported,
+      min(.data[[date_col]][reported_any]),
+      as.Date(NA)
+    ),
+    last_rep = ifelse(
+      has_reported,
+      max(.data[[date_col]][reported_any]),
+      as.Date(NA)
+    ),
+    gap = dplyr::if_else(!reported_any, 1L, 0L),
+    gap_run = data.table::rleid(gap),
+    run_len = stats::ave(gap, gap_run, FUN = length),
+    activity_status_method3 = dplyr::case_when(
+      !any(reported_any) ~ "Inactive",
+      is.na(first_rep) ~ "Inactive",
+      .data[[date_col]] < first_rep ~ "Inactive",
+      reported_any ~ "Active Reporting",
+      gap == 1 & run_len < nonreport_window ~ "Active \u2013 Not Reporting",
+      gap == 1 & run_len >= nonreport_window ~ "Inactive",
+      TRUE ~ "Inactive"
+    )
+  ) |>
+  dplyr::ungroup()
+
+  m1 <- m1 |>
+    dplyr::distinct(
+      !!rlang::sym(hf_col),
+      !!rlang::sym(date_col),
+      .keep_all = TRUE
+    )
+
+  m2 <- m2 |>
+    dplyr::distinct(
+      !!rlang::sym(hf_col),
+      !!rlang::sym(date_col),
+      .keep_all = TRUE
+    )
+
+  m3 <- m3 |>
+    dplyr::distinct(
+      !!rlang::sym(hf_col),
+      !!rlang::sym(date_col),
+      .keep_all = TRUE
+    )
+
+  flagged <- flagged |>
+    dplyr::distinct(
+      !!rlang::sym(hf_col),
+      !!rlang::sym(date_col),
+      .keep_all = TRUE
+    )
+
+  # --- merge ---
+  merged <- flagged |>
+    dplyr::left_join(
+      m1 |>
+        dplyr::select(dplyr::all_of(c(
+          hf_col,
+          date_col,
+          "activity_status_method1"
+        ))),
+      by = c(hf_col, date_col)
+    ) |>
+    dplyr::left_join(
+      m2 |>
+        dplyr::select(dplyr::all_of(c(
+          hf_col,
+          date_col,
+          "first_reporting_date",
+          "last_reporting_date",
+          "activity_status_method2"
+        ))),
+      by = c(hf_col, date_col)
+    ) |>
+    dplyr::left_join(
+      m3 |>
+        dplyr::select(dplyr::all_of(c(
+          hf_col,
+          date_col,
+          "activity_status_method3"
+        ))),
+      by = c(hf_col, date_col)
+    )
+
   # --- binary collapse ---
   if (binary_classification) {
-    flagged_panel <- flagged_panel |>
+    merged <- merged |>
       dplyr::mutate(
         dplyr::across(
           dplyr::starts_with("activity_status_"),
           ~ dplyr::case_when(
-            .x %in%
-              c(
-                "Active Reporting",
-                "Active Health Facility - Not Reporting"
-              ) ~ "Active",
+            .x %in% c("Active Reporting", "Active \u2013 Not Reporting", "Active - Not Reporting") ~ "Active",
             TRUE ~ "Inactive"
           )
         )
       )
   }
 
-  # --- keep extras ---
-extra_cols <- setdiff(names(data), c(hf_col, date_col, key_indicators))
-
-if (length(extra_cols) > 0L) {
-  # Get unique combinations of facility and extra columns (e.g., admin levels)
-  # This ensures we don't lose data when a facility has the same date but different admin values
-  extra_data <- data |>
-    dplyr::select(dplyr::all_of(c(hf_col, extra_cols))) |>
-    dplyr::distinct()
-
-  flagged_panel <- flagged_panel |>
-    dplyr::left_join(extra_data, by = hf_col)
-}
-
-  result <- flagged_panel
+  # --- output ---
   if (method != "all") {
     keep_col <- paste0("activity_status_", method)
-    other_cols <- names(result)[
-      grepl("^activity_status_", names(result)) & names(result) != keep_col
-    ]
-    result <- result |>
-      dplyr::select(-dplyr::all_of(other_cols)) |>
-      dplyr::rename(activity_status = dplyr::all_of(keep_col))
+    merged <- merged |>
+      dplyr::mutate(activity_status = .data[[keep_col]])
+
+    cols_to_keep <- c(
+      names(flagged),
+      "first_reporting_date",
+      "last_reporting_date",
+      "activity_status"
+    )
+    cols_to_keep <- cols_to_keep[cols_to_keep %in% names(merged)]
+
+    merged <- merged |>
+      dplyr::select(dplyr::all_of(cols_to_keep))
   }
 
-  result
+  merged
 }
 
 #' Plot monthly reporting activity by health facility
@@ -332,9 +395,6 @@ if (length(extra_cols) > 0L) {
 #' @param show_plot Logical. If FALSE, the plot is returned invisibly (not
 #'   displayed). Useful when only saving plots. Default is TRUE.
 #' @param ... Additional arguments passed to internal functions.
-#' @param trailing_tolerance Logical. If TRUE, Method 3 keeps a facility
-#'   "Active - Not Reporting" for up to `nonreport_window` months after the last
-#'   report. If FALSE, it becomes Inactive immediately after the last report.
 #'
 #' @return A ggplot object visualising facility reporting activity.
 #' @examples
@@ -393,14 +453,10 @@ facility_reporting_plot <- function(
   plot_height = 15,
   plot_dpi = 300,
   show_plot = TRUE,
-  trailing_tolerance = FALSE,
   ...
 ) {
-  # Extract trailing_tolerance from dots or set default
-  dots <- list(...)
-  trailing_tolerance <- dots$trailing_tolerance %||% FALSE
 
-  ensure_packages(c("ggtext", "scales"))
+  ## ensure_packages(c("ggtext", "scales"))
 
   if (!base::is.data.frame(data)) {
     cli::cli_abort("`data` must be a data.frame.")
@@ -422,12 +478,12 @@ facility_reporting_plot <- function(
   }
 
   data <- data |>
-    dplyr::mutate(
-      !!rlang::sym(date_col) := lubridate::floor_date(
-        base::as.Date(.data[[date_col]]),
-        unit = "month"
-      )
+  dplyr::mutate(
+    !!rlang::sym(date_col) := lubridate::floor_date(
+      base::as.Date(.data[[date_col]]),
+      unit = "month"
     )
+  )
 
   if (base::all(base::is.na(data[[date_col]]))) {
     cli::cli_abort("Unable to derive month floor from `{date_col}`.")
@@ -472,43 +528,51 @@ facility_reporting_plot <- function(
     palette_values <- list(
       classic = c(
         "Active Reporting" = "#0072B2",
-        "Active Health Facility - Not Reporting" = "#E69F00",
-        "Inactive Health Facility" = "#56B4E9"
+        "Active \u2013 Not Reporting" = "#E69F00",
+        "Active - Not Reporting" = "#E69F00",
+        "Inactive" = "#56B4E9"
       ),
       sunset = c(
         "Active Reporting" = "#D1495B",
-        "Active Health Facility - Not Reporting" = "#F79256",
-        "Inactive Health Facility" = "#8E7DBE"
+        "Active \u2013 Not Reporting" = "#F79256",
+        "Active - Not Reporting" = "#F79256",
+        "Inactive" = "#8E7DBE"
       ),
       forest = c(
         "Active Reporting" = "#2A9D8F",
-        "Active Health Facility - Not Reporting" = "#E9C46A",
-        "Inactive Health Facility" = "#264653"
+        "Active \u2013 Not Reporting" = "#E9C46A",
+        "Active - Not Reporting" = "#E9C46A",
+        "Inactive" = "#264653"
       ),
       coral = c(
         "Active Reporting" = "#FF6F61",
-        "Active Health Facility - Not Reporting" = "#FFB88C",
-        "Inactive Health Facility" = "#6B5B95"
+        "Active \u2013 Not Reporting" = "#FFB88C",
+        "Active - Not Reporting" = "#FFB88C",
+        "Inactive" = "#6B5B95"
       ),
       violet = c(
         "Active Reporting" = "#6A4C93",
-        "Active Health Facility - Not Reporting" = "#F0A6CA",
-        "Inactive Health Facility" = "#80CED7"
+        "Active \u2013 Not Reporting" = "#F0A6CA",
+        "Active - Not Reporting" = "#F0A6CA",
+        "Inactive" = "#80CED7"
       ),
       slate = c(
         "Active Reporting" = "#345995",
-        "Active Health Facility - Not Reporting" = "#FB4D3D",
-        "Inactive Health Facility" = "#98B9AB"
+        "Active \u2013 Not Reporting" = "#FB4D3D",
+        "Active - Not Reporting" = "#FB4D3D",
+        "Inactive" = "#98B9AB"
       ),
       citrus = c(
         "Active Reporting" = "#F4A259",
-        "Active Health Facility - Not Reporting" = "#5B8E7D",
-        "Inactive Health Facility" = "#BC4B51"
+        "Active \u2013 Not Reporting" = "#5B8E7D",
+        "Active - Not Reporting" = "#5B8E7D",
+        "Inactive" = "#BC4B51"
       ),
       orchid = c(
         "Active Reporting" = "#875C74",
-        "Active Health Facility - Not Reporting" = "#E6C79C",
-        "Inactive Health Facility" = "#6C7A89"
+        "Active \u2013 Not Reporting" = "#E6C79C",
+        "Active - Not Reporting" = "#E6C79C",
+        "Inactive" = "#6C7A89"
       )
     )
   }
@@ -526,7 +590,21 @@ facility_reporting_plot <- function(
     "Reported any key indicator ({base::toString(key_indicators)})"
   )
   legend_title_prefix <- "Reported any key indicator"
-  legend_labels <- names(status_colours)
+
+  # Create legend labels with friendly names
+  if (binary_classification) {
+    legend_labels <- c(
+      "Active" = "Active",
+      "Inactive" = "Inactive"
+    )
+  } else {
+    legend_labels <- c(
+      "Active Reporting" = "Active Reporting",
+      "Active \u2013 Not Reporting" = "Active Health Facility - Not Reporting",
+      "Active - Not Reporting" = "Active Health Facility - Not Reporting",
+      "Inactive" = "Inactive Health Facility"
+    )
+  }
 
   if (binary_classification) {
     subtitle_lines <- c(
@@ -567,7 +645,7 @@ facility_reporting_plot <- function(
     } else if (!method %in% c("method1", "method2", "method3")) {
       cli::cli_abort(c(
         "!" =
-          "method must be 'method1', 'method2', 'method3', or numeric 1, 2, 3",
+        "method must be 'method1', 'method2', 'method3', or numeric 1, 2, 3",
         "i" = "You provided: {method}"
       ))
     } else {
@@ -583,7 +661,7 @@ facility_reporting_plot <- function(
     # Ensure facet_col is included in the classification data
     required_cols_with_facet <- base::c(hf_col, date_col, key_indicators, facet_col)
     data_for_classification <- data |>
-      dplyr::select(dplyr::any_of(required_cols_with_facet))
+    dplyr::select(dplyr::any_of(required_cols_with_facet))
   }
 
   routine_reporting <- classify_facility_activity(
@@ -594,8 +672,7 @@ facility_reporting_plot <- function(
     method = method_normalized,
     nonreport_window = nonreport_window,
     reporting_rule = reporting_rule,
-    binary_classification = binary_classification,
-    trailing_tolerance = trailing_tolerance
+    binary_classification = binary_classification
   )
 
   # Verify facet column is present if requested
@@ -605,9 +682,9 @@ facility_reporting_plot <- function(
 
   # Count never-reported facilities after creating routine_reporting
   never_reported_count <- routine_reporting |>
-    dplyr::filter(base::is.na(first_reporting_date)) |>
-    dplyr::pull(.data[[hf_col]]) |>
-    dplyr::n_distinct()
+  dplyr::filter(base::is.na(first_reporting_date)) |>
+  dplyr::pull(.data[[hf_col]]) |>
+  dplyr::n_distinct()
 
   # Add never reported summary if there are any
   if (never_reported_count > 0) {
@@ -627,9 +704,9 @@ facility_reporting_plot <- function(
     )
   } else {
     facilities_shown <- routine_reporting |>
-      dplyr::filter(!base::is.na(first_reporting_date)) |>
-      dplyr::pull(.data[[hf_col]]) |>
-      dplyr::n_distinct()
+    dplyr::filter(!base::is.na(first_reporting_date)) |>
+    dplyr::pull(.data[[hf_col]]) |>
+    dplyr::n_distinct()
 
     total_facilities <- dplyr::n_distinct(routine_reporting[[hf_col]])
 
@@ -655,8 +732,9 @@ facility_reporting_plot <- function(
   subtitle_text <- base::paste(subtitle_lines, collapse = "\n")
   should_translate <- target_language != "en"
   if (should_translate) {
-    ensure_packages("gtranslate")
-    legend_labels <- vapply(
+    ## ensure_packages("gtranslate")
+    # Translate the label values while preserving the names (keys)
+    translated_values <- vapply(
       legend_labels,
       translate_text,
       character(1),
@@ -664,6 +742,8 @@ facility_reporting_plot <- function(
       source_language = source_language,
       cache_path = lang_cache_path
     )
+    names(translated_values) <- names(legend_labels)
+    legend_labels <- translated_values
     legend_title_prefix <- translate_text(
       legend_title_prefix,
       target_language = target_language,
@@ -756,26 +836,26 @@ facility_reporting_plot <- function(
   if (include_never_reported) {
     # First get facilities that have reported, ordered by first reporting date
     facilities_reported <- routine_reporting |>
-      dplyr::filter(!base::is.na(first_reporting_date)) |>
-      dplyr::distinct(.data[[hf_col]], first_reporting_date) |>
-      dplyr::arrange(first_reporting_date) |>
-      dplyr::pull(.data[[hf_col]])
+    dplyr::filter(!base::is.na(first_reporting_date)) |>
+    dplyr::distinct(.data[[hf_col]], first_reporting_date) |>
+    dplyr::arrange(first_reporting_date) |>
+    dplyr::pull(.data[[hf_col]])
 
     # Then get facilities that have never reported
     facilities_never_reported <- routine_reporting |>
-      dplyr::filter(base::is.na(first_reporting_date)) |>
-      dplyr::distinct(.data[[hf_col]]) |>
-      dplyr::pull(.data[[hf_col]])
+    dplyr::filter(base::is.na(first_reporting_date)) |>
+    dplyr::distinct(.data[[hf_col]]) |>
+    dplyr::pull(.data[[hf_col]])
 
     # Combine: reported facilities first, then never reported
     facility_order <- c(facilities_reported, facilities_never_reported)
   } else {
     # Original behavior: only facilities that have reported
     facility_order <- routine_reporting |>
-      dplyr::filter(!base::is.na(first_reporting_date)) |>
-      dplyr::distinct(.data[[hf_col]], first_reporting_date) |>
-      dplyr::arrange(first_reporting_date) |>
-      dplyr::pull(.data[[hf_col]])
+    dplyr::filter(!base::is.na(first_reporting_date)) |>
+    dplyr::distinct(.data[[hf_col]], first_reporting_date) |>
+    dplyr::arrange(first_reporting_date) |>
+    dplyr::pull(.data[[hf_col]])
   }
 
   # Calculate y-axis breaks
@@ -794,102 +874,113 @@ facility_reporting_plot <- function(
     routine_reporting
   } else {
     routine_reporting |>
-      dplyr::filter(!base::is.na(first_reporting_date))
+    dplyr::filter(!base::is.na(first_reporting_date))
+  }
+
+  # Prepare legend labels for scale_fill_manual
+  scale_labels <- if (binary_classification) {
+    legend_labels
+  } else {
+    # Get unique activity status values from the data
+    unique_statuses <- unique(plot_data$activity_status)
+    # Create a named vector for labels
+    labels_vec <- legend_labels[names(legend_labels) %in% unique_statuses]
+    labels_vec
   }
 
   plot_object <- plot_data |>
-    ggplot2::ggplot(
-      ggplot2::aes(
-        x = .data[[date_col]],
-        y = forcats::fct_relevel(
-          .data[[hf_col]],
-          facility_order
-        ),
-        fill = activity_status
-      )
-    ) +
-    ggplot2::geom_tile(width = 31, height = 1) +
-    ggplot2::scale_fill_manual(
-      values = status_colours,
-      na.value = "#CCCCCC",
-      name = legend_title,
-      labels = legend_labels
-    ) +
-    ggplot2::scale_x_date(
-      expand = c(0, 0),
-      date_breaks = if (is.null(year_breaks)) {
-        "3 months"
-      } else {
-        paste(year_breaks, "months")
-      },
-      labels = function(x) {
-        sntutils::translate_yearmon(x, language = target_language)
-      }
-    ) +
-    ggplot2::labs(
-      x = "",
-      y = if (should_translate) {
-        paste0(
-          translate_text(
-            "HF Number",
-            target_language = target_language,
-            source_language = source_language,
-            cache_path = lang_cache_path
-          ),
-          "\n"
-        )
-      } else {
-        "HF Number\n"
-      },
-      title = plot_title,
-      subtitle = paste0(subtitle_text, "\n"),
-      caption = current_method_desc
-    ) +
-    ggplot2::theme_minimal(base_family = "sans") +
-    ggplot2::guides(
-      fill = ggplot2::guide_legend(
-        title.position = "top",
-        label.position = "bottom",
-        keywidth = grid::unit(4.5, "lines")
-      )
-    ) +
-    ggplot2::theme(
-      axis.text.y = ggplot2::element_text(size = 8),
-      axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-      axis.line = ggplot2::element_line(color = "black", linewidth = 0.5),
-      legend.position = "bottom",
-      legend.direction = "horizontal",
-      legend.box = "vertical",
-      plot.caption = ggplot2::element_text(hjust = 1, size = 9, color = "grey40")
+  ggplot2::ggplot(
+    ggplot2::aes(
+      x = .data[[date_col]],
+      y = forcats::fct_relevel(
+        .data[[hf_col]],
+        facility_order
+      ),
+      fill = activity_status
     )
+  ) +
+  ggplot2::geom_tile(width = 31, height = 1) +
+  ggplot2::scale_fill_manual(
+    values = status_colours,
+    na.value = "#CCCCCC",
+    name = legend_title,
+    labels = scale_labels
+  ) +
+  ggplot2::scale_x_date(
+    expand = c(0, 0),
+    date_breaks = if (is.null(year_breaks)) {
+      "3 months"
+    } else {
+      paste(year_breaks, "months")
+    },
+    labels = function(x) {
+      sntutils::translate_yearmon(x, language = target_language)
+    }
+  ) +
+  ggplot2::labs(
+    x = "",
+    y = if (should_translate) {
+      paste0(
+        translate_text(
+          "HF Number",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        ),
+        "\n"
+      )
+    } else {
+      "HF Number\n"
+    },
+    title = plot_title,
+    subtitle = paste0(subtitle_text, "\n"),
+    caption = current_method_desc
+  ) +
+  ggplot2::theme_minimal(base_family = "sans") +
+  ggplot2::guides(
+    fill = ggplot2::guide_legend(
+      title.position = "top",
+      label.position = "bottom",
+      keywidth = grid::unit(4.5, "lines")
+    )
+  ) +
+  ggplot2::theme(
+    axis.text.y = ggplot2::element_text(size = 8),
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+    axis.line = ggplot2::element_line(color = "black", linewidth = 0.5),
+    legend.position = "bottom",
+    legend.direction = "horizontal",
+    legend.box = "vertical",
+    plot.caption = ggplot2::element_text(hjust = 1, size = 9, color = "grey40")
+  )
 
   # Add faceting if facet_col is provided
   if (!is.null(facet_col)) {
     plot_object <- plot_object +
-      ggplot2::facet_wrap(
-        ~ .data[[facet_col]],
-        scales = "free_y",
-        ncol = facet_ncol
-      )
+    ggplot2::facet_wrap(
+      ~ .data[[facet_col]],
+      scales = "free_y",
+      ncol = facet_ncol
+    )
 
     # When using free_y scales with faceting, use a function for y-axis labels
     plot_object <- plot_object +
-      ggplot2::scale_y_discrete(
-        labels = function(x) {
-          # Get position of each facility within its facet
-          pos <- seq_along(x)
-          # Only show first, middle, and last
-          ifelse(pos %in% c(1, ceiling(length(pos) / 2), length(pos)), pos, "")
-        }
-      )
+    ggplot2::scale_y_discrete(
+      labels = function(x) {
+        # Get position of each facility within its facet
+        pos <- seq_along(x)
+        # Only show first, middle, and last
+        ifelse(pos %in% c(1, ceiling(length(pos) / 2), length(pos)), pos, "")
+      }
+    )
   } else {
     # Add y-axis scale if we have facilities (only when not faceting)
     if (!is.null(y_breaks) && n_facilities > 0) {
       plot_object <- plot_object +
-        ggplot2::scale_y_discrete(
-          breaks = facility_order[y_breaks],
-          labels = y_labels
-        )
+      ggplot2::scale_y_discrete(
+        breaks = facility_order[y_breaks],
+        labels = y_labels
+      )
     }
   }
 
@@ -1031,12 +1122,7 @@ facility_reporting_plot <- function(
 #' @param hf_col Health facility ID column.
 #' @param date_col Date column.
 #' @param key_indicators Indicators used for activity classification.
-#' @param agg_level Character vector specifying spatial/administrative columns
-#'   to aggregate by (e.g., "adm2" or c("adm1", "adm2")).
-#'   Default "adm1" and "adm2".
 #' @param nonreport_window Window size for non-reporting definition.
-#' @param trailing_tolerance Logical. If TRUE, Method 3 applies lenient
-#'   trailing-gap tolerance. If FALSE, strict closure. Default FALSE.
 #' @param language Output language: "en" (English), "fr" (French), "pt"
 #'        (Portuguese).
 #' @param plot_path Directory where plot should be saved (NULL = don't save).
@@ -1055,9 +1141,7 @@ compare_methods_plot <- function(
   hf_col,
   date_col,
   key_indicators,
-  agg_level = c("adm1", "adm2"),
   nonreport_window = 6,
-  trailing_tolerance = FALSE,
   language = "en",
   plot_path = NULL,
   width = 16,
@@ -1102,55 +1186,71 @@ compare_methods_plot <- function(
     pt = "M\u00eas (ao longo do tempo)"
   )
 
-  # helper to run one method
-  run_method <- function(m) {
-    sntutils::classify_facility_activity(
-      data = data,
-      method = m,
-      hf_col = hf_col,
-      date_col = date_col,
-      key_indicators = key_indicators,
-      binary_classification = TRUE,
-      nonreport_window = nonreport_window,
-      trailing_tolerance = ifelse(m == "method3", trailing_tolerance, FALSE)
+  # run all methods with binary classification
+  meths <- sntutils::classify_facility_activity(
+    data = data,
+    method = "all",
+    hf_col = hf_col,
+    date_col = date_col,
+    key_indicators = key_indicators,
+    binary_classification = TRUE,
+    nonreport_window = nonreport_window
+  ) |>
+    dplyr::select(
+      dplyr::all_of(c(hf_col, date_col)),
+      dplyr::starts_with("activity_status_method")
     ) |>
-      dplyr::select(-dplyr::all_of(agg_level)) |>
-      dplyr::left_join(
-        dplyr::distinct(
-          data,
-          dplyr::across(dplyr::all_of(c(agg_level, hf_col)))
-        ),
-        by = hf_col
-      ) |>
-      dplyr::group_by(
-        dplyr::across(dplyr::all_of(c(agg_level, date_col)))
-      ) |>
-      dplyr::summarise(
-        n_active = sum(activity_status == "Active", na.rm = TRUE),
-        n_total = dplyr::n_distinct(!!rlang::sym(hf_col)),
-        reprate = n_active / n_total,
-        .groups = "drop"
-      ) |>
-      dplyr::mutate(method = paste(word_method[[language]], m))
-  }
-
-  # run methods 1-3 (method3 respects trailing_tolerance)
-  meths <- purrr::map_dfr(1:3, run_method)
+    tidyr::pivot_longer(
+      cols = dplyr::starts_with("activity_status_method"),
+      names_to = "method",
+      values_to = "activity_status"
+    ) |>
+    dplyr::mutate(
+      method = dplyr::case_match(
+        method,
+        "activity_status_method1" ~ paste(word_method[[language]], "1"),
+        "activity_status_method2" ~ paste(word_method[[language]], "2"),
+        "activity_status_method3" ~ paste(word_method[[language]], "3")
+      ),
+      # ensure legend order is 1,2,3
+      method = factor(
+        method,
+        levels = c(
+          paste(word_method[[language]], "1"),
+          paste(word_method[[language]], "2"),
+          paste(word_method[[language]], "3")
+        )
+      )
+    ) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(c(date_col, "method")))) |>
+    dplyr::summarise(
+      n_active = sum(activity_status == "Active", na.rm = TRUE),
+      n_total = dplyr::n_distinct(!!rlang::sym(hf_col)),
+      reprate = n_active / n_total,
+      .groups = "drop"
+    )
 
   # pivot wide for scatterplots
   meths_wide <- meths |>
-    dplyr::select(dplyr::all_of(c(agg_level, date_col)), method, reprate) |>
+    dplyr::select(dplyr::all_of(c(date_col)), method, reprate) |>
     tidyr::pivot_wider(names_from = method, values_from = reprate)
 
-  # ---- scatterplots ----
+  # helper to build one scatterplot (no coord_equal; match limits instead)
   make_plot <- function(xcol, ycol, title_text, color_choice) {
     ggplot2::ggplot(
       meths_wide,
       ggplot2::aes(x = .data[[xcol]], y = .data[[ycol]])
     ) +
-      ggplot2::geom_point(alpha = 0.7, size = 2, color = color_choice) +
+      ggplot2::geom_point(alpha = 0.8, size = 2.2, color = color_choice) +
       ggplot2::geom_abline(slope = 1, intercept = 0, linetype = "dashed") +
-      ggplot2::coord_equal() +
+      ggplot2::scale_x_continuous(
+        # limits = c(0, 1.0),
+        expand = ggplot2::expansion(0)
+      ) +
+      ggplot2::scale_y_continuous(
+        # limits = c(0, 1.0),
+        expand = ggplot2::expansion(0)
+      ) +
       ggplot2::theme_minimal() +
       ggplot2::labs(
         title = title_text,
@@ -1158,41 +1258,42 @@ compare_methods_plot <- function(
         y = paste0(ycol, ylabs[[language]], "\n")
       ) +
       ggplot2::theme(
-        plot.margin = grid::unit(c(.5, .5, .5, .5), "cm"),
+        plot.margin = grid::unit(c(0.4, 0.4, 0.4, 0.4), "cm"),
         panel.border = ggplot2::element_rect(
           color = "black",
           fill = NA,
           linewidth = 1
-        )
+        ),
+        panel.grid.minor = ggplot2::element_blank(),
+        plot.title = ggplot2::element_text(size = 11, face = "bold")
       )
   }
 
-  p1 <- make_plot(
-    paste(word_method[[language]], "1"),
-    paste(word_method[[language]], "2"),
-    paste(word_method[[language]], "1 vs", word_method[[language]], "2"),
-    "#1b9e77"
-  )
-  p2 <- make_plot(
-    paste(word_method[[language]], "2"),
-    paste(word_method[[language]], "3"),
-    paste(word_method[[language]], "2 vs", word_method[[language]], "3"),
-    "#d95f02"
-  )
-  p3 <- make_plot(
-    paste(word_method[[language]], "1"),
-    paste(word_method[[language]], "3"),
-    paste(word_method[[language]], "1 vs", word_method[[language]], "3"),
-    "#7570b3"
-  )
+# ---- scatterplots (suppress harmless warnings) ----
+p1 <- suppressWarnings(make_plot(
+  paste(word_method[[language]], "1"),
+  paste(word_method[[language]], "2"),
+  paste(word_method[[language]], "1 vs", word_method[[language]], "2"),
+  "#1b9e77"
+))
 
-  # ---- time-series plot of active facilities ----
-  active_over_time <- meths |>
-    dplyr::group_by(.data[[date_col]], method) |>
-    dplyr::summarise(n_active = sum(n_active, na.rm = TRUE), .groups = "drop")
+p2 <- suppressWarnings(make_plot(
+  paste(word_method[[language]], "2"),
+  paste(word_method[[language]], "3"),
+  paste(word_method[[language]], "2 vs", word_method[[language]], "3"),
+  "#d95f02"
+))
 
+p3 <- suppressWarnings(make_plot(
+  paste(word_method[[language]], "1"),
+  paste(word_method[[language]], "3"),
+  paste(word_method[[language]], "1 vs", word_method[[language]], "3"),
+  "#7570b3"
+))
+
+  # time-series plot of active facilities
   time_plot <- ggplot2::ggplot(
-    active_over_time,
+    meths,
     ggplot2::aes(
       x = .data[[date_col]],
       y = n_active,
@@ -1201,7 +1302,8 @@ compare_methods_plot <- function(
     )
   ) +
     ggplot2::geom_line(linewidth = 1) +
-    ggplot2::geom_point() +
+    ggplot2::geom_point(size = 1.6) +
+    ggplot2::scale_y_continuous(labels = scales::comma_format()) +
     ggplot2::theme_minimal() +
     ggplot2::labs(
       title = switch(
@@ -1216,22 +1318,26 @@ compare_methods_plot <- function(
       linetype = word_method[[language]]
     ) +
     ggplot2::theme(
-      plot.margin = grid::unit(c(-0.2, 0.2, 0.2, 0.2), "cm"),
+      plot.margin = grid::unit(c(0.4, 0.2, 0.2, 0.2), "cm"),
       panel.border = ggplot2::element_rect(
         color = "black",
         fill = NA,
         linewidth = 1
-      )
+      ),
+      panel.grid.minor = ggplot2::element_blank(),
+      legend.position = "right"
     )
 
-  # ---- combine plots ----
-  final_plot <- (patchwork::wrap_plots(p1, p2, p3, nrow = 1) /
-    time_plot) +
-    patchwork::plot_annotation(
-      title = titles[[language]]
-    )
+  # patchwork layout with balanced widths (side panels wider than before)
+  top <- patchwork::wrap_plots(p1, p2, p3, nrow = 1) +
+    patchwork::plot_layout(widths = c(1.2, 1.8, 1.2))
 
-  # auto-save if plot_path provided
+  final_plot <- top /
+    time_plot +
+    patchwork::plot_layout(heights = c(1, 1.1)) +
+    patchwork::plot_annotation(title = titles[[language]])
+
+  # save if requested
   if (!is.null(plot_path)) {
     plot_path <- ifelse(
       grepl("/$", plot_path),
@@ -1253,10 +1359,10 @@ compare_methods_plot <- function(
       dpi = dpi,
       scale = scale
     )
-    if (compress_image) {
+    if (isTRUE(compress_image)) {
       sntutils::compress_png(path = paste0(plot_path, filename))
     }
   }
 
-  return(final_plot)
+  final_plot
 }

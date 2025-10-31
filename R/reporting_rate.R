@@ -963,7 +963,7 @@ prepare_plot_data <- function(
   } else if (use_reprate) {
     "Reporting rate of "
   } else {
-    "The proportion of missing data for "
+    "Percentage of HF that reported monthly data by variable out of all HF in the country"
   }
 
   # Create title components
@@ -1407,10 +1407,14 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
   ) +
     common_elements +
     ggplot2::labs(
-      title = paste0(
-        title_prefix,
-        " selected variables by ", tolower(x_var)
-      ),
+      title = if (grepl("Percentage of HF", title_prefix)) {
+        title_prefix  # Use as-is for the new standardized title
+      } else {
+        paste0(
+          title_prefix,
+          " selected variables by ", tolower(x_var)
+        )
+      },
       subtitle = subtitle,
       x = "",
       y = "Variable",

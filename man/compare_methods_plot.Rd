@@ -9,9 +9,7 @@ compare_methods_plot(
   hf_col,
   date_col,
   key_indicators,
-  agg_level = c("adm1", "adm2"),
   nonreport_window = 6,
-  trailing_tolerance = FALSE,
   language = "en",
   plot_path = NULL,
   width = 16,
@@ -31,14 +29,7 @@ compare_methods_plot(
 
 \item{key_indicators}{Indicators used for activity classification.}
 
-\item{agg_level}{Character vector specifying spatial/administrative columns
-to aggregate by (e.g., "adm2" or c("adm1", "adm2")).
-Default "adm1" and "adm2".}
-
 \item{nonreport_window}{Window size for non-reporting definition.}
-
-\item{trailing_tolerance}{Logical. If TRUE, Method 3 applies lenient
-trailing-gap tolerance. If FALSE, strict closure. Default FALSE.}
 
 \item{language}{Output language: "en" (English), "fr" (French), "pt"
 (Portuguese).}
