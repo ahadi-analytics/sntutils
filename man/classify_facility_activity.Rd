@@ -12,8 +12,7 @@ classify_facility_activity(
   method = 1,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
-  binary_classification = FALSE,
-  trailing_tolerance = FALSE
+  binary_classification = FALSE
 )
 }
 \arguments{
@@ -28,8 +27,7 @@ classify_facility_activity(
 activity. Defaults to \code{c("test", "pres", "conf")}.}
 
 \item{method}{Character or numeric. Classification method - can be numeric
-(1, 2, 3) or character ("method1", "method2", "method3", "all").
-See Details. Defaults to 1.}
+(1, 2, 3) or character ("method1", "method2", "method3", "all").}
 
 \item{nonreport_window}{Integer. Minimum number of consecutive non-reporting
 months to classify a facility as inactive in method 3. Defaults to 6.}
@@ -40,10 +38,6 @@ or \code{"positive_only"} (requires >0 value to count as reported).}
 
 \item{binary_classification}{Logical. If TRUE, collapses categories into
 "Active" vs "Inactive". Defaults to FALSE.}
-
-\item{trailing_tolerance}{Logical. If TRUE, Method 3 keeps a facility
-"Active - Not Reporting" for up to \code{nonreport_window} months after the last
-report. If FALSE, it becomes Inactive immediately after the last report.}
 }
 \value{
 Data frame with original columns plus reporting and activity status.

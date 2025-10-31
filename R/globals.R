@@ -174,8 +174,8 @@ globalVariables(
     "growth_ratio",
     "label",
     "path",
-     "match_pct",
-     "method_rank",
+    "match_pct",
+    "method_rank",
     "prev_pop",
     "prop",
     "periods_active",
@@ -191,6 +191,12 @@ globalVariables(
     "total_periods",
     "activeness_category",
     "reporting_rate",
-    "has_data"
+    "has_data",
+    "activity_status_method2",
+    "gap", "gap_run",
+    "has_reported",
+    "last_date",
+    "last_reporting_date",
+    "months_since_last_report"
   )
 )
