@@ -487,14 +487,20 @@ prepared <- data |>
   prepared_data <- validated$data
 
   # Handle spatial_level parameter for proper detection vs grouping
-  if (!is.null(spatial_level)) {
+  if (!is.null(spatial_level) && spatial_level %in% names(prepared_data)) {
     # Detection happens at spatial_level, grouping for efficiency at admin_level
     detection_admin_level <- c(admin_level, spatial_level)
     parallel_grouping_levels <- admin_level
   } else {
     # Original behavior - use all admin_level for both detection and grouping
+    # (either spatial_level is NULL or the column doesn't exist)
     detection_admin_level <- admin_level
     parallel_grouping_levels <- admin_level
+    if (!is.null(spatial_level) && !spatial_level %in% names(prepared_data)) {
+      cli::cli_warn(
+        "spatial_level column {.field {spatial_level}} not found in data, using admin_level only"
+      )
+    }
   }
 
   admin_info <- .resolve_admin_level(
