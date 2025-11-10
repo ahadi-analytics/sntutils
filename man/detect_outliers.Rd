@@ -96,10 +96,10 @@ before flagging is attempted (applies to any seasonal bucket or fallback).}
 threshold receive \code{reason = "low_reporting"} and are not flagged.}
 
 \item{key_indicators_hf}{Optional character vector of indicator names used to
-determine facility activeness. If supplied, the function calls
-\code{classify_facility_activity()} internally to exclude inactive health
-facilities from outlier detection. Inactive facility-months are tagged with
-\code{reason = "inactive_facility"} and excluded from detection. If \code{NULL}
+determine facility activeness. If supplied, the function uses a fast path
+to filter out inactive facility-months. A facility-month is considered
+active if ANY of the specified key indicators have non-NA values.
+Inactive facility-months are excluded from outlier detection. If \code{NULL}
 (default), activeness filtering is skipped. Typical indicators include
 \code{"allout"}, \code{"test"}, or \code{"conf"}. This adjustment prevents false positives
 caused by facilities that start or stop reporting mid-period.}
@@ -188,12 +188,13 @@ totals, apparent spikes or dips can occur that do not represent real
 epidemiological changes. For example, if ten new facilities start reporting
 in Matoto in mid-2022, the total number of confirmed cases rises even if
 incidence per facility remains constant. To prevent such artefacts,
-\code{detect_outliers()} can optionally apply activeness filtering using
-\code{classify_facility_activity()}. Only active facilities (those that reported
-at least one of the specified key indicators in a given month) contribute to
-the comparison pool for outlier detection. This step improves
-interpretability of results and reduces false positives in areas with
-variable reporting completeness or frequent facility additions.
+\code{detect_outliers()} uses a fast, optimized approach for activeness filtering.
+When \code{key_indicators_hf} is specified, the function checks if each
+facility-month has ANY non-NA values in the specified key indicators.
+Only facility-months with at least one reported key indicator contribute to
+the comparison pool for outlier detection. This lightweight approach avoids
+the computational overhead of full activity classification while still
+preventing false positives from inactive facilities.
 
 \strong{Presets} (for high outliers only)
 \itemize{

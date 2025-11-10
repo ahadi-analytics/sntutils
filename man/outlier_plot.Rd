@@ -104,10 +104,10 @@ before flagging is attempted (applies to any seasonal bucket or fallback).}
 threshold receive \code{reason = "low_reporting"} and are not flagged.}
 
 \item{key_indicators_hf}{Optional character vector of indicator names used to
-determine facility activeness. If supplied, the function calls
-\code{classify_facility_activity()} internally to exclude inactive health
-facilities from outlier detection. Inactive facility-months are tagged with
-\code{reason = "inactive_facility"} and excluded from detection. If \code{NULL}
+determine facility activeness. If supplied, the function uses a fast path
+to filter out inactive facility-months. A facility-month is considered
+active if ANY of the specified key indicators have non-NA values.
+Inactive facility-months are excluded from outlier detection. If \code{NULL}
 (default), activeness filtering is skipped. Typical indicators include
 \code{"allout"}, \code{"test"}, or \code{"conf"}. This adjustment prevents false positives
 caused by facilities that start or stop reporting mid-period.}
