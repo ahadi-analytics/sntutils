@@ -14,3 +14,4 @@ CLAUDE.md
 agents.config.json
 test-changed-smart.sh
 /src
+data-raw/rebuild_snt_var_tree.R
