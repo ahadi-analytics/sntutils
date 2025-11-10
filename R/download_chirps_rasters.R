@@ -238,6 +238,28 @@ download_chirps <- function(dataset, start, end = NULL,
       # Check for any existing CHIRPS file with this date (regardless of naming)
       existing <- .find_chirps_variations(out_dir, year, month)
 
+      # If not found, check for the cleaned filename version
+      if (is.null(existing)) {
+        # Get all CHIRPS files in directory and clean their names
+        all_files <- list.files(out_dir, pattern = "chirps.*\\.tif(\\.gz)?$",
+                                full.names = TRUE, ignore.case = TRUE)
+        if (length(all_files) > 0) {
+          # Clean the names to see what they would become
+          cleaned_names <- clean_filenames(all_files)
+          # Check if our target file would match any cleaned name
+          target_pattern <- sprintf("chirps.*v2.*%s\\.(tif|tif\\.gz)$", month)
+          matching_cleaned <- grep(target_pattern, cleaned_names, value = TRUE)
+          if (length(matching_cleaned) > 0) {
+            # Find the original file that corresponds to this cleaned name
+            idx <- which(cleaned_names == matching_cleaned[1])
+            if (length(idx) > 0 && file.exists(all_files[idx[1]])) {
+              file_type <- ifelse(grepl("\\.tif$", all_files[idx[1]]), "tif", "gz")
+              existing <- list(path = all_files[idx[1]], type = file_type)
+            }
+          }
+        }
+      }
+
       if (!is.null(existing)) {
         if (existing$type == "tif") {
           cli::cli_alert_info(
@@ -284,6 +306,29 @@ download_chirps <- function(dataset, start, end = NULL,
 
         # Check for any existing CHIRPS file with this date (regardless of naming)
         existing <- .find_chirps_variations(out_dir, year, month, subperiod)
+
+        # If not found, check for the cleaned filename version
+        if (is.null(existing)) {
+          # Get all CHIRPS files in directory and clean their names
+          all_files <- list.files(out_dir, pattern = "chirps.*\\.tif(\\.gz)?$",
+                                  full.names = TRUE, ignore.case = TRUE)
+          if (length(all_files) > 0) {
+            # Clean the names to see what they would become
+            cleaned_names <- clean_filenames(all_files)
+            # Check if our target file would match any cleaned name
+            target_pattern <- sprintf("chirps.*v2.*%s\\.%s\\.(tif|tif\\.gz)$",
+                                    month, subperiod)
+            matching_cleaned <- grep(target_pattern, cleaned_names, value = TRUE)
+            if (length(matching_cleaned) > 0) {
+              # Find the original file that corresponds to this cleaned name
+              idx <- which(cleaned_names == matching_cleaned[1])
+              if (length(idx) > 0 && file.exists(all_files[idx[1]])) {
+                file_type <- ifelse(grepl("\\.tif$", all_files[idx[1]]), "tif", "gz")
+                existing <- list(path = all_files[idx[1]], type = file_type)
+              }
+            }
+          }
+        }
 
         if (!is.null(existing)) {
           if (existing$type == "tif") {
