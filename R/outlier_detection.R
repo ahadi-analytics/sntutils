@@ -69,7 +69,7 @@
 #'   for analysis (e.g., "hf_uid" for facility-level). When specified,
 #'   `admin_level` defines grouping boundaries while `spatial_level` defines
 #'   the unit of analysis. This prevents excessive grouping while maintaining
-#'   spatial granularity. Default is `NULL` (uses most granular admin level).
+#'   spatial granularity. Default is `hf_uid`.
 #' @param classify_outbreaks Logical. When `TRUE` (default), applies outbreak
 #'   classification to distinguish between isolated outliers and sustained
 #'   outbreak patterns. Consecutive outliers meeting the outbreak criteria are
@@ -222,7 +222,7 @@ detect_outliers <- function(
   column,
   record_id = "record_id",
   admin_level = c("adm1", "adm2"),
-  spatial_level = NULL,
+  spatial_level = "hf_uid",
   date = "date",
   time_mode = c("across_time", "within_year"),
   value_type = c("count", "rate"),
@@ -1405,7 +1405,7 @@ outlier_plot <- function(
     column,
     record_id = "record_id",
     admin_level = c("adm1", "adm2"),
-    spatial_level = NULL,
+    spatial_level = "hf_uid",
     date = "date",
     time_mode = c("across_time", "within_year"),
     value_type = c("count", "rate"),
@@ -1900,10 +1900,6 @@ outlier_plot <- function(
       )
     }
 
-    # Show plot if requested
-    if (show_plot) {
-      print(p)
-    }
   }  # End of methods loop
 
   # Return single plot or list of plots

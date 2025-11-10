@@ -9,7 +9,7 @@ detect_outliers(
   column,
   record_id = "record_id",
   admin_level = c("adm1", "adm2"),
-  spatial_level = NULL,
+  spatial_level = "hf_uid",
   date = "date",
   time_mode = c("across_time", "within_year"),
   value_type = c("count", "rate"),
@@ -47,7 +47,7 @@ Defaults to \code{c("adm1", "adm2")}.}
 for analysis (e.g., "hf_uid" for facility-level). When specified,
 \code{admin_level} defines grouping boundaries while \code{spatial_level} defines
 the unit of analysis. This prevents excessive grouping while maintaining
-spatial granularity. Default is \code{NULL} (uses most granular admin level).}
+spatial granularity. Default is \code{hf_uid}.}
 
 \item{date}{Date column (Date, POSIXt, or parseable character string).
 Year, month, and yearmon are automatically derived from this column.}
