@@ -193,10 +193,12 @@ globalVariables(
     "reporting_rate",
     "has_data",
     "activity_status_method2",
-    "gap", "gap_run",
+    "gap",
+    "gap_run",
     "has_reported",
     "last_date",
     "last_reporting_date",
-    "months_since_last_report"
+    "months_since_last_report",
+    ".has_any_indicator"
   )
 )
