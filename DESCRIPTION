@@ -32,9 +32,11 @@ Imports:
     fs,
     readr,
     lubridate,
-    digest
-Suggests:
+    digest,
     arrow,
+    duckdb,
+    DBI
+Suggests:
     archive,
     crayon,
     curl,
