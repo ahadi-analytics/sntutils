@@ -1048,7 +1048,7 @@ prepared <- data |>
 
     glue::glue(
       "  - {cli::style_bold(mdisp)} -> ",
-      "{fmt_num(out_n)}/{fmt_num(eligible_n)} outliers among eligible ",
+      "{fmt_num(out_n)} outliers among eligible ",
       "(total = {fmt_num(total_n)})"
     )
   }
