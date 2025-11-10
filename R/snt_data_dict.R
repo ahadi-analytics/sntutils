@@ -131,6 +131,9 @@ snt_data_dict <- function(
   rows <- list()
 
   for (name in names(tree)) {
+    # Skip meta nodes and description fields
+    if (name %in% c("_meta", "_description")) next
+
     node <- tree[[name]]
 
     # if node is a variable leaf
