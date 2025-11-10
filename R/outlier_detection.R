@@ -42,10 +42,10 @@
 #'   threshold receive `reason = "low_reporting"` and are not flagged.
 #'
 #' @param key_indicators_hf Optional character vector of indicator names used to
-#'   determine facility activeness. If supplied, the function calls
-#'   `classify_facility_activity()` internally to exclude inactive health
-#'   facilities from outlier detection. Inactive facility-months are tagged with
-#'   `reason = "inactive_facility"` and excluded from detection. If `NULL`
+#'   determine facility activeness. If supplied, the function uses a fast path
+#'   to filter out inactive facility-months. A facility-month is considered
+#'   active if ANY of the specified key indicators have non-NA values.
+#'   Inactive facility-months are excluded from outlier detection. If `NULL`
 #'   (default), activeness filtering is skipped. Typical indicators include
 #'   `"allout"`, `"test"`, or `"conf"`. This adjustment prevents false positives
 #'   caused by facilities that start or stop reporting mid-period.
@@ -116,12 +116,13 @@
 #' epidemiological changes. For example, if ten new facilities start reporting
 #' in Matoto in mid-2022, the total number of confirmed cases rises even if
 #' incidence per facility remains constant. To prevent such artefacts,
-#' `detect_outliers()` can optionally apply activeness filtering using
-#' `classify_facility_activity()`. Only active facilities (those that reported
-#' at least one of the specified key indicators in a given month) contribute to
-#' the comparison pool for outlier detection. This step improves
-#' interpretability of results and reduces false positives in areas with
-#' variable reporting completeness or frequent facility additions.
+#' `detect_outliers()` uses a fast, optimized approach for activeness filtering.
+#' When `key_indicators_hf` is specified, the function checks if each
+#' facility-month has ANY non-NA values in the specified key indicators.
+#' Only facility-months with at least one reported key indicator contribute to
+#' the comparison pool for outlier detection. This lightweight approach avoids
+#' the computational overhead of full activity classification while still
+#' preventing false positives from inactive facilities.
 #'
 #' **Presets** (for high outliers only)
 #' - lenient: values > mean + 4.0 x SD, median + 12 x MAD,
@@ -258,34 +259,35 @@ detect_outliers <- function(
         "key_indicators_hf columns missing: {.val {missing_indicators}}"
       )
     }
-    if (!record_id %in% names(data)) {
-      cli::cli_abort(
-        "record_id {.val {record_id}} not found in data."
-      )
-    }
-    activeness_data <- classify_facility_activity(
-      data = data,
-      hf_col = record_id,
-      date_col = date,
-      key_indicators = key_indicators_hf,
-      binary_classification = TRUE
-    )
+
+    # Fast path for outlier detection: simply check if ANY key indicator is non-NA
+    # This avoids the expensive classify_facility_activity() function which creates
+    # cartesian products and computes 3 different classification methods
     data <- data |>
-      dplyr::left_join(
-        activeness_data |>
-          dplyr::select(
-            dplyr::all_of(c(record_id, date)),
-            activity_status
-          ),
-        by = c(record_id, date)
-      ) |>
       dplyr::mutate(
-        .is_active = activity_status == "Active Reporting"
+        # Check if any of the key indicators have non-NA values
+        .has_any_indicator = dplyr::if_any(
+          dplyr::all_of(key_indicators_hf),
+          ~ !is.na(.)
+        ),
+        # Facility is active if it reported any key indicator
+        .is_active = .has_any_indicator
       )
+
+    # Defensive check: ensure we're not about to filter out all data
+    n_active_with_values <- sum(data$.is_active & !is.na(data[[column]]), na.rm = TRUE)
+    if (n_active_with_values == 0) {
+      cli::cli_abort(c(
+        "No non-missing {.field {column}} values found in active facilities.",
+        "i" = "Check if {.field {column}} is one of your key_indicators_hf.",
+        "i" = "Consider including {.field {column}} in key_indicators_hf or removing activity filtering."
+      ))
+    }
+
     n_inactive_skipped <- sum(!data$.is_active, na.rm = TRUE)
     data <- data |>
       dplyr::filter(.is_active) |>
-      dplyr::select(-.is_active, -activity_status)
+      dplyr::select(-.has_any_indicator, -.is_active)
     activeness_applied <- TRUE
     key_indicators_used <- paste(key_indicators_hf, collapse = ", ")
   }
