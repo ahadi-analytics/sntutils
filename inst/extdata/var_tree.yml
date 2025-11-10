@@ -1192,3 +1192,53 @@ schema:
       label_en: "Unknown sex"
       label_fr: "Sexe inconnu"
       label_pt: "Sexo desconhecido"
+
+  # ── Climate variables ───────────────────────────────────────────────────────
+
+  total_rainfall_mm:
+    snt_var_name: total_rainfall_mm
+    label_en: "Total rainfall (mm)"
+    label_fr: "Précipitations totales (mm)"
+    label_pt: "Precipitação total (mm)"
+    description_en: "Monthly total rainfall in millimetres aggregated from
+      daily values."
+    description_fr: "Précipitations totales mensuelles en millimètres, agrégées
+      à partir des valeurs quotidiennes."
+    description_pt: "Precipitação total mensal em milímetros agregada a partir
+      dos valores diários."
+
+  mean_temperature_c:
+    snt_var_name: mean_temperature_c
+    label_en: "Mean temperature (°C)"
+    label_fr: "Température moyenne (°C)"
+    label_pt: "Temperatura média (°C)"
+    description_en: "Monthly mean temperature in degrees Celsius, averaged from
+      daily minimum and maximum values."
+    description_fr: "Température moyenne mensuelle en degrés Celsius, calculée
+      à partir des températures minimales et maximales quotidiennes."
+    description_pt: "Temperatura média mensal em graus Celsius, calculada a
+      partir das temperaturas mínimas e máximas diárias."
+
+  min_temperature_c:
+    snt_var_name: min_temperature_c
+    label_en: "Minimum temperature (°C)"
+    label_fr: "Température minimale (°C)"
+    label_pt: "Temperatura mínima (°C)"
+    description_en: "Monthly minimum temperature in degrees Celsius, derived
+      from daily minimum temperatures."
+    description_fr: "Température minimale mensuelle en degrés Celsius, dérivée
+      des températures minimales quotidiennes."
+    description_pt: "Temperatura mínima mensal em graus Celsius, derivada das
+      temperaturas mínimas diárias."
+
+  max_temperature_c:
+    snt_var_name: max_temperature_c
+    label_en: "Maximum temperature (°C)"
+    label_fr: "Température maximale (°C)"
+    label_pt: "Temperatura máxima (°C)"
+    description_en: "Monthly maximum temperature in degrees Celsius, derived
+      from daily maximum temperatures."
+    description_fr: "Température maximale mensuelle en degrés Celsius, dérivée
+      des températures maximales quotidiennes."
+    description_pt: "Temperatura máxima mensal em graus Celsius, derivada das
+      temperaturas máximas diárias."

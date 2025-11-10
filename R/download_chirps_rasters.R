@@ -118,6 +118,47 @@ check_chirps_available <- function(dataset_code = "africa_monthly") {
   })
 }
 
+#' Helper function to find existing CHIRPS files with naming variations
+#' @noRd
+.find_chirps_variations <- function(out_dir, year, month, subperiod = NULL) {
+  # Build pattern to match various naming conventions
+  # Match patterns like:
+  # - chirps-v2.0.2018.04.tif
+  # - africa_monthly_chirps-v2.0.2018.04.tif
+  # - chirps-v2.0.2018.04.tif.gz
+  # - africa_monthly_chirps-v2.0.2018.04.tif.gz
+
+  if (is.null(subperiod)) {
+    # Monthly pattern
+    pattern <- sprintf("chirps-v2\\.0\\.%s\\.%s\\.(tif|tif\\.gz)$", year, month)
+  } else {
+    # Pentadal pattern
+    pattern <- sprintf("chirps-v2\\.0\\.%s\\.%s\\.%s\\.(tif|tif\\.gz)$",
+                      year, month, subperiod)
+  }
+
+  # List all files in directory
+  if (!dir.exists(out_dir)) return(NULL)
+
+  files <- list.files(out_dir, pattern = pattern, full.names = TRUE,
+                      ignore.case = TRUE)
+
+  if (length(files) == 0) return(NULL)
+
+  # Return first matching file (prioritize .tif over .tif.gz)
+  tif_files <- files[grepl("\\.tif$", files)]
+  if (length(tif_files) > 0) {
+    return(list(path = tif_files[1], type = "tif"))
+  }
+
+  gz_files <- files[grepl("\\.tif\\.gz$", files)]
+  if (length(gz_files) > 0) {
+    return(list(path = gz_files[1], type = "gz"))
+  }
+
+  return(NULL)
+}
+
 #' Download CHIRPS Raster Data from UCSB Archive
 #'
 #' Downloads `.tif.gz` CHIRPS rainfall data files from the UCSB Climate Hazards
@@ -194,17 +235,41 @@ download_chirps <- function(dataset, start, end = NULL,
       dest <- file.path(out_dir, custom_name)
       tif  <- sub(".gz$", "", dest)
 
-      if (!file.exists(tif)) {
+      # Check for any existing CHIRPS file with this date (regardless of naming)
+      existing <- .find_chirps_variations(out_dir, year, month)
+
+      if (!is.null(existing)) {
+        if (existing$type == "tif") {
+          cli::cli_alert_info(
+            "Skipping {year}-{month}, found existing: {basename(existing$path)}"
+          )
+        } else if (existing$type == "gz" && unzip) {
+          # Check if we need to unzip
+          tif_check <- sub("\\.gz$", "", existing$path)
+          if (!file.exists(tif_check)) {
+            cli::cli_alert_info("Unzipping existing {basename(existing$path)}")
+            R.utils::gunzip(existing$path, overwrite = FALSE, remove = FALSE)
+          } else {
+            cli::cli_alert_info(
+              "Skipping {year}-{month}, found existing: {basename(tif_check)}"
+            )
+          }
+        } else {
+          cli::cli_alert_info(
+            "Skipping {year}-{month}, found existing: {basename(existing$path)}"
+          )
+        }
+      } else {
+        # No variations found, download the file
         tryCatch({
           curl::curl_download(url, dest, mode = "wb")
           cli::cli_alert_success("Downloaded {custom_name}")
-          if (unzip && file.exists(dest)) R.utils::gunzip(dest,
-                                                          overwrite = FALSE)
+          if (unzip && file.exists(dest)) {
+            R.utils::gunzip(dest, overwrite = FALSE)
+          }
         }, error = function(e) {
           cli::cli_alert_danger("Failed {custom_name}: {e$message}")
         })
-      } else {
-        cli::cli_alert_info("Skipping {basename(tif)}, already exists.")
       }
 
     } else {
@@ -217,17 +282,41 @@ download_chirps <- function(dataset, start, end = NULL,
         dest <- file.path(out_dir, custom_name)
         tif  <- sub(".gz$", "", dest)
 
-        if (!file.exists(tif)) {
+        # Check for any existing CHIRPS file with this date (regardless of naming)
+        existing <- .find_chirps_variations(out_dir, year, month, subperiod)
+
+        if (!is.null(existing)) {
+          if (existing$type == "tif") {
+            cli::cli_alert_info(
+              "Skipping {year}-{month}.{subperiod}, found: {basename(existing$path)}"
+            )
+          } else if (existing$type == "gz" && unzip) {
+            # Check if we need to unzip
+            tif_check <- sub("\\.gz$", "", existing$path)
+            if (!file.exists(tif_check)) {
+              cli::cli_alert_info("Unzipping existing {basename(existing$path)}")
+              R.utils::gunzip(existing$path, overwrite = FALSE, remove = FALSE)
+            } else {
+              cli::cli_alert_info(
+                "Skipping {year}-{month}.{subperiod}, found: {basename(tif_check)}"
+              )
+            }
+          } else {
+            cli::cli_alert_info(
+              "Skipping {year}-{month}.{subperiod}, found: {basename(existing$path)}"
+            )
+          }
+        } else {
+          # No variations found, download the file
           tryCatch({
             curl::curl_download(url, dest, mode = "wb")
             cli::cli_alert_success("Downloaded {custom_name}")
-            if (unzip && file.exists(dest)) R.utils::gunzip(dest,
-                                                            overwrite = FALSE)
+            if (unzip && file.exists(dest)) {
+              R.utils::gunzip(dest, overwrite = FALSE)
+            }
           }, error = function(e) {
             cli::cli_alert_danger("Failed {custom_name}: {e$message}")
           })
-        } else {
-          cli::cli_alert_info("Skipping {basename(tif)}, already exists.")
         }
       }
     }
