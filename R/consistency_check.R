@@ -431,13 +431,11 @@ consistency_check <- function(data,
     ) +
     ggplot2::scale_x_continuous(
       labels = scales::label_number(scale_cut = scales::cut_short_scale()),
-      limits = c(0, NA),
-      expand = c(0, 0)
+      expand = ggplot2::expansion(mult = c(0.05, 0.05))
     ) +
     ggplot2::scale_y_continuous(
       labels = scales::label_number(scale_cut = scales::cut_short_scale()),
-      limits = c(0, NA),
-      expand = c(0, 0)
+      expand = ggplot2::expansion(mult = c(0.05, 0.05))
     )
 
   # Translate labels if language is not English
