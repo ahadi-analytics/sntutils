@@ -7,29 +7,16 @@
 get_dhs_data(path = here::here("01_data", "parquet"), types = NULL)
 }
 \arguments{
-\item{path}{Character string. Root directory containing parquet datasets
-organized by file type (GE, IR, PR, etc.). Defaults to
-\code{"01_data/parquet"} under the project root.}
+\item{path}{Character string. Root directory containing parquet datasets.}
 
-\item{types}{Optional character vector of DHS file type codes to load
-(e.g. \code{c("IR", "PR")}). If \code{NULL}, all supported types are loaded.}
+\item{types}{Optional character vector of DHS file type codes to load.
+If NULL, all supported types are loaded.}
 }
 \value{
-A list of class \code{"dhs_duckdb"} with data tables, metadata, and connection.
+A list of class "dhs_duckdb" containing data tables, metadata, and
+connection.
 }
 \description{
 Creates a DuckDB connection and registers selected DHS parquet datasets as
-views for efficient querying. Handles varying schemas using
-\code{union_by_name = TRUE}. Returns a structured list with table references and
-metadata.
-}
-\examples{
-\dontrun{
-# load all DHS datasets
-dhs <- get_dhs_data()
-
-# load only PR and IR
-dhs_small <- get_dhs_data(types = c("PR", "IR"))
-}
-
+views for efficient querying. Skips corrupted parquet files automatically.
 }
