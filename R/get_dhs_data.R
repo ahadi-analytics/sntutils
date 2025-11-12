@@ -213,7 +213,7 @@ print.dhs_duckdb <- function(x, ...) {
   # partition summary (just names)
   partition_summary <- if (length(partitions_found) > 0) {
     purrr::imap_chr(partitions_found, function(v, ft) {
-      paste0("  $", ft, " partitions → ", v)
+      paste0("  $", ft, " partitions -> ", v)
     })
   } else {
     "  No partition columns detected."
