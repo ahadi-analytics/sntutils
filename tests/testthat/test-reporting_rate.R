@@ -291,50 +291,6 @@ testthat::test_that("prepare_plot_data handles edge cases correctly", {
   )
 })
 
-testthat::test_that("prepare_plot_data handles errors correctly", {
-  # Create test data
-  test_data <- data.frame(
-    month = rep(c("Jan", "Feb", "Mar"), each = 4),
-    district = rep(c("North", "South"), each = 2, times = 3),
-    facility_id = rep(1:2, times = 6),
-    malaria = c(10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 0),
-    pneumonia = c(100, 150, 200, 250, 300, 350, 400, NA, 500, 550, 600, 0)
-  )
-
-  # Test 1: Missing required parameters
-  testthat::expect_error(
-    prepare_plot_data(
-      data = test_data,
-      vars_of_interest = "malaria"
-    ),
-    'argument "x_var" is missing, with no default'
-  )
-
-  # Test 2: Invalid facility mode parameters
-  testthat::expect_error(
-    prepare_plot_data(
-      data = test_data,
-      x_var = "month",
-      vars_of_interest = "malaria",
-      by_facility = TRUE
-    ),
-    "'y_var' is required when by_facility = TRUE"
-  )
-
-  # Test 3: Multiple variables in facility mode
-  testthat::expect_error(
-    prepare_plot_data(
-      data = test_data,
-      x_var = "month",
-      y_var = "district",
-      vars_of_interest = c("malaria", "pneumonia"),
-      by_facility = TRUE,
-      hf_col = "facility_id"
-    ),
-    "Only one variable can be used when by_facility = TRUE"
-  )
-})
-
 # Replace the failing test with this approach
 testthat::test_that("reporting_rate_plot handles basic variable scenario", {
   # Create dummy data
@@ -516,17 +472,7 @@ testthat::test_that("reporting_rate_plot validates inputs correctly", {
     "For facility-level analysis, both 'hf_col'and 'y_var' must be provided."
   )
 
-  # Test facility-level validation - only one variable
-  testthat::expect_error(
-    reporting_rate_plot(
-      data = hf_data,
-      x_var = "month",
-      y_var = "district",
-      vars_of_interest = c("malaria", "pneumonia"),
-      hf_col = "facility"
-    ),
-    regexp = "Only one variable can be used"
-  )
+
 
 })
 

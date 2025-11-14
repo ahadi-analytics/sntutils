@@ -1,7 +1,10 @@
 #' Calculate reporting/missing rate and proportion of reporting facilities
 #'
 #' This function calculates reporting metrics for health facility data across
-#' three common scenarios:
+#' three common scenarios. **IMPORTANT**: When facility identification (`hf_col`)
+#' and `key_indicators` are provided, the function excludes inactive facilities
+#' from denominators, ensuring that missing rates reflect only the proportion
+#' of ACTIVE facilities that failed to report, not all facilities in the dataset.
 #'
 #' 1) **Proportion of facilities reporting any data**
 #'    - Calculates the proportion of active facilities (as defined by reporting
@@ -11,10 +14,14 @@
 #' 2) **Reporting rate by group (x_var, y_var)**
 #'    - Computes reporting/missing rates for each variable in
 #'      `vars_of_interest`, grouped by `x_var` and `y_var`.
+#'    - **WARNING**: Without `hf_col`, this counts all data rows including
+#'      inactive facilities, potentially inflating missing rates.
 #'
 #' 3) **Reporting trends over time (x_var only)**
 #'    - Computes reporting/missing rates for each variable over time
 #'      (x_var only).
+#'    - **WARNING**: Without `hf_col`, this counts all data rows including
+#'      inactive facilities, potentially inflating missing rates.
 #'
 #' @param data A data frame containing health facility data.
 #' @param vars_of_interest Character vector of variable names to assess
@@ -70,6 +77,17 @@
 #'
 #' @return A tibble with the number of reporting (`rep`) and expected (`exp`)
 #' facilities or records, and the computed `reprate` and `missrate`.
+#'
+#' **Understanding the metrics:**
+#' - `exp` (expected): When `hf_col` is provided with `key_indicators`, this is
+#'   the count of ACTIVE facilities only. Without `hf_col`, it's the count of
+#'   all data rows (including inactive facilities).
+#' - `rep` (reported): Count of facilities/rows that reported (non-NA values).
+#' - `reprate`: Reporting rate (rep/exp). With proper facility identification,
+#'   this is the percentage of ACTIVE facilities that reported.
+#' - `missrate`: Missing rate (1 - reprate). With proper facility identification,
+#'   this is the percentage of ACTIVE facilities that failed to report.
+#'   **Without `hf_col`, this may be artificially high due to inactive facilities.**
 #'
 #' If weighting is TRUE, additional columns are included:
 #' - `reprate_w`: Weighted reporting rate (0-1)
@@ -450,76 +468,49 @@ calculate_reporting_metrics <- function(
       dplyr::select(dplyr::all_of(c(hf_col, x_var, y_var, "weight", "typical_size")))
   }
 
-  # Check if key_indicators columns exist in the data
-  key_indicators_available <- !is.null(key_indicators) && length(key_indicators) > 0 && all(key_indicators %in% names(data))
+  # Check if we can use get_active_facilities
+  can_use_active_filter <- .can_exclude_inactive(data, hf_col, key_indicators)
 
-  if (!is.null(hf_col) && !is.null(key_indicators) && key_indicators_available) {
-
-    # Use classify_facility_activity to determine facility status
-    # Need to ensure data has a date column for classify_facility_activity
-    if (x_var == "date" || "date" %in% names(data)) {
-      # If x_var is already "date" or data has a "date" column, use it
-      date_col_name <- if (x_var == "date") x_var else "date"
+  if (!is.null(hf_col) && can_use_active_filter) {
+    # Determine the date column name
+    date_col_name <- if (x_var == "date" || "date" %in% names(data)) {
+      if (x_var == "date") x_var else "date"
     } else {
-      # Create a temporary date column from x_var
-      # This handles cases where x_var might be "month", "yearmon", etc.
-      date_col_name <- ".temp_date_col"
+      # Need to create a temporary date column for get_active_facilities
+      ".temp_date_col"
+    }
 
-      # Try to convert x_var to date format
+    # If we need a temporary date column, create it
+    if (date_col_name == ".temp_date_col") {
+      # Convert x_var to date format (simplified - reuse existing logic)
       temp_dates <- tryCatch({
-        # First check if it's already a Date
         if (inherits(data[[x_var]], "Date")) {
           data[[x_var]]
         } else if (is.numeric(data[[x_var]]) || inherits(data[[x_var]], "yearmon")) {
-          # Handle numeric years or zoo::yearmon
           as.Date(paste0(data[[x_var]], "-01-01"))
         } else {
-          # Try to parse as date string
           as.Date(data[[x_var]])
         }
       }, error = function(e) {
-        # If direct conversion fails, try with common month formats
-        tryCatch({
-          # Check for month names like "Jan", "Feb", etc.
-          if (all(data[[x_var]] %in% month.abb) || all(data[[x_var]] %in% month.name)) {
-            # Need year information - look for a year column
-            if ("year" %in% names(data)) {
-              month_nums <- match(data[[x_var]], month.abb)
-              if (any(is.na(month_nums))) {
-                month_nums <- match(data[[x_var]], month.name)
-              }
-              return(as.Date(paste(data$year, month_nums, "01", sep = "-")))
-            } else {
-              # Use current year as default
-              month_nums <- match(data[[x_var]], month.abb)
-              if (any(is.na(month_nums))) {
-                month_nums <- match(data[[x_var]], month.name)
-              }
-              return(as.Date(paste(format(Sys.Date(), "%Y"), month_nums, "01", sep = "-")))
-            }
-          } else {
-            # Try lubridate-style parsing if available
-            if (requireNamespace("lubridate", quietly = TRUE)) {
-              parsed <- lubridate::parse_date_time(data[[x_var]], orders = c("ymd", "dmy", "mdy", "ym", "my"))
-              return(as.Date(parsed))  # Convert POSIXct to Date
-            } else {
-              stop("Cannot parse dates")
-            }
-          }
-        }, error = function(e2) {
+        # Handle month names
+        if (all(data[[x_var]] %in% month.abb) || all(data[[x_var]] %in% month.name)) {
+          month_nums <- match(data[[x_var]], c(month.abb, month.name))
+          year_val <- if ("year" %in% names(data)) data$year else format(Sys.Date(), "%Y")
+          as.Date(paste(year_val, month_nums %% 12 + 1, "01", sep = "-"))
+        } else if (requireNamespace("lubridate", quietly = TRUE)) {
+          as.Date(lubridate::parse_date_time(data[[x_var]], orders = c("ymd", "dmy", "mdy", "ym", "my")))
+        } else {
           cli::cli_abort(c(
             "!" = "Cannot convert {x_var} to date format for facility classification",
-            "i" = "The column contains values like: {paste(utils::head(unique(data[[x_var]]), 3), collapse = ', ')}",
-            "i" = "Consider providing data with a proper date column or ensure {x_var} is in a standard date format"
+            "i" = "Consider providing data with a proper date column"
           ))
-        })
+        }
       })
-
       data[[date_col_name]] <- temp_dates
     }
 
-    # Get activity classification for facilities
-    classified_data <- classify_facility_activity(
+    # Use get_active_facilities to filter data
+    active_data <- get_active_facilities(
       data = data,
       hf_col = hf_col,
       date_col = date_col_name,
@@ -527,38 +518,15 @@ calculate_reporting_metrics <- function(
       method = method,
       nonreport_window = nonreport_window,
       reporting_rule = reporting_rule,
-      binary_classification = TRUE  # We want Active/Inactive for denominator
+      return_summary = FALSE  # We want the filtered data
     )
 
-    # Merge back the activity status
-    # We need to handle the join based on whether we created a temp column
-    if (date_col_name == ".temp_date_col") {
-      # For temporary date columns, we need to match on both hf_col and the original x_var
-      # The classified_data has the temp column, but we join on the original data structure
-      data <- data |>
-        dplyr::left_join(
-          classified_data |>
-            dplyr::select(dplyr::all_of(c(hf_col, date_col_name, "activity_status"))),
-          by = c(hf_col, date_col_name)
-        ) |>
-        dplyr::mutate(
-          # Facility is in denominator if it's active
-          include_in_denom = activity_status == "Active"
-        )
-    } else {
-      # For regular date columns, join normally
-      join_cols <- c(hf_col, date_col_name)
-      data <- data |>
-        dplyr::left_join(
-          classified_data |>
-            dplyr::select(dplyr::all_of(c(join_cols, "activity_status"))),
-          by = join_cols
-        ) |>
-        dplyr::mutate(
-          # Facility is in denominator if it's active
-          include_in_denom = activity_status == "Active"
-        )
-    }
+    # Mark facilities as included/excluded in denominator
+    data <- data |>
+      dplyr::mutate(
+        include_in_denom = paste(!!rlang::sym(hf_col), !!rlang::sym(date_col_name)) %in%
+                          paste(active_data[[hf_col]], active_data[[date_col_name]])
+      )
 
     # Clean up temporary column if we created one
     if (date_col_name == ".temp_date_col" && date_col_name %in% names(data)) {
@@ -569,6 +537,11 @@ calculate_reporting_metrics <- function(
     # include all facilities in the denominator
     data <- data |>
       dplyr::mutate(include_in_denom = TRUE)
+
+    cli::cli_inform(c(
+      "i" = "No key indicators provided - including all facilities in denominators",
+      "i" = "Consider providing 'key_indicators' to exclude inactive facilities"
+    ))
   }
 
   if (!is.null(hf_col)) {
@@ -641,6 +614,16 @@ calculate_reporting_metrics <- function(
         calculate_rates()
     }
   } else if (!is.null(y_var)) {
+    # Warn if no facility identification is provided
+    if (is.null(hf_col)) {
+      cli::cli_warn(c(
+        "!" = "No facility identification column (hf_col) provided.",
+        "i" = "Unable to exclude inactive facilities from denominators.",
+        "i" = "This may result in inflated missing data rates if inactive facilities are present.",
+        "i" = "Consider providing 'hf_col' parameter to enable facility activity classification."
+      ))
+    }
+
     long_data <- data |>
       dplyr::select(
         dplyr::all_of(c(x_var, y_var, vars_of_interest))
@@ -678,6 +661,16 @@ calculate_reporting_metrics <- function(
         )
       )
   } else if (!is.null(x_var)) {
+    # Warn if no facility identification is provided
+    if (is.null(hf_col)) {
+      cli::cli_warn(c(
+        "!" = "No facility identification column (hf_col) provided.",
+        "i" = "Unable to exclude inactive facilities from denominators.",
+        "i" = "This may result in inflated missing data rates if inactive facilities are present.",
+        "i" = "Consider providing 'hf_col' and 'y_var' parameters to enable facility activity classification."
+      ))
+    }
+
     long_data <- data |>
       dplyr::select(dplyr::all_of(c(x_var, vars_of_interest))) |>
       tidyr::pivot_longer(
@@ -906,12 +899,9 @@ prepare_plot_data <- function(
         "i" = "Run `rlang::last_trace()` to see where the error occurred."
       ))
     }
-    if (length(vars_of_interest) > 1) {
-      cli::cli_abort(c(
-        "!" = "Only one variable can be used when by_facility = TRUE",
-        "i" = "Run `rlang::last_trace()` to see where the error occurred."
-      ))
-    }
+    # Note: Multiple variables are now allowed when by_facility = TRUE
+    # This enables proper facility activity classification while still
+    # allowing analysis of multiple indicators
   }
 
   # Determine fill variable and labels based on
@@ -1033,7 +1023,9 @@ prepare_plot_data <- function(
 #' @param vars_of_interest An optional character vector specifying the variables
 #'   to be visualized in 'data'. If NULL, all variables except 'x_var' and
 #'   'y_var' will be used.
-#' @param hf_col Facility variable name if needed
+#' @param hf_col Character. Name of the column containing unique health facility
+#'   IDs. When provided with key_indicators, enables proper exclusion of inactive
+#'   facilities from denominators, resulting in more accurate missing rates.
 #' @param key_indicators Optional. Character vector of indicators used to define
 #'   facility activity in scenario 1. Defaults to
 #'   `c("allout", "conf", "test", "treat", "pres")`.
@@ -1126,12 +1118,16 @@ prepare_plot_data <- function(
 #' )
 #'
 #' # Scenario 3: Facility-level analysis - reporting rate by facility
+#' # This properly excludes inactive facilities from denominators
 #' reporting_rate_plot(
 #'   data = hf_data,
 #'   x_var = "month",
 #'   y_var = "district",
-#'   vars_of_interest = "malaria",
-#'   hf_col = "facility_id"
+#'   vars_of_interest = c("malaria", "pneumonia"),  # Multiple variables now allowed!
+#'   hf_col = "facility_id",
+#'   key_indicators = c("malaria", "pneumonia"),  # Define activity based on these
+#'   method = 3,  # Dynamic activation method
+#'   nonreport_window = 6  # Facilities inactive after 6 months of non-reporting
 #' )
 #' @export
 reporting_rate_plot <- function(data, x_var, y_var = NULL,
@@ -1199,12 +1195,9 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       ))
     }
 
-    if (!is.null(vars_of_interest) && length(vars_of_interest) > 1) {
-      cli::cli_abort(c(
-        "!" = "Only one variable can be used when by_facility = TRUE",
-        "i" = "Run `rlang::last_trace()` to see where the error occurred."
-      ))
-    }
+    # Note: Multiple variables are now allowed when hf_col is provided
+    # This enables proper facility activity classification while still
+    # allowing analysis of multiple indicators
   }
 
   # Prepare data and get plotting variables

@@ -83,6 +83,19 @@ same y_var group (e.g., same district)
 A tibble with the number of reporting (\code{rep}) and expected (\code{exp})
 facilities or records, and the computed \code{reprate} and \code{missrate}.
 
+\strong{Understanding the metrics:}
+\itemize{
+\item \code{exp} (expected): When \code{hf_col} is provided with \code{key_indicators}, this is
+the count of ACTIVE facilities only. Without \code{hf_col}, it's the count of
+all data rows (including inactive facilities).
+\item \code{rep} (reported): Count of facilities/rows that reported (non-NA values).
+\item \code{reprate}: Reporting rate (rep/exp). With proper facility identification,
+this is the percentage of ACTIVE facilities that reported.
+\item \code{missrate}: Missing rate (1 - reprate). With proper facility identification,
+this is the percentage of ACTIVE facilities that failed to report.
+\strong{Without \code{hf_col}, this may be artificially high due to inactive facilities.}
+}
+
 If weighting is TRUE, additional columns are included:
 \itemize{
 \item \code{reprate_w}: Weighted reporting rate (0-1)
@@ -94,7 +107,10 @@ If weighting is TRUE, additional columns are included:
 }
 \description{
 This function calculates reporting metrics for health facility data across
-three common scenarios:
+three common scenarios. \strong{IMPORTANT}: When facility identification (\code{hf_col})
+and \code{key_indicators} are provided, the function excludes inactive facilities
+from denominators, ensuring that missing rates reflect only the proportion
+of ACTIVE facilities that failed to report, not all facilities in the dataset.
 }
 \details{
 \enumerate{
@@ -108,11 +124,15 @@ on \code{key_indicators}) that reported at least one of the
 \itemize{
 \item Computes reporting/missing rates for each variable in
 \code{vars_of_interest}, grouped by \code{x_var} and \code{y_var}.
+\item \strong{WARNING}: Without \code{hf_col}, this counts all data rows including
+inactive facilities, potentially inflating missing rates.
 }
 \item \strong{Reporting trends over time (x_var only)}
 \itemize{
 \item Computes reporting/missing rates for each variable over time
 (x_var only).
+\item \strong{WARNING}: Without \code{hf_col}, this counts all data rows including
+inactive facilities, potentially inflating missing rates.
 }
 }
 \subsection{Weighted Reporting Rate Calculation}{
