@@ -50,7 +50,9 @@ reporting_rate_plot(
 to be visualized in 'data'. If NULL, all variables except 'x_var' and
 'y_var' will be used.}
 
-\item{hf_col}{Facility variable name if needed}
+\item{hf_col}{Character. Name of the column containing unique health facility
+IDs. When provided with key_indicators, enables proper exclusion of inactive
+facilities from denominators, resulting in more accurate missing rates.}
 
 \item{key_indicators}{Optional. Character vector of indicators used to define
 facility activity in scenario 1. Defaults to
@@ -183,11 +185,15 @@ reporting_rate_plot(
 )
 
 # Scenario 3: Facility-level analysis - reporting rate by facility
+# This properly excludes inactive facilities from denominators
 reporting_rate_plot(
   data = hf_data,
   x_var = "month",
   y_var = "district",
-  vars_of_interest = "malaria",
-  hf_col = "facility_id"
+  vars_of_interest = c("malaria", "pneumonia"),  # Multiple variables now allowed!
+  hf_col = "facility_id",
+  key_indicators = c("malaria", "pneumonia"),  # Define activity based on these
+  method = 3,  # Dynamic activation method
+  nonreport_window = 6  # Facilities inactive after 6 months of non-reporting
 )
 }
