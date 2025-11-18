@@ -624,9 +624,9 @@ build_dictionary <- function(
   trans_cache_path = NULL,
   override_yaml = FALSE
 ) {
-  # validate input
-  if (!base::inherits(data, "data.frame")) {
-    cli::cli_abort("`data` must be a data.frame or tibble.")
+  # validate input (sf objects inherit from data.frame)
+  if (!base::inherits(data, "data.frame") && !base::inherits(data, "sf")) {
+    cli::cli_abort("`data` must be a data.frame, tibble, or sf object.")
   }
   if (!base::is.null(language) && !base::is.character(language)) {
     cli::cli_abort("`language` must be NULL or a character scalar.")
