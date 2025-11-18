@@ -170,6 +170,7 @@ globalVariables(
     ".binary_flag",
     ".is_active",
     ".x_axis_var",
+    "n",
     ":=",
     "growth_ratio",
     "label",
