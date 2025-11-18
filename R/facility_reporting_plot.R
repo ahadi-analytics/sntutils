@@ -689,7 +689,7 @@ facility_reporting_plot <- function(
   # Add never reported summary if there are any
   if (never_reported_count > 0) {
     never_reported_line <- glue::glue(
-      "{scales::comma(never_reported_count)} facilities never reported ",
+      "{sntutils::big_mark(never_reported_count)} facilities never reported ",
       "at least one of the key indicators"
     )
     subtitle_lines <- c(subtitle_lines, "", never_reported_line)
@@ -888,15 +888,21 @@ facility_reporting_plot <- function(
     labels_vec
   }
 
+  # prepare ordered factor column outside of aes() to avoid splicing errors
+  plot_data <- plot_data |>
+    dplyr::mutate(
+      .hf_ordered = forcats::fct_relevel(
+        base::as.character(.data[[hf_col]]),
+        !!!base::as.character(facility_order)
+      )
+    )
+
   plot_object <- plot_data |>
   ggplot2::ggplot(
     ggplot2::aes(
       x = .data[[date_col]],
-      y = forcats::fct_relevel(
-        .data[[hf_col]],
-        facility_order
-      ),
-      fill = activity_status
+      y = .hf_ordered,
+      fill = .data$activity_status
     )
   ) +
   ggplot2::geom_tile(width = 31, height = 1) +
