@@ -192,6 +192,7 @@ globalVariables(
     "total_periods",
     "activeness_category",
     "reporting_rate",
+    ".hf_ordered",
     "has_data",
     "activity_status_method2",
     "gap",
