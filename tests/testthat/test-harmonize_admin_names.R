@@ -1172,10 +1172,12 @@ testthat::test_that(
 
 testthat::test_that("handle_user_interaction handles 'Go Back' action", {
   # Create test data
+  # Note: subdistrict1 has two possible matches to test option selection
   test_data <- data.frame(
-    name_to_match = c("subdistrict1", "subdistrict2"),
-    matched_names = c("Subdistrict One", "Subdistrict Two"),
+    name_to_match = c("subdistrict1", "subdistrict1", "subdistrict2"),
+    matched_names = c("Subdistrict One", "Subdistrict One Alt", "Subdistrict Two"),
     long_geo = c(
+      "country1_province1_district1",
       "country1_province1_district1",
       "country1_province1_district1"
     ),
@@ -1186,11 +1188,11 @@ testthat::test_that("handle_user_interaction handles 'Go Back' action", {
   # We need THREE responses for "subdistrict1":
   # 1. First we choose "1"
   # 2. Then we go back "b" (which will show subdistrict1 again)
-  # 3. Then we choose "2" for subdistrict1
+  # 3. Then we choose "1" for subdistrict1 (confirming first option)
   # 4. Then we need a response for subdistrict2
   mockery::stub(
     handle_user_interaction, "display_custom_menu",
-    mockery::mock("1", "b", "2", "1", cycle = TRUE)
+    mockery::mock("1", "b", "1", "1", cycle = TRUE)
   )
 
   mockery::stub(handle_user_interaction, "cat", function(...) NULL)
