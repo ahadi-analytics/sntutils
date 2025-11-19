@@ -107,8 +107,8 @@ inputs.
 \details{
 For malaria surveillance data, this function validates the logical
 coherence of the care cascade by ensuring upstream events (inputs) are
-≥ downstream events (outputs). Common malaria data validation checks
-include:
+greater than or equal to downstream events (outputs). Common malaria
+data validation checks include:
 
 \strong{Common malaria variable definitions:}
 \itemize{
@@ -126,14 +126,14 @@ malaria)
 
 \strong{Typical logical validation checks:}
 \itemize{
-\item susp vs test: suspected malaria ≥ malaria tests
-\item allout vs susp: all outpatients ≥ suspected malaria
-\item allout vs test: all outpatients ≥ malaria tests
-\item test vs conf: malaria tests ≥ confirmed malaria cases
-\item conf vs maltreat: confirmed malaria cases ≥ malaria treated
-\item alladm vs maladm: all admissions ≥ malaria admissions
-\item alldth vs maldth: all deaths ≥ malaria deaths
-\item maladm vs maldth: malaria admissions ≥ malaria deaths
+\item susp vs test: suspected malaria >= malaria tests
+\item allout vs susp: all outpatients >= suspected malaria
+\item allout vs test: all outpatients >= malaria tests
+\item test vs conf: malaria tests >= confirmed malaria cases
+\item conf vs maltreat: confirmed malaria cases >= malaria treated
+\item alladm vs maladm: all admissions >= malaria admissions
+\item alldth vs maldth: all deaths >= malaria deaths
+\item maladm vs maldth: malaria admissions >= malaria deaths
 }
 }
 \examples{
@@ -150,7 +150,7 @@ path <- system.file(
 fake_epi_df_togo <- sntutils::read(path)
 
 # Example 1: Check test-to-confirmation cascade
-# Validates: malaria tests ≥ confirmed malaria cases
+# Validates: malaria tests >= confirmed malaria cases
 consistency_check(
   fake_epi_df_togo,
   inputs = c("malaria_tests"),
