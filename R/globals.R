@@ -169,6 +169,8 @@ globalVariables(
     ".alpha_val",
     ".binary_flag",
     ".is_active",
+    "comparison", "diag_min",
+    "diag_max",
     ".x_axis_var",
     "n",
     ":=",
