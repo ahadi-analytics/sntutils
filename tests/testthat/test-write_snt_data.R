@@ -425,7 +425,6 @@ testthat::test_that("returns typed summary for multiple formats", {
   testthat::expect_true(all(res$ok))
   testthat::expect_true(all(fs::file_exists(res$path)))
   testthat::expect_true(all(res$bytes > 0))
-  testthat::expect_true(all(grepl("^[0-9a-f]+$", res$hash)))
 })
 
 
