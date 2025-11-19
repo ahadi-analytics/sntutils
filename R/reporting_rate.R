@@ -173,14 +173,16 @@
 #'   data = hf_data,
 #'   vars_of_interest = c("conf"),
 #'   x_var = "month",
-#'   y_var = "district"
+#'   y_var = "district",
+#'   hf_col = NULL
 #' )
 #'
 #' # Scenario 3: Reporting trends over time
 #' calculate_reporting_metrics(
 #'   data = hf_data,
 #'   vars_of_interest = c("conf"),
-#'   x_var = "month"
+#'   x_var = "month",
+#'   hf_col = NULL
 #' )
 #'
 #'
@@ -244,7 +246,7 @@ calculate_reporting_metrics <- function(
   vars_of_interest,
   x_var,
   y_var = NULL,
-  hf_col = NULL,
+  hf_col = "hf_uid",
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,
   nonreport_window = 6,
@@ -834,7 +836,7 @@ prepare_plot_data <- function(
   y_var = NULL,
   vars_of_interest,
   by_facility = FALSE,
-  hf_col = NULL,
+  hf_col = "hf_uid",
   use_reprate = TRUE,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,
@@ -1106,7 +1108,8 @@ prepare_plot_data <- function(
 #'   data = hf_data,
 #'   x_var = "month",
 #'   y_var = "district",
-#'   vars_of_interest = c("malaria", "pneumonia")
+#'   vars_of_interest = c("malaria", "pneumonia"),
+#'   hf_col = NULL
 #' )
 #'
 #' # Scenario 2: Variable-level analysis - missing rate by variable over time
@@ -1114,7 +1117,8 @@ prepare_plot_data <- function(
 #'   data = hf_data,
 #'   x_var = "month",
 #'   vars_of_interest = c("malaria", "pneumonia"),
-#'   use_reprate = FALSE
+#'   use_reprate = FALSE,
+#'   hf_col = NULL
 #' )
 #'
 #' # Scenario 3: Facility-level analysis - reporting rate by facility
@@ -1132,7 +1136,7 @@ prepare_plot_data <- function(
 #' @export
 reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 vars_of_interest = NULL,
-                                hf_col = NULL,
+                                hf_col = "hf_uid",
                                 key_indicators = c("allout", "conf",
                                                   "test", "treat",
                                                   "pres"),
@@ -2130,7 +2134,7 @@ reporting_rate_map <- function(
   x_var,
   adm_var,
   vars_of_interest,
-  hf_col = NULL,
+  hf_col = "hf_uid",
   use_reprate = TRUE,
   full_range = TRUE,
   method = 3,

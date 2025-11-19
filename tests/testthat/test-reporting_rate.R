@@ -42,7 +42,8 @@ testthat::test_that(
       data = test_data,
       vars_of_interest = "malaria",
       x_var = "month",
-      y_var = "district"
+      y_var = "district",
+      hf_col = "facility_id"
     )
 
     testthat::expect_s3_class(result2, "tbl_df")
@@ -65,7 +66,8 @@ testthat::test_that(
       data = test_data,
       vars_of_interest = c("malaria", "pneumonia"),
       x_var = "month",
-      y_var = "district"
+      y_var = "district",
+      hf_col = NULL
     )
 
     testthat::expect_s3_class(result3, "tbl_df")
@@ -84,7 +86,8 @@ testthat::test_that(
     result4 <- calculate_reporting_metrics(
       data = test_data_with_zeros,
       vars_of_interest = c("malaria", "pneumonia"),
-      x_var = "month"
+      x_var = "month",
+      hf_col = NULL
     )
 
     testthat::expect_s3_class(result4, "tbl_df")
@@ -310,7 +313,8 @@ testthat::test_that("reporting_rate_plot handles basic variable scenario", {
     p1 <- reporting_rate_plot(
       data = hf_data,
       x_var = "month",
-      vars_of_interest = c("malaria", "pneumonia")
+      vars_of_interest = c("malaria", "pneumonia"),
+      hf_col = NULL
     )
   )
 
@@ -341,7 +345,8 @@ testthat::test_that("reporting_rate_plot handles basic variable scenario", {
       data = hf_data,
       x_var = "month",
       vars_of_interest = c("malaria", "pneumonia"),
-      full_range = FALSE
+      full_range = FALSE,
+      hf_col = NULL
     )
   )
 
@@ -355,7 +360,8 @@ testthat::test_that("reporting_rate_plot handles basic variable scenario", {
       data = hf_data,
       x_var = "month",
       vars_of_interest = c("malaria", "pneumonia"),
-      use_reprate = FALSE
+      use_reprate = FALSE,
+      hf_col = NULL
     )
   )
 })
@@ -377,7 +383,8 @@ testthat::test_that("reporting_rate_plot handles district-level scenario", {
       data = hf_data,
       x_var = "month",
       y_var = "district",
-      vars_of_interest = c("malaria", "pneumonia")
+      vars_of_interest = c("malaria", "pneumonia"),
+      hf_col = "facility"
     )
   )
 
@@ -394,7 +401,8 @@ testthat::test_that("reporting_rate_plot handles district-level scenario", {
       x_var = "month",
       y_var = "district",
       vars_of_interest = c("malaria", "pneumonia"),
-      y_axis_label = "Admin Level"
+      y_axis_label = "Admin Level",
+      hf_col = "facility"
     )
   )
 
@@ -446,7 +454,8 @@ testthat::test_that("reporting_rate_plot validates inputs correctly", {
     reporting_rate_plot(
       data = hf_data,
       x_var = "nonexistent_column",
-      vars_of_interest = "malaria"
+      vars_of_interest = "malaria",
+      hf_col = NULL
     ),
     regexp = "A valid 'x_var' must be provided"
   )
@@ -456,7 +465,8 @@ testthat::test_that("reporting_rate_plot validates inputs correctly", {
     reporting_rate_plot(
       data = "not_a_dataframe",
       x_var = "month",
-      vars_of_interest = "malaria"
+      vars_of_interest = "malaria",
+      hf_col = NULL
     ),
     "A valid 'x_var' must be provided and must exist in the data."
   )
@@ -507,7 +517,8 @@ testthat::test_that("reporting_rate_plot saves plots correctly", {
       x_var = "month",
       vars_of_interest = "malaria",
       plot_path = temp_dir,
-      compress_image = FALSE
+      compress_image = FALSE,
+      hf_col = NULL
     )
   )
 
@@ -537,7 +548,8 @@ testthat::test_that("reporting_rate_plot handles language parameter", {
     x_var = "month",
     y_var = "district",
     vars_of_interest = "malaria",
-    target_language = "en"
+    target_language = "en",
+    hf_col = NULL
   )
 
   # Store original labels
@@ -552,6 +564,7 @@ testthat::test_that("reporting_rate_plot handles language parameter", {
       x_var = "month",
       y_var = "district",
       vars_of_interest = "malaria",
+      hf_col = NULL,
       target_language = "fr",
       y_axis_label = "Administrative level"
     )

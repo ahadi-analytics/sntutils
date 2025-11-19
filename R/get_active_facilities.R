@@ -214,7 +214,7 @@ get_active_facilities <- function(
 #'
 #' @return Logical indicating if inactive facility exclusion is possible
 #' @noRd
-.can_exclude_inactive <- function(data, hf_col = NULL, key_indicators = NULL) {
+.can_exclude_inactive <- function(data, hf_col = "hf_uid", key_indicators = NULL) {
   # Can exclude inactive if we have facility IDs and key indicators
   if (is.null(hf_col)) return(FALSE)
   if (is.null(key_indicators) || length(key_indicators) == 0) return(FALSE)

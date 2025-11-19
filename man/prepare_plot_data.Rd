@@ -10,7 +10,7 @@ prepare_plot_data(
   y_var = NULL,
   vars_of_interest,
   by_facility = FALSE,
-  hf_col = NULL,
+  hf_col = "hf_uid",
   use_reprate = TRUE,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,

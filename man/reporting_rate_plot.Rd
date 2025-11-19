@@ -9,7 +9,7 @@ reporting_rate_plot(
   x_var,
   y_var = NULL,
   vars_of_interest = NULL,
-  hf_col = NULL,
+  hf_col = "hf_uid",
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,
   nonreport_window = 6,
@@ -173,7 +173,8 @@ reporting_rate_plot(
   data = hf_data,
   x_var = "month",
   y_var = "district",
-  vars_of_interest = c("malaria", "pneumonia")
+  vars_of_interest = c("malaria", "pneumonia"),
+  hf_col = NULL
 )
 
 # Scenario 2: Variable-level analysis - missing rate by variable over time
@@ -181,7 +182,8 @@ reporting_rate_plot(
   data = hf_data,
   x_var = "month",
   vars_of_interest = c("malaria", "pneumonia"),
-  use_reprate = FALSE
+  use_reprate = FALSE,
+  hf_col = NULL
 )
 
 # Scenario 3: Facility-level analysis - reporting rate by facility

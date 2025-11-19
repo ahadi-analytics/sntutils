@@ -9,8 +9,8 @@
 #' @details
 #' For malaria surveillance data, this function validates the logical
 #' coherence of the care cascade by ensuring upstream events (inputs) are
-#' ≥ downstream events (outputs). Common malaria data validation checks
-#' include:
+#' greater than or equal to downstream events (outputs). Common malaria
+#' data validation checks include:
 #'
 #' \strong{Common malaria variable definitions:}
 #' \itemize{
@@ -28,14 +28,14 @@
 #'
 #' \strong{Typical logical validation checks:}
 #' \itemize{
-#'   \item susp vs test: suspected malaria ≥ malaria tests
-#'   \item allout vs susp: all outpatients ≥ suspected malaria
-#'   \item allout vs test: all outpatients ≥ malaria tests
-#'   \item test vs conf: malaria tests ≥ confirmed malaria cases
-#'   \item conf vs maltreat: confirmed malaria cases ≥ malaria treated
-#'   \item alladm vs maladm: all admissions ≥ malaria admissions
-#'   \item alldth vs maldth: all deaths ≥ malaria deaths
-#'   \item maladm vs maldth: malaria admissions ≥ malaria deaths
+#'   \item susp vs test: suspected malaria >= malaria tests
+#'   \item allout vs susp: all outpatients >= suspected malaria
+#'   \item allout vs test: all outpatients >= malaria tests
+#'   \item test vs conf: malaria tests >= confirmed malaria cases
+#'   \item conf vs maltreat: confirmed malaria cases >= malaria treated
+#'   \item alladm vs maladm: all admissions >= malaria admissions
+#'   \item alldth vs maldth: all deaths >= malaria deaths
+#'   \item maladm vs maldth: malaria admissions >= malaria deaths
 #' }
 #'
 #' @param data A data frame containing the input and output data.
@@ -103,7 +103,7 @@
 #' fake_epi_df_togo <- sntutils::read(path)
 #'
 #' # Example 1: Check test-to-confirmation cascade
-#' # Validates: malaria tests ≥ confirmed malaria cases
+#' # Validates: malaria tests >= confirmed malaria cases
 #' consistency_check(
 #'   fake_epi_df_togo,
 #'   inputs = c("malaria_tests"),
@@ -331,6 +331,44 @@ consistency_check <- function(data,
     y_label <- "Input variables"
   }
 
+  # Add per-facet min/max for diagonal lines
+  if (!is.null(facet_by)) {
+    results <- results |>
+      dplyr::group_by(facet_var) |>
+      dplyr::mutate(
+        diag_min = min(c(outputs, inputs), na.rm = TRUE),
+        diag_max = max(c(outputs, inputs), na.rm = TRUE)
+      ) |>
+      dplyr::ungroup()
+  } else {
+    results <- results |>
+      dplyr::group_by(comparison) |>
+      dplyr::mutate(
+        diag_min = min(c(outputs, inputs), na.rm = TRUE),
+        diag_max = max(c(outputs, inputs), na.rm = TRUE)
+      ) |>
+      dplyr::ungroup()
+  }
+
+  # Create diagonal line data per facet
+  if (!is.null(facet_by)) {
+    diagonal_data <- results |>
+      dplyr::distinct(facet_var, diag_min, diag_max) |>
+      tidyr::expand_grid(t = seq(0, 1, length.out = 100)) |>
+      dplyr::mutate(
+        outputs = diag_min + t * (diag_max - diag_min),
+        inputs = outputs
+      )
+  } else {
+    diagonal_data <- results |>
+      dplyr::distinct(comparison, diag_min, diag_max) |>
+      tidyr::expand_grid(t = seq(0, 1, length.out = 100)) |>
+      dplyr::mutate(
+        outputs = diag_min + t * (diag_max - diag_min),
+        inputs = outputs
+      )
+  }
+
   # Create the plot
   plot <-
     results |>
@@ -348,17 +386,7 @@ consistency_check <- function(data,
       values = c("TRUE" = "red", "FALSE" = "#1e81b0")
     ) +
     ggplot2::geom_line(
-      data = function(df) {
-        bounds <- df |>
-          dplyr::summarise(
-            min_val = min(c(outputs, inputs), na.rm = TRUE),
-            max_val = max(c(outputs, inputs), na.rm = TRUE)
-          )
-        data.frame(
-          outputs = seq(bounds$min_val, bounds$max_val, length.out = 100),
-          inputs = seq(bounds$min_val, bounds$max_val, length.out = 100)
-        )
-      },
+      data = diagonal_data,
       ggplot2::aes(x = outputs, y = inputs),
       color = "grey10",
       linetype = "dashed",

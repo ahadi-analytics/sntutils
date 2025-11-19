@@ -9,7 +9,7 @@ calculate_reporting_metrics(
   vars_of_interest,
   x_var,
   y_var = NULL,
-  hf_col = NULL,
+  hf_col = "hf_uid",
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,
   nonreport_window = 6,
@@ -219,14 +219,16 @@ calculate_reporting_metrics(
   data = hf_data,
   vars_of_interest = c("conf"),
   x_var = "month",
-  y_var = "district"
+  y_var = "district",
+  hf_col = NULL
 )
 
 # Scenario 3: Reporting trends over time
 calculate_reporting_metrics(
   data = hf_data,
   vars_of_interest = c("conf"),
-  x_var = "month"
+  x_var = "month",
+  hf_col = NULL
 )
 
 

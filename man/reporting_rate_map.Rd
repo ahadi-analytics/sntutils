@@ -10,7 +10,7 @@ reporting_rate_map(
   x_var,
   adm_var,
   vars_of_interest,
-  hf_col = NULL,
+  hf_col = "hf_uid",
   use_reprate = TRUE,
   full_range = TRUE,
   method = 3,
