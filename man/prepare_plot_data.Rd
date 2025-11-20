@@ -16,6 +16,7 @@ prepare_plot_data(
   method = 3,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
+  require_all = FALSE,
   weighting = FALSE,
   weight_var = NULL,
   weight_window = 12,
@@ -54,6 +55,11 @@ months to classify a facility as inactive in method 3. Defaults to 6.}
 \item{reporting_rule}{Character. Defines what counts as reporting:
 \code{"any_non_na"} (default, counts NA as non-reporting, 0 counts as reported)
 or \code{"positive_only"} (requires >0 value to count as reported).}
+
+\item{require_all}{Logical. When TRUE and multiple vars_of_interest are
+provided, calculates the proportion of facilities reporting ALL variables
+(complete data). When FALSE (default), calculates per-variable reporting
+rates. Only applies to facility-level analysis (when by_facility = TRUE).}
 
 \item{weighting}{Logical. Whether to use weighted reporting rates. When TRUE,
 facilities are weighted by their typical size, giving more importance to

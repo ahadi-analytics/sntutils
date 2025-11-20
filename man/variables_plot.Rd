@@ -38,6 +38,8 @@ missing rates}
 
 \item{include_plot_title}{Logical. If TRUE, plot titles are included. Default TRUE.}
 
+\item{plot_caption}{Optional caption text to display at the bottom of the plot. Default NULL.}
+
 \item{common_elements}{Common ggplot elements to apply to all plots}
 
 \item{target_language}{Language code for labels (ISO 639-1), defaults to "en"}
