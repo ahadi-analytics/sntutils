@@ -297,8 +297,9 @@ test_that("reporting_rate_map handles translation correctly", {
   # Check that title was translated (but note sentence case is applied after translation)
   # The title should contain translated elements but may be modified by sentence case
   expect_true(grepl("tr_", p$labels$title, ignore.case = TRUE))
-  # Fill label should contain TR_ prefix (sentence case applied)
-  expect_true(grepl("tr_", p$labels$fill, ignore.case = TRUE))
+  # Fill label should contain TR_ prefix in scale name
+  fill_scale <- p$scales$get_scales("fill")
+  expect_true(grepl("tr_", fill_scale$name, ignore.case = TRUE))
 })
 
 test_that("reporting_rate_map saves plot correctly", {
