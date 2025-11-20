@@ -117,14 +117,6 @@ translate_text <- function(text,
   }
   # Check if source and target languages are the same
   if (source_language == target_language) {
-    cli::cli_inform(
-      c(
-        "i" = paste0(
-          "Source and target languages are the ",
-          "same. Returning original text."
-        )
-      )
-    )
     return(text)
   }
 

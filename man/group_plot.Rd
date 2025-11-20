@@ -43,6 +43,8 @@ missing rates}
 
 \item{include_plot_title}{Logical. If TRUE, plot titles are included. Default TRUE.}
 
+\item{plot_caption}{Optional caption text to display at the bottom of the plot. Default NULL.}
+
 \item{y_axis_label}{Label for the y-axis}
 
 \item{common_elements}{Common ggplot elements to apply to all plots}
