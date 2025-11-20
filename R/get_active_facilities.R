@@ -148,7 +148,6 @@ get_active_facilities <- function(
   )
 
   # Calculate summary statistics
-  n_total <- dplyr::n_distinct(classified_data[[hf_col]])
   activity_counts <- classified_data |>
     dplyr::group_by(activity_status) |>
     dplyr::summarise(
@@ -169,6 +168,9 @@ get_active_facilities <- function(
   # Handle case where all facilities are one type
   if (length(n_active) == 0) n_active <- 0
   if (length(n_inactive) == 0) n_inactive <- 0
+
+  # Calculate total as sum of active and inactive for consistency
+  n_total <- n_active + n_inactive
 
   pct_active <- round(100 * n_active / n_total, 1)
   pct_inactive <- round(100 * n_inactive / n_total, 1)
@@ -203,8 +205,12 @@ get_active_facilities <- function(
       dplyr::filter(activity_status == "Active")
 
     cli::cli_inform(c(
-      "v" = "Returning data filtered to {n_active_fmt} active facilities"
+      "v" = "Returning data filtered to {n_active_fmt} active facilities (of {n_total_fmt} total)"
     ))
+
+    # Add facility counts as attributes for downstream use
+    attr(active_data, "n_total_facilities") <- n_total
+    attr(active_data, "n_active_facilities") <- n_active
 
     return(active_data)
   }

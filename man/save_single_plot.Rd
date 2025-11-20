@@ -22,7 +22,14 @@ save_single_plot(
   plot_scale = 1,
   plot_width = NULL,
   plot_height = NULL,
-  plot_dpi = 300
+  plot_dpi = 300,
+  hf_col = NULL,
+  require_all = FALSE,
+  weighting = FALSE,
+  weight_var = NULL,
+  method = "method3",
+  nonreport_window = 6,
+  reporting_rule = "any_non_na"
 )
 }
 \arguments{
@@ -69,6 +76,25 @@ height is calculated based on content.}
 
 \item{plot_dpi}{Numeric. Resolution of saved plot in dots per inch.
 Default is 300.}
+
+\item{hf_col}{Character. Health facility ID column (default: NULL).}
+
+\item{require_all}{Logical. If TRUE, requires all variables to be reported
+(default: FALSE).}
+
+\item{weighting}{Logical. If TRUE, uses weighted reporting rates
+(default: FALSE).}
+
+\item{weight_var}{Character. Variable to use for weighting (default: NULL).}
+
+\item{method}{Character. Facility activity classification method
+(default: "method3").}
+
+\item{nonreport_window}{Integer. Consecutive non-reporting months for
+inactivity (default: 6).}
+
+\item{reporting_rule}{Character. What counts as reporting: "any_non_na" or
+"positive_only" (default: "any_non_na").}
 }
 \value{
 Invisible path to the saved file
