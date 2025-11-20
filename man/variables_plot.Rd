@@ -13,6 +13,7 @@ variables_plot(
   title_prefix,
   subtitle = NULL,
   include_plot_title = TRUE,
+  plot_caption = NULL,
   common_elements,
   target_language = "en",
   source_language = "en",
