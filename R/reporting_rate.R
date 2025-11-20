@@ -271,6 +271,10 @@ calculate_reporting_metrics <- function(
   # Normalize method parameter to accept both numeric and character
   method <- .normalize_method(method)
 
+  # Initialize facility counts (will be populated if using facility-level)
+  n_total_facilities <- NULL
+  n_active_facilities <- NULL
+
   if (!is.data.frame(data)) {
     cli::cli_abort(c(
       "!" = "'data' must be a data frame",
@@ -523,6 +527,10 @@ calculate_reporting_metrics <- function(
       return_summary = FALSE  # We want the filtered data
     )
 
+    # Calculate facility counts for caption
+    n_total_facilities <- dplyr::n_distinct(data[[hf_col]])
+    n_active_facilities <- dplyr::n_distinct(active_data[[hf_col]])
+
     # Mark facilities as included/excluded in denominator
     data <- data |>
       dplyr::mutate(
@@ -742,6 +750,10 @@ calculate_reporting_metrics <- function(
   } else {
     stop("At minimum, x_var must be provided")
   }
+
+  # Add facility counts as attributes for use in plot captions
+  attr(result, "n_total_facilities") <- n_total_facilities
+  attr(result, "n_active_facilities") <- n_active_facilities
 
   result
 }
@@ -1388,6 +1400,81 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     y_axis_label <- prepared_data$y_axis_label
   }
 
+  # Extract facility counts and build caption
+  n_total <- attr(plot_data, "n_total_facilities")
+  n_active <- attr(plot_data, "n_active_facilities")
+
+  # Caption translations
+  cap_trans <- list(
+    en = list(rep = "Reporting Rate", miss = "Missing Rate",
+              fac = "Facility-level", row = "Row-level",
+              active = "active", denom = "Denominator"),
+    fr = list(rep = "Taux de rapportage", miss = "Taux manquantes",
+              fac = "Niveau \u00e9tablissement", row = "Niveau ligne",
+              active = "actifs", denom = "D\u00e9nominateur"),
+    pt = list(rep = "Taxa de relato", miss = "Taxa ausentes",
+              fac = "N\u00edvel instala\u00e7\u00e3o", row = "N\u00edvel linha",
+              active = "ativos", denom = "Denominador")
+  )
+
+  lang <- if (target_language %in% names(cap_trans)) {
+    target_language
+  } else {
+    "en"
+  }
+  tr <- cap_trans[[lang]]
+
+  cap_parts <- character()
+  metric <- if (use_reprate) tr$rep else tr$miss
+
+  # Metric with variable if single
+  if (length(vars_of_interest) == 1) {
+    cap_parts <- c(cap_parts, paste0(metric, ": ", vars_of_interest))
+  } else {
+    cap_parts <- c(cap_parts, metric)
+  }
+
+  # Analysis type and details
+  if (scenario == "facility") {
+    cap_parts <- c(cap_parts, tr$fac)
+
+    # Facility counts
+    if (!is.null(n_total) && !is.null(n_active)) {
+      n_total_fmt <- format(n_total, big.mark = ",", scientific = FALSE)
+      n_active_fmt <- format(n_active, big.mark = ",", scientific = FALSE)
+      cap_parts <- c(
+        cap_parts,
+        paste0(n_active_fmt, "/", n_total_fmt, " ", tr$active)
+      )
+    }
+
+    # Method
+    method_num <- gsub("method", "", method)
+    method_txt <- switch(
+      method,
+      "method1" = "Method 1",
+      "method2" = "Method 2",
+      "method3" = paste0("Method 3 (", nonreport_window, "mo)"),
+      paste0("Method ", method_num)
+    )
+    cap_parts <- c(cap_parts, method_txt)
+
+    # Denominator (multiple vars only)
+    if (length(vars_of_interest) > 1 &&
+        !is.null(key_indicators) && length(key_indicators) > 0) {
+      key_disp <- if (length(key_indicators) <= 3) {
+        paste(key_indicators, collapse = ", ")
+      } else {
+        paste0(paste(key_indicators[1:3], collapse = ", "), ", ...")
+      }
+      cap_parts <- c(cap_parts, paste0(tr$denom, ": ", key_disp))
+    }
+  } else {
+    cap_parts <- c(cap_parts, tr$row)
+  }
+
+  plot_caption <- paste(cap_parts, collapse = " | ")
+
   # Create subtitle when doing district/facility level analysis with key_indicators
   subtitle <- NULL
   if (!is.null(y_var) && !is.null(key_indicators) && length(key_indicators) > 0) {
@@ -1440,6 +1527,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       title_prefix = title_prefix,
       subtitle = subtitle,
       include_plot_title = include_plot_title,
+      plot_caption = plot_caption,
       common_elements = common_elements,
       target_language = target_language,
       source_language = source_language,
@@ -1455,6 +1543,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       title_prefix = title_prefix,
       subtitle = subtitle,
       include_plot_title = include_plot_title,
+      plot_caption = plot_caption,
       y_axis_label = y_axis_label,
       common_elements = common_elements,
       target_language = target_language,
@@ -1472,6 +1561,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
         title_prefix = title_prefix,
         subtitle = subtitle,
         include_plot_title = include_plot_title,
+        plot_caption = plot_caption,
         common_elements = common_elements,
         target_language = target_language,
         source_language = source_language,
@@ -1489,6 +1579,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
         title_prefix = title_prefix,
         subtitle = subtitle,
         include_plot_title = include_plot_title,
+        plot_caption = plot_caption,
         y_axis_label = y_axis_label,
         common_elements = common_elements,
         target_language = target_language,
@@ -1561,6 +1652,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
 variables_plot <- function(plot_data, x_var, vars_of_interest,
                            fill_var, fill_label, title_prefix,
                            subtitle = NULL, include_plot_title = TRUE,
+                           plot_caption = NULL,
                            common_elements,
                            target_language = "en", source_language = "en",
                            lang_cache_path = tempdir()) {
@@ -1594,6 +1686,7 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
         NULL
       },
       subtitle = if (include_plot_title) subtitle else NULL,
+      caption = plot_caption,
       x = "",
       y = "Variable",
       fill = fill_label
@@ -1640,6 +1733,7 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
 group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
                        fill_var, fill_label, title_prefix,
                        subtitle = NULL, include_plot_title = TRUE,
+                       plot_caption = NULL,
                        y_axis_label, common_elements,
                        target_language = "en", source_language = "en",
                        lang_cache_path = tempdir()) {
@@ -1676,6 +1770,7 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
         NULL
       },
       subtitle = if (include_plot_title) subtitle else NULL,
+      caption = plot_caption,
       x = "",
       y = y_axis_label,
       fill = fill_label
