@@ -59,6 +59,10 @@
 #' @param reporting_rule Character. Defines what counts as reporting:
 #'   `"any_non_na"` (default, counts NA as non-reporting, 0 counts as reported)
 #'   or `"positive_only"` (requires >0 value to count as reported).
+#' @param require_all Logical. When TRUE and multiple vars_of_interest are
+#'   provided, calculates the proportion of facilities reporting ALL variables
+#'   (complete data). When FALSE (default), calculates per-variable reporting
+#'   rates. Only applies to facility-level analysis (when hf_col is provided).
 #' @param weighting Logical. Whether to use weighted reporting rates. When TRUE,
 #'   facilities are weighted by their typical size, giving more importance to
 #'   larger facilities in the overall reporting rate calculation. This provides
@@ -257,6 +261,7 @@ calculate_reporting_metrics <- function(
   method = 3,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
+  require_all = FALSE,
   weighting = FALSE,
   weight_var = NULL,
   weight_window = 12,
@@ -557,7 +562,8 @@ calculate_reporting_metrics <- function(
   if (!is.null(hf_col)) {
     # When multiple variables are provided, calculate per-variable rates
     # When single variable, calculate overall facility reporting rate
-    calculate_per_variable <- length(vars_of_interest) > 1
+    # When require_all = TRUE, calculate overall rate (not per-variable)
+    calculate_per_variable <- length(vars_of_interest) > 1 && !require_all
 
     if (calculate_per_variable) {
       # Calculate per-variable facility reporting rates
@@ -599,7 +605,17 @@ calculate_reporting_metrics <- function(
             by = dplyr::join_by(!!!rlang::syms(c(x_var, y_var, hf_col)))
           ) |>
           dplyr::mutate(
-            reported_any_var = dplyr::if_any(dplyr::all_of(vars_of_interest), ~ !is.na(.x))
+            reported_any_var = if (require_all) {
+              dplyr::if_all(
+                dplyr::all_of(vars_of_interest),
+                ~ !is.na(.x)
+              )
+            } else {
+              dplyr::if_any(
+                dplyr::all_of(vars_of_interest),
+                ~ !is.na(.x)
+              )
+            }
           )
 
         # First aggregate by facility within each group to get facility-level reporting
@@ -646,11 +662,21 @@ calculate_reporting_metrics <- function(
         result <- data |>
           dplyr::filter(include_in_denom) |>
           dplyr::mutate(
-            reported_any_var = dplyr::if_any(dplyr::all_of(vars_of_interest), ~ !is.na(.x))
+            reported_any_var = if (require_all) {
+              dplyr::if_all(
+                dplyr::all_of(vars_of_interest),
+                ~ !is.na(.x)
+              )
+            } else {
+              dplyr::if_any(
+                dplyr::all_of(vars_of_interest),
+                ~ !is.na(.x)
+              )
+            }
           ) |>
           dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var)))) |>
           dplyr::summarise(
-            # Count distinct facilities that reported any of vars_of_interest
+            # Count distinct facilities that reported any/all vars_of_interest
             rep = dplyr::n_distinct(.data[[hf_col]][reported_any_var]),
             exp = dplyr::n_distinct(.data[[hf_col]]),
             .groups = "drop"
@@ -827,6 +853,10 @@ calculate_reporting_metrics <- function(
 #' @param reporting_rule Character. Defines what counts as reporting:
 #'   `"any_non_na"` (default, counts NA as non-reporting, 0 counts as reported)
 #'   or `"positive_only"` (requires >0 value to count as reported).
+#' @param require_all Logical. When TRUE and multiple vars_of_interest are
+#'   provided, calculates the proportion of facilities reporting ALL variables
+#'   (complete data). When FALSE (default), calculates per-variable reporting
+#'   rates. Only applies to facility-level analysis (when by_facility = TRUE).
 #'
 #' @return A list with plot_data and plotting metadata
 #' @examples
@@ -889,6 +919,7 @@ prepare_plot_data <- function(
   method = 3,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
+  require_all = FALSE,
   weighting = FALSE,
   weight_var = NULL,
   weight_window = 12,
@@ -1021,6 +1052,7 @@ prepare_plot_data <- function(
     method = method,
     nonreport_window = nonreport_window,
     reporting_rule = reporting_rule,
+    require_all = require_all,
     weighting = weighting,
     weight_var = weight_var,
     weight_window = weight_window,
@@ -1100,6 +1132,10 @@ prepare_plot_data <- function(
 #' @param reporting_rule Character. Defines what counts as reporting:
 #'   `"any_non_na"` (default, counts NA as non-reporting, 0 counts as reported)
 #'   or `"positive_only"` (requires >0 value to count as reported).
+#' @param require_all Logical. When TRUE and multiple vars_of_interest are
+#'   provided, calculates the proportion of facilities reporting ALL variables
+#'   (complete data). When FALSE (default), calculates per-variable reporting
+#'   rates. Only applies to facility-level analysis (when hf_col is provided).
 #' @param target_language A character string specifying the language for plot
 #'   labels. Defaults to "en" (English). Use ISO 639-1 language codes.
 #' @param source_language Source language code. If NULL, auto-detection is used.
@@ -1190,6 +1226,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 method = 3,
                                 nonreport_window = 6,
                                 reporting_rule = "any_non_na",
+                                require_all = FALSE,
                                 use_reprate = TRUE,
                                 full_range = TRUE,
                                 weighting = FALSE,
@@ -1235,6 +1272,35 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     "variable"
   }
 
+  # Validate require_all usage
+  if (require_all && length(vars_of_interest) > 1 && is.null(y_var)) {
+    cli::cli_abort(c(
+      "!" = paste0(
+        "Invalid parameter combination: {.field require_all = TRUE} cannot ",
+        "be used with multiple variables when {.field y_var} is NULL."
+      ),
+      "i" = paste0(
+        "When {.field require_all = TRUE}, the plot shows a single ",
+        "aggregated metric per time period."
+      ),
+      "i" = paste0(
+        "Without {.field y_var}, there is no dimension to display this ",
+        "aggregated metric."
+      ),
+      "x" = "Either:",
+      " " = paste0(
+        "1. Set {.field require_all = FALSE} to calculate per-variable rates"
+      ),
+      " " = paste0(
+        "2. Provide {.field y_var} (e.g., district) to display the ",
+        "aggregated metric by time and administrative level"
+      ),
+      " " = paste0(
+        "3. Use a single variable in {.field vars_of_interest}"
+      )
+    ))
+  }
+
   # Inform user about the analysis being performed
   rate_type <- if (use_reprate) "Reporting Rate" else "Missing Rate"
   n_vars <- length(vars_of_interest)
@@ -1277,6 +1343,19 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       cli::col_cyan("Variables:"), " ",
       vars_display
     ))
+
+    # Show numerator approach for facility-level with multiple variables
+    if (scenario == "facility") {
+      numerator_approach <- if (require_all) {
+        cli::col_green("ALL variables")
+      } else {
+        cli::col_blue("per-variable")
+      }
+      lines <- c(lines, paste0(
+        cli::col_cyan("Numerator:"), " ",
+        numerator_approach
+      ))
+    }
   }
 
   # Grouping
@@ -1380,6 +1459,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     method = method,
     nonreport_window = nonreport_window,
     reporting_rule = reporting_rule,
+    require_all = require_all,
     weighting = weighting,
     weight_var = weight_var,
     weight_window = weight_window,
@@ -1408,13 +1488,16 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
   cap_trans <- list(
     en = list(rep = "Reporting Rate", miss = "Missing Rate",
               fac = "Facility-level", row = "Row-level",
-              active = "active", denom = "Denominator"),
+              active = "active", denom = "Denominator",
+              all_vars = "ALL vars", per_var = "per-variable"),
     fr = list(rep = "Taux de rapportage", miss = "Taux manquantes",
               fac = "Niveau \u00e9tablissement", row = "Niveau ligne",
-              active = "actifs", denom = "D\u00e9nominateur"),
+              active = "actifs", denom = "D\u00e9nominateur",
+              all_vars = "TOUTES vars", per_var = "par variable"),
     pt = list(rep = "Taxa de relato", miss = "Taxa ausentes",
               fac = "N\u00edvel instala\u00e7\u00e3o", row = "N\u00edvel linha",
-              active = "ativos", denom = "Denominador")
+              active = "ativos", denom = "Denominador",
+              all_vars = "TODAS vars", per_var = "por vari\u00e1vel")
   )
 
   lang <- if (target_language %in% names(cap_trans)) {
@@ -1446,6 +1529,12 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
         cap_parts,
         paste0(n_active_fmt, "/", n_total_fmt, " ", tr$active)
       )
+    }
+
+    # Numerator approach (multiple vars only)
+    if (length(vars_of_interest) > 1) {
+      numerator_txt <- if (require_all) tr$all_vars else tr$per_var
+      cap_parts <- c(cap_parts, numerator_txt)
     }
 
     # Method
@@ -1643,6 +1732,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
 #'    missing rates
 #' @param subtitle Optional subtitle text to display under the title. Default NULL.
 #' @param include_plot_title Logical. If TRUE, plot titles are included. Default TRUE.
+#' @param plot_caption Optional caption text to display at the bottom of the plot. Default NULL.
 #' @param common_elements Common ggplot elements to apply to all plots
 #' @param target_language Language code for labels (ISO 639-1), defaults to "en"
 #' @param source_language Source language code, defaults to NULL
@@ -1723,6 +1813,7 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
 #'    missing rates
 #' @param subtitle Optional subtitle text to display under the title. Default NULL.
 #' @param include_plot_title Logical. If TRUE, plot titles are included. Default TRUE.
+#' @param plot_caption Optional caption text to display at the bottom of the plot. Default NULL.
 #' @param y_axis_label Label for the y-axis
 #' @param common_elements Common ggplot elements to apply to all plots
 #' @param target_language Language code for labels (ISO 639-1)
@@ -2363,6 +2454,10 @@ create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
 #' @param reporting_rule Character. Defines what counts as reporting:
 #'   `"any_non_na"` (default, counts NA as non-reporting, 0 counts as reported)
 #'   or `"positive_only"` (requires >0 value to count as reported).
+#' @param require_all Logical. When TRUE and multiple vars_of_interest are
+#'   provided, calculates the proportion of facilities reporting ALL variables
+#'   (complete data). When FALSE (default), calculates per-variable reporting
+#'   rates. Only applies to facility-level analysis (when hf_col is provided).
 #' @param fill_palette Character. Not used - kept for backward compatibility.
 #'   Color palette is automatically selected based on use_reprate parameter
 #'   to match reporting_rate_plot() styling.
@@ -2422,6 +2517,7 @@ reporting_rate_map <- function(
   method = 3,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
+  require_all = FALSE,
   weighting = FALSE,
   weight_var = NULL,
   weight_window = 12,
@@ -2474,6 +2570,7 @@ reporting_rate_map <- function(
     method = method,
     nonreport_window = nonreport_window,
     reporting_rule = reporting_rule,
+    require_all = require_all,
     weighting = weighting,
     weight_var = weight_var,
     weight_window = weight_window,
