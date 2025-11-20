@@ -6,22 +6,26 @@
 #' from denominators, ensuring that missing rates reflect only the proportion
 #' of ACTIVE facilities that failed to report, not all facilities in the dataset.
 #'
-#' 1) **Proportion of facilities reporting any data**
+#' 1) **Proportion of facilities reporting a single variable**
+#'    - When `vars_of_interest` contains a single variable:
 #'    - Calculates the proportion of active facilities (as defined by reporting
-#'      on `key_indicators`) that reported at least one of the
-#'      `vars_of_interest` in a given period and group.
+#'      on `key_indicators`) that reported the variable in a given period.
+#'    - Requires `hf_col`. Can be used with or without `y_var`.
 #'
-#' 2) **Reporting rate by group (x_var, y_var)**
-#'    - Computes reporting/missing rates for each variable in
-#'      `vars_of_interest`, grouped by `x_var` and `y_var`.
-#'    - **WARNING**: Without `hf_col`, this counts all data rows including
-#'      inactive facilities, potentially inflating missing rates.
+#' 2) **Per-variable facility reporting rates**
+#'    - When `vars_of_interest` contains multiple variables and `hf_col` is provided:
+#'    - Calculates reporting/missing rates for EACH variable separately, counting
+#'      distinct facilities that reported each specific variable.
+#'    - Uses facility-level analysis, filtering to active facilities only
+#'      (if `key_indicators` specified).
+#'    - Can be used with or without `y_var`.
 #'
-#' 3) **Reporting trends over time (x_var only)**
-#'    - Computes reporting/missing rates for each variable over time
-#'      (x_var only).
-#'    - **WARNING**: Without `hf_col`, this counts all data rows including
-#'      inactive facilities, potentially inflating missing rates.
+#' 3) **Row-level reporting rates (without facility filtering)**
+#'    - When `hf_col` is NOT provided:
+#'    - Computes reporting/missing rates based on data rows, not facilities.
+#'    - **WARNING**: This counts all data rows including inactive facilities,
+#'      potentially inflating missing rates.
+#'    - Use scenarios 1 or 2 (with `hf_col`) for accurate facility-based metrics.
 #'
 #' @param data A data frame containing health facility data.
 #' @param vars_of_interest Character vector of variable names to assess
@@ -29,9 +33,11 @@
 #' @param x_var Character. Name of the primary grouping variable (e.g., time
 #'    period).
 #' @param y_var Character. Optional. Name of the second grouping variable
-#'   (e.g., district). Required for scenarios 1 and 3.
-#' @param hf_col Character. Name of the column containing unique health facility
-#'   IDs. Required only for scenario 1.
+#'   (e.g., district).
+#' @param hf_col Character. Optional (defaults to NULL). Name of the column
+#'   containing unique health facility IDs. When provided, enables facility-level
+#'   analysis and filtering of inactive facilities (if key_indicators are specified).
+#'   Can be used with or without y_var. Required when weighting = TRUE.
 #' @param key_indicators Optional. Character vector of indicators used to define
 #'   facility activity in scenario 1. Defaults to
 #'   `c("allout", "conf", "test", "treat", "pres")`.
@@ -246,7 +252,7 @@ calculate_reporting_metrics <- function(
   vars_of_interest,
   x_var,
   y_var = NULL,
-  hf_col = "hf_uid",
+  hf_col = NULL,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,
   nonreport_window = 6,
@@ -298,12 +304,6 @@ calculate_reporting_metrics <- function(
   if (!is.null(hf_col) && !(hf_col %in% names(data))) {
     cli::cli_abort(c(
       "!" = "hf_col not found in data",
-      "i" = "Run `rlang::last_trace()` to see where the error occurred."
-    ))
-  }
-  if (is.null(y_var) && !is.null(hf_col)) {
-    cli::cli_abort(c(
-      "!" = "y_var required when hf_col is provided",
       "i" = "Run `rlang::last_trace()` to see where the error occurred."
     ))
   }
@@ -547,73 +547,108 @@ calculate_reporting_metrics <- function(
   }
 
   if (!is.null(hf_col)) {
-    # Aggregate
-    if (weighting && !is.null(weight_data)) {
-      # Join with weight data
-      data_with_weights <- data |>
+    # When multiple variables are provided, calculate per-variable rates
+    # When single variable, calculate overall facility reporting rate
+    calculate_per_variable <- length(vars_of_interest) > 1
+
+    if (calculate_per_variable) {
+      # Calculate per-variable facility reporting rates
+      # Pivot to long format first
+      long_data <- data |>
         dplyr::filter(include_in_denom) |>
-        dplyr::left_join(
-          weight_data,
-          by = dplyr::join_by(!!!rlang::syms(c(x_var, y_var, hf_col)))
+        dplyr::select(dplyr::all_of(c(hf_col, x_var, y_var, vars_of_interest))) |>
+        tidyr::pivot_longer(
+          cols = dplyr::all_of(vars_of_interest),
+          names_to = "variable",
+          values_to = "value"
         ) |>
         dplyr::mutate(
-          reported_any_var = dplyr::if_any(dplyr::all_of(vars_of_interest), ~ !is.na(.x))
+          variable = factor(variable, levels = rev(vars_of_interest))
         )
 
-      # First aggregate by facility within each group to get facility-level reporting
-      facility_summary <- data_with_weights |>
-        dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var, hf_col)))) |>
-        dplyr::summarise(
-          reported_facility = any(reported_any_var),
-          weight_facility = mean(weight, na.rm = TRUE),
-          weight_value_facility = mean(.data[[weight_var]], na.rm = TRUE),
-          .groups = "drop"
-        )
+      # Calculate facility-level reporting for each variable
+      group_vars <- c(x_var, "variable")
+      if (!is.null(y_var)) group_vars <- c(group_vars, y_var)
 
-      # Then aggregate to group level
-      result <- facility_summary |>
-        dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var)))) |>
+      result <- long_data |>
+        dplyr::group_by(dplyr::across(dplyr::all_of(group_vars))) |>
         dplyr::summarise(
-          # Count distinct facilities that reported
-          rep = sum(reported_facility),
-          exp = dplyr::n(),
-          # Calculate weighted rates
-          w_num = sum(weight_facility * reported_facility, na.rm = TRUE),
-          w_den = sum(weight_facility, na.rm = TRUE),
-          reprate_w = dplyr::if_else(w_den > 0, w_num / w_den, NA_real_),
-          missrate_w = dplyr::if_else(!is.na(reprate_w), 1 - reprate_w, NA_real_),
-          # Add raw weight_var statistics
-          !!paste0("avg_", weight_var) := base::mean(weight_value_facility, na.rm = TRUE),
-          !!paste0("min_", weight_var) := min(weight_value_facility, na.rm = TRUE),
-          !!paste0("max_", weight_var) := max(weight_value_facility, na.rm = TRUE),
-          .groups = "drop"
-        ) |>
-        dplyr::mutate(
-          reprate = dplyr::if_else(exp > 0, rep / exp, NA_real_),
-          missrate = dplyr::if_else(!is.na(reprate), 1 - reprate, NA_real_)
-        ) |>
-        dplyr::select(
-          dplyr::all_of(c(x_var, y_var)),
-          rep, exp, reprate, missrate,
-          reprate_w, missrate_w,
-          dplyr::starts_with("avg_"),
-          dplyr::starts_with("min_"),
-          dplyr::starts_with("max_")
-        )
-    } else {
-      result <- data |>
-        dplyr::filter(include_in_denom) |>
-        dplyr::mutate(
-          reported_any_var = dplyr::if_any(dplyr::all_of(vars_of_interest), ~ !is.na(.x))
-        ) |>
-        dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var)))) |>
-        dplyr::summarise(
-          # Count distinct facilities that reported any of vars_of_interest
-          rep = dplyr::n_distinct(.data[[hf_col]][reported_any_var]),
+          # Count distinct facilities that reported this specific variable
+          rep = dplyr::n_distinct(.data[[hf_col]][!is.na(value)]),
           exp = dplyr::n_distinct(.data[[hf_col]]),
           .groups = "drop"
         ) |>
         calculate_rates()
+    } else {
+      # Single variable: calculate overall facility reporting rate
+      # Aggregate
+      if (weighting && !is.null(weight_data)) {
+        # Join with weight data
+        data_with_weights <- data |>
+          dplyr::filter(include_in_denom) |>
+          dplyr::left_join(
+            weight_data,
+            by = dplyr::join_by(!!!rlang::syms(c(x_var, y_var, hf_col)))
+          ) |>
+          dplyr::mutate(
+            reported_any_var = dplyr::if_any(dplyr::all_of(vars_of_interest), ~ !is.na(.x))
+          )
+
+        # First aggregate by facility within each group to get facility-level reporting
+        facility_summary <- data_with_weights |>
+          dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var, hf_col)))) |>
+          dplyr::summarise(
+            reported_facility = any(reported_any_var),
+            weight_facility = mean(weight, na.rm = TRUE),
+            weight_value_facility = mean(.data[[weight_var]], na.rm = TRUE),
+            .groups = "drop"
+          )
+
+        # Then aggregate to group level
+        result <- facility_summary |>
+          dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var)))) |>
+          dplyr::summarise(
+            # Count distinct facilities that reported
+            rep = sum(reported_facility),
+            exp = dplyr::n(),
+            # Calculate weighted rates
+            w_num = sum(weight_facility * reported_facility, na.rm = TRUE),
+            w_den = sum(weight_facility, na.rm = TRUE),
+            reprate_w = dplyr::if_else(w_den > 0, w_num / w_den, NA_real_),
+            missrate_w = dplyr::if_else(!is.na(reprate_w), 1 - reprate_w, NA_real_),
+            # Add raw weight_var statistics
+            !!paste0("avg_", weight_var) := base::mean(weight_value_facility, na.rm = TRUE),
+            !!paste0("min_", weight_var) := min(weight_value_facility, na.rm = TRUE),
+            !!paste0("max_", weight_var) := max(weight_value_facility, na.rm = TRUE),
+            .groups = "drop"
+          ) |>
+          dplyr::mutate(
+            reprate = dplyr::if_else(exp > 0, rep / exp, NA_real_),
+            missrate = dplyr::if_else(!is.na(reprate), 1 - reprate, NA_real_)
+          ) |>
+          dplyr::select(
+            dplyr::all_of(c(x_var, y_var)),
+            rep, exp, reprate, missrate,
+            reprate_w, missrate_w,
+            dplyr::starts_with("avg_"),
+            dplyr::starts_with("min_"),
+            dplyr::starts_with("max_")
+          )
+      } else {
+        result <- data |>
+          dplyr::filter(include_in_denom) |>
+          dplyr::mutate(
+            reported_any_var = dplyr::if_any(dplyr::all_of(vars_of_interest), ~ !is.na(.x))
+          ) |>
+          dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var)))) |>
+          dplyr::summarise(
+            # Count distinct facilities that reported any of vars_of_interest
+            rep = dplyr::n_distinct(.data[[hf_col]][reported_any_var]),
+            exp = dplyr::n_distinct(.data[[hf_col]]),
+            .groups = "drop"
+          ) |>
+          calculate_rates()
+      }
     }
   } else if (!is.null(y_var)) {
     # Warn if no facility identification is provided
@@ -621,7 +656,7 @@ calculate_reporting_metrics <- function(
       cli::cli_warn(c(
         "!" = "No facility identification column (hf_col) provided.",
         "i" = "Unable to exclude inactive facilities from denominators.",
-        "i" = "This may result in inflated missing data rates if inactive facilities are present.",
+        "i" = "This may result in inaccurate rates if inactive facilities are present.",
         "i" = "Consider providing 'hf_col' parameter to enable facility activity classification."
       ))
     }
@@ -668,7 +703,7 @@ calculate_reporting_metrics <- function(
       cli::cli_warn(c(
         "!" = "No facility identification column (hf_col) provided.",
         "i" = "Unable to exclude inactive facilities from denominators.",
-        "i" = "This may result in inflated missing data rates if inactive facilities are present.",
+        "i" = "This may result in inaccurate rates if inactive facilities are present.",
         "i" = "Consider providing 'hf_col' and 'y_var' parameters to enable facility activity classification."
       ))
     }
@@ -885,13 +920,10 @@ prepare_plot_data <- function(
   }
 
   # Facility-specific validations
+  # Note: y_var is now optional when by_facility = TRUE
+  # - With y_var: facility-level analysis grouped by district
+  # - Without y_var: facility-level time trends (no grouping)
   if (by_facility) {
-    if (is.null(y_var)) {
-      cli::cli_abort(c(
-        "!" = "'y_var' is required when by_facility = TRUE",
-        "i" = "Run `rlang::last_trace()` to see where the error occurred."
-      ))
-    }
     if (is.null(hf_col) || !(hf_col %in% names(data))) {
       cli::cli_abort(c(
         "!" = paste0(
@@ -1025,9 +1057,10 @@ prepare_plot_data <- function(
 #' @param vars_of_interest An optional character vector specifying the variables
 #'   to be visualized in 'data'. If NULL, all variables except 'x_var' and
 #'   'y_var' will be used.
-#' @param hf_col Character. Name of the column containing unique health facility
-#'   IDs. When provided with key_indicators, enables proper exclusion of inactive
-#'   facilities from denominators, resulting in more accurate missing rates.
+#' @param hf_col Character. Optional (defaults to NULL). Name of the column
+#'   containing unique health facility IDs. When provided with key_indicators,
+#'   enables facility-level analysis and proper exclusion of inactive facilities
+#'   from denominators, resulting in more accurate missing rates.
 #' @param key_indicators Optional. Character vector of indicators used to define
 #'   facility activity in scenario 1. Defaults to
 #'   `c("allout", "conf", "test", "treat", "pres")`.
@@ -1081,6 +1114,8 @@ prepare_plot_data <- function(
 #'   Default is 300.
 #' @param show_plot Logical. If FALSE, the plot is returned invisibly (not displayed).
 #'   Useful when only saving plots. Default is TRUE.
+#' @param include_plot_title Logical. If TRUE, plot titles and subtitles are included.
+#'   If FALSE, titles are hidden. Default is FALSE.
 #' @param y_axis_label Optional character string for y-axis label. If NULL,
 #'   defaults to y_var name or "Variable" for variable scenario.
 #' @param ... Additional arguments passed to internal functions.
@@ -1136,7 +1171,7 @@ prepare_plot_data <- function(
 #' @export
 reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 vars_of_interest = NULL,
-                                hf_col = "hf_uid",
+                                hf_col = NULL,
                                 key_indicators = c("allout", "conf",
                                                   "test", "treat",
                                                   "pres"),
@@ -1163,6 +1198,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 plot_height = NULL,
                                 plot_dpi = 300,
                                 show_plot = TRUE,
+                                include_plot_title = FALSE,
                                 y_axis_label = NULL,
                                 ...) {
 
@@ -1187,22 +1223,137 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     "variable"
   }
 
-  # Validate scenario-specific requirements
-  if (scenario == "facility") {
-    if (is.null(y_var)) {
-      cli::cli_abort(c(
-        "!" = paste0(
-          "For facility-level analysis, both 'hf_col'",
-          "and 'y_var' must be provided."
-        ),
-        "i" = "Run `rlang::last_trace()` to see where the error occurred."
-      ))
-    }
+  # Inform user about the analysis being performed
+  rate_type <- if (use_reprate) "Reporting Rate" else "Missing Rate"
+  n_vars <- length(vars_of_interest)
 
-    # Note: Multiple variables are now allowed when hf_col is provided
-    # This enables proper facility activity classification while still
-    # allowing analysis of multiple indicators
+  # Build summary lines
+  lines <- character()
+
+  # Analysis type
+  if (scenario == "facility") {
+    lines <- c(lines, paste0(
+      cli::col_cyan("Analysis Type:"), " ",
+      cli::style_bold("Facility-level")
+    ))
+  } else {
+    lines <- c(lines, paste0(
+      cli::col_cyan("Analysis Type:"), " ",
+      cli::style_bold("Row-level (no facility filtering)")
+    ))
   }
+
+  # Metric
+  lines <- c(lines, paste0(
+    cli::col_cyan("Metric:"), " ",
+    cli::style_bold(rate_type)
+  ))
+
+  # Variables
+  if (n_vars == 1) {
+    lines <- c(lines, paste0(
+      cli::col_cyan("Variable:"), " ",
+      cli::col_yellow(vars_of_interest)
+    ))
+  } else {
+    vars_display <- if (n_vars <= 3) {
+      paste(cli::col_yellow(vars_of_interest), collapse = ", ")
+    } else {
+      paste0(cli::col_yellow(n_vars), " variables")
+    }
+    lines <- c(lines, paste0(
+      cli::col_cyan("Variables:"), " ",
+      vars_display
+    ))
+  }
+
+  # Grouping
+  if (!is.null(y_var)) {
+    lines <- c(lines, paste0(
+      cli::col_cyan("Grouping:"), " ",
+      "By ", cli::col_yellow(x_var), " and ", cli::col_yellow(y_var)
+    ))
+  } else {
+    lines <- c(lines, paste0(
+      cli::col_cyan("Grouping:"), " ",
+      "By ", cli::col_yellow(x_var)
+    ))
+  }
+
+  # Key indicators (for facility filtering)
+  if (scenario == "facility" && !is.null(key_indicators)) {
+    key_ind_display <- if (length(key_indicators) <= 3) {
+      paste(cli::col_yellow(key_indicators), collapse = ", ")
+    } else {
+      paste0(cli::col_yellow(paste(key_indicators[1:3], collapse = ", ")),
+             ", ... (", length(key_indicators), " total)")
+    }
+    lines <- c(lines, paste0(
+      cli::col_cyan("Denominator:"), " ",
+      key_ind_display
+    ))
+
+    # Show method - extract number from "method3" format
+    method_num <- gsub("method", "", method)
+    method_desc <- switch(
+      method,
+      "method1" = "Method 1 (all periods active)",
+      "method2" = "Method 2 (active from first report)",
+      "method3" = paste0("Method 3 (inactive after ", nonreport_window, " months)"),
+      paste0("Method ", method_num)
+    )
+    lines <- c(lines, paste0(
+      cli::col_cyan("Facility activity:"), " ",
+      cli::col_magenta(method_desc)
+    ))
+  }
+
+  # Weighting
+  if (weighting) {
+    lines <- c(lines, paste0(
+      cli::col_cyan("Weighting:"), " ",
+      cli::col_green("Enabled"), " (using ", cli::col_yellow(weight_var), ")"
+    ))
+  }
+
+  # Detect dark theme
+  is_dark_theme <- .detect_dark_theme()
+
+  # Apply base color to all lines while preserving existing colors
+  if (is_dark_theme) {
+    styled_lines <- sapply(lines, function(line) {
+      cli::col_br_white(line)
+    })
+  } else {
+    styled_lines <- sapply(lines, function(line) {
+      cli::col_black(line)
+    })
+  }
+
+  box_width <- min(
+    max(cli::ansi_nchar(styled_lines)) + 8L,
+    as.integer(cli::console_width())
+  )
+
+  cli::cat_line("")
+  cli::cat_line(
+    cli::boxx(
+      styled_lines,
+      header = cli::style_bold("Reporting Rate Plot Configuration"),
+      border_style = "double",
+      col = if (is_dark_theme) "white" else "black",
+      padding = 1L,
+      width = box_width
+    )
+  )
+  cli::cat_line("")
+
+  # Validate scenario-specific requirements
+  # Note: hf_col can now be used with or without y_var
+  # - With y_var: facility-level analysis grouped by district/region
+  # - Without y_var: facility-level time trends (no grouping)
+  # Multiple variables are allowed when hf_col is provided for proper
+  # facility activity classification
 
   # Prepare data and get plotting variables
   prepared_data <- prepare_plot_data(
@@ -1277,6 +1428,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
   )
 
   # Create plot based on scenario
+  # When hf_col is provided without y_var, use variables_plot (time trends)
+  # When hf_col is provided with y_var, use group_plot (grouped by district)
   plot <- switch(scenario,
     "variable" = variables_plot(
       plot_data = plot_data,
@@ -1286,6 +1439,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       fill_label = fill_label,
       title_prefix = title_prefix,
       subtitle = subtitle,
+      include_plot_title = include_plot_title,
       common_elements = common_elements,
       target_language = target_language,
       source_language = source_language,
@@ -1300,27 +1454,48 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       fill_label = fill_label,
       title_prefix = title_prefix,
       subtitle = subtitle,
+      include_plot_title = include_plot_title,
       y_axis_label = y_axis_label,
       common_elements = common_elements,
       target_language = target_language,
       source_language = source_language,
       lang_cache_path = lang_cache_path
     ),
-    "facility" = group_plot(
-      plot_data = plot_data,
-      x_var = x_var,
-      y_var = y_var,
-      vars_of_interest = vars_of_interest,
-      fill_var = fill_var,
-      fill_label = fill_label,
-      title_prefix = title_prefix,
-      subtitle = subtitle,
-      y_axis_label = y_axis_label,
-      common_elements = common_elements,
-      target_language = target_language,
-      source_language = source_language,
-      lang_cache_path = lang_cache_path
-    )
+    "facility" = if (is.null(y_var)) {
+      # Facility-level time trends without grouping
+      variables_plot(
+        plot_data = plot_data,
+        x_var = x_var,
+        vars_of_interest = vars_of_interest,
+        fill_var = fill_var,
+        fill_label = fill_label,
+        title_prefix = title_prefix,
+        subtitle = subtitle,
+        include_plot_title = include_plot_title,
+        common_elements = common_elements,
+        target_language = target_language,
+        source_language = source_language,
+        lang_cache_path = lang_cache_path
+      )
+    } else {
+      # Facility-level analysis grouped by district/region
+      group_plot(
+        plot_data = plot_data,
+        x_var = x_var,
+        y_var = y_var,
+        vars_of_interest = vars_of_interest,
+        fill_var = fill_var,
+        fill_label = fill_label,
+        title_prefix = title_prefix,
+        subtitle = subtitle,
+        include_plot_title = include_plot_title,
+        y_axis_label = y_axis_label,
+        common_elements = common_elements,
+        target_language = target_language,
+        source_language = source_language,
+        lang_cache_path = lang_cache_path
+      )
+    }
   )
 
   # Save plot if requested
@@ -1376,6 +1551,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
 #' @param title_prefix Title prefix based on whether showing reporting or
 #'    missing rates
 #' @param subtitle Optional subtitle text to display under the title. Default NULL.
+#' @param include_plot_title Logical. If TRUE, plot titles are included. Default TRUE.
 #' @param common_elements Common ggplot elements to apply to all plots
 #' @param target_language Language code for labels (ISO 639-1), defaults to "en"
 #' @param source_language Source language code, defaults to NULL
@@ -1384,7 +1560,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
 #' @return A ggplot2 object
 variables_plot <- function(plot_data, x_var, vars_of_interest,
                            fill_var, fill_label, title_prefix,
-                           subtitle = NULL, common_elements,
+                           subtitle = NULL, include_plot_title = TRUE,
+                           common_elements,
                            target_language = "en", source_language = "en",
                            lang_cache_path = tempdir()) {
   # Use x_var directly as factor for consistent discrete plotting
@@ -1404,15 +1581,19 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
   ) +
     common_elements +
     ggplot2::labs(
-      title = if (grepl("Percentage of HF", title_prefix)) {
-        title_prefix  # Use as-is for the new standardized title
+      title = if (include_plot_title) {
+        if (grepl("Percentage of HF", title_prefix)) {
+          title_prefix  # Use as-is for the new standardized title
+        } else {
+          paste0(
+            title_prefix,
+            " selected variables by ", tolower(x_var)
+          )
+        }
       } else {
-        paste0(
-          title_prefix,
-          " selected variables by ", tolower(x_var)
-        )
+        NULL
       },
-      subtitle = subtitle,
+      subtitle = if (include_plot_title) subtitle else NULL,
       x = "",
       y = "Variable",
       fill = fill_label
@@ -1448,6 +1629,7 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
 #' @param title_prefix Title prefix based on whether showing reporting or
 #'    missing rates
 #' @param subtitle Optional subtitle text to display under the title. Default NULL.
+#' @param include_plot_title Logical. If TRUE, plot titles are included. Default TRUE.
 #' @param y_axis_label Label for the y-axis
 #' @param common_elements Common ggplot elements to apply to all plots
 #' @param target_language Language code for labels (ISO 639-1)
@@ -1457,7 +1639,8 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
 #' @return A ggplot2 object
 group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
                        fill_var, fill_label, title_prefix,
-                       subtitle = NULL, y_axis_label, common_elements,
+                       subtitle = NULL, include_plot_title = TRUE,
+                       y_axis_label, common_elements,
                        target_language = "en", source_language = "en",
                        lang_cache_path = tempdir()) {
   vars_label <- if (length(vars_of_interest) <= 5) {
@@ -1483,12 +1666,16 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
   ) +
     common_elements +
     ggplot2::labs(
-      title = paste0(
-        title_prefix,
-        " ", vars_label, " by ",
-        tolower(x_var), " and ", tolower(y_var)
-      ),
-      subtitle = subtitle,
+      title = if (include_plot_title) {
+        paste0(
+          title_prefix,
+          " ", vars_label, " by ",
+          tolower(x_var), " and ", tolower(y_var)
+        )
+      } else {
+        NULL
+      },
+      subtitle = if (include_plot_title) subtitle else NULL,
       x = "",
       y = y_axis_label,
       fill = fill_label
