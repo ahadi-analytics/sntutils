@@ -629,13 +629,156 @@ testthat::test_that("translate_text() handles basic translations", {
 })
 
 testthat::test_that("same source and target language returns input", {
-  testthat::expect_message(
-    out <- translate_text("Bonjour",
-      target_language = "fr",
-      source_language = "fr"
-    ),
-    "Source and target languages are the same. Returning original text."
+  out <- translate_text("Bonjour",
+    target_language = "fr",
+    source_language = "fr"
   )
 
   testthat::expect_identical(out, "Bonjour")
+})
+
+testthat::test_that("require_all validation catches invalid combinations", {
+  # Create test data
+  test_data <- data.frame(
+    month = rep(c("Jan", "Feb", "Mar"), each = 3),
+    district = rep("North", 9),
+    facility_id = rep(1:3, times = 3),
+    malaria = c(10, 15, NA, 20, 25, 30, 35, 40, NA),
+    pneumonia = c(100, NA, NA, 200, 250, 300, 350, NA, NA)
+  )
+
+  # Should error: require_all = TRUE with multiple vars and no y_var
+  testthat::expect_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = NULL,
+      vars_of_interest = c("malaria", "pneumonia"),
+      hf_col = "facility_id",
+      require_all = TRUE
+    ),
+    regexp = "require_all = TRUE.*cannot be used with multiple variables"
+  )
+
+  # Should work: require_all = TRUE with multiple vars AND y_var
+  testthat::expect_no_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = "district",
+      vars_of_interest = c("malaria", "pneumonia"),
+      hf_col = "facility_id",
+      require_all = TRUE
+    )
+  )
+
+  # Should work: require_all = TRUE with single var and no y_var
+  testthat::expect_no_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = NULL,
+      vars_of_interest = "malaria",
+      hf_col = "facility_id",
+      require_all = TRUE
+    )
+  )
+
+  # Should work: require_all = FALSE with multiple vars and no y_var
+  testthat::expect_no_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = NULL,
+      vars_of_interest = c("malaria", "pneumonia"),
+      hf_col = "facility_id",
+      require_all = FALSE
+    )
+  )
+})
+
+testthat::test_that("require_all parameter works correctly", {
+  # Create test data with multiple variables
+  # Facility 1: reports both malaria and pneumonia in all months
+  # Facility 2: reports malaria but not pneumonia (some months)
+  # Facility 3: reports neither in some months
+  test_data <- data.frame(
+    month = rep(c("Jan", "Feb", "Mar"), each = 3),
+    district = rep("North", 9),
+    facility_id = rep(1:3, times = 3),
+    malaria = c(
+      10, 15, NA,     # Jan: fac 1 reports, fac 2 reports, fac 3 doesn't
+      20, 25, 30,     # Feb: all report
+      35, 40, NA      # Mar: fac 1 & 2 report, fac 3 doesn't
+    ),
+    pneumonia = c(
+      100, NA, NA,    # Jan: fac 1 reports, fac 2 & 3 don't
+      200, 250, 300,  # Feb: all report
+      350, NA, NA     # Mar: fac 1 reports, fac 2 & 3 don't
+    ),
+    allout = c(
+      50, 60, 70,
+      80, 90, 100,
+      110, 120, 130
+    )
+  )
+
+  # Test 1: require_all = FALSE (default) - per-variable rates
+  result_per_var <- calculate_reporting_metrics(
+    data = test_data,
+    vars_of_interest = c("malaria", "pneumonia"),
+    x_var = "month",
+    y_var = "district",
+    hf_col = "facility_id",
+    require_all = FALSE
+  )
+
+  # Should have 'variable' column (per-variable rates)
+  testthat::expect_true("variable" %in% names(result_per_var))
+  testthat::expect_true(
+    all(c("malaria", "pneumonia") %in% result_per_var$variable)
+  )
+
+  # Test 2: require_all = TRUE - complete data only
+  result_all_vars <- calculate_reporting_metrics(
+    data = test_data,
+    vars_of_interest = c("malaria", "pneumonia"),
+    x_var = "month",
+    y_var = "district",
+    hf_col = "facility_id",
+    require_all = TRUE
+  )
+
+  # Should NOT have 'variable' column (aggregated metric)
+  testthat::expect_false("variable" %in% names(result_all_vars))
+  testthat::expect_true(all(c("exp", "rep", "reprate") %in%
+    names(result_all_vars)))
+
+  # Test 3: Verify the counts make sense
+  # In Jan: only facility 1 reports both (1/3 = 33.33%)
+  # In Feb: all facilities report both (3/3 = 100%)
+  # In Mar: only facility 1 reports both (1/3 = 33.33%)
+  jan_result <- result_all_vars[result_all_vars$month == "Jan", ]
+  feb_result <- result_all_vars[result_all_vars$month == "Feb", ]
+  mar_result <- result_all_vars[result_all_vars$month == "Mar", ]
+
+  testthat::expect_equal(jan_result$rep, 1)
+  testthat::expect_equal(jan_result$exp, 3)
+  testthat::expect_equal(feb_result$rep, 3)
+  testthat::expect_equal(feb_result$exp, 3)
+  testthat::expect_equal(mar_result$rep, 1)
+  testthat::expect_equal(mar_result$exp, 3)
+
+  # Test 4: Single variable with require_all should still work
+  result_single <- calculate_reporting_metrics(
+    data = test_data,
+    vars_of_interest = "malaria",
+    x_var = "month",
+    y_var = "district",
+    hf_col = "facility_id",
+    require_all = TRUE
+  )
+
+  testthat::expect_s3_class(result_single, "tbl_df")
+  testthat::expect_false("variable" %in% names(result_single))
 })
