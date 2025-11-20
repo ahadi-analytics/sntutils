@@ -14,6 +14,7 @@ group_plot(
   title_prefix,
   subtitle = NULL,
   include_plot_title = TRUE,
+  plot_caption = NULL,
   y_axis_label,
   common_elements,
   target_language = "en",
