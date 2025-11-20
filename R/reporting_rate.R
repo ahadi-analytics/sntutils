@@ -2638,6 +2638,128 @@ reporting_rate_map <- function(
     cli::cli_abort("'{adm_var}' not found in data")
   }
 
+  # Inform user about the analysis being performed
+  rate_type <- if (use_reprate) "Reporting Rate" else "Missing Rate"
+  n_vars <- length(vars_of_interest)
+
+  # Build summary lines
+  lines <- character()
+
+  # Analysis type (maps are always facility-level)
+  lines <- c(lines, paste0(
+    cli::col_cyan("Analysis Type:"), " ",
+    cli::style_bold("Facility-level")
+  ))
+
+  # Metric
+  lines <- c(lines, paste0(
+    cli::col_cyan("Metric:"), " ",
+    cli::style_bold(rate_type)
+  ))
+
+  # Variables
+  if (n_vars == 1) {
+    lines <- c(lines, paste0(
+      cli::col_cyan("Variable:"), " ",
+      cli::col_yellow(vars_of_interest)
+    ))
+  } else {
+    vars_display <- if (n_vars <= 3) {
+      paste(cli::col_yellow(vars_of_interest), collapse = ", ")
+    } else {
+      paste0(cli::col_yellow(n_vars), " variables")
+    }
+    lines <- c(lines, paste0(
+      cli::col_cyan("Variables:"), " ",
+      vars_display
+    ))
+
+    # Show numerator approach for multiple variables
+    numerator_approach <- if (require_all) {
+      cli::col_green("ALL variables")
+    } else {
+      cli::col_blue("per-variable")
+    }
+    lines <- c(lines, paste0(
+      cli::col_cyan("Numerator:"), " ",
+      numerator_approach
+    ))
+  }
+
+  # Grouping
+  lines <- c(lines, paste0(
+    cli::col_cyan("Grouping:"), " ",
+    "By ", cli::col_yellow(x_var), " and ", cli::col_yellow(adm_var)
+  ))
+
+  # Key indicators (for facility filtering)
+  if (!is.null(key_indicators)) {
+    key_ind_display <- if (length(key_indicators) <= 3) {
+      paste(cli::col_yellow(key_indicators), collapse = ", ")
+    } else {
+      paste0(cli::col_yellow(paste(key_indicators[1:3], collapse = ", ")),
+             ", ... (", length(key_indicators), " total)")
+    }
+    lines <- c(lines, paste0(
+      cli::col_cyan("Denominator:"), " ",
+      key_ind_display
+    ))
+
+    # Show method
+    method_num <- gsub("method", "", method)
+    method_desc <- switch(
+      method,
+      "method1" = "Method 1 (all periods active)",
+      "method2" = "Method 2 (active from first report)",
+      "method3" = paste0("Method 3 (inactive after ", nonreport_window, " months)"),
+      paste0("Method ", method_num)
+    )
+    lines <- c(lines, paste0(
+      cli::col_cyan("Facility activity:"), " ",
+      cli::col_magenta(method_desc)
+    ))
+  }
+
+  # Weighting
+  if (weighting) {
+    lines <- c(lines, paste0(
+      cli::col_cyan("Weighting:"), " ",
+      cli::col_green("Enabled"), " (using ", cli::col_yellow(weight_var), ")"
+    ))
+  }
+
+  # Detect dark theme
+  is_dark_theme <- .detect_dark_theme()
+
+  # Apply base color to all lines while preserving existing colors
+  if (is_dark_theme) {
+    styled_lines <- sapply(lines, function(line) {
+      cli::col_br_white(line)
+    })
+  } else {
+    styled_lines <- sapply(lines, function(line) {
+      cli::col_black(line)
+    })
+  }
+
+  box_width <- min(
+    max(cli::ansi_nchar(styled_lines)) + 8L,
+    as.integer(cli::console_width())
+  )
+
+  cli::cat_line("")
+  cli::cat_line(
+    cli::boxx(
+      styled_lines,
+      header = cli::style_bold("Reporting Rate Map Configuration"),
+      border_style = "double",
+      col = if (is_dark_theme) "white" else "black",
+      padding = 1L,
+      width = box_width
+    )
+  )
+  cli::cat_line("")
+
   # Prepare summarized data using calculate_reporting_metrics
   summary_data <- calculate_reporting_metrics(
     data = data,
