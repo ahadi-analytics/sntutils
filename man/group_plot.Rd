@@ -13,6 +13,7 @@ group_plot(
   fill_label,
   title_prefix,
   subtitle = NULL,
+  include_plot_title = TRUE,
   y_axis_label,
   common_elements,
   target_language = "en",
@@ -38,6 +39,8 @@ information}
 missing rates}
 
 \item{subtitle}{Optional subtitle text to display under the title. Default NULL.}
+
+\item{include_plot_title}{Logical. If TRUE, plot titles are included. Default TRUE.}
 
 \item{y_axis_label}{Label for the y-axis}
 

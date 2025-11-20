@@ -173,11 +173,19 @@ get_active_facilities <- function(
   pct_active <- round(100 * n_active / n_total, 1)
   pct_inactive <- round(100 * n_inactive / n_total, 1)
 
+  # Format numbers with thousand separators for display
+  n_active_fmt <- format(n_active, big.mark = ",", scientific = FALSE)
+  n_total_fmt <- format(n_total, big.mark = ",", scientific = FALSE)
+  n_inactive_fmt <- format(n_inactive, big.mark = ",", scientific = FALSE)
+
   # Provide informative message
   cli::cli_inform(c(
     "i" = "Facility activity classification:",
-    " " = "{n_active} of {n_total} facilities are active ({pct_active}%)",
-    " " = "{n_inactive} facilities are inactive ({pct_inactive}%)"
+    " " = paste0(
+      "{n_active_fmt} of {n_total_fmt} facilities are active ",
+      "({pct_active}%)"
+    ),
+    " " = "{n_inactive_fmt} facilities are inactive ({pct_inactive}%)"
   ))
 
   if (return_summary) {
@@ -195,7 +203,7 @@ get_active_facilities <- function(
       dplyr::filter(activity_status == "Active")
 
     cli::cli_inform(c(
-      "v" = "Returning data filtered to {n_active} active facilities"
+      "v" = "Returning data filtered to {n_active_fmt} active facilities"
     ))
 
     return(active_data)
@@ -219,8 +227,9 @@ get_active_facilities <- function(
   if (is.null(hf_col)) return(FALSE)
   if (is.null(key_indicators) || length(key_indicators) == 0) return(FALSE)
 
-  # Check if key indicators exist in data
-  indicators_exist <- all(key_indicators %in% names(data))
+  # Check if at least one key indicator exists in data
+  # get_active_facilities() handles filtering to available indicators
+  indicators_exist <- any(key_indicators %in% names(data))
 
   return(indicators_exist)
 }
