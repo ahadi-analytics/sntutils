@@ -9,7 +9,7 @@ reporting_rate_plot(
   x_var,
   y_var = NULL,
   vars_of_interest = NULL,
-  hf_col = "hf_uid",
+  hf_col = NULL,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,
   nonreport_window = 6,
@@ -34,6 +34,7 @@ reporting_rate_plot(
   plot_height = NULL,
   plot_dpi = 300,
   show_plot = TRUE,
+  include_plot_title = FALSE,
   y_axis_label = NULL,
   ...
 )
@@ -50,9 +51,10 @@ reporting_rate_plot(
 to be visualized in 'data'. If NULL, all variables except 'x_var' and
 'y_var' will be used.}
 
-\item{hf_col}{Character. Name of the column containing unique health facility
-IDs. When provided with key_indicators, enables proper exclusion of inactive
-facilities from denominators, resulting in more accurate missing rates.}
+\item{hf_col}{Character. Optional (defaults to NULL). Name of the column
+containing unique health facility IDs. When provided with key_indicators,
+enables facility-level analysis and proper exclusion of inactive facilities
+from denominators, resulting in more accurate missing rates.}
 
 \item{key_indicators}{Optional. Character vector of indicators used to define
 facility activity in scenario 1. Defaults to
@@ -130,6 +132,9 @@ Default is 300.}
 
 \item{show_plot}{Logical. If FALSE, the plot is returned invisibly (not displayed).
 Useful when only saving plots. Default is TRUE.}
+
+\item{include_plot_title}{Logical. If TRUE, plot titles and subtitles are included.
+If FALSE, titles are hidden. Default is FALSE.}
 
 \item{y_axis_label}{Optional character string for y-axis label. If NULL,
 defaults to y_var name or "Variable" for variable scenario.}

@@ -12,6 +12,7 @@ variables_plot(
   fill_label,
   title_prefix,
   subtitle = NULL,
+  include_plot_title = TRUE,
   common_elements,
   target_language = "en",
   source_language = "en",
@@ -33,6 +34,8 @@ variables_plot(
 missing rates}
 
 \item{subtitle}{Optional subtitle text to display under the title. Default NULL.}
+
+\item{include_plot_title}{Logical. If TRUE, plot titles are included. Default TRUE.}
 
 \item{common_elements}{Common ggplot elements to apply to all plots}
 
