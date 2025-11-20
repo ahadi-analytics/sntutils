@@ -98,6 +98,25 @@ testthat::test_that(
         "reprate", "missrate"
       ) %in% names(result4))
     )
+
+    # Test 5: hf_col without y_var (facility-level time trends)
+    result5 <- calculate_reporting_metrics(
+      data = test_data,
+      vars_of_interest = "malaria",
+      x_var = "month",
+      y_var = NULL,
+      hf_col = "facility_id"
+    )
+
+    testthat::expect_s3_class(result5, "tbl_df")
+    testthat::expect_true(
+      all(c(
+        "month", "exp", "rep",
+        "reprate", "missrate"
+      ) %in% names(result5))
+    )
+    # Should not have y_var column
+    testthat::expect_false("district" %in% names(result5))
   }
 )
 
@@ -471,17 +490,15 @@ testthat::test_that("reporting_rate_plot validates inputs correctly", {
     "A valid 'x_var' must be provided and must exist in the data."
   )
 
-  # Test facility-level validation - requires y_var
-  testthat::expect_error(
+  # Test that hf_col now works without y_var (facility-level time trends)
+  testthat::expect_no_error(
     reporting_rate_plot(
       data = hf_data,
       x_var = "month",
       vars_of_interest = "malaria",
       hf_col = "facility"
-    ),
-    "For facility-level analysis, both 'hf_col'and 'y_var' must be provided."
+    )
   )
-
 
 
 })
@@ -549,6 +566,7 @@ testthat::test_that("reporting_rate_plot handles language parameter", {
     y_var = "district",
     vars_of_interest = "malaria",
     target_language = "en",
+    include_plot_title = TRUE,
     hf_col = NULL
   )
 
@@ -565,6 +583,7 @@ testthat::test_that("reporting_rate_plot handles language parameter", {
       y_var = "district",
       vars_of_interest = "malaria",
       hf_col = NULL,
+      include_plot_title = TRUE,
       target_language = "fr",
       y_axis_label = "Administrative level"
     )

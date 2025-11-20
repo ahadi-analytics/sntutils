@@ -9,7 +9,7 @@ calculate_reporting_metrics(
   vars_of_interest,
   x_var,
   y_var = NULL,
-  hf_col = "hf_uid",
+  hf_col = NULL,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,
   nonreport_window = 6,
@@ -31,10 +31,12 @@ reporting (used for numerator).}
 period).}
 
 \item{y_var}{Character. Optional. Name of the second grouping variable
-(e.g., district). Required for scenarios 1 and 3.}
+(e.g., district).}
 
-\item{hf_col}{Character. Name of the column containing unique health facility
-IDs. Required only for scenario 1.}
+\item{hf_col}{Character. Optional (defaults to NULL). Name of the column
+containing unique health facility IDs. When provided, enables facility-level
+analysis and filtering of inactive facilities (if key_indicators are specified).
+Can be used with or without y_var. Required when weighting = TRUE.}
 
 \item{key_indicators}{Optional. Character vector of indicators used to define
 facility activity in scenario 1. Defaults to
@@ -114,25 +116,29 @@ of ACTIVE facilities that failed to report, not all facilities in the dataset.
 }
 \details{
 \enumerate{
-\item \strong{Proportion of facilities reporting any data}
+\item \strong{Proportion of facilities reporting a single variable}
 \itemize{
+\item When \code{vars_of_interest} contains a single variable:
 \item Calculates the proportion of active facilities (as defined by reporting
-on \code{key_indicators}) that reported at least one of the
-\code{vars_of_interest} in a given period and group.
+on \code{key_indicators}) that reported the variable in a given period.
+\item Requires \code{hf_col}. Can be used with or without \code{y_var}.
 }
-\item \strong{Reporting rate by group (x_var, y_var)}
+\item \strong{Per-variable facility reporting rates}
 \itemize{
-\item Computes reporting/missing rates for each variable in
-\code{vars_of_interest}, grouped by \code{x_var} and \code{y_var}.
-\item \strong{WARNING}: Without \code{hf_col}, this counts all data rows including
-inactive facilities, potentially inflating missing rates.
+\item When \code{vars_of_interest} contains multiple variables and \code{hf_col} is provided:
+\item Calculates reporting/missing rates for EACH variable separately, counting
+distinct facilities that reported each specific variable.
+\item Uses facility-level analysis, filtering to active facilities only
+(if \code{key_indicators} specified).
+\item Can be used with or without \code{y_var}.
 }
-\item \strong{Reporting trends over time (x_var only)}
+\item \strong{Row-level reporting rates (without facility filtering)}
 \itemize{
-\item Computes reporting/missing rates for each variable over time
-(x_var only).
-\item \strong{WARNING}: Without \code{hf_col}, this counts all data rows including
-inactive facilities, potentially inflating missing rates.
+\item When \code{hf_col} is NOT provided:
+\item Computes reporting/missing rates based on data rows, not facilities.
+\item \strong{WARNING}: This counts all data rows including inactive facilities,
+potentially inflating missing rates.
+\item Use scenarios 1 or 2 (with \code{hf_col}) for accurate facility-based metrics.
 }
 }
 \subsection{Weighted Reporting Rate Calculation}{
