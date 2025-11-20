@@ -532,9 +532,9 @@ calculate_reporting_metrics <- function(
       return_summary = FALSE  # We want the filtered data
     )
 
-    # Calculate facility counts for caption
-    n_total_facilities <- dplyr::n_distinct(data[[hf_col]])
-    n_active_facilities <- dplyr::n_distinct(active_data[[hf_col]])
+    # Get facility counts from classification process
+    n_total_facilities <- attr(active_data, "n_total_facilities")
+    n_active_facilities <- attr(active_data, "n_active_facilities")
 
     # Mark facilities as included/excluded in denominator
     data <- data |>
@@ -1705,7 +1705,14 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       plot_scale = plot_scale,
       plot_width = plot_width,
       plot_height = plot_height,
-      plot_dpi = plot_dpi
+      plot_dpi = plot_dpi,
+      hf_col = hf_col,
+      require_all = require_all,
+      weighting = weighting,
+      weight_var = weight_var,
+      method = method,
+      nonreport_window = nonreport_window,
+      reporting_rule = reporting_rule
     )
   }
 
@@ -1910,6 +1917,18 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
 #'   height is calculated based on content.
 #' @param plot_dpi Numeric. Resolution of saved plot in dots per inch.
 #'   Default is 300.
+#' @param hf_col Character. Health facility ID column (default: NULL).
+#' @param require_all Logical. If TRUE, requires all variables to be reported
+#'   (default: FALSE).
+#' @param weighting Logical. If TRUE, uses weighted reporting rates
+#'   (default: FALSE).
+#' @param weight_var Character. Variable to use for weighting (default: NULL).
+#' @param method Character. Facility activity classification method
+#'   (default: "method3").
+#' @param nonreport_window Integer. Consecutive non-reporting months for
+#'   inactivity (default: 6).
+#' @param reporting_rule Character. What counts as reporting: "any_non_na" or
+#'   "positive_only" (default: "any_non_na").
 #'
 #' @return Invisible path to the saved file
 save_single_plot <- function(plot, plot_data, plot_path,
@@ -1923,7 +1942,14 @@ save_single_plot <- function(plot, plot_data, plot_path,
                              plot_scale = 1,
                              plot_width = NULL,
                              plot_height = NULL,
-                             plot_dpi = 300) {
+                             plot_dpi = 300,
+                             hf_col = NULL,
+                             require_all = FALSE,
+                             weighting = FALSE,
+                             weight_var = NULL,
+                             method = "method3",
+                             nonreport_window = 6,
+                             reporting_rule = "any_non_na") {
   # Create directory if it doesn't exist
   if (!dir.exists(plot_path)) {
     dir_created <- dir.create(plot_path,
@@ -1977,11 +2003,55 @@ save_single_plot <- function(plot, plot_data, plot_path,
     tolower(translated_terms$vars_of_interest_str)
   }
 
+  # Build parameter suffix to distinguish different analysis configurations
+  param_parts <- character()
+
+  # Add facility-level indicator
+  if (!is.null(hf_col)) {
+    param_parts <- c(param_parts, "fac")
+
+    # Add require_all for facility-level with multiple vars
+    if (length(vars_of_interest) > 1) {
+      if (require_all) {
+        param_parts <- c(param_parts, "all")
+      } else {
+        param_parts <- c(param_parts, "any")
+      }
+    }
+
+    # Add method (extract number from "method3" format)
+    method_num <- gsub("method", "", method)
+    param_parts <- c(param_parts, paste0("m", method_num))
+
+    # Add nonreport_window if not default (6)
+    if (nonreport_window != 6) {
+      param_parts <- c(param_parts, paste0("nrw", nonreport_window))
+    }
+  }
+
+  # Add weighting indicator
+  if (weighting) {
+    weight_suffix <- if (!is.null(weight_var)) {
+      paste0("w_", weight_var)
+    } else {
+      "w"
+    }
+    param_parts <- c(param_parts, weight_suffix)
+  }
+
+  # Create parameter suffix
+  param_suffix <- if (length(param_parts) > 0) {
+    paste0("_", paste(param_parts, collapse = "_"))
+  } else {
+    ""
+  }
+
   # Construct filename
   save_path <- glue::glue(
     "{translated_terms$prefix}_{translated_terms$for_word}_",
     "{vars_of_interest_str}_{translated_terms$by_word}_",
-    "{tolower(translated_terms$x_title)}{y_var_part}_",
+    "{tolower(translated_terms$x_title)}{y_var_part}",
+    "{param_suffix}_",
     "{translated_terms$year_range}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
   )
 
@@ -2353,9 +2423,10 @@ create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
         family = "sans"
       ),
       legend.position = "bottom",
+      legend.justification = c(0, 0.5),
       legend.direction = "horizontal",
       legend.box = "horizontal",
-      legend.box.just = "center",
+      legend.box.just = "left",
       legend.margin = ggplot2::margin(t = 0, unit = "cm"),
       legend.text = ggplot2::element_text(
         size = 8,
@@ -2403,7 +2474,7 @@ create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
         title.position = "top",
         label.position = "bottom",
         direction = "horizontal",
-        barheight = ggplot2::unit(0.3, "cm"),
+        barheight = ggplot2::unit(0.2, "cm"),
         barwidth = ggplot2::unit(4, "cm"),
         ticks = TRUE,
         draw.ulim = TRUE,
@@ -2433,10 +2504,15 @@ create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
 #' @param vars_of_interest Character vector. Variable(s) to compute reporting rates for.
 #'   These will be displayed in the plot title and subtitle.
 #' @param hf_col Character. Health facility ID column, if required. Default is NULL.
+#' @param key_indicators Character vector. Indicator variables used to determine facility
+#'   activity status. Facilities that never report any of these indicators will be
+#'   excluded from denominators. Default is c("allout", "conf", "test", "treat", "pres").
 #' @param use_reprate Logical. If TRUE, plot reporting rate (facilities that reported);
 #'   if FALSE, plot missing rate (facilities that didn't report). Default is TRUE.
 #' @param full_range Logical. If TRUE, the fill scale will use the full range from 0 to 100.
 #'   If FALSE, the fill scale will use the range of values present in the data. Default is TRUE.
+#' @param show_title Logical. If TRUE, display the plot title. If FALSE, hide the title.
+#'   Default is TRUE.
 #' @param weighting Logical. If TRUE, compute weighted reporting rates based on
 #'   facility size. Default is FALSE.
 #' @param weight_var Character. Weight variable if weighting = TRUE.
@@ -2512,8 +2588,10 @@ reporting_rate_map <- function(
   adm_var,
   vars_of_interest,
   hf_col = "hf_uid",
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
   use_reprate = TRUE,
   full_range = TRUE,
+  show_title = TRUE,
   method = 3,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
@@ -2567,6 +2645,7 @@ reporting_rate_map <- function(
     x_var = x_var,
     y_var = adm_var,
     hf_col = hf_col,
+    key_indicators = key_indicators,
     method = method,
     nonreport_window = nonreport_window,
     reporting_rule = reporting_rule,
@@ -2577,6 +2656,66 @@ reporting_rate_map <- function(
     exclude_current_x = exclude_current_x,
     cold_start = cold_start
   )
+
+  # Extract facility counts and build caption
+  n_total <- attr(summary_data, "n_total_facilities")
+  n_active <- attr(summary_data, "n_active_facilities")
+
+  # Caption translations matching reporting_rate_plot
+  cap_trans <- list(
+    en = list(rep = "Reporting Rate", miss = "Missing Rate",
+              fac = "Facility-level", active = "active"),
+    fr = list(rep = "Taux de rapportage", miss = "Taux manquantes",
+              fac = "Niveau \u00e9tablissement", active = "actifs"),
+    pt = list(rep = "Taxa de relato", miss = "Taxa ausentes",
+              fac = "N\u00edvel instala\u00e7\u00e3o", active = "ativos")
+  )
+
+  lang <- if (target_language %in% names(cap_trans)) {
+    target_language
+  } else {
+    "en"
+  }
+  tr <- cap_trans[[lang]]
+
+  cap_parts <- character()
+  metric <- if (use_reprate) tr$rep else tr$miss
+
+  # Metric with variable if single
+  if (length(vars_of_interest) == 1) {
+    cap_parts <- c(cap_parts, paste0(metric, ": ", vars_of_interest))
+  } else {
+    cap_parts <- c(cap_parts, metric)
+  }
+
+  # Analysis type
+  cap_parts <- c(cap_parts, tr$fac)
+
+  # Facility counts
+  if (!is.null(n_total) && !is.null(n_active)) {
+    n_total_fmt <- format(n_total, big.mark = ",", scientific = FALSE)
+    n_active_fmt <- format(n_active, big.mark = ",", scientific = FALSE)
+    cap_parts <- c(
+      cap_parts,
+      paste0(n_active_fmt, "/", n_total_fmt, " ", tr$active)
+    )
+  }
+
+  # Method
+  method_num <- gsub("method", "", method)
+  method_txt <- switch(
+    as.character(method),
+    "method1" = "Method 1",
+    "method2" = "Method 2",
+    "method3" = paste0("Method 3 (", nonreport_window, "mo)"),
+    "1" = "Method 1",
+    "2" = "Method 2",
+    "3" = paste0("Method 3 (", nonreport_window, "mo)"),
+    paste0("Method ", method_num)
+  )
+  cap_parts <- c(cap_parts, method_txt)
+
+  plot_caption <- paste(cap_parts, collapse = " | ")
 
   # Determine which rate variable to use
   rate_var <- if (use_reprate) {
@@ -2724,6 +2863,8 @@ reporting_rate_map <- function(
     title_full <- paste(title_parts, collapse = " ")
   }
 
+  # Apply sentence case to fill_label for consistent capitalization
+  fill_label <- stringr::str_to_sentence(fill_label)
 
   # Set fill scale limits based on full_range parameter
   fill_limits <- if (full_range) {
@@ -2773,8 +2914,8 @@ reporting_rate_map <- function(
       name = fill_label
     ) +
     ggplot2::labs(
-      title = stringr::str_to_sentence(title_full),
-      fill = stringr::str_to_sentence(fill_label)
+      title = if (show_title) stringr::str_to_sentence(title_full) else NULL,
+      caption = plot_caption
     ) +
     ggplot2::theme_minimal() +
     ggplot2::theme(
@@ -2785,9 +2926,10 @@ reporting_rate_map <- function(
         family = "sans"
       ),
       legend.position = "bottom",
+      legend.justification = c(0, 0.5),
       legend.direction = "horizontal",
       legend.box = "horizontal",
-      legend.box.just = "center",
+      legend.box.just = "left",
       legend.margin = ggplot2::margin(t = 0, unit = "cm"),
       legend.text = ggplot2::element_text(
         size = 8,
@@ -2821,8 +2963,8 @@ reporting_rate_map <- function(
         title.position = "top",
         label.position = "bottom",
         direction = "horizontal",
-        barheight = ggplot2::unit(0.3, "cm"),
-        barwidth = ggplot2::unit(4.5, "cm"),
+        barheight = ggplot2::unit(0.2, "cm"),
+        barwidth = ggplot2::unit(4, "cm"),
         ticks = TRUE,
         draw.ulim = TRUE,
         draw.llim = TRUE

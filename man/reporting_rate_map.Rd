@@ -11,8 +11,10 @@ reporting_rate_map(
   adm_var,
   vars_of_interest,
   hf_col = "hf_uid",
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
   use_reprate = TRUE,
   full_range = TRUE,
+  show_title = TRUE,
   method = 3,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
@@ -56,11 +58,18 @@ These will be displayed in the plot title and subtitle.}
 
 \item{hf_col}{Character. Health facility ID column, if required. Default is NULL.}
 
+\item{key_indicators}{Character vector. Indicator variables used to determine facility
+activity status. Facilities that never report any of these indicators will be
+excluded from denominators. Default is c("allout", "conf", "test", "treat", "pres").}
+
 \item{use_reprate}{Logical. If TRUE, plot reporting rate (facilities that reported);
 if FALSE, plot missing rate (facilities that didn't report). Default is TRUE.}
 
 \item{full_range}{Logical. If TRUE, the fill scale will use the full range from 0 to 100.
 If FALSE, the fill scale will use the range of values present in the data. Default is TRUE.}
+
+\item{show_title}{Logical. If TRUE, display the plot title. If FALSE, hide the title.
+Default is TRUE.}
 
 \item{method}{Character or numeric. Classification method for facility activity
 status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
