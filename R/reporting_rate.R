@@ -1166,6 +1166,8 @@ prepare_plot_data <- function(
 #'   If FALSE, titles are hidden. Default is FALSE.
 #' @param y_axis_label Optional character string for y-axis label. If NULL,
 #'   defaults to y_var name or "Variable" for variable scenario.
+#' @param x_axis_breaks Numeric value specifying the interval for x-axis breaks.
+#'   Default `6`. For example, `2` shows every second tick and `6` every sixth.
 #' @param ... Additional arguments passed to internal functions.
 #' @return A ggplot2 object. When show_plot is FALSE, returns invisibly.
 #' @examples
@@ -1249,6 +1251,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 show_plot = TRUE,
                                 include_plot_title = FALSE,
                                 y_axis_label = NULL,
+                                x_axis_breaks = 6,
                                 ...) {
 
   # Normalize method parameter to accept both numeric and character
@@ -1620,7 +1623,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       common_elements = common_elements,
       target_language = target_language,
       source_language = source_language,
-      lang_cache_path = lang_cache_path
+      lang_cache_path = lang_cache_path,
+      x_axis_breaks = x_axis_breaks
     ),
     "district" = group_plot(
       plot_data = plot_data,
@@ -1637,7 +1641,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       common_elements = common_elements,
       target_language = target_language,
       source_language = source_language,
-      lang_cache_path = lang_cache_path
+      lang_cache_path = lang_cache_path,
+      x_axis_breaks = x_axis_breaks
     ),
     "facility" = if (is.null(y_var)) {
       # Facility-level time trends without grouping
@@ -1654,7 +1659,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
         common_elements = common_elements,
         target_language = target_language,
         source_language = source_language,
-        lang_cache_path = lang_cache_path
+        lang_cache_path = lang_cache_path,
+        x_axis_breaks = x_axis_breaks
       )
     } else {
       # Facility-level analysis grouped by district/region
@@ -1673,7 +1679,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
         common_elements = common_elements,
         target_language = target_language,
         source_language = source_language,
-        lang_cache_path = lang_cache_path
+        lang_cache_path = lang_cache_path,
+        x_axis_breaks = x_axis_breaks
       )
     }
   )
@@ -1744,6 +1751,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
 #' @param target_language Language code for labels (ISO 639-1), defaults to "en"
 #' @param source_language Source language code, defaults to NULL
 #' @param lang_cache_path Path for translation cache, defaults to tempdir()
+#' @param x_axis_breaks Numeric value specifying the interval for x-axis breaks.
+#'   Default `6`. For example, `2` shows every second tick and `6` every sixth.
 #'
 #' @return A ggplot2 object
 variables_plot <- function(plot_data, x_var, vars_of_interest,
@@ -1752,7 +1761,8 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
                            plot_caption = NULL,
                            common_elements,
                            target_language = "en", source_language = "en",
-                           lang_cache_path = tempdir()) {
+                           lang_cache_path = tempdir(),
+                           x_axis_breaks = 6) {
   # Use x_var directly as factor for consistent discrete plotting
   plot_data <- plot_data |>
     dplyr::mutate(
@@ -1787,9 +1797,14 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
       x = "",
       y = "Variable",
       fill = fill_label
+    ) +
+    ggplot2::scale_x_discrete(
+      breaks = levels(plot_data$.x_axis_var)[seq(
+        1,
+        length(levels(plot_data$.x_axis_var)),
+        x_axis_breaks
+      )]
     )
-
-  # Let ggplot2 handle x-axis automatically
 
   # Translate labels if needed
   if (target_language != "en") {
@@ -1826,6 +1841,8 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
 #' @param target_language Language code for labels (ISO 639-1)
 #' @param source_language Source language code, defaults to NULL
 #' @param lang_cache_path Path for translation cache, defaults to tempdir()
+#' @param x_axis_breaks Numeric value specifying the interval for x-axis breaks.
+#'   Default `6`. For example, `2` shows every second tick and `6` every sixth.
 #'
 #' @return A ggplot2 object
 group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
@@ -1834,7 +1851,8 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
                        plot_caption = NULL,
                        y_axis_label, common_elements,
                        target_language = "en", source_language = "en",
-                       lang_cache_path = tempdir()) {
+                       lang_cache_path = tempdir(),
+                       x_axis_breaks = 6) {
   vars_label <- if (length(vars_of_interest) <= 5) {
     paste(vars_of_interest, collapse = ", ")
   } else {
@@ -1872,9 +1890,14 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
       x = "",
       y = y_axis_label,
       fill = fill_label
+    ) +
+    ggplot2::scale_x_discrete(
+      breaks = levels(plot_data$.x_axis_var)[seq(
+        1,
+        length(levels(plot_data$.x_axis_var)),
+        x_axis_breaks
+      )]
     )
-
-  # Let ggplot2 handle x-axis automatically
 
   # Translate labels if needed
   if (target_language != "en") {
