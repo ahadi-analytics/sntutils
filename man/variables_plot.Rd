@@ -17,7 +17,8 @@ variables_plot(
   common_elements,
   target_language = "en",
   source_language = "en",
-  lang_cache_path = tempdir()
+  lang_cache_path = tempdir(),
+  x_axis_breaks = 6
 )
 }
 \arguments{
@@ -47,6 +48,9 @@ missing rates}
 \item{source_language}{Source language code, defaults to NULL}
 
 \item{lang_cache_path}{Path for translation cache, defaults to tempdir()}
+
+\item{x_axis_breaks}{Numeric value specifying the interval for x-axis breaks.
+Default \code{6}. For example, \code{2} shows every second tick and \code{6} every sixth.}
 }
 \value{
 A ggplot2 object
