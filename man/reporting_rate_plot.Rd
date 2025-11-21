@@ -37,6 +37,7 @@ reporting_rate_plot(
   show_plot = TRUE,
   include_plot_title = FALSE,
   y_axis_label = NULL,
+  x_axis_breaks = 6,
   ...
 )
 }
@@ -144,6 +145,9 @@ If FALSE, titles are hidden. Default is FALSE.}
 
 \item{y_axis_label}{Optional character string for y-axis label. If NULL,
 defaults to y_var name or "Variable" for variable scenario.}
+
+\item{x_axis_breaks}{Numeric value specifying the interval for x-axis breaks.
+Default \code{6}. For example, \code{2} shows every second tick and \code{6} every sixth.}
 
 \item{...}{Additional arguments passed to internal functions.}
 }
