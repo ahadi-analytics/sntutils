@@ -13,9 +13,13 @@
 #'
 #' This function sets up a clean, hierarchical folder system for Ahadi projects:
 #' - 01_data/ with nested numbered folders and raw/processed subfolders
-#' - 02_scripts/, 03_outputs/plots/, 04_reports/, 05_metadata_docs/
+#' - 02_scripts/
+#' - 03_outputs/ with 3.1_validation/,
+#'         3.2_intermediate_products/, 3.3_final_snt_outputs/
+#' - 04_reports/, 05_metadata_docs/
 #'
-#' @param base_path Character. base_path project directory (default = current directory)
+#' @param base_path Character. base_path project directory
+#'    (default = current directory)
 #'
 #' @return NULL (folders created on disk)
 #' @export
@@ -76,8 +80,32 @@ create_data_structure <- function(base_path = ".") {
 
   # Other standard folders
   fs::dir_create(fs::path(base_path, "02_scripts"))
-  fs::dir_create(fs::path(base_path, "03_outputs", "plots", "validation"))
-  fs::dir_create(fs::path(base_path, "03_outputs", "tables", "validation"))
+  fs::dir_create(fs::path(base_path, "03_outputs", "3.1_validation", "figures"))
+  fs::dir_create(fs::path(base_path, "03_outputs", "3.1_validation", "tables"))
+  fs::dir_create(fs::path(
+    base_path,
+    "03_outputs",
+    "3.2_intermediate_products",
+    "figures"
+  ))
+  fs::dir_create(fs::path(
+    base_path,
+    "03_outputs",
+    "3.2_intermediate_products",
+    "tables"
+  ))
+  fs::dir_create(fs::path(
+    base_path,
+    "03_outputs",
+    "3.3_final_snt_outputs",
+    "figures"
+  ))
+  fs::dir_create(fs::path(
+    base_path,
+    "03_outputs",
+    "3.3_final_snt_outputs",
+    "tables"
+  ))
   fs::dir_create(fs::path(base_path, "04_reports"))
   fs::dir_create(fs::path(base_path, "05_metadata_docs"))
 
@@ -88,8 +116,10 @@ create_data_structure <- function(base_path = ".") {
 #'
 #' Sets up a clean Ahadi-style project hierarchy:
 #' - 01_data/ with numbered domain folders
-#' - 02_scripts/, 03_outputs/plots/validation, 03_outputs/tables/validation,
-#'   04_reports/, 05_metadata_docs/
+#' - 02_scripts/
+#' - 03_outputs/ with 3.1_validation/,
+#'        3.2_intermediate_products/, 3.3_final_snt_outputs/
+#' - 04_reports/, 05_metadata_docs/
 #'
 #' @param base_path Character. Project root directory (default ".").
 #'
@@ -105,8 +135,32 @@ initialize_project_structure <- function(base_path = ".") {
 
   # other folders
   fs::dir_create(fs::path(base_path, "02_scripts"))
-  fs::dir_create(fs::path(base_path, "03_outputs", "plots", "validation"))
-  fs::dir_create(fs::path(base_path, "03_outputs", "tables", "validation"))
+  fs::dir_create(fs::path(base_path, "03_outputs", "3.1_validation", "figures"))
+  fs::dir_create(fs::path(base_path, "03_outputs", "3.1_validation", "tables"))
+  fs::dir_create(fs::path(
+    base_path,
+    "03_outputs",
+    "3.2_intermediate_products",
+    "figures"
+  ))
+  fs::dir_create(fs::path(
+    base_path,
+    "03_outputs",
+    "3.2_intermediate_products",
+    "tables"
+  ))
+  fs::dir_create(fs::path(
+    base_path,
+    "03_outputs",
+    "3.3_final_snt_outputs",
+    "figures"
+  ))
+  fs::dir_create(fs::path(
+    base_path,
+    "03_outputs",
+    "3.3_final_snt_outputs",
+    "tables"
+  ))
   fs::dir_create(fs::path(base_path, "04_reports"))
   fs::dir_create(fs::path(base_path, "05_metadata_docs"))
 
