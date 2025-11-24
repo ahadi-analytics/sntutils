@@ -215,7 +215,10 @@ testthat::test_that("create_data_structure creates other standard folders", {
   # check other standard project folders
   standard_folders <- c(
     "02_scripts",
-    "03_outputs/plots",
+    "03_outputs/3.1_validation/figures",
+    "03_outputs/3.1_validation/tables",
+    "03_outputs/3.2_intermediate_products/figures",
+    "03_outputs/3.3_final_snt_outputs/figures",
     "04_reports",
     "05_metadata_docs"
   )
@@ -330,7 +333,7 @@ testthat::test_that("initialize_project_structure creates base_path if missing",
   key_paths <- c(
     "01_data/1.1_foundational/1.1a_admin_boundaries",
     "02_scripts",
-    "03_outputs/plots"
+    "03_outputs/3.1_validation/figures"
   )
 
   for (path in key_paths) {
@@ -360,7 +363,7 @@ testthat::test_that("initialize_project_structure handles existing directories",
     fs::dir_exists(fs::path(test_dir, "01_data", "1.2_epidemiology"))
   )
   testthat::expect_true(
-    fs::dir_exists(fs::path(test_dir, "03_outputs", "plots"))
+    fs::dir_exists(fs::path(test_dir, "03_outputs", "3.1_validation", "figures"))
   )
 
   cleanup_test_dir(test_dir)
@@ -463,7 +466,9 @@ testthat::test_that("functions work together in typical workflow", {
     "01_data/1.2_epidemiology/1.2b_pfpr_estimates/processed",
     "01_data/1.3_interventions/1.3a_itns/raw",
     "02_scripts",
-    "03_outputs/plots",
+    "03_outputs/3.1_validation/figures",
+    "03_outputs/3.2_intermediate_products/tables",
+    "03_outputs/3.3_final_snt_outputs/figures",
     "04_reports",
     "05_metadata_docs"
   )
