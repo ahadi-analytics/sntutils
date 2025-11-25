@@ -692,3 +692,388 @@ consistency_check <- function(data,
     return(invisible(plot))
   }
 }
+
+#' Consistency violation map
+#'
+#' @description
+#' Creates a map showing the number of periods where a logical consistency
+#' violation occurred. A violation is defined as rows where the output variable
+#' exceeds the input variable (output > input). Results are aggregated at the
+#' specified administrative level and optionally faceted by a time variable.
+#'
+#' @details
+#' Designed to complement `consistency_check()`. This function summarises the
+#' number of violating rows within each administrative unit and displays the
+#' magnitude spatially. Only a single input-output pair is accepted per call.
+#'
+#' Typical malaria cascade checks include:
+#' - test vs conf
+#' - susp vs test
+#' - conf vs treat
+#'
+#' @param data Data frame containing the input and output variables.
+#' @param shapefile sf object with administrative boundaries.
+#' @param input_var Character. Upstream variable (e.g. "test").
+#' @param output_var Character. Downstream variable (e.g. "conf").
+#' @param adm_var Character. Administrative unit in both data and shapefile.
+#' @param x_var Character. Optional time variable (e.g. "year", "yearmon").
+#'   When provided, the map is faceted by this variable.
+#' @param facet_ncol Integer. Number of facet columns. Default is 4.
+#' @param language Character. Language code: "en", "fr", or "pt". Default "en".
+#' @param plot_path Character. Directory or full file path for saving output.
+#'   Default NULL.
+#' @param compress_image Logical. Compress final PNG. Default FALSE.
+#' @param image_overwrite Logical. Overwrite existing file. Default TRUE.
+#' @param compression_speed Integer 1-10. Default 1.
+#' @param compression_verbose Logical. Default TRUE.
+#' @param plot_scale Numeric. Default 1.
+#' @param plot_width Numeric. Default NULL.
+#' @param plot_height Numeric. Default NULL.
+#' @param plot_dpi Numeric. Default 300.
+#' @param show_plot Logical. Print plot. Default TRUE.
+#'
+#' @return A ggplot2 object.
+#'
+#' @examples
+#' \dontrun{
+#' consistency_map(
+#'   data = hf_data,
+#'   shapefile = adm2_sf,
+#'   input_var = "test",
+#'   output_var = "conf",
+#'   adm_var = "adm2",
+#'   x_var = "year"
+#' )
+#' }
+#'
+#' @export
+consistency_map <- function(
+  data,
+  shapefile,
+  input_var,
+  output_var,
+  adm_var,
+  x_var = NULL,
+  facet_ncol = 4,
+  language = "en",
+  plot_path = NULL,
+  compress_image = FALSE,
+  image_overwrite = TRUE,
+  compression_speed = 1,
+  compression_verbose = TRUE,
+  plot_scale = 1,
+  plot_width = NULL,
+  plot_height = NULL,
+  plot_dpi = 300,
+  show_plot = TRUE
+) {
+  # Validate -------------------------------------------------------------------
+  if (!inherits(shapefile, "sf")) {
+    cli::cli_abort("'shapefile' must be an sf object.")
+  }
+  if (!all(c(input_var, output_var) %in% names(data))) {
+    cli::cli_abort("Input or output variable not found in data.")
+  }
+  if (!adm_var %in% names(data)) {
+    cli::cli_abort("'adm_var' missing in data.")
+  }
+  if (!adm_var %in% names(shapefile)) {
+    cli::cli_abort("'adm_var' missing in shapefile.")
+  }
+  if (!is.null(x_var) && !x_var %in% names(data)) {
+    cli::cli_abort("'x_var' missing in data.")
+  }
+
+  # Compute violations ---------------------------------------------------------
+  summary_data <- data |>
+    dplyr::mutate(
+      violation = dplyr::if_else(
+        .data[[output_var]] > .data[[input_var]],
+        1L,
+        0L
+      )
+    )
+
+  summary_data <- if (is.null(x_var)) {
+    summary_data |> dplyr::group_by(.data[[adm_var]])
+  } else {
+    summary_data |> dplyr::group_by(.data[[adm_var]], .data[[x_var]])
+  }
+
+  summary_data <- summary_data |>
+    dplyr::summarise(
+      n_violations = sum(violation, na.rm = TRUE),
+      .groups = "drop"
+    ) |>
+    dplyr::rename(admin = dplyr::all_of(adm_var))
+
+  if (!is.null(x_var)) {
+    summary_data <- summary_data |>
+      dplyr::rename(time_var = dplyr::all_of(x_var))
+  }
+
+  # Join shapefile -------------------------------------------------------------
+  merged <- shapefile |>
+    dplyr::left_join(
+      summary_data,
+      by = dplyr::join_by(!!rlang::sym(adm_var) == admin)
+    )
+
+  if (!is.null(x_var)) {
+    merged <- merged |> dplyr::mutate(time_fac = forcats::as_factor(time_var))
+  }
+
+  total_violations <- sum(summary_data$n_violations, na.rm = TRUE)
+
+  # Translations ---------------------------------------------------------------
+  titles <- list(
+    en = "Consistency violations at the subnational level",
+    fr = "Violations de coh\u00e9rence au niveau sous-national",
+    pt = "Viola\u00e7\u00f5es de consist\u00eancia no n\u00edvel subnacional"
+  )
+  subtitle_templates <- list(
+    en = paste0(
+      "There are <b>{n}</b> more <b>{input_var}</b> observations",
+      " than <b>{output_var}</b>"
+    ),
+    fr = paste0(
+      "Il y a <b>{n}</b> observations de <b>{input_var}</b> de plus que ",
+      "<b>{output_var}</b>"
+    ),
+    pt = paste0(
+      "H\u00e1 <b>{n}</b> observa\u00e7\u00f5es de ",
+      "<b>{input_var}</b> a mais que <b>{output_var}</b>"
+    )
+  )
+  legend_labels <- list(
+    en = "Number of logical inconsistencies",
+    fr = "Nombre d'incoh\u00e9rences logiques",
+    pt = "N\u00famero de inconsist\u00eancias l\u00f3gicas"
+  )
+
+  subtitle_text <- glue::glue(
+    subtitle_templates[[language]],
+    n = sntutils::big_mark(total_violations),
+    input_var = input_var,
+    output_var = output_var
+  )
+
+  # Palettes -------------------------------------------------------------------
+  color_pal <- grDevices::colorRampPalette(
+    c("#FC9272", "#FB6A4A", "#EF3B2C", "#CB181D", "#99000D")
+  )(9)
+
+  merged <- merged |>
+    dplyr::mutate(
+      viol_cat = dplyr::case_when(
+        is.na(n_violations) ~ NA_character_,
+        n_violations == 0 ~ "zero",
+        n_violations > 0 ~ "nonzero"
+      ),
+      viol_val = dplyr::if_else(
+        n_violations > 0,
+        as.numeric(n_violations),
+        NA_real_
+      )
+    )
+
+  # Breaks ---------------------------------------------------------------------
+  nonzero_values <- merged$viol_val[!is.na(merged$viol_val)]
+  if (length(nonzero_values) > 0) {
+    min_nonzero <- floor(min(nonzero_values))
+    max_nonzero <- ceiling(max(nonzero_values))
+    legend_breaks <- if (max_nonzero - min_nonzero <= 10) {
+      seq(min_nonzero, max_nonzero, 2)
+    } else {
+      pretty(c(min_nonzero, max_nonzero), n = 5)
+    }
+  } else {
+    legend_breaks <- NULL
+  }
+
+  has_ggnewscale <- requireNamespace("ggnewscale", quietly = TRUE)
+
+  # Plot -----------------------------------------------------------------------
+  if (has_ggnewscale) {
+    p <- ggplot2::ggplot() +
+      # ZERO VIOLATIONS LAYER
+      ggplot2::geom_sf(
+        data = merged |> dplyr::filter(viol_cat == "zero"),
+        ggplot2::aes(fill = "0"),
+        color = "white",
+        size = 0.2
+      ) +
+      ggplot2::scale_fill_manual(
+        values = c("0" = "#52AAC2"),
+        breaks = "0",
+        name = "",
+        guide = ggplot2::guide_legend(
+          order = 1,
+          title.position = "top",
+          label.position = "bottom",
+          direction = "horizontal",
+          keywidth = ggplot2::unit(0.8, "cm"),
+          keyheight = ggplot2::unit(0.4, "cm")
+        )
+      ) +
+      ggnewscale::new_scale_fill() +
+      # NONZERO VIOLATIONS LAYER
+      ggplot2::geom_sf(
+        data = merged |> dplyr::filter(viol_cat == "nonzero"),
+        ggplot2::aes(fill = viol_val),
+        color = "white",
+        size = 0.2
+      ) +
+      ggplot2::scale_fill_gradientn(
+        colours = color_pal,
+        name = legend_labels[[language]],
+        na.value = "grey90",
+        breaks = legend_breaks,
+        labels = function(x) format(round(x), big.mark = ","),
+        guide = ggplot2::guide_colorbar(
+          order = 2,
+          title.position = "top",
+          label.position = "bottom",
+          direction = "horizontal",
+          barheight = ggplot2::unit(0.4, "cm"),
+          barwidth = ggplot2::unit(6, "cm")
+        )
+      )
+  } else {
+    # Fallback if ggnewscale missing
+    p <- ggplot2::ggplot() +
+      ggplot2::geom_sf(
+        data = merged |> dplyr::filter(viol_cat == "zero"),
+        fill = "#52AAC2",
+        color = "white",
+        size = 0.2
+      ) +
+      ggplot2::geom_sf(
+        data = merged |> dplyr::filter(viol_cat == "nonzero"),
+        ggplot2::aes(fill = viol_val),
+        color = "white",
+        size = 0.2
+      ) +
+      ggplot2::scale_fill_gradientn(
+        colours = color_pal,
+        name = legend_labels[[language]],
+        na.value = "grey90",
+        breaks = legend_breaks,
+        labels = function(x) format(round(x), big.mark = ",")
+      )
+  }
+
+  ensure_packages("ggtext")
+
+  # Theme ----------------------------------------------------------------------
+  p <- p +
+    ggplot2::labs(
+      title = titles[[language]],
+      subtitle = subtitle_text
+    ) +
+    ggplot2::theme_minimal() +
+    ggplot2::theme(
+      plot.title = ggplot2::element_text(size = 13, face = "bold"),
+      plot.subtitle = ggtext::element_markdown(
+        size = 10,
+        margin = ggplot2::margin(b = 10)
+      ),
+      legend.title = ggplot2::element_text(
+        size = 12,
+        face = "bold",
+        margin = ggplot2::margin(l = -30, b = 4)
+        # hjust = -0.7,
+        # vjust = 0
+      ),
+      legend.position = "bottom",
+      legend.justification = c(0, 0.5),
+      legend.direction = "horizontal",
+      legend.box = "horizontal",
+      legend.box.just = "center",
+      legend.box.spacing = ggplot2::unit(0.5, "cm"),
+      legend.spacing.x = ggplot2::unit(0, "cm"),
+      legend.margin = ggplot2::margin(t = 0, l = 0.3, unit = "cm"),
+      axis.text = ggplot2::element_blank(),
+      axis.title = ggplot2::element_blank(),
+      axis.ticks = ggplot2::element_blank(),
+      panel.grid.major = ggplot2::element_blank(),
+      panel.grid.minor = ggplot2::element_blank(),
+      strip.text = ggplot2::element_text(face = "bold")
+    )
+
+  # Facet if time variable provided --------------------------------------------
+    if (!is.null(x_var)) {
+    p <- p +
+      ggplot2::facet_wrap(
+        stats::as.formula("~ time_fac"),
+        ncol = facet_ncol
+      )
+    }
+
+  # Saving ----------------------------------------------------------------------
+  if (!is.null(plot_path)) {
+    is_directory <- !grepl("\\.png$", plot_path, ignore.case = TRUE)
+
+    if (is_directory) {
+      if (!dir.exists(plot_path)) {
+        dir.create(plot_path, recursive = TRUE, showWarnings = FALSE)
+      }
+
+      filename_parts <- list(
+        en = "consistency_map",
+        fr = "carte_violations_coherence",
+        pt = "mapa_violacoes_consistencia"
+      )
+
+      base_name <- paste0(
+        filename_parts[[language]],
+        "_",
+        input_var,
+        "_vs_",
+        output_var,
+        if (!is.null(x_var)) paste0("_by_", x_var) else "",
+        "_v",
+        format(Sys.Date(), "%Y-%m-%d"),
+        ".png"
+      )
+
+      full_path <- file.path(plot_path, base_name)
+    } else {
+      full_path <- plot_path
+      plot_dir <- dirname(full_path)
+      if (!dir.exists(plot_dir)) {
+        dir.create(plot_dir, recursive = TRUE, showWarnings = FALSE)
+      }
+    }
+
+    if (is.null(plot_width)) {
+      plot_width <- 14
+    }
+    if (is.null(plot_height)) {
+      plot_height <- 10
+    }
+
+    ggplot2::ggsave(
+      filename = full_path,
+      plot = p,
+      width = plot_width,
+      height = plot_height,
+      dpi = plot_dpi,
+      scale = plot_scale
+    )
+
+    if (compress_image) {
+      compress_png(
+        path = full_path,
+        png_overwrite = image_overwrite,
+        speed = compression_speed,
+        verbosity = compression_verbose
+      )
+    }
+
+    cli::cli_alert_success("Plot saved to: {full_path}")
+  }
+
+  # Return ---------------------------------------------------------------------
+  if (show_plot) return(p) else return(invisible(p))
+}
