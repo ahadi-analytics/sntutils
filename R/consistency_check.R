@@ -880,13 +880,11 @@ consistency_map <- function(
   # Breaks ---------------------------------------------------------------------
   nonzero_values <- merged$viol_val[!is.na(merged$viol_val)]
   if (length(nonzero_values) > 0) {
-    min_nonzero <- floor(min(nonzero_values))
-    max_nonzero <- ceiling(max(nonzero_values))
-    legend_breaks <- if (max_nonzero - min_nonzero <= 10) {
-      seq(min_nonzero, max_nonzero, 2)
-    } else {
-      pretty(c(min_nonzero, max_nonzero), n = 5)
-    }
+        min_nonzero <- 1
+        max_nonzero <- ceiling(max(nonzero_values))
+        legend_breaks <- pretty(c(min_nonzero, max_nonzero), n = 5)
+        legend_breaks <- legend_breaks[legend_breaks == round(legend_breaks)]
+        legend_breaks <- legend_breaks[legend_breaks >= 1]
   } else {
     legend_breaks <- NULL
   }
