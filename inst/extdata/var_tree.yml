@@ -37,6 +37,12 @@ metadata:
     label_fr: "Niveau administratif 3 (aire de santé)"
     label_pt: "Nível administrativo 3 (área sanitária)"
 
+  location:
+    snt_var_name: location
+    label_en: "Location (adm1 and adm2 combined)"
+    label_fr: "Localisation (adm1 et adm2 combinés)"
+    label_pt: "Localização (adm1 e adm2 combinados)"
+
   catchment:
     snt_var_name: catchment
     label_en: "Catchment area name"
