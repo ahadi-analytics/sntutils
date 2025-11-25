@@ -191,6 +191,7 @@ globalVariables(
     "yearmon",
     "has_activeness_data",
     "periods_with_data",
+    "viol_val",
     "total_periods",
     "activeness_category",
     "reporting_rate",
@@ -203,6 +204,7 @@ globalVariables(
     "last_date",
     "last_reporting_date",
     "months_since_last_report",
-    ".has_any_indicator"
+    ".has_any_indicator",
+    "admin", "n_violations", "time_var", "viol_cat", "violation"
   )
 )
