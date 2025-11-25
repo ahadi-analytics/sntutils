@@ -370,20 +370,30 @@ consistency_check <- function(data,
   }
 
   # Create the plot
-  plot <-
-    results |>
+  # Separate consistent and inconsistent points for proper layering
+  plot_data <- results |>
     dplyr::filter(!is.na(outputs) & !is.na(inputs)) |>
-    ggplot2::ggplot(ggplot2::aes(x = outputs, y = inputs)) +
+    dplyr::mutate(is_inconsistent = outputs > inputs)
+
+  plot <-
+    ggplot2::ggplot(plot_data, ggplot2::aes(x = outputs, y = inputs)) +
+    # Layer 1: Draw consistent points (blue) first
     ggplot2::geom_point(
-      ggplot2::aes(color = outputs > inputs),
+      data = dplyr::filter(plot_data, !is_inconsistent),
+      color = "#1e81b0",
       shape = 16,
       size = 4,
-      show.legend = FALSE,
       alpha = .5,
       na.rm = TRUE
     ) +
-    ggplot2::scale_color_manual(
-      values = c("TRUE" = "red", "FALSE" = "#1e81b0")
+    # Layer 2: Draw inconsistent points (red) on top
+    ggplot2::geom_point(
+      data = dplyr::filter(plot_data, is_inconsistent),
+      color = "red",
+      shape = 16,
+      size = 4,
+      alpha = .5,
+      na.rm = TRUE
     ) +
     ggplot2::geom_line(
       data = diagonal_data,
@@ -435,6 +445,7 @@ consistency_check <- function(data,
       legend.position = "top",
       plot.title = ggtext::element_markdown(),
       plot.caption = ggplot2::element_text(size = 8),
+      strip.text = ggplot2::element_text(face = "bold"),
       panel.grid.minor = ggplot2::element_blank(),
       panel.grid.major = ggplot2::element_line(
         color = "grey90",
