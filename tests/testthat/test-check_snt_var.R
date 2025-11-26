@@ -18,6 +18,7 @@ testthat::test_that("check_snt_var correctly parses and labels SNT variables", {
     res,
     c(
       "var_name",
+      "original_input",
       "domain",
       "test_type",
       "service_level",
@@ -72,4 +73,22 @@ testthat::test_that("check_snt_var correctly parses and labels SNT variables", {
     "5 years and above"
   ))
   testthat::expect_false(stringr::str_detect(res_partial$label_en, "\\[")) # no [sector] part
+})
+
+testthat::test_that("check_snt_var fuzzy matches underscore variations", {
+  testthat::skip_if_not_installed("yaml")
+
+  # Test fuzzy matching for underscore variations
+  res_fuzzy <- sntutils::check_snt_var("all_adm", return = TRUE)
+  testthat::expect_equal(res_fuzzy$var_name, "alladm")
+  testthat::expect_equal(res_fuzzy$original_input, "all_adm")
+  testthat::expect_true(stringr::str_detect(
+    res_fuzzy$label_en,
+    "All-cause inpatient admissions"
+  ))
+
+  # Exact match should not trigger fuzzy matching
+  res_exact <- sntutils::check_snt_var("alladm", return = TRUE)
+  testthat::expect_equal(res_exact$var_name, "alladm")
+  testthat::expect_equal(res_exact$original_input, "alladm")
 })

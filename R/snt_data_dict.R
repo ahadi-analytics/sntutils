@@ -241,13 +241,72 @@ check_snt_var <- function(
   label_en <- NA_character_
   label_fr <- NA_character_
   label_pt <- NA_character_
+  matched_var_name <- var_name
 
   if (!is.null(flat_tree)) {
+    # try exact match first
     match_row <- dplyr::filter(flat_tree, .data$snt_var_name == var_name)
-    if (nrow(match_row) == 1) {
-      label_en <- match_row$label_en
-      label_fr <- match_row$label_fr
-      label_pt <- match_row$label_pt
+
+    # if no exact match, try fuzzy matching
+    if (nrow(match_row) == 0) {
+      # normalize both the input and tree names (remove underscores, lowercase)
+      normalized_input <- base::tolower(base::gsub("_", "", var_name))
+      flat_tree_normalized <- flat_tree |>
+        dplyr::mutate(
+          normalized = base::tolower(base::gsub("_", "", .data$snt_var_name))
+        )
+
+      # compute string distances on normalized names
+      distances <- utils::adist(
+        normalized_input,
+        flat_tree_normalized$normalized
+      )[1, ]
+
+      # find minimum distance
+      min_dist <- base::min(distances)
+
+      # accept fuzzy matches with distance <= 1 on normalized names
+      # (handles underscore variations and single-character typos)
+      if (min_dist <= 1) {
+        best_idx <- base::which.min(distances)
+        match_row <- flat_tree_normalized[best_idx, ]
+        matched_var_name <- match_row$snt_var_name
+
+        cli::cli_alert_info(
+          "No exact match for {.val {var_name}}; using fuzzy match: {.val {matched_var_name}}"
+        )
+
+        # re-tokenize using the matched variable name
+        tokens <- unlist(strsplit(matched_var_name, "_"))
+        components <- list(
+          domain = tokens[[1]],
+          test_type = NA_character_,
+          service_level = NA_character_,
+          age_group = NA_character_,
+          population_group = NA_character_,
+          sector = NA_character_
+        )
+
+        for (t in tokens[-1]) {
+          if (t %in% test_types) {
+            components$test_type <- t
+          } else if (t %in% service_levels) {
+            components$service_level <- t
+          } else if (t %in% age_groups) {
+            components$age_group <- t
+          } else if (t %in% pop_groups) {
+            components$population_group <- t
+          } else if (t %in% sectors) {
+            components$sector <- t
+          }
+        }
+      }
+    }
+
+    if (nrow(match_row) >= 1) {
+      label_en <- match_row$label_en[1]
+      label_fr <- match_row$label_fr[1]
+      label_pt <- match_row$label_pt[1]
     }
   }
 
@@ -379,7 +438,10 @@ check_snt_var <- function(
   # -- CLI Output (only if return is FALSE) ----------------------------------
   if (!return) {
     cli::cli_h1("Detected variable structure")
-    cli::cli_text("Variable: {.val {var_name}}")
+    cli::cli_text("Variable: {.val {matched_var_name}}")
+    if (matched_var_name != var_name) {
+      cli::cli_text("Original input: {.val {var_name}}")
+    }
     cli::cli_text("Label (EN): {.emph {label_en}}")
     cli::cli_text("Label (FR): {.emph {label_fr}}")
     cli::cli_text("Label (PT): {.emph {label_pt}}")
@@ -397,8 +459,12 @@ check_snt_var <- function(
     cli::cli_end()
   }
 
+  # save original input before creating tibble
+  original_var_name <- var_name
+
   out <- tibble::tibble(
-    var_name = var_name,
+    var_name = matched_var_name,
+    original_input = original_var_name,
     domain = components$domain,
     test_type = components$test_type,
     service_level = components$service_level,
