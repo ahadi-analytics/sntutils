@@ -503,13 +503,56 @@ validate_routine_hf_data <- function(
 #'
 #' @keywords internal
 #' @noRd
+#' Build default or user-specified consistency pairs
+#'
+#' @keywords internal
+#' @noRd
 .build_consistency_pairs <- function(data, consistency_pairs) {
-  # if user supplied, filter to present columns
+  # if user supplied, normalise then filter to present columns
   if (!base::is.null(consistency_pairs)) {
+    # case 1: user passed list(input = <vec>, output = <vec>)
+    # and not already a list-of-lists
+    if (
+      !base::is.null(consistency_pairs$input) &&
+        !base::is.null(consistency_pairs$output) &&
+        !base::is.list(consistency_pairs$input) &&
+        !base::is.list(consistency_pairs$output)
+    ) {
+      n_in <- base::length(consistency_pairs$input)
+      n_out <- base::length(consistency_pairs$output)
+
+      if (n_in != n_out) {
+        cli::cli_abort(
+          "`consistency_pairs$input` and `consistency_pairs$output` " |>
+            base::paste("must have the same length.")
+        )
+      }
+
+      # convert to internal list-of-lists format
+      cp <- base::Map(
+        f = function(i, o) base::list(input = i, output = o),
+        consistency_pairs$input,
+        consistency_pairs$output
+      )
+    } else {
+      # case 2: already a list of list(input=, output=)
+      cp <- consistency_pairs
+    }
+
     keep <- base::Filter(
-      function(p) p$input %in% names(data) && p$output %in% names(data),
-      consistency_pairs
+      f = function(p) {
+        # be defensive: skip anything that is not a list with both fields
+        if (!base::is.list(p)) {
+          return(FALSE)
+        }
+        if (base::is.null(p$input) || base::is.null(p$output)) {
+          return(FALSE)
+        }
+        p$input %in% base::names(data) && p$output %in% base::names(data)
+      },
+      x = cp
     )
+
     return(keep)
   }
 
@@ -528,30 +571,40 @@ validate_routine_hf_data <- function(
     list(input = "test_rdt", output = "conf_rdt")
   )
 
-  # disaggregation suffixes
   suf <- c(
-    "_u5", "_ov5", "_preg",
-    "_mic_u5", "_mic_ov5", "_mic_preg",
-    "_rdt_u5", "_rdt_ov5", "_rdt_preg",
-    "_preg_u3m", "_preg_ov3m"
+    "_u5",
+    "_ov5",
+    "_preg",
+    "_mic_u5",
+    "_mic_ov5",
+    "_mic_preg",
+    "_rdt_u5",
+    "_rdt_ov5",
+    "_rdt_preg",
+    "_preg_u3m",
+    "_preg_ov3m"
   )
 
-  # expand disaggregations if both sides exist
   pairs <- base_rules
+
   for (r in base_rules) {
     for (s in suf) {
       i <- base::paste0(r$input, s)
       o <- base::paste0(r$output, s)
-      if (i %in% names(data) && o %in% names(data)) {
-        pairs[[length(pairs) + 1]] <- list(input = i, output = o)
+      if (i %in% base::names(data) && o %in% base::names(data)) {
+        pairs[[base::length(pairs) + 1L]] <- base::list(
+          input = i,
+          output = o
+        )
       }
     }
   }
 
-  # filter to existing columns
   base::Filter(
-    function(p) p$input %in% names(data) && p$output %in% names(data),
-    pairs
+    f = function(p) {
+      p$input %in% base::names(data) && p$output %in% base::names(data)
+    },
+    x = pairs
   )
 }
 
@@ -964,8 +1017,8 @@ validate_routine_hf_data <- function(
           dplyr::mutate(indicator_source = ind) |>
           # slim down to essential columns
           dplyr::select(dplyr::any_of(c(
-            id_col, "record_id", date_col, "date", 
-            "adm0", "adm1", "adm2", "adm3", 
+            id_col, "record_id", date_col, "date",
+            "adm0", "adm1", "adm2", "adm3",
             "value", "indicator_source",
             flags
           ))) |>
