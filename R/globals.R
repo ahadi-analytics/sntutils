@@ -179,6 +179,7 @@ globalVariables(
     "path",
     "match_pct",
     "method_rank",
+    "facet_value",
     "prev_pop",
     "prop",
     "periods_active",
