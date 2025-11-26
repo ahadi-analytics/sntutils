@@ -28,6 +28,8 @@ outlier_plot(
   outbreak_min_run = 2,
   outbreak_prop_tolerance = 0.9,
   outbreak_max_gap = 12,
+  show_outbreaks = FALSE,
+  return_plots = "all",
   year_breaks = 2,
   target_language = "en",
   source_language = "en",
@@ -133,6 +135,21 @@ between outliers that can still be considered part of the same outbreak
 of length 3, rather than separate incidents. Set to \code{0} for strict
 consecutive-only outbreaks. Useful for real-world data with reporting gaps.}
 
+\item{show_outbreaks}{Logical. When \code{TRUE}, displays outbreaks separately
+from outliers in the plot using a distinct color (#52AAC2 teal).
+The subtitle will show separate counts for outliers (red) and outbreaks
+(teal). When \code{FALSE} (default), outbreaks and outliers are shown
+together in red. Only relevant when \code{classify_outbreaks = TRUE}.}
+
+\item{return_plots}{Character vector specifying which plots to return.
+Can be any subset of the methods being computed: "iqr", "median",
+"mean", "consensus", or "all" (default). For example, if
+\code{methods = c("iqr", "median", "consensus")} and
+\code{return_plots = c("iqr", "consensus")}, only the IQR and consensus
+plots will be returned. All computed plots are still created and
+saved (if \code{plot_path} is specified), but only the requested ones
+are returned.}
+
 \item{year_breaks}{Numeric value specifying the interval for x-axis breaks.
 Default \code{2}. For example, \code{2} shows every second tick and \code{3} every third.}
 
@@ -193,10 +210,13 @@ all parameters from the detection function for seamless integration.
 \details{
 The function creates scatter plots showing outliers detected using the
 specified statistical methods. Each method produces a separate plot with
-points colored by outlier status (red for outliers, grey for normal values).
-For consensus plots, the caption shows the consensus rule used.
-The plots are faceted by administrative levels and include summary
-statistics in the subtitle.
+points colored by outlier status. By default, both outliers and outbreaks
+are shown in red, with normal values in grey. When \code{show_outbreaks = TRUE},
+outbreaks are displayed in teal (#52AAC2) to distinguish them from isolated
+outliers (red). For consensus plots, the caption shows the consensus rule
+used. The plots are faceted by administrative levels and include summary
+statistics in the subtitle. Facet labels longer than 15 characters are
+automatically truncated with "..." to prevent overcrowding.
 }
 \examples{
 \dontrun{
@@ -251,5 +271,28 @@ district_plots <- outlier_plot(
   admin_level = c("adm1", "adm2"),  # Plot/facet at district level
   methods = c("consensus")
 )
+
+# Show outbreaks separately in teal color
+outbreak_plot <- outlier_plot(
+  data = malaria_data,
+  column = "confirmed_cases",
+  date = "date",
+  record_id = "facility_id",
+  methods = "consensus",
+  classify_outbreaks = TRUE,
+  show_outbreaks = TRUE  # Outbreaks shown in teal, outliers in red
+)
+
+# Compute multiple methods but return only specific plots
+selected <- outlier_plot(
+  data = malaria_data,
+  column = "confirmed_cases",
+  date = "date",
+  record_id = "facility_id",
+  methods = c("iqr", "median", "mean", "consensus"),
+  return_plots = c("iqr", "consensus"),  # Only return these two
+  plot_path = "outliers.png"  # All methods still saved to disk
+)
+# Returns list with only $iqr and $consensus plots
 }
 }
