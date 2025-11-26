@@ -1307,6 +1307,19 @@ prepared <- data |>
 #'   Deviation), "mean" (Mean +/- SD), and/or "consensus".
 #'   Default is `c("iqr", "median", "mean", "consensus")`.
 #'   For consensus, at least two other methods must be selected.
+#' @param show_outbreaks Logical. When `TRUE`, displays outbreaks separately
+#'   from outliers in the plot using a distinct color (#52AAC2 teal).
+#'   The subtitle will show separate counts for outliers (red) and outbreaks
+#'   (teal). When `FALSE` (default), outbreaks and outliers are shown
+#'   together in red. Only relevant when `classify_outbreaks = TRUE`.
+#' @param return_plots Character vector specifying which plots to return.
+#'   Can be any subset of the methods being computed: "iqr", "median",
+#'   "mean", "consensus", or "all" (default). For example, if
+#'   `methods = c("iqr", "median", "consensus")` and
+#'   `return_plots = c("iqr", "consensus")`, only the IQR and consensus
+#'   plots will be returned. All computed plots are still created and
+#'   saved (if `plot_path` is specified), but only the requested ones
+#'   are returned.
 #' @param year_breaks Numeric value specifying the interval for x-axis breaks.
 #'   Default `2`. For example, `2` shows every second tick and `3` every third.
 #' @param verbose Logical. When `TRUE`, prints an informative summary describing
@@ -1346,10 +1359,13 @@ prepared <- data |>
 #' @details
 #' The function creates scatter plots showing outliers detected using the
 #' specified statistical methods. Each method produces a separate plot with
-#' points colored by outlier status (red for outliers, grey for normal values).
-#' For consensus plots, the caption shows the consensus rule used.
-#' The plots are faceted by administrative levels and include summary
-#' statistics in the subtitle.
+#' points colored by outlier status. By default, both outliers and outbreaks
+#' are shown in red, with normal values in grey. When `show_outbreaks = TRUE`,
+#' outbreaks are displayed in teal (#52AAC2) to distinguish them from isolated
+#' outliers (red). For consensus plots, the caption shows the consensus rule
+#' used. The plots are faceted by administrative levels and include summary
+#' statistics in the subtitle. Facet labels longer than 15 characters are
+#' automatically truncated with "..." to prevent overcrowding.
 #'
 #' @examples
 #' \dontrun{
@@ -1404,6 +1420,29 @@ prepared <- data |>
 #'   admin_level = c("adm1", "adm2"),  # Plot/facet at district level
 #'   methods = c("consensus")
 #' )
+#'
+#' # Show outbreaks separately in teal color
+#' outbreak_plot <- outlier_plot(
+#'   data = malaria_data,
+#'   column = "confirmed_cases",
+#'   date = "date",
+#'   record_id = "facility_id",
+#'   methods = "consensus",
+#'   classify_outbreaks = TRUE,
+#'   show_outbreaks = TRUE  # Outbreaks shown in teal, outliers in red
+#' )
+#'
+#' # Compute multiple methods but return only specific plots
+#' selected <- outlier_plot(
+#'   data = malaria_data,
+#'   column = "confirmed_cases",
+#'   date = "date",
+#'   record_id = "facility_id",
+#'   methods = c("iqr", "median", "mean", "consensus"),
+#'   return_plots = c("iqr", "consensus"),  # Only return these two
+#'   plot_path = "outliers.png"  # All methods still saved to disk
+#' )
+#' # Returns list with only $iqr and $consensus plots
 #' }
 #' @export
 outlier_plot <- function(
@@ -1430,6 +1469,8 @@ outlier_plot <- function(
     outbreak_min_run = 2,
     outbreak_prop_tolerance = 0.9,
     outbreak_max_gap = 12,
+    show_outbreaks = FALSE,
+    return_plots = "all",
     year_breaks = 2,
     target_language = "en",
     source_language = "en",
@@ -1454,6 +1495,27 @@ outlier_plot <- function(
   # Validate methods selection
   valid_methods <- c("iqr", "median", "mean", "consensus")
   methods <- match.arg(methods, valid_methods, several.ok = TRUE)
+
+  # Validate return_plots parameter
+  if (length(return_plots) == 1 && return_plots == "all") {
+    return_plots <- methods
+  } else {
+    invalid_plots <- setdiff(return_plots, valid_methods)
+    if (length(invalid_plots) > 0) {
+      cli::cli_abort(c(
+        "Invalid plot names in return_plots: {.val {invalid_plots}}",
+        "i" = "Valid options: {.val {valid_methods}} or 'all'"
+      ))
+    }
+    requested_not_computed <- setdiff(return_plots, methods)
+    if (length(requested_not_computed) > 0) {
+      cli::cli_abort(c(
+        "Requested plots not in methods: {.val {requested_not_computed}}",
+        "i" = "Can only return plots that are computed",
+        "i" = "Current methods: {.val {methods}}"
+      ))
+    }
+  }
 
   # Handle backward compatibility and new parameter structure
   # spatial_level replaces old admin_level parameter for detection granularity
@@ -1567,26 +1629,34 @@ outlier_plot <- function(
       "consensus" = "outlier_flag_consensus"
     )
 
-    # Filter data for this method and add binary flag
+    # Filter data for this method and add flag
     plot_data <- plot_data_base |>
       dplyr::filter(
         !is.na(.data[[flag_column]]),
         .data[[flag_column]] != "insufficient_evidence"
       ) |>
       dplyr::mutate(
-        # Convert to binary TRUE/FALSE for outlier status
-        .binary_flag = dplyr::case_when(
-          .data[[flag_column]] %in% c("outlier", "outbreak") ~ "TRUE",
-          TRUE ~ "FALSE"
-        ),
-        # Different alpha values: normal points more transparent
+        # Create flag that distinguishes outbreaks when show_outbreaks = TRUE
+        .plot_flag = if (show_outbreaks) {
+          dplyr::case_when(
+            .data[[flag_column]] == "outbreak" ~ "outbreak",
+            .data[[flag_column]] == "outlier" ~ "outlier",
+            TRUE ~ "normal"
+          )
+        } else {
+          dplyr::case_when(
+            .data[[flag_column]] %in% c("outlier", "outbreak") ~ "outlier",
+            TRUE ~ "normal"
+          )
+        },
+        # Different alpha values: flagged points more opaque
         .alpha_val = dplyr::case_when(
-          .data[[flag_column]] %in% c("outlier", "outbreak") ~ 0.9,  # Outliers more opaque
-          TRUE ~ 0.5  # Normal points more transparent
+          .data[[flag_column]] %in% c("outlier", "outbreak") ~ 0.9,
+          TRUE ~ 0.5
         )
       ) |>
-      # Sort so outliers (TRUE) are plotted on top of normal points (FALSE)
-      dplyr::arrange(.binary_flag)
+      # Sort so flagged points are plotted on top
+      dplyr::arrange(.plot_flag)
 
 
     # Create summary for facet labels
@@ -1619,8 +1689,14 @@ outlier_plot <- function(
     # Create labels without bold formatting
     percent_summary <- percent_summary |>
       dplyr::mutate(
+        # Truncate facet value to 15 characters
+        facet_value_display = ifelse(
+          nchar(as.character(facet_value)) > 15,
+          paste0(substr(as.character(facet_value), 1, 15), "..."),
+          as.character(facet_value)
+        ),
         label = glue::glue(
-          "{facet_value}\n {pct_outlier}% ({n_outlier_fmt}/{n_total_fmt})"
+          "{facet_value_display}\n {pct_outlier}% ({n_outlier_fmt}/{n_total_fmt})"
         )
       )
 
@@ -1629,10 +1705,14 @@ outlier_plot <- function(
       percent_summary[[facet_column]]
     )
 
+    # Calculate counts
     outliers_n <- sntutils::big_mark(
       sum(plot_data[[flag_column]] == "outlier", na.rm = TRUE)
     )
-    total_outliers <- sntutils::big_mark(nrow(plot_data))
+    outbreaks_n <- sntutils::big_mark(
+      sum(plot_data[[flag_column]] == "outbreak", na.rm = TRUE)
+    )
+    total_records <- sntutils::big_mark(nrow(plot_data))
 
     # Method display names
     method_display <- switch(method,
@@ -1713,9 +1793,15 @@ outlier_plot <- function(
         "{method_display_translated}: {outlier_detection_text} <b>{column}</b>"
       )
 
-      # Translate only the word "outliers" for subtitle
+      # Translate words for subtitle
       outliers_word <- translate_text(
         "outliers",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      outbreaks_word <- translate_text(
+        "outbreaks",
         target_language = target_language,
         source_language = source_language,
         cache_path = lang_cache_path
@@ -1732,11 +1818,23 @@ outlier_plot <- function(
         source_language = source_language,
         cache_path = lang_cache_path
       )
-      subtitle_text <- glue::glue(
-        "{there_were} {outliers_n}/{total_outliers}",
-        " <b style='color:red;font-weight:bold'>",
-        "{outliers_word}</b> {detected_word}"
-      )
+
+      # Build subtitle based on show_outbreaks parameter
+      if (show_outbreaks) {
+        subtitle_text <- glue::glue(
+          "{there_were} {outliers_n}/{total_records}",
+          " <b style='color:red;font-weight:bold'>{outliers_word}</b>",
+          " and {outbreaks_n}/{total_records}",
+          " <b style='color:#52AAC2;font-weight:bold'>{outbreaks_word}</b>",
+          " {detected_word}"
+        )
+      } else {
+        subtitle_text <- glue::glue(
+          "{there_were} {outliers_n}/{total_records}",
+          " <b style='color:red;font-weight:bold'>",
+          "{outliers_word}</b> {detected_word}"
+        )
+      }
 
       x_label <- translate_text(
         "Date",
@@ -1755,10 +1853,22 @@ outlier_plot <- function(
       title_text <- glue::glue(
         "{method_display}: Outlier Detection for <b>{column}</b>"
       )
-      subtitle_text <- glue::glue(
-        "There were {outliers_n}/{total_outliers}",
-        " <b style='color:red;font-weight:bold'>outliers</b> detected"
-      )
+
+      # Build subtitle based on show_outbreaks parameter
+      if (show_outbreaks) {
+        subtitle_text <- glue::glue(
+          "There were {outliers_n}/{total_records}",
+          " <b style='color:red;font-weight:bold'>outliers</b>",
+          " and {outbreaks_n}/{total_records}",
+          " <b style='color:#52AAC2;font-weight:bold'>outbreaks</b> detected"
+        )
+      } else {
+        subtitle_text <- glue::glue(
+          "There were {outliers_n}/{total_records}",
+          " <b style='color:red;font-weight:bold'>outliers</b> detected"
+        )
+      }
+
       x_label <- "Date"
       y_label <- "Value"
     }
@@ -1812,13 +1922,17 @@ outlier_plot <- function(
         ggplot2::aes(
           x = date_for_plot,
           y = value,
-          color = .binary_flag,
+          color = .plot_flag,
           alpha = .alpha_val
         ),
         size = 2
       ) +
       ggplot2::scale_color_manual(
-        values = c("TRUE" = "red", "FALSE" = "grey")
+        values = if (show_outbreaks) {
+          c("outbreak" = "#52AAC2", "outlier" = "red", "normal" = "grey")
+        } else {
+          c("outlier" = "red", "normal" = "grey")
+        }
       ) +
       ggplot2::scale_alpha_identity() +  # Use alpha values directly
       ggplot2::labs(
@@ -1847,7 +1961,8 @@ outlier_plot <- function(
       ggplot2::scale_y_continuous(
         labels = scales::label_number(
           scale_cut = scales::cut_short_scale()
-        )
+        ),
+        expand = ggplot2::expansion(mult = c(0.02, 0.1))
       ) +
       ggplot2::theme_minimal() +
       ggplot2::theme(
@@ -1875,7 +1990,8 @@ outlier_plot <- function(
         panel.grid.major.y = ggplot2::element_line(
           color = "grey90",
           linewidth = 0.5
-        )
+        ),
+        panel.border = ggplot2::element_rect(fill = NA, linewidth = 0.4)
       )
 
     # Store plot in list
@@ -1908,17 +2024,20 @@ outlier_plot <- function(
 
   }  # End of methods loop
 
+  # Filter plots based on return_plots parameter
+  filtered_plot_list <- plot_list[return_plots]
+
   # Return single plot or list of plots
-  if (length(methods) == 1) {
+  if (length(filtered_plot_list) == 1) {
     if (!show_plot) {
-      return(invisible(plot_list[[1]]))
+      return(invisible(filtered_plot_list[[1]]))
     }
-    return(plot_list[[1]])
+    return(filtered_plot_list[[1]])
   } else {
     if (!show_plot) {
-      return(invisible(plot_list))
+      return(invisible(filtered_plot_list))
     }
-    return(plot_list)
+    return(filtered_plot_list)
   }
 }
 
