@@ -237,6 +237,18 @@ metadata:
     label_fr: "Date du premier rapport"
     label_pt: "Data do primeiro relatório"
 
+  first_reporting_date:
+    snt_var_name: first_reporting_date
+    label_en: "Date when health facility first started reporting"
+    label_fr: "Date à laquelle l'établissement de santé a commencé à rapporter"
+    label_pt: "Data em que a unidade de saúde começou a reportar"
+
+  last_reporting_date:
+    snt_var_name: last_reporting_date
+    label_en: "Date when health facility last reported"
+    label_fr: "Date du dernier rapport de l'établissement de santé"
+    label_pt: "Data do último relatório da unidade de saúde"
+
 population:
   _description: "Population denominators and target group estimates."
   label_en: "Population denominators"
@@ -1284,6 +1296,21 @@ dhs_itn:
   label_en: "DHS ITN indicators"
   label_fr: "Indicateurs de MII DHS"
   label_pt: "Indicadores de MILD DHS"
+
+  # Dynamic age group support
+  _dynamic_age_patterns:
+    _note: "Variables with custom age groups (e.g., dhs_itn_use_0_5, dhs_itn_access_15_49) are auto-recognized and labeled by check_snt_var()"
+    _supported_metrics:
+      - "dhs_itn_use_<age>"
+      - "dhs_itn_access_<age>"
+      - "dhs_itn_use_if_access_<age>"
+      - "dhs_n_individuals_<age>"
+      - "dhs_n_used_itn_<age>"
+      - "dhs_n_with_access_<age>"
+    _age_formats:
+      - "Numeric ranges: 0_5, 5_10, 15_49"
+      - "Open-ended: 20_plus, 5_plus"
+    _ci_suffixes: "_low, _upp"
 
   # ── ITN ownership ─────────────────────────────────────────────────────────────
   dhs_itn_ownership:

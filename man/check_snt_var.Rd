@@ -7,7 +7,7 @@
 check_snt_var(var_name, schema = NULL, var_tree = NULL, return = FALSE)
 }
 \arguments{
-\item{var_name}{Character scalar — an SNT variable name.}
+\item{var_name}{Character scalar - an SNT variable name.}
 
 \item{schema}{Optional list; if not provided, automatically loaded from
 the package's snt_var_tree dataset.}
@@ -23,4 +23,17 @@ Invisibly returns a tibble with parsed components and labels.
 \description{
 Parses a standardized SNT variable name (e.g. "conf_rdt_u5_priv")
 and prints its logical components and bilingual label using CLI formatting.
+}
+\details{
+Dynamic age groups are supported for DHS ITN metrics. Variables following
+patterns like \code{dhs_itn_use_0_5}, \code{dhs_itn_access_20_plus}, or
+\code{dhs_n_individuals_15_49} are automatically recognized and labeled
+with appropriate age range text in English, French, and Portuguese.
+}
+\examples{
+# Dynamic DHS ITN age groups
+check_snt_var("dhs_itn_use_0_5")
+check_snt_var("dhs_itn_access_20_plus")
+check_snt_var("dhs_n_individuals_5_10_low")
+
 }

@@ -167,12 +167,161 @@ snt_data_dict <- function(
   dplyr::bind_rows(rows)
 }
 
+# internal helper: detect dynamic DHS ITN age group patterns
+.detect_dhs_itn_dynamic <- function(var_name) {
+  # pattern for metric variables: dhs_itn_(use|access|use_if_access)_<age>(_low|_upp)?
+  metric_pattern <- "^dhs_itn_(use|access|use_if_access)_([0-9]+_[0-9]+|[0-9]+_plus)(_low|_upp)?$"
+
+  # pattern for count variables: dhs_n_(individuals|used_itn|with_access)_<age>
+  count_pattern <- "^dhs_n_(individuals|used_itn|with_access)_([0-9]+_[0-9]+|[0-9]+_plus)$"
+
+  # try metric pattern first
+  if (grepl(metric_pattern, var_name)) {
+    matches <- regmatches(var_name, regexec(metric_pattern, var_name))[[1]]
+    return(list(
+      metric_type = matches[2],
+      age_suffix = matches[3],
+      ci_type = if (nchar(matches[4]) > 0) gsub("^_", "", matches[4]) else NA_character_,
+      is_count = FALSE
+    ))
+  }
+
+  # try count pattern
+  if (grepl(count_pattern, var_name)) {
+    matches <- regmatches(var_name, regexec(count_pattern, var_name))[[1]]
+    return(list(
+      metric_type = matches[2],
+      age_suffix = matches[3],
+      ci_type = NA_character_,
+      is_count = TRUE
+    ))
+  }
+
+  # no match
+  return(NULL)
+}
+
+# internal helper: format age suffix to readable label
+.format_dhs_itn_age_label <- function(age_suffix, language = "en") {
+  # parse age suffix
+  if (grepl("_plus$", age_suffix)) {
+    # open-ended: "20_plus" -> "20+"
+    age_lower <- gsub("_plus$", "", age_suffix)
+
+    if (language == "en") {
+      return(paste0(age_lower, "+ years"))
+    } else if (language == "fr") {
+      return(paste0(age_lower, "+ ans"))
+    } else if (language == "pt") {
+      return(paste0(age_lower, "+ anos"))
+    }
+  } else {
+    # range: "0_5" -> "0-5"
+    parts <- strsplit(age_suffix, "_")[[1]]
+    age_range <- paste(parts[1], parts[2], sep = "-")
+
+    if (language == "en") {
+      return(paste0(age_range, " years"))
+    } else if (language == "fr") {
+      return(paste0(age_range, " ans"))
+    } else if (language == "pt") {
+      return(paste0(age_range, " anos"))
+    }
+  }
+
+  return(age_suffix)
+}
+
+# internal helper: build complete DHS ITN label
+.build_dhs_itn_label <- function(metric_type, age_suffix, ci_type = NA, language = "en") {
+  age_label <- .format_dhs_itn_age_label(age_suffix, language)
+
+  # build base metric label
+  if (language == "en") {
+    base_label <- switch(metric_type,
+      "use" = "DHS ITN use",
+      "access" = "DHS ITN access",
+      "use_if_access" = "DHS ITN use if access",
+      "individuals" = "DHS number of individuals",
+      "used_itn" = "DHS number used ITN",
+      "with_access" = "DHS number with access",
+      metric_type
+    )
+
+    # add age group
+    label <- paste0(base_label, " (", age_label, ")")
+
+    # add percentage or count indicator
+    if (metric_type %in% c("use", "access", "use_if_access")) {
+      label <- paste0(label, " (%)")
+    }
+
+    # add CI suffix if present
+    if (!is.na(ci_type)) {
+      ci_label <- if (ci_type == "low") "lower CI" else "upper CI"
+      label <- paste0(label, " ", ci_label)
+    }
+
+  } else if (language == "fr") {
+    base_label <- switch(metric_type,
+      "use" = "Utilisation de MII DHS",
+      "access" = "Acc\u00e8s aux MII DHS",
+      "use_if_access" = "Utilisation de MII si acc\u00e8s DHS",
+      "individuals" = "Nombre d'individus DHS",
+      "used_itn" = "Nombre ayant utilis\u00e9 MII DHS",
+      "with_access" = "Nombre avec acc\u00e8s DHS",
+      metric_type
+    )
+
+    label <- paste0(base_label, " (", age_label, ")")
+
+    if (metric_type %in% c("use", "access", "use_if_access")) {
+      label <- paste0(label, " (%)")
+    }
+
+    if (!is.na(ci_type)) {
+      ci_label <- if (ci_type == "low") "IC inf\u00e9rieur" else "IC sup\u00e9rieur"
+      label <- paste0(label, " ", ci_label)
+    }
+
+  } else if (language == "pt") {
+    base_label <- switch(metric_type,
+      "use" = "Uso de MILD DHS",
+      "access" = "Acesso a MILD DHS",
+      "use_if_access" = "Uso de MILD se acesso DHS",
+      "individuals" = "N\u00famero de indiv\u00edduos DHS",
+      "used_itn" = "N\u00famero que usou MILD DHS",
+      "with_access" = "N\u00famero com acesso DHS",
+      metric_type
+    )
+
+    label <- paste0(base_label, " (", age_label, ")")
+
+    if (metric_type %in% c("use", "access", "use_if_access")) {
+      label <- paste0(label, " (%)")
+    }
+
+    if (!is.na(ci_type)) {
+      ci_label <- if (ci_type == "low") "IC inferior" else "IC superior"
+      label <- paste0(label, " ", ci_label)
+    }
+  }
+
+  return(label)
+}
+
 #' Detect and display the structural components of an SNT variable name
 #'
 #' Parses a standardized SNT variable name (e.g. "conf_rdt_u5_priv")
 #' and prints its logical components and bilingual label using CLI formatting.
 #'
-#' @param var_name Character scalar — an SNT variable name.
+#' @details
+#' Dynamic age groups are supported for DHS ITN metrics. Variables following
+#' patterns like \code{dhs_itn_use_0_5}, \code{dhs_itn_access_20_plus}, or
+#' \code{dhs_n_individuals_15_49} are automatically recognized and labeled
+#' with appropriate age range text in English, French, and Portuguese.
+#'
+#' @param var_name Character scalar - an SNT variable name.
 #' @param schema Optional list; if not provided, automatically loaded from
 #'   the package's snt_var_tree dataset.
 #' @param var_tree Optional list; if not provided, automatically loaded from
@@ -180,6 +329,13 @@ snt_data_dict <- function(
 #' @param return Logical; if TRUE, also returns a tibble invisibly.
 #'
 #' @return Invisibly returns a tibble with parsed components and labels.
+#'
+#' @examples
+#' # Dynamic DHS ITN age groups
+#' check_snt_var("dhs_itn_use_0_5")
+#' check_snt_var("dhs_itn_access_20_plus")
+#' check_snt_var("dhs_n_individuals_5_10_low")
+#'
 #' @export
 check_snt_var <- function(
   var_name,
@@ -247,10 +403,39 @@ check_snt_var <- function(
     # try exact match first
     match_row <- dplyr::filter(flat_tree, .data$snt_var_name == var_name)
 
-    # if no exact match, try fuzzy matching
+    # if no exact match, try dynamic DHS ITN pattern detection
     if (nrow(match_row) == 0) {
-      # normalize both the input and tree names (remove underscores, lowercase)
-      normalized_input <- base::tolower(base::gsub("_", "", var_name))
+      dhs_dynamic <- .detect_dhs_itn_dynamic(var_name)
+
+      if (!is.null(dhs_dynamic)) {
+        # generate labels for all three languages
+        label_en <- .build_dhs_itn_label(
+          dhs_dynamic$metric_type,
+          dhs_dynamic$age_suffix,
+          dhs_dynamic$ci_type,
+          "en"
+        )
+        label_fr <- .build_dhs_itn_label(
+          dhs_dynamic$metric_type,
+          dhs_dynamic$age_suffix,
+          dhs_dynamic$ci_type,
+          "fr"
+        )
+        label_pt <- .build_dhs_itn_label(
+          dhs_dynamic$metric_type,
+          dhs_dynamic$age_suffix,
+          dhs_dynamic$ci_type,
+          "pt"
+        )
+
+        # set domain component
+        components$domain <- "dhs"
+
+        # skip fuzzy matching since we found a dynamic match
+      } else {
+        # no dynamic match, proceed with fuzzy matching
+        # normalize both the input and tree names (remove underscores, lowercase)
+        normalized_input <- base::tolower(base::gsub("_", "", var_name))
       flat_tree_normalized <- flat_tree |>
         dplyr::mutate(
           normalized = base::tolower(base::gsub("_", "", .data$snt_var_name))
@@ -300,6 +485,7 @@ check_snt_var <- function(
             components$sector <- t
           }
         }
+      }
       }
     }
 
