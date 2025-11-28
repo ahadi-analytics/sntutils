@@ -186,6 +186,7 @@ globalVariables(
     "reason",
     "reported_facility",
     "snt_var_tree",
+    "validation_terms",
     "total_obs",
     "weight_facility",
     "weight_value_facility",

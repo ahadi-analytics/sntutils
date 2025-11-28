@@ -51,15 +51,12 @@
 #' @param output_formats character. Any of c("xlsx","rds"). Default
 #'   c("xlsx","rds").
 #' @param verbose logical. CLI messages. Default TRUE.
-#' @param target_language character. ISO-639-1. Default "en".
-#' @param source_language character. ISO-639-1. Default "en".
-#' @param lang_cache_path character. Path for translation cache. Default
-#'   base::tempdir().
+#' @param language character. ISO-639-1 language code for output labels ("en", "fr", "pt"). Default "en".
 #'
 #' @return invisible named list with elements:
 #'   Summary, Missing values, Duplicate records, Future dates,
-#'   Consistency failures, Consistency details, Outliers,
-#'   Facility activeness over time, Facility activeness summary
+#'   Consistency failures, Consistency summary, Consistency details, Outliers,
+#'   HF activeness detail, HF activeness summary, Data dictionary
 #'
 #' @examples
 #' \dontrun{
@@ -106,9 +103,7 @@ validate_routine_hf_data <- function(
   output_name = "validation_of_hf_routine_data",
   output_formats = c("xlsx", "rds"),
   verbose = TRUE,
-  target_language = "en",
-  source_language = "en",
-  lang_cache_path = base::tempdir()
+  language = "en"
 ) {
   # validate args early and fail fast
   .validate_args(
@@ -168,10 +163,12 @@ validate_routine_hf_data <- function(
     "Duplicate records" = NULL,
     "Future dates" = NULL,
     "Consistency failures" = base::list(),
+    "Consistency summary" = NULL,
     "Consistency details" = NULL,
     "Outliers" = NULL,
     "HF activeness detail" = NULL,
-    "HF activeness summary" = NULL
+    "HF activeness summary" = NULL,
+    "Data dictionary" = NULL
   )
 
   # check 1: missing values
@@ -215,6 +212,7 @@ validate_routine_hf_data <- function(
       verbose = verbose
     )
     results[["Consistency failures"]] <- cons$failures_by_pair
+    results[["Consistency summary"]] <- cons$summary
     results[["Consistency details"]] <- cons$details
     results$Summary <- dplyr::bind_rows(results$Summary, cons$summary_row)
   }
@@ -268,6 +266,26 @@ validate_routine_hf_data <- function(
     results$Summary <- dplyr::bind_rows(results$Summary, act$summary_row)
   }
 
+  # build data dictionary (always)
+  if (verbose) cli::cli_h2("Building Data Dictionary")
+
+  dict <- .build_validation_dictionary(
+    results = results,
+    language = language
+  )
+
+  results[["Data dictionary"]] <- dict
+
+  if (verbose) {
+    n_vars <- sntutils::big_mark(base::nrow(dict))
+    n_tabs <- base::length(base::unique(base::unlist(
+      base::strsplit(base::as.character(dict$appears_in_tabs), ", ")
+    )))
+    cli::cli_alert_success(
+      "Dictionary created: {n_vars} variable(s) across {n_tabs} tab(s)"
+    )
+  }
+
   # final summary print
   if (verbose) {
     cli::cli_h2("Validation Summary")
@@ -288,9 +306,7 @@ validate_routine_hf_data <- function(
     # translate only sheet/tab names and selected headers
     res_translated <- .translate_results(
       results = results,
-      target_language = target_language,
-      source_language = source_language,
-      cache_path = lang_cache_path
+      language = language
     )
 
     # ensure utf8 and write files
@@ -499,10 +515,6 @@ validate_routine_hf_data <- function(
   indicators
 }
 
-#' Build default or user-specified consistency pairs
-#'
-#' @keywords internal
-#' @noRd
 #' Build default or user-specified consistency pairs
 #'
 #' @keywords internal
@@ -842,7 +854,12 @@ validate_routine_hf_data <- function(
           !base::is.na(difference) & d_sd > 0,
           (difference - d_mean) / d_sd,
           NA_real_
-        ) |> round(digits = 2)
+        ) |> round(digits = 2),
+        difference_prop = dplyr::if_else(
+          input_value > 0,
+          base::round((difference / input_value) * 100, 2),
+          NA_real_
+        )
       )
 
     # details subset with available ids
@@ -851,7 +868,7 @@ validate_routine_hf_data <- function(
       dplyr::select(
         dplyr::all_of(ids_keep),
         input_indicator, output_indicator,
-        input_value, output_value, difference, difference_sd, is_inconsistent
+        input_value, output_value, difference, difference_prop, difference_sd, is_inconsistent
       ) |>
       sntutils::auto_parse_types()
     all_details[[length(all_details) + 1]] <- detail
@@ -873,13 +890,48 @@ validate_routine_hf_data <- function(
     }
   }
 
+  # build pair-level summary
+  summary_table <- NULL
+  if (length(all_details) > 0) {
+    summary_list <- base::list()
+
+    for (detail_df in all_details) {
+      pair_summary <- detail_df |>
+        dplyr::filter(is_inconsistent) |>
+        dplyr::summarise(
+          input_indicator = base::unique(input_indicator)[1],
+          output_indicator = base::unique(output_indicator)[1],
+          input_value = base::sum(input_value, na.rm = TRUE),
+          output_value = base::sum(output_value, na.rm = TRUE),
+          difference = base::sum(difference, na.rm = TRUE),
+          difference_prop = dplyr::if_else(
+            input_value > 0,
+            base::round((difference / input_value) * 100, 2),
+            NA_real_
+          ),
+          difference_sd = base::mean(difference_sd, na.rm = TRUE) |>
+            base::round(digits = 2)
+        )
+
+      if (base::nrow(pair_summary) > 0) {
+        summary_list[[length(summary_list) + 1]] <- pair_summary
+      }
+    }
+
+    if (length(summary_list) > 0) {
+      summary_table <- dplyr::bind_rows(summary_list) |>
+        dplyr::arrange(dplyr::desc(difference)) |>
+        sntutils::auto_parse_types()
+    }
+  }
+
   # aggregate details: keep inconsistent rows with stable columns
   details <- NULL
   if (length(all_details) > 0) {
     keep_cols <- c(
       "record_id", "date", "adm0", "adm1", "adm2", "adm3",
       "input_indicator", "output_indicator",
-      "input_value", "output_value", "difference", "difference_sd"
+      "input_value", "output_value", "difference", "difference_prop", "difference_sd"
     )
     details <- dplyr::bind_rows(all_details) |>
       dplyr::filter(is_inconsistent) |>
@@ -900,6 +952,7 @@ validate_routine_hf_data <- function(
 
   base::list(
     failures_by_pair = failures_map,
+    summary = summary_table,
     details = details,
     summary_row = row
   )
@@ -1091,120 +1144,44 @@ validate_routine_hf_data <- function(
 #' @keywords internal
 #' @noRd
 .translate_results <- function(results,
-                               target_language,
-                               source_language,
-                               cache_path) {
-  # no-op if same language
-  if (target_language == source_language) {
+                               language = "en") {
+  # no-op if English
+  if (language == "en") {
     return(.ensure_utf8(results))
   }
 
-  # small helper
+  # load validation_terms dictionary
+  data("validation_terms", package = "sntutils", envir = environment())
+
+  # small helper to translate using dictionaries only (no API)
   tr <- function(x) {
-    translated <- tryCatch(
-      {
-        sntutils::translate_text(
-          text = x,
-          target_language = target_language,
-          source_language = source_language,
-          cache_path = cache_path
-        )
-      },
-      error = function(e) x
-    )
+    # convert to snake_case key format
+    key <- base::tolower(base::gsub(" ", "_", x))
 
-    if (base::length(translated) == 0L) translated <- x
-
-    translated <- base::as.character(translated)
-    translated <- base::trimws(translated)
-
-    fallback <- base::rep(x, length.out = base::length(translated))
-    missing_mask <- base::is.na(translated) | translated == ""
-    if (base::any(missing_mask)) {
-      translated[missing_mask] <- fallback[missing_mask]
+    # check validation_terms first
+    if (key %in% base::names(validation_terms)) {
+      lang_label <- validation_terms[[key]][[language]]
+      if (!base::is.null(lang_label)) {
+        return(lang_label)
+      }
     }
 
-    translated <- base::enc2utf8(translated)
-    base::Encoding(translated) <- "UTF-8"
-    translated
-  }
+    # try snt_var_tree for malaria indicators
+    snt_result <- .match_snt_labels(key, target_lang = language)
+    if (base::nrow(snt_result) == 1 && !base::is.na(snt_result$label) && snt_result$label != key) {
+      return(snt_result$label)
+    }
 
-  # helper to convert snake_case to Sentence case
-  snake_to_sentence <- function(x) {
-    # Replace underscores with spaces
-    x <- base::gsub("_", " ", x)
-    # Replace dots with spaces
-    x <- base::gsub("\\.", " ", x)
-    # Capitalize first letter
-    x <- base::paste0(base::toupper(base::substr(x, 1, 1)),
-                      base::substr(x, 2, base::nchar(x)))
+    # fallback to original
     x
   }
 
   # copy to modify
   out <- results
 
-  # translate top-level names (sheet names)
+  # ONLY translate top-level names (sheet/tab names)
+  # Do NOT translate column names - users can look those up in the Data Dictionary
   base::names(out) <- base::sapply(base::names(out), tr)
-
-  # translate Summary headers and "check" values
-  sum_name <- tr("Summary")
-  if (!base::is.null(out[[sum_name]])) {
-    # Convert column names to sentence case before translation
-    col_names <- base::names(out[[sum_name]])
-    col_names <- base::sapply(col_names, snake_to_sentence)
-    # Translate column names and replace dots with spaces
-    translated_names <- base::sapply(col_names, tr)
-    translated_names <- base::gsub("\\.", " ", translated_names)
-    base::names(out[[sum_name]]) <- translated_names
-
-    # Translate check values
-    out[[sum_name]][[1]] <- base::sapply(out[[sum_name]][[1]], tr)
-
-    # Translate specific terms in issues_found and total_records columns
-    # Look for column by position (2nd column is issues_found, 3rd is total_records)
-    if (base::ncol(out[[sum_name]]) >= 2) {
-      # Translate column(s), set(s), pair(s) in issues_found column
-      out[[sum_name]][[2]] <- base::sapply(out[[sum_name]][[2]], function(x) {
-        x <- base::gsub("column\\(s\\)", tr("column(s)"), x)
-        x <- base::gsub("set\\(s\\)", tr("set(s)"), x)
-        x <- base::gsub("pair\\(s\\)", tr("pair(s)"), x)
-        x
-      })
-    }
-
-    if (base::ncol(out[[sum_name]]) >= 3) {
-      # Translate column(s), set(s), pair(s) in total_records column
-      out[[sum_name]][[3]] <- base::sapply(out[[sum_name]][[3]], function(x) {
-        x <- base::gsub("column\\(s\\)", tr("column(s)"), x)
-        x <- base::gsub("set\\(s\\)", tr("set(s)"), x)
-        x <- base::gsub("pair\\(s\\)", tr("pair(s)"), x)
-        x
-      })
-    }
-  }
-
-  # translate Missing values headers
-  mv_name <- tr("Missing values")
-  if (!base::is.null(out[[mv_name]])) {
-    # Convert column names to sentence case before translation
-    col_names <- base::names(out[[mv_name]])
-    col_names <- base::sapply(col_names, snake_to_sentence)
-    # Translate column names and replace dots with spaces
-    translated_names <- base::sapply(col_names, tr)
-    translated_names <- base::gsub("\\.", " ", translated_names)
-    base::names(out[[mv_name]]) <- translated_names
-
-    # Translate Core ID and Indicator in column_type
-    type_col <- base::which(base::grepl("type", base::tolower(base::names(out[[mv_name]]))))
-    if (base::length(type_col) > 0) {
-      out[[mv_name]][[type_col]] <- base::sapply(out[[mv_name]][[type_col]], function(x) {
-        if (x == "Core ID") return(tr("Core ID"))
-        if (x == "Indicator") return(tr("Indicator"))
-        return(x)
-      })
-    }
-  }
 
   # Filter out empty tabs (except Summary)
   filtered_out <- base::list()
@@ -1501,4 +1478,135 @@ validate_routine_hf_data <- function(
     activeness_summary = facility_summary,
     summary_row = row
   )
+}
+
+#' Build data dictionary for validation results
+#'
+#' @description
+#' Uses validation_terms and snt_var_tree dictionaries for translations.
+#' No API calls - all translations are predefined.
+#'
+#' @keywords internal
+#' @noRd
+.build_validation_dictionary <- function(results,
+                                        language = "en") {
+  # collect all unique column names with their source tabs
+  col_info <- base::list()
+
+  for (tab_name in base::names(results)) {
+    tab_data <- results[[tab_name]]
+
+    # skip if not a data.frame
+    if (!base::is.data.frame(tab_data)) next
+
+    # extract column names
+    cols <- base::names(tab_data)
+
+    for (col in cols) {
+      if (base::is.null(col_info[[col]])) {
+        col_info[[col]] <- base::list(
+          variable = col,
+          appears_in = base::character()
+        )
+      }
+      col_info[[col]]$appears_in <- base::c(
+        col_info[[col]]$appears_in,
+        tab_name
+      )
+    }
+  }
+
+  # build base dictionary tibble
+  dict <- tibble::tibble(
+    variable = base::as.character(base::names(col_info)),
+    appears_in_tabs = base::as.character(base::sapply(col_info, function(x) {
+      base::paste(x$appears_in, collapse = ", ")
+    }))
+  )
+
+  # load dictionaries
+  data("validation_terms", package = "sntutils", envir = environment())
+
+  # FILTER: keep only columns CREATED by validate_routine_hf_data()
+  # Exclude input data columns (record_id, hf_uid, date, conf, test, etc.)
+  # Only keep validation-generated columns that users need to understand
+  validation_created_cols <- c(
+    # summary tab
+    "check", "issues_found", "total_records", "percent",
+    # missing values tab
+    "variable", "n_missing", "total", "percent_missing", "column_type",
+    # consistency tabs
+    "input_indicator", "output_indicator", "input_value", "output_value",
+    "difference", "difference_prop", "difference_sd", "is_inconsistent",
+    # outliers tab
+    "value", "indicator_source", "outlier_flag_iqr", "outlier_flag_median",
+    "outlier_flag_mean",
+    # activeness tabs
+    "activity_status", "activeness_category", "total_periods",
+    "periods_active", "reporting_rate", "first_reported", "last_reported"
+  )
+
+  # keep only validation-created columns
+  dict <- dict |>
+    dplyr::filter(variable %in% validation_created_cols)
+
+  # batch lookup ALL variables in snt_var_tree (single call, much faster)
+  snt_results_en <- .match_snt_labels(dict$variable, target_lang = "en")
+
+  # build label lookup using pooled dictionaries
+  # priority: validation_terms > snt_var_tree > fallback
+  labels_en <- base::character(base::nrow(dict))
+  for (i in base::seq_len(base::nrow(dict))) {
+    var_name <- dict$variable[i]
+
+    # check validation_terms first
+    if (var_name %in% base::names(validation_terms)) {
+      labels_en[i] <- validation_terms[[var_name]]$en
+    } else {
+      # lookup in batched snt results
+      snt_match <- snt_results_en[snt_results_en$variable == var_name, ]
+      if (base::nrow(snt_match) == 1 && !base::is.na(snt_match$label) && snt_match$label != var_name) {
+        labels_en[i] <- snt_match$label
+      } else {
+        # fallback to title case
+        labels_en[i] <- tools::toTitleCase(base::gsub("_", " ", var_name))
+      }
+    }
+  }
+
+  dict$label_en <- labels_en
+
+  # add translation if needed (from dictionaries only, no API)
+  if (language != "en") {
+    # batch lookup ALL variables for target language (single call, much faster)
+    snt_results_lang <- .match_snt_labels(dict$variable, target_lang = language)
+
+    labels_target <- base::character(base::nrow(dict))
+    for (i in base::seq_len(base::nrow(dict))) {
+      var_name <- dict$variable[i]
+
+      # check validation_terms first
+      if (var_name %in% base::names(validation_terms)) {
+        lang_label <- validation_terms[[var_name]][[language]]
+        if (!base::is.null(lang_label)) {
+          labels_target[i] <- lang_label
+        } else {
+          labels_target[i] <- dict$label_en[i]  # fallback to English
+        }
+      } else {
+        # lookup in batched snt results
+        snt_match <- snt_results_lang[snt_results_lang$variable == var_name, ]
+        if (base::nrow(snt_match) == 1 && !base::is.na(snt_match$label) && snt_match$label != var_name) {
+          labels_target[i] <- snt_match$label
+        } else {
+          labels_target[i] <- dict$label_en[i]  # fallback to English
+        }
+      }
+    }
+
+    col_name <- base::paste0("label_", language)
+    dict[[col_name]] <- labels_target
+  }
+
+  dict |> sntutils::auto_parse_types()
 }

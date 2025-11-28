@@ -61,3 +61,42 @@
 #' @source Subnational Tailoring Initiative for Malaria Interventions
 #' @keywords datasets
 "snt_var_tree"
+
+#' Validation utility terms dictionary
+#'
+#' @description
+#' A dictionary of common column names used in validation output from
+#' `validate_routine_hf_data()`, with translations in English, French, and Portuguese.
+#'
+#' @format A named list where each element is a variable name containing:
+#' \describe{
+#'   \item{en}{English label}
+#'   \item{fr}{French label}
+#'   \item{pt}{Portuguese label}
+#' }
+#'
+#' @details
+#' This dictionary covers:
+#' - Summary tab terms (check, issues_found, total_records, percent)
+#' - Missing values terms (variable, n_missing, column_type)
+#' - Consistency terms (input_indicator, output_indicator, difference, difference_prop)
+#' - Facility activeness terms (activity_status, reporting_rate)
+#' - Outlier terms (outlier_flag_iqr, outlier_flag_median)
+#' - Common ID columns (record_id, hf_uid, date, yearmon)
+#' - Admin columns (adm0, adm1, adm2, adm3)
+#'
+#' For malaria-specific indicator names (conf, test, maldth, etc.), use
+#' the `snt_var_tree` dataset instead.
+#'
+#' @source Built from data-raw/validation_terms.yml
+#'
+#' @examples
+#' data(validation_terms)
+#'
+#' # Get French label for input_indicator
+#' validation_terms$input_indicator$fr
+#'
+#' # Get all English labels
+#' sapply(validation_terms, function(x) x$en)
+#' @keywords datasets
+"validation_terms"

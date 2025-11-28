@@ -43,9 +43,7 @@ validate_routine_hf_data(
   output_name = "validation_of_hf_routine_data",
   output_formats = c("xlsx", "rds"),
   verbose = TRUE,
-  target_language = "en",
-  source_language = "en",
-  lang_cache_path = base::tempdir()
+  language = "en"
 )
 }
 \arguments{
@@ -133,18 +131,13 @@ c("xlsx","rds").}
 
 \item{verbose}{logical. CLI messages. Default TRUE.}
 
-\item{target_language}{character. ISO-639-1. Default "en".}
-
-\item{source_language}{character. ISO-639-1. Default "en".}
-
-\item{lang_cache_path}{character. Path for translation cache. Default
-base::tempdir().}
+\item{language}{character. ISO-639-1 language code for output labels ("en", "fr", "pt"). Default "en".}
 }
 \value{
 invisible named list with elements:
 Summary, Missing values, Duplicate records, Future dates,
-Consistency failures, Consistency details, Outliers,
-Facility activeness over time, Facility activeness summary
+Consistency failures, Consistency summary, Consistency details, Outliers,
+HF activeness detail, HF activeness summary, Data dictionary
 }
 \description{
 Orchestrates a suite of validation checks on routine HF data. It standardizes
