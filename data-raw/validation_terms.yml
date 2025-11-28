@@ -1,0 +1,237 @@
+# Validation utility dictionary
+# Common terms used in validate_routine_hf_data output
+# Format: variable_name: {en: "English", fr: "French", pt: "Portuguese"}
+
+# Summary tab terms
+check:
+  en: "Check"
+  fr: "Vérification"
+  pt: "Verificação"
+issues_found:
+  en: "Issues Found"
+  fr: "Problèmes Trouvés"
+  pt: "Problemas Encontrados"
+total_records:
+  en: "Total Records"
+  fr: "Total des Enregistrements"
+  pt: "Total de Registros"
+percent:
+  en: "Percent"
+  fr: "Pourcentage"
+  pt: "Porcentagem"
+
+# Missing values tab terms
+variable:
+  en: "Variable"
+  fr: "Variable"
+  pt: "Variável"
+n_missing:
+  en: "N Missing"
+  fr: "N Manquants"
+  pt: "N Ausentes"
+total:
+  en: "Total"
+  fr: "Total"
+  pt: "Total"
+percent_missing:
+  en: "Percent Missing"
+  fr: "Pourcentage Manquant"
+  pt: "Porcentagem Ausente"
+column_type:
+  en: "Column Type"
+  fr: "Type de Colonne"
+  pt: "Tipo de Coluna"
+
+# Consistency tab terms
+input_indicator:
+  en: "Input Indicator"
+  fr: "Indicateur d'Entrée"
+  pt: "Indicador de Entrada"
+output_indicator:
+  en: "Output Indicator"
+  fr: "Indicateur de Sortie"
+  pt: "Indicador de Saída"
+input_value:
+  en: "Input Value"
+  fr: "Valeur d'Entrée"
+  pt: "Valor de Entrada"
+output_value:
+  en: "Output Value"
+  fr: "Valeur de Sortie"
+  pt: "Valor de Saída"
+difference:
+  en: "Difference"
+  fr: "Différence"
+  pt: "Diferença"
+difference_prop:
+  en: "Difference (%)"
+  fr: "Différence (%)"
+  pt: "Diferença (%)"
+difference_sd:
+  en: "Difference (SD)"
+  fr: "Différence (ET)"
+  pt: "Diferença (DP)"
+
+# Facility activeness terms
+activity_status:
+  en: "Activity Status"
+  fr: "Statut d'Activité"
+  pt: "Status de Atividade"
+activeness_category:
+  en: "Activeness Category"
+  fr: "Catégorie d'Activité"
+  pt: "Categoria de Atividade"
+total_periods:
+  en: "Total Periods"
+  fr: "Périodes Totales"
+  pt: "Períodos Totais"
+periods_active:
+  en: "Periods Active"
+  fr: "Périodes Actives"
+  pt: "Períodos Ativos"
+reporting_rate:
+  en: "Reporting Rate"
+  fr: "Taux de Déclaration"
+  pt: "Taxa de Relatório"
+first_reported:
+  en: "First Reported"
+  fr: "Premier Rapport"
+  pt: "Primeiro Relatado"
+last_reported:
+  en: "Last Reported"
+  fr: "Dernier Rapport"
+  pt: "Último Relatado"
+
+# Outlier terms
+value:
+  en: "Value"
+  fr: "Valeur"
+  pt: "Valor"
+indicator_source:
+  en: "Indicator Source"
+  fr: "Source de l'Indicateur"
+  pt: "Fonte do Indicador"
+outlier_flag_iqr:
+  en: "Outlier Flag (IQR)"
+  fr: "Indicateur de Valeur Aberrante (IQR)"
+  pt: "Sinalizador de Outlier (IQR)"
+outlier_flag_median:
+  en: "Outlier Flag (Median)"
+  fr: "Indicateur de Valeur Aberrante (Médiane)"
+  pt: "Sinalizador de Outlier (Mediana)"
+outlier_flag_mean:
+  en: "Outlier Flag (Mean)"
+  fr: "Indicateur de Valeur Aberrante (Moyenne)"
+  pt: "Sinalizador de Outlier (Média)"
+
+# Tab names
+data_dictionary:
+  en: "Data dictionary"
+  fr: "Dictionnaire de données"
+  pt: "Dicionário de dados"
+summary:
+  en: "Summary"
+  fr: "Résumé"
+  pt: "Resumo"
+missing_values:
+  en: "Missing values"
+  fr: "Valeurs manquantes"
+  pt: "Valores ausentes"
+duplicate_records:
+  en: "Duplicate records"
+  fr: "Enregistrements en double"
+  pt: "Registros duplicados"
+future_dates:
+  en: "Future dates"
+  fr: "Dates futures"
+  pt: "Datas futuras"
+consistency_failures:
+  en: "Consistency failures"
+  fr: "Échecs de cohérence"
+  pt: "Falhas de consistência"
+consistency_summary:
+  en: "Consistency summary"
+  fr: "Résumé de cohérence"
+  pt: "Resumo de consistência"
+consistency_details:
+  en: "Consistency details"
+  fr: "Détails de cohérence"
+  pt: "Detalhes de consistência"
+outliers:
+  en: "Outliers"
+  fr: "Valeurs aberrantes"
+  pt: "Outliers"
+hf_activeness_detail:
+  en: "HF activeness detail"
+  fr: "Détail de l'activité des établissements"
+  pt: "Detalhe de atividade da unidade de saúde"
+hf_activeness_summary:
+  en: "HF activeness summary"
+  fr: "Résumé de l'activité des établissements"
+  pt: "Resumo de atividade da unidade de saúde"
+
+# Data dictionary terms
+appears_in_tabs:
+  en: "Appears in Tabs"
+  fr: "Apparaît dans les Onglets"
+  pt: "Aparece nas Abas"
+label_en:
+  en: "Label (English)"
+  fr: "Libellé (Anglais)"
+  pt: "Rótulo (Inglês)"
+label_fr:
+  en: "Label (French)"
+  fr: "Libellé (Français)"
+  pt: "Rótulo (Francês)"
+label_pt:
+  en: "Label (Portuguese)"
+  fr: "Libellé (Portugais)"
+  pt: "Rótulo (Português)"
+
+# Common ID columns
+record_id:
+  en: "Record ID"
+  fr: "ID d'Enregistrement"
+  pt: "ID de Registro"
+hf_uid:
+  en: "Health Facility UID"
+  fr: "UID de l'Établissement de Santé"
+  pt: "UID da Unidade de Saúde"
+hf:
+  en: "Health Facility"
+  fr: "Établissement de Santé"
+  pt: "Unidade de Saúde"
+date:
+  en: "Date"
+  fr: "Date"
+  pt: "Data"
+yearmon:
+  en: "Year-Month"
+  fr: "Année-Mois"
+  pt: "Ano-Mês"
+year:
+  en: "Year"
+  fr: "Année"
+  pt: "Ano"
+month:
+  en: "Month"
+  fr: "Mois"
+  pt: "Mês"
+
+# Admin columns
+adm0:
+  en: "Country"
+  fr: "Pays"
+  pt: "País"
+adm1:
+  en: "Region/Province"
+  fr: "Région/Province"
+  pt: "Região/Província"
+adm2:
+  en: "District"
+  fr: "District"
+  pt: "Distrito"
+adm3:
+  en: "Sub-district"
+  fr: "Sous-district"
+  pt: "Subdistrito"
