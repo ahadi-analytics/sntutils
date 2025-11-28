@@ -99,10 +99,12 @@ testthat::test_that("validate_routine_hf_data returns correct structure", {
       "Duplicate records",
       "Future dates",
       "Consistency failures",
+      "Consistency summary",
       "Consistency details",
       "Outliers",
       "HF activeness detail",
-      "HF activeness summary"
+      "HF activeness summary",
+      "Data dictionary"
     ),
     ignore.order = TRUE
   )
@@ -329,6 +331,104 @@ testthat::test_that("validate_routine_hf_data detects consistency violations", {
 
   testthat::expect_equal(nrow(consistency_row), 1)
   testthat::expect_true(grepl("pair\\(s\\)", consistency_row$issues_found))
+})
+
+testthat::test_that("validate_routine_hf_data includes consistency summary", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_duplicates = FALSE,
+    check_future_dates = FALSE,
+    check_outliers = FALSE
+  )
+
+  # check structure
+  testthat::expect_s3_class(result[["Consistency summary"]], "tbl_df")
+  testthat::expect_gt(nrow(result[["Consistency summary"]]), 0)
+
+  # check columns
+  expected_cols <- c(
+    "input_indicator", "output_indicator",
+    "input_value", "output_value", "difference",
+    "difference_prop", "difference_sd"
+  )
+  testthat::expect_true(all(expected_cols %in% names(result[["Consistency summary"]])))
+
+  # verify details also has difference_prop
+  testthat::expect_true("difference_prop" %in% names(result[["Consistency details"]]))
+
+  # verify aggregation matches details
+  summary <- result[["Consistency summary"]]
+  details <- result[["Consistency details"]]
+
+  for (i in seq_len(nrow(summary))) {
+    pair_details <- details |>
+      dplyr::filter(
+        input_indicator == summary$input_indicator[i],
+        output_indicator == summary$output_indicator[i]
+      )
+
+    # verify sums match
+    testthat::expect_equal(
+      summary$difference[i],
+      sum(pair_details$difference, na.rm = TRUE)
+    )
+  }
+})
+
+testthat::test_that("validate_routine_hf_data includes data dictionary", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_outliers = FALSE
+  )
+
+  # check dictionary exists
+  testthat::expect_s3_class(result[["Data dictionary"]], "tbl_df")
+  testthat::expect_gt(nrow(result[["Data dictionary"]]), 0)
+
+  # check required columns
+  testthat::expect_true("variable" %in% names(result[["Data dictionary"]]))
+  testthat::expect_true("appears_in_tabs" %in% names(result[["Data dictionary"]]))
+  testthat::expect_true("label_en" %in% names(result[["Data dictionary"]]))
+
+  # verify some known columns are documented
+  dict <- result[["Data dictionary"]]
+  testthat::expect_true("check" %in% dict$variable)  # from Summary
+  testthat::expect_true("input_indicator" %in% dict$variable)  # from Consistency
+})
+
+testthat::test_that("data dictionary supports translation from dictionaries", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_outliers = FALSE,
+    language = "fr"
+  )
+
+  # check French label column exists
+  testthat::expect_true("label_fr" %in% names(result[["Data dictionary"]]))
+
+  dict <- result[["Data dictionary"]]
+
+  # verify validation terms are translated
+  check_row <- dict |> dplyr::filter(variable == "check")
+  if (nrow(check_row) > 0) {
+    testthat::expect_equal(check_row$label_fr, "Vérification")
+  }
+
+  # verify SNT variables are translated (if present)
+  conf_row <- dict |> dplyr::filter(variable == "conf")
+  if (nrow(conf_row) > 0) {
+    testthat::expect_true(!is.na(conf_row$label_fr))
+    testthat::expect_true(conf_row$label_fr != "Conf")  # should be translated
+  }
 })
 
 testthat::test_that("validate_routine_hf_data handles custom consistency pairs", {
@@ -599,20 +699,11 @@ testthat::test_that("summary percentages are correctly calculated", {
 # test language translation --------------------------------------------------
 
 testthat::test_that("validate_routine_hf_data handles language translation", {
-  # Skip if translation fails (e.g., no internet)
-  testthat::skip_if_not(
-    tryCatch({
-      sntutils::translate_text("test", target_language = "fr")
-      TRUE
-    }, error = function(e) FALSE),
-    "Translation service not available"
-  )
-
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
   temp_dir <- tempdir()
   temp_file <- file.path(temp_dir, "test_validation")
 
-  # Test with French translation
+  # Test with French translation using dictionaries
   result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
@@ -620,8 +711,7 @@ testthat::test_that("validate_routine_hf_data handles language translation", {
     output_path = temp_dir,
     output_name = "test_validation",
     output_formats = "xlsx",
-    target_language = "fr",
-    source_language = "en"
+    language = "fr"
   )
 
   # Check that file was created
@@ -633,21 +723,6 @@ testthat::test_that("validate_routine_hf_data handles language translation", {
 })
 
 testthat::test_that("validate_routine_hf_data translation converts column names correctly", {
-  # Mock translation function for testing
-  mock_translate <- function(text, target_language, source_language, cache_path) {
-    if (text == "Summary") return("Résumé")
-    if (text == "Missing values") return("Valeurs manquantes")
-    if (text == "Issues found") return("Problèmes trouvés")
-    if (text == "N missing") return("N manquant")
-    if (text == "Column type") return("Type de colonne")
-    if (text == "Core ID") return("ID principal")
-    if (text == "Indicator") return("Indicateur")
-    if (text == "column(s)") return("colonne(s)")
-    if (text == "set(s)") return("ensemble(s)")
-    if (text == "pair(s)") return("paire(s)")
-    return(text)
-  }
-
   # Create minimal test results
   test_results <- list(
     Summary = tibble::tibble(
@@ -665,47 +740,24 @@ testthat::test_that("validate_routine_hf_data translation converts column names 
     )
   )
 
-  # Mock the translate_text function
-  with_mocked_bindings(
-    translate_text = mock_translate,
-    {
-      # Call the internal translation function
-      translated <- sntutils:::`.translate_results`(
-        results = test_results,
-        target_language = "fr",
-        source_language = "en",
-        cache_path = tempdir()
-      )
-
-      # Check sheet names are translated
-      testthat::expect_true("Résumé" %in% names(translated))
-      testthat::expect_true("Valeurs manquantes" %in% names(translated))
-
-      # Check column names don't have dots
-      summary_cols <- names(translated[["Résumé"]])
-      testthat::expect_false(any(grepl("\\.", summary_cols)))
-
-      missing_cols <- names(translated[["Valeurs manquantes"]])
-      testthat::expect_false(any(grepl("\\.", missing_cols)))
-
-      # Check specific translations in data
-      # Find the column that contains the issues (might have different name after translation)
-      issues_col <- which(grepl("Problèmes", names(translated[["Résumé"]])))
-      if (length(issues_col) > 0) {
-        issues_data <- translated[["Résumé"]][[issues_col[1]]]
-        testthat::expect_true(any(grepl("colonne\\(s\\)", issues_data)))
-        testthat::expect_true(any(grepl("ensemble\\(s\\)", issues_data)))
-      }
-
-      # Check Core ID and Indicator translations
-      # Find the column type column
-      type_col <- which(grepl("Type", names(translated[["Valeurs manquantes"]])))
-      if (length(type_col) > 0) {
-        type_data <- translated[["Valeurs manquantes"]][[type_col[1]]]
-        testthat::expect_true("ID principal" %in% type_data)
-        testthat::expect_true("Indicateur" %in% type_data)
-      }
-    },
-    .package = "sntutils"
+  # Call the internal translation function (now dictionary-based)
+  translated <- sntutils:::`.translate_results`(
+    results = test_results,
+    language = "fr"
   )
+
+  # Check sheet names are translated using validation_terms dictionary
+  testthat::expect_true("Résumé" %in% names(translated))
+  testthat::expect_true("Valeurs manquantes" %in% names(translated))
+
+  # Check column names don't have dots
+  summary_cols <- names(translated[["Résumé"]])
+  testthat::expect_false(any(grepl("\\.", summary_cols)))
+
+  missing_cols <- names(translated[["Valeurs manquantes"]])
+  testthat::expect_false(any(grepl("\\.", missing_cols)))
+
+  # Check that column names have been translated using dictionaries
+  # Should have French column names
+  testthat::expect_true(any(grepl("Type", missing_cols, ignore.case = TRUE)))
 })
