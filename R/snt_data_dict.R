@@ -1,3 +1,6 @@
+# package cache environment
+.snt_cache <- new.env(parent = emptyenv())
+
 #' Load and flatten the SNT variable tree
 #'
 #' Loads the bilingual indicator hierarchy from the package's `snt_var_tree` dataset
@@ -165,6 +168,72 @@ snt_data_dict <- function(
   }
 
   dplyr::bind_rows(rows)
+}
+
+#' get cached flattened tree (internal)
+#' @description auto-refreshes if tree version changes
+#' @noRd
+.get_flat_tree_cached <- function() {
+  data("snt_var_tree", package = "sntutils", envir = environment())
+
+  # get current tree version from metadata
+  current_version <- snt_var_tree$`_meta`$last_updated %||% "unknown"
+
+  # refresh cache if empty or version changed
+  if (base::is.null(.snt_cache$flat_tree) ||
+      !base::identical(.snt_cache$tree_version, current_version)) {
+    .snt_cache$flat_tree <- .flatten_tree_recursive(snt_var_tree)
+    .snt_cache$tree_version <- current_version
+    # clear lookup caches when tree changes
+    .snt_cache$lookup_en <- NULL
+    .snt_cache$lookup_fr <- NULL
+    .snt_cache$lookup_pt <- NULL
+  }
+
+  .snt_cache$flat_tree
+}
+
+#' get cached schema (internal)
+#' @description auto-refreshes if tree version changes
+#' @noRd
+.get_schema_cached <- function() {
+  data("snt_var_tree", package = "sntutils", envir = environment())
+
+  current_version <- snt_var_tree$`_meta`$last_updated %||% "unknown"
+
+  if (base::is.null(.snt_cache$schema) ||
+      !base::identical(.snt_cache$schema_version, current_version)) {
+    .snt_cache$schema <- snt_var_tree$schema
+    .snt_cache$schema_version <- current_version
+  }
+
+  .snt_cache$schema
+}
+
+#' get cached lookup vector for labels (internal)
+#' @description uses cached flat tree; auto-refreshes when tree changes
+#' @noRd
+.get_lookup_vector_cached <- function(lang = "en") {
+  cache_key <- base::paste0("lookup_", lang)
+
+  if (base::is.null(.snt_cache[[cache_key]])) {
+    flat <- .get_flat_tree_cached()
+    lang_col <- base::paste0("label_", lang)
+
+    if (lang_col %in% base::names(flat)) {
+      .snt_cache[[cache_key]] <- stats::setNames(
+        flat[[lang_col]],
+        flat$snt_var_name
+      )
+    } else {
+      .snt_cache[[cache_key]] <- stats::setNames(
+        flat$label_en,
+        flat$snt_var_name
+      )
+    }
+  }
+
+  .snt_cache[[cache_key]]
 }
 
 # internal helper: detect dynamic DHS ITN age group patterns
@@ -344,19 +413,18 @@ check_snt_var <- function(
   return = FALSE
 ) {
   # -- Load schema if not provided ---------------------------------------------
-  if (is.null(schema)) {
-    data("snt_var_tree", package = "sntutils", envir = environment())
-    schema <- snt_var_tree$schema
-    if (is.null(schema)) {
-      cli::cli_abort("Schema not found in snt_var_tree dataset")
-    }
+  if (base::is.null(schema)) {
+    schema <- .get_schema_cached()
   }
 
   # -- Load variable tree for label lookup -------------------------------------
-  if (is.null(var_tree)) {
-    data("snt_var_tree", package = "sntutils", envir = environment())
-    flat_tree <- .flatten_tree_recursive(snt_var_tree)
+  if (base::is.null(var_tree)) {
+    flat_tree <- .get_flat_tree_cached()
+  } else if (base::is.list(var_tree) && "flat_tree" %in% base::names(var_tree)) {
+    # pre-flattened tree passed in
+    flat_tree <- var_tree$flat_tree
   } else {
+    # custom tree needs flattening
     flat_tree <- .flatten_tree_recursive(var_tree)
   }
 
@@ -667,4 +735,18 @@ check_snt_var <- function(
   } else {
     invisible(out)
   }
+}
+
+#' clear snt variable tree cache
+#'
+#' @description
+#' manually clears the internal cache of flattened variable tree and schema.
+#' normally not needed - cache auto-refreshes when tree version changes.
+#' only useful for advanced debugging or testing.
+#'
+#' @return invisible NULL
+#' @export
+clear_snt_cache <- function() {
+  base::rm(list = base::ls(envir = .snt_cache), envir = .snt_cache)
+  invisible(NULL)
 }

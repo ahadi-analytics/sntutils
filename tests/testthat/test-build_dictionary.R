@@ -409,3 +409,44 @@ testthat::test_that("build_dictionary supports Portuguese labels", {
     "Testado para malária.*[Mm]icroscopia.*Setor privado"
   )
 })
+
+# cache tests
+test_that("cache works correctly", {
+  # clear cache
+  clear_snt_cache()
+
+  # build dictionary triggers cache population
+  dd1 <- build_dictionary(dplyr::as_tibble(iris))
+
+  # second call should be faster (uses cache)
+  dd2 <- build_dictionary(dplyr::as_tibble(iris))
+
+  expect_identical(dd1, dd2)
+
+  # clear and verify cache is empty
+  clear_snt_cache()
+  expect_length(ls(envir = sntutils:::.snt_cache), 0)
+})
+
+test_that("cache improves performance on large var lists", {
+  # create test data with 100 columns
+  test_data <- as.data.frame(
+    matrix(rnorm(1000), ncol = 100)
+  )
+  names(test_data) <- paste0("var_", 1:100)
+
+  # clear cache and time first call
+  clear_snt_cache()
+  t1 <- system.time({
+    dd1 <- build_dictionary(test_data)
+  })
+
+  # time second call (should use cache)
+  t2 <- system.time({
+    dd2 <- build_dictionary(test_data)
+  })
+
+  # second call should be faster
+  expect_lt(t2[["elapsed"]], t1[["elapsed"]])
+  expect_identical(dd1, dd2)
+})
