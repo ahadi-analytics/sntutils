@@ -505,67 +505,64 @@
 #' match SNT variables with multilingual labels (internal)
 #'
 #' @description
-#' matches variable names against the snt_var_tree dataset using exact match first,
-#' then token structure detection. respects target_lang for output.
+#' matches variable names against the snt_var_tree dataset using vectorized
+#' exact match first, then batch token structure detection for unmatched.
 #'
 #' @param vars character vector of variable names
 #' @param target_lang target language ("en", "fr", "pt")
-#' @param tree_data optional snt_var_tree data object
+#' @param tree_data optional snt_var_tree data object (unused, for compatibility)
 #'
 #' @return tibble with variable and label columns
 #' @noRd
 .match_snt_labels <- function(vars,
                               target_lang = "en",
                               tree_data = NULL) {
-  # load snt_var_tree data
-  if (base::is.null(tree_data)) {
-    data("snt_var_tree", package = "sntutils", envir = environment())
-    tree_data <- snt_var_tree
-  }
+  # get cached lookup vectors for all languages
+  lookup_en <- .get_lookup_vector_cached("en")
+  lookup_fr <- .get_lookup_vector_cached("fr")
+  lookup_pt <- .get_lookup_vector_cached("pt")
 
-  # flatten tree if available
-  flat_tree <- if (!is.null(tree_data)) {
-    .flatten_tree_recursive(tree_data)
-  } else {
-    tibble::tibble(snt_var_name = character())
-  }
-
-  # initialize results
+  # vectorized exact match
   results <- tibble::tibble(
     variable = vars,
-    label_en = NA_character_,
-    label_fr = NA_character_,
-    label_pt = NA_character_
+    label_en = lookup_en[vars],
+    label_fr = lookup_fr[vars],
+    label_pt = lookup_pt[vars]
   )
 
-  for (i in base::seq_along(vars)) {
-    nm <- vars[i]
+  # find unmatched variables with underscores (potential SNT vars)
+  unmatched_idx <- base::which(
+    base::is.na(results$label_en) & base::grepl("_", vars)
+  )
 
-    # exact match first
-    match_row <- dplyr::filter(flat_tree, .data$snt_var_name == nm)
-    if (base::nrow(match_row) == 1L) {
-      results$label_en[i] <- match_row$label_en
-      results$label_fr[i] <- match_row$label_fr
-      # note: label_pt not in current yaml but prepare for it
-      if ("label_pt" %in% base::names(match_row)) {
-        results$label_pt[i] <- match_row$label_pt
-      }
-      next
-    }
+  if (base::length(unmatched_idx) > 0) {
+    # batch process unmatched variables
+    unmatched_vars <- vars[unmatched_idx]
 
-    # otherwise infer from token structure if it looks like SNT variable
-    # (contains underscore and known tokens)
-    if (grepl("_", nm)) {
+    # use cached flat tree and schema
+    flat_tree <- .get_flat_tree_cached()
+    schema <- .get_schema_cached()
+
+    for (i in base::seq_along(unmatched_idx)) {
+      idx <- unmatched_idx[i]
+      nm <- unmatched_vars[i]
+
+      # try check_snt_var with pre-loaded data
       det <- tryCatch(
-        check_snt_var(nm, return = TRUE),
+        check_snt_var(
+          nm,
+          return = TRUE,
+          schema = schema,
+          var_tree = list(schema = schema, flat_tree = flat_tree)
+        ),
         error = function(e) NULL
       )
+
       if (!base::is.null(det)) {
-        results$label_en[i] <- det$label_en
-        results$label_fr[i] <- det$label_fr
-        # label_pt would come from det if available
+        results$label_en[idx] <- det$label_en
+        results$label_fr[idx] <- det$label_fr
         if ("label_pt" %in% base::names(det)) {
-          results$label_pt[i] <- det$label_pt
+          results$label_pt[idx] <- det$label_pt
         }
       }
     }
@@ -574,7 +571,7 @@
   # select target language
   lang_col <- base::paste0("label_", target_lang)
   if (!lang_col %in% base::names(results)) {
-    lang_col <- "label_en" # fallback
+    lang_col <- "label_en"
   }
 
   results$label <- results[[lang_col]]
@@ -609,6 +606,10 @@
 #' @details
 #' english labels are merged as: internal defaults, then csv overrides.
 #' unknown variables fall back to their column name.
+#'
+#' performance: the snt variable tree is cached in a package environment on
+#' first use. subsequent calls reuse the flattened tree. the cache automatically
+#' refreshes when the tree version changes (tracked via _meta$last_updated).
 #'
 #' @examples
 #' dd <- build_dictionary(dplyr::as_tibble(iris))

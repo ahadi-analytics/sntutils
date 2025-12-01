@@ -913,7 +913,10 @@ validate_routine_hf_data <- function(
             base::round(digits = 2)
         )
 
-      if (base::nrow(pair_summary) > 0) {
+      # only include if we have actual data (not just empty aggregation)
+      if (base::nrow(pair_summary) > 0 &&
+          !base::is.na(pair_summary$input_indicator[1]) &&
+          !base::is.na(pair_summary$output_indicator[1])) {
         summary_list[[length(summary_list) + 1]] <- pair_summary
       }
     }
@@ -1514,6 +1517,57 @@ validate_routine_hf_data <- function(
         tab_name
       )
     }
+
+    # extract indicator values from consistency tabs
+    if (tab_name %in% c("Consistency summary", "Consistency details")) {
+      if ("input_indicator" %in% names(tab_data)) {
+        input_indicators <- base::unique(base::as.character(tab_data$input_indicator))
+        # filter out NA and empty strings
+        input_indicators <- input_indicators[
+          !base::is.na(input_indicators) &
+          base::nzchar(base::trimws(input_indicators))
+        ]
+
+        for (ind in input_indicators) {
+          if (base::is.null(col_info[[ind]])) {
+            col_info[[ind]] <- base::list(
+              variable = ind,
+              appears_in = base::character()
+            )
+          }
+          if (!tab_name %in% col_info[[ind]]$appears_in) {
+            col_info[[ind]]$appears_in <- base::c(
+              col_info[[ind]]$appears_in,
+              tab_name
+            )
+          }
+        }
+      }
+
+      if ("output_indicator" %in% names(tab_data)) {
+        output_indicators <- base::unique(base::as.character(tab_data$output_indicator))
+        # filter out NA and empty strings
+        output_indicators <- output_indicators[
+          !base::is.na(output_indicators) &
+          base::nzchar(base::trimws(output_indicators))
+        ]
+
+        for (ind in output_indicators) {
+          if (base::is.null(col_info[[ind]])) {
+            col_info[[ind]] <- base::list(
+              variable = ind,
+              appears_in = base::character()
+            )
+          }
+          if (!tab_name %in% col_info[[ind]]$appears_in) {
+            col_info[[ind]]$appears_in <- base::c(
+              col_info[[ind]]$appears_in,
+              tab_name
+            )
+          }
+        }
+      }
+    }
   }
 
   # build base dictionary tibble
@@ -1527,28 +1581,19 @@ validate_routine_hf_data <- function(
   # load dictionaries
   data("validation_terms", package = "sntutils", envir = environment())
 
-  # FILTER: keep only columns CREATED by validate_routine_hf_data()
-  # Exclude input data columns (record_id, hf_uid, date, conf, test, etc.)
-  # Only keep validation-generated columns that users need to understand
-  validation_created_cols <- c(
-    # summary tab
-    "check", "issues_found", "total_records", "percent",
-    # missing values tab
-    "variable", "n_missing", "total", "percent_missing", "column_type",
-    # consistency tabs
-    "input_indicator", "output_indicator", "input_value", "output_value",
-    "difference", "difference_prop", "difference_sd", "is_inconsistent",
-    # outliers tab
-    "value", "indicator_source", "outlier_flag_iqr", "outlier_flag_median",
-    "outlier_flag_mean",
-    # activeness tabs
-    "activity_status", "activeness_category", "total_periods",
-    "periods_active", "reporting_rate", "first_reported", "last_reported"
-  )
-
-  # keep only validation-created columns
+  # FILTER: exclude columns that appear ONLY in "Duplicate records" tab
+  # this includes input columns when they appear in other validation tabs
   dict <- dict |>
-    dplyr::filter(variable %in% validation_created_cols)
+    dplyr::filter(appears_in_tabs != "Duplicate records")
+
+  # if dictionary is empty after filtering, return early
+  if (base::nrow(dict) == 0) {
+    return(tibble::tibble(
+      variable = character(),
+      appears_in_tabs = character(),
+      label_en = character()
+    ))
+  }
 
   # batch lookup ALL variables in snt_var_tree (single call, much faster)
   snt_results_en <- .match_snt_labels(dict$variable, target_lang = "en")

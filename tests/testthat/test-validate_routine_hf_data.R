@@ -761,3 +761,194 @@ testthat::test_that("validate_routine_hf_data translation converts column names 
   # Should have French column names
   testthat::expect_true(any(grepl("Type", missing_cols, ignore.case = TRUE)))
 })
+
+# test data dictionary for input columns ------------------------------------
+
+testthat::test_that("data dictionary includes input columns from non-duplicate tabs", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_duplicates = TRUE,
+    check_future_dates = TRUE,
+    check_outliers = TRUE
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # verify input ID columns are included (they appear in multiple tabs)
+  testthat::expect_true("record_id" %in% dict$variable)
+  testthat::expect_true("date" %in% dict$variable)
+  testthat::expect_true("hf_uid" %in% dict$variable)
+
+  # verify admin columns are included
+  testthat::expect_true("adm0" %in% dict$variable)
+  testthat::expect_true("adm1" %in% dict$variable)
+  testthat::expect_true("adm2" %in% dict$variable)
+
+  # verify malaria indicators are included (they appear in Outliers/Consistency tabs)
+  testthat::expect_true(any(c("conf", "test", "susp", "maltreat") %in% dict$variable))
+})
+
+testthat::test_that("data dictionary excludes columns ONLY in Duplicate records tab", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_duplicates = TRUE,
+    check_future_dates = FALSE,
+    check_outliers = FALSE,
+    check_facility_activeness = FALSE
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # check that columns appearing ONLY in Duplicate records are excluded
+  # however, if those same columns appear in other tabs (like Future dates),
+  # they should be included
+  duplicate_only_vars <- dict |>
+    dplyr::filter(appears_in_tabs == "Duplicate records")
+
+  # should be empty - no columns appear ONLY in Duplicate records
+  testthat::expect_equal(nrow(duplicate_only_vars), 0)
+})
+
+testthat::test_that("data dictionary provides labels for input columns", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_outliers = TRUE
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # verify input columns have human-readable labels
+  record_id_row <- dict |> dplyr::filter(variable == "record_id")
+  if (nrow(record_id_row) > 0) {
+    testthat::expect_true(!is.na(record_id_row$label_en))
+    testthat::expect_true(record_id_row$label_en != "record_id")
+    testthat::expect_true(nchar(record_id_row$label_en) > 0)
+  }
+
+  # verify admin columns have labels
+  adm0_row <- dict |> dplyr::filter(variable == "adm0")
+  if (nrow(adm0_row) > 0) {
+    testthat::expect_true(!is.na(adm0_row$label_en))
+    testthat::expect_true(adm0_row$label_en != "adm0")
+  }
+})
+
+testthat::test_that("data dictionary provides labels for malaria indicators", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_outliers = TRUE
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # verify malaria indicators have labels from snt_var_tree
+  conf_row <- dict |> dplyr::filter(variable == "conf")
+  if (nrow(conf_row) > 0) {
+    testthat::expect_true(!is.na(conf_row$label_en))
+    testthat::expect_true(conf_row$label_en != "conf")
+    testthat::expect_true(nchar(conf_row$label_en) > 5)  # should be descriptive
+  }
+
+  test_row <- dict |> dplyr::filter(variable == "test")
+  if (nrow(test_row) > 0) {
+    testthat::expect_true(!is.na(test_row$label_en))
+    testthat::expect_true(test_row$label_en != "test")
+  }
+})
+
+testthat::test_that("data dictionary supports multilingual labels for input columns", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_outliers = TRUE,
+    language = "fr"
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # verify French label column exists
+  testthat::expect_true("label_fr" %in% names(dict))
+
+  # verify input columns have French labels
+  record_id_row <- dict |> dplyr::filter(variable == "record_id")
+  if (nrow(record_id_row) > 0) {
+    testthat::expect_true(!is.na(record_id_row$label_fr))
+    testthat::expect_true(nchar(record_id_row$label_fr) > 0)
+  }
+
+  # verify malaria indicators have French labels
+  conf_row <- dict |> dplyr::filter(variable == "conf")
+  if (nrow(conf_row) > 0) {
+    testthat::expect_true(!is.na(conf_row$label_fr))
+    testthat::expect_true(conf_row$label_fr != conf_row$label_en)
+  }
+})
+
+testthat::test_that("data dictionary includes validation-created columns", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_outliers = TRUE
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # verify validation-created columns are still included
+  testthat::expect_true("check" %in% dict$variable)
+  testthat::expect_true("issues_found" %in% dict$variable)
+  testthat::expect_true("percent" %in% dict$variable)
+  testthat::expect_true("input_indicator" %in% dict$variable)
+  testthat::expect_true("output_indicator" %in% dict$variable)
+  testthat::expect_true("difference" %in% dict$variable)
+
+  # verify outlier columns if outliers detected
+  if (any(grepl("outlier_flag", dict$variable))) {
+    testthat::expect_true(any(grepl("outlier_flag_", dict$variable)))
+  }
+})
+
+testthat::test_that("data dictionary appears_in_tabs shows correct tabs", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_duplicates = TRUE,
+    check_future_dates = TRUE,
+    check_outliers = TRUE
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # verify record_id appears in multiple tabs
+  record_id_row <- dict |> dplyr::filter(variable == "record_id")
+  if (nrow(record_id_row) > 0) {
+    tabs <- record_id_row$appears_in_tabs
+    # should appear in Future dates, Outliers, Consistency details, etc.
+    # but NOT show "Duplicate records" alone
+    testthat::expect_false(tabs == "Duplicate records")
+    testthat::expect_true(grepl(",", tabs) || !grepl("Duplicate", tabs))
+  }
+
+  # verify validation-only columns appear in specific tabs
+  check_row <- dict |> dplyr::filter(variable == "check")
+  if (nrow(check_row) > 0) {
+    testthat::expect_true(grepl("Summary", check_row$appears_in_tabs))
+  }
+})
