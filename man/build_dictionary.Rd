@@ -46,6 +46,10 @@ translated label column.
 \details{
 english labels are merged as: internal defaults, then csv overrides.
 unknown variables fall back to their column name.
+
+performance: the snt variable tree is cached in a package environment on
+first use. subsequent calls reuse the flattened tree. the cache automatically
+refreshes when the tree version changes (tracked via _meta$last_updated).
 }
 \examples{
 dd <- build_dictionary(dplyr::as_tibble(iris))
