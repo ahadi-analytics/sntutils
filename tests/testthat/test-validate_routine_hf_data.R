@@ -96,6 +96,7 @@ testthat::test_that("validate_routine_hf_data returns correct structure", {
     c(
       "Summary",
       "Missing values",
+      "Missing values detail",
       "Duplicate records",
       "Future dates",
       "Consistency failures",

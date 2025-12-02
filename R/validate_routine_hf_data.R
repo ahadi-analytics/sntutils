@@ -17,6 +17,10 @@
 #' @param core_id_cols character|NULL. If NULL, uses the set above.
 #' @param indicators character|NULL. Numeric indicators to validate. If NULL,
 #'   auto-detect from numeric columns after excluding core ids.
+#' @param missing_vars character|NULL. Additional variables to check for missing data
+#'   beyond core_id_cols. Core ID columns are always checked. If NULL, checks both
+#'   core_id_cols and indicators (default behavior). Use this to limit missing data
+#'   checks to specific indicators while always including core IDs.
 #' @param consistency_pairs list|NULL. Each element is list(input=, output=).
 #'   If NULL, defaults generated from common malaria cascade rules.
 #' @param check_future_dates logical. Default TRUE.
@@ -50,11 +54,12 @@
 #'   "validation_routine_data_results".
 #' @param output_formats character. Any of c("xlsx","rds"). Default
 #'   c("xlsx","rds").
+#' @param build_dictionary logical. Build data dictionary. Default TRUE.
 #' @param verbose logical. CLI messages. Default TRUE.
 #' @param language character. ISO-639-1 language code for output labels ("en", "fr", "pt"). Default "en".
 #'
 #' @return invisible named list with elements:
-#'   Summary, Missing values, Duplicate records, Future dates,
+#'   Summary, Missing values, Missing values detail, Duplicate records, Future dates,
 #'   Consistency failures, Consistency summary, Consistency details, Outliers,
 #'   HF activeness detail, HF activeness summary, Data dictionary
 #'
@@ -78,6 +83,7 @@ validate_routine_hf_data <- function(
   admin_guid_cols = c("adm0_guid", "adm1_guid", "adm2_guid", "adm3_guid"),
   core_id_cols = NULL,
   indicators = NULL,
+  missing_vars = NULL,
   consistency_pairs = NULL,
   check_future_dates = TRUE,
   check_duplicates = TRUE,
@@ -102,6 +108,7 @@ validate_routine_hf_data <- function(
   output_path = NULL,
   output_name = "validation_of_hf_routine_data",
   output_formats = c("xlsx", "rds"),
+  build_dictionary = TRUE,
   verbose = TRUE,
   language = "en"
 ) {
@@ -160,6 +167,7 @@ validate_routine_hf_data <- function(
       percent = numeric()
     ),
     "Missing values" = NULL,
+    "Missing values detail" = NULL,
     "Duplicate records" = NULL,
     "Future dates" = NULL,
     "Consistency failures" = base::list(),
@@ -174,11 +182,19 @@ validate_routine_hf_data <- function(
   # check 1: missing values
   mv <- .check_missing(
     data = data,
+    id_col = cols$id_col,
+    facility_col = cols$facility_col,
+    hf_name_col = hf_name_col,
+    date_col = cols$date_col,
+    year_col = cols$year_col,
+    admin_cols = cols$admin_cols,
     core_id_cols = cols$core_id_cols,
     indicators = indicators_use,
+    missing_vars = missing_vars,
     verbose = verbose
   )
   results[["Missing values"]] <- mv$missing_table
+  results[["Missing values detail"]] <- mv$missing_detail
   results$Summary <- dplyr::bind_rows(results$Summary, mv$summary_rows)
 
   # check 2: duplicates
@@ -209,6 +225,7 @@ validate_routine_hf_data <- function(
       data = data,
       core_id_cols = cols$core_id_cols,
       pairs = pairs_use,
+      language = language,
       verbose = verbose
     )
     results[["Consistency failures"]] <- cons$failures_by_pair
@@ -266,24 +283,26 @@ validate_routine_hf_data <- function(
     results$Summary <- dplyr::bind_rows(results$Summary, act$summary_row)
   }
 
-  # build data dictionary (always)
-  if (verbose) cli::cli_h2("Building Data Dictionary")
+  # build data dictionary (optional)
+  if (build_dictionary) {
+    if (verbose) cli::cli_h2("Building Data Dictionary")
 
-  dict <- .build_validation_dictionary(
-    results = results,
-    language = language
-  )
-
-  results[["Data dictionary"]] <- dict
-
-  if (verbose) {
-    n_vars <- sntutils::big_mark(base::nrow(dict))
-    n_tabs <- base::length(base::unique(base::unlist(
-      base::strsplit(base::as.character(dict$appears_in_tabs), ", ")
-    )))
-    cli::cli_alert_success(
-      "Dictionary created: {n_vars} variable(s) across {n_tabs} tab(s)"
+    dict <- .build_validation_dictionary(
+      results = results,
+      language = language
     )
+
+    results[["Data dictionary"]] <- dict
+
+    if (verbose) {
+      n_vars <- sntutils::big_mark(base::nrow(dict))
+      n_tabs <- base::length(base::unique(base::unlist(
+        base::strsplit(base::as.character(dict$appears_in_tabs), ", ")
+      )))
+      cli::cli_alert_success(
+        "Dictionary created: {n_vars} variable(s) across {n_tabs} tab(s)"
+      )
+    }
   }
 
   # final summary print
@@ -624,10 +643,30 @@ validate_routine_hf_data <- function(
 #'
 #' @keywords internal
 #' @noRd
-.check_missing <- function(data, core_id_cols, indicators, verbose) {
-  # union of columns to check
-  cols <- base::unique(base::c(core_id_cols, indicators))
-  cols <- cols[cols %in% names(data)]
+.check_missing <- function(data,
+                           id_col,
+                           facility_col,
+                           hf_name_col,
+                           date_col,
+                           year_col,
+                           admin_cols,
+                           core_id_cols,
+                           indicators,
+                           missing_vars,
+                           verbose) {
+  # determine which columns to check
+  # always include core_id_cols but exclude admin_guid_cols
+  core_cols_for_missing <- core_id_cols[!grepl("_guid$", core_id_cols)]
+
+  if (!base::is.null(missing_vars)) {
+    # user-specified columns PLUS core ids (excluding guid cols)
+    cols <- base::unique(base::c(core_cols_for_missing, missing_vars))
+    cols <- cols[cols %in% names(data)]
+  } else {
+    # default: union of core ids (excluding guid cols) and indicators
+    cols <- base::unique(base::c(core_cols_for_missing, indicators))
+    cols <- cols[cols %in% names(data)]
+  }
 
   # build counts only if any columns are present
   if (length(cols) == 0L) {
@@ -641,6 +680,7 @@ validate_routine_hf_data <- function(
     return(
       base::list(
         missing_table = empty,
+        missing_detail = NULL,
         summary_rows = tibble::tibble(
           check = character(),
           issues_found = character(),
@@ -668,6 +708,72 @@ validate_routine_hf_data <- function(
   ) |>
     dplyr::arrange(column_type, dplyr::desc(n_missing)) |>
     sntutils::auto_parse_types()
+
+  # build missing values summary by admin-year-variable (INDICATORS ONLY, NO HF)
+  # determine period column - use year, not yearmon
+  if ("year" %in% base::names(data)) {
+    period_col <- "year"
+  } else if (year_col %in% base::names(data)) {
+    period_col <- year_col
+  } else {
+    period_col <- NULL
+  }
+
+  # determine which variables to check in detail (only missing_vars or indicators, NOT core IDs)
+  vars_for_detail <- if (!base::is.null(missing_vars)) {
+    missing_vars[missing_vars %in% base::names(data)]
+  } else {
+    indicators[indicators %in% base::names(data)]
+  }
+
+  # only create detail table if we have variables to check and a period column
+  if (base::length(vars_for_detail) > 0 && !base::is.null(period_col)) {
+    # define grouping columns (admin hierarchy + year, NO facility)
+    group_cols <- c("adm0", "adm1", "adm2", "adm3", period_col)
+    group_cols <- group_cols[group_cols %in% base::names(data)]
+
+    # calculate missing proportions for each variable
+    missing_summary_list <- base::list()
+
+    for (var in vars_for_detail) {
+      if (var %in% base::names(data)) {
+        var_summary <- data |>
+          dplyr::select(dplyr::all_of(c(group_cols, var))) |>
+          dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
+          dplyr::summarise(
+            variable = var,
+            n_missing = base::sum(base::is.na(.data[[var]])),
+            n_total = dplyr::n(),
+            prop_missing = n_missing / n_total,
+            .groups = "drop"
+          ) |>
+          dplyr::filter(n_missing > 0)  # only keep rows with missing data
+
+        if (base::nrow(var_summary) > 0) {
+          missing_summary_list[[base::length(missing_summary_list) + 1]] <- var_summary
+        }
+      }
+    }
+
+    # combine all summaries
+    if (base::length(missing_summary_list) > 0) {
+      missing_detail <- dplyr::bind_rows(missing_summary_list) |>
+        dplyr::arrange(dplyr::desc(prop_missing), variable) |>
+        sntutils::auto_parse_types()
+
+      # convert character to factor to save space
+      char_cols <- base::names(missing_detail)[
+        base::sapply(missing_detail, base::is.character)
+      ]
+      for (col in char_cols) {
+        missing_detail[[col]] <- base::as.factor(missing_detail[[col]])
+      }
+    } else {
+      missing_detail <- NULL
+    }
+  } else {
+    missing_detail <- NULL
+  }
 
   # split core vs indicator rows for summary
   n_core_total <- base::sum(tab$column_type == "Core ID")
@@ -708,12 +814,24 @@ validate_routine_hf_data <- function(
         )
       }
       base::print(tab |> dplyr::filter(n_missing > 0))
+
+      # print detail summary
+      if (!base::is.null(missing_detail)) {
+        n_detail_rows <- sntutils::big_mark(base::nrow(missing_detail))
+        cli::cli_alert_info(
+          "Detailed missing data: {n_detail_rows} row(s) with missing values"
+        )
+      }
     } else {
       cli::cli_alert_success("No missing values in core ids or indicators")
     }
   }
 
-  base::list(missing_table = tab, summary_rows = rows)
+  base::list(
+    missing_table = tab,
+    missing_detail = missing_detail,
+    summary_rows = rows
+  )
 }
 
 #' Check duplicate records by id
@@ -814,7 +932,7 @@ validate_routine_hf_data <- function(
 #'
 #' @keywords internal
 #' @noRd
-.check_consistency <- function(data, core_id_cols, pairs, verbose) {
+.check_consistency <- function(data, core_id_cols, pairs, language, verbose) {
   # print header first
   if (verbose) cli::cli_h2("Check 4: Logical Consistency")
 
@@ -938,7 +1056,9 @@ validate_routine_hf_data <- function(
     )
     details <- dplyr::bind_rows(all_details) |>
       dplyr::filter(is_inconsistent) |>
-      dplyr::select(dplyr::any_of(keep_cols)) |>
+      dplyr::select(dplyr::any_of(keep_cols))
+
+    details <- details |>
       dplyr::arrange(dplyr::desc(difference)) |>
       sntutils::auto_parse_types()
   }
@@ -1140,6 +1260,50 @@ validate_routine_hf_data <- function(
     by_indicator = by_ind,
     summary_row = row
   )
+}
+
+#' Translate indicator names to labels using dictionaries
+#'
+#' @keywords internal
+#' @noRd
+.translate_indicators <- function(indicators, language = "en") {
+  if (base::length(indicators) == 0) {
+    return(character(0))
+  }
+
+  # load validation_terms dictionary
+  data("validation_terms", package = "sntutils", envir = environment())
+
+  # batch lookup ALL indicators in snt_var_tree
+  snt_results <- .match_snt_labels(indicators, target_lang = language)
+
+  # build labels
+  labels <- base::character(base::length(indicators))
+
+  for (i in base::seq_along(indicators)) {
+    var_name <- indicators[i]
+
+    # check validation_terms first
+    if (var_name %in% base::names(validation_terms)) {
+      lang_label <- validation_terms[[var_name]][[language]]
+      if (!base::is.null(lang_label)) {
+        labels[i] <- lang_label
+      } else {
+        labels[i] <- validation_terms[[var_name]]$en  # fallback to English
+      }
+    } else {
+      # lookup in batched snt results
+      snt_match <- snt_results[snt_results$variable == var_name, ]
+      if (base::nrow(snt_match) == 1 && !base::is.na(snt_match$label) && snt_match$label != var_name) {
+        labels[i] <- snt_match$label
+      } else {
+        # fallback to title case
+        labels[i] <- tools::toTitleCase(base::gsub("_", " ", var_name))
+      }
+    }
+  }
+
+  labels
 }
 
 #' Translate select components for Excel sheet names and headers
