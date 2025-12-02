@@ -209,6 +209,8 @@ globalVariables(
     "last_reporting_date",
     "months_since_last_report",
     ".has_any_indicator",
-    "admin", "n_violations", "time_var", "viol_cat", "violation"
+    "admin", "n_violations", "time_var", "viol_cat", "violation",
+    "prop_missing",
+    "n_total"
   )
 )
