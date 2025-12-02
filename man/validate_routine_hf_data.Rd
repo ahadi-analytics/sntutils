@@ -18,6 +18,7 @@ validate_routine_hf_data(
   admin_guid_cols = c("adm0_guid", "adm1_guid", "adm2_guid", "adm3_guid"),
   core_id_cols = NULL,
   indicators = NULL,
+  missing_vars = NULL,
   consistency_pairs = NULL,
   check_future_dates = TRUE,
   check_duplicates = TRUE,
@@ -42,6 +43,7 @@ validate_routine_hf_data(
   output_path = NULL,
   output_name = "validation_of_hf_routine_data",
   output_formats = c("xlsx", "rds"),
+  build_dictionary = TRUE,
   verbose = TRUE,
   language = "en"
 )
@@ -71,6 +73,11 @@ c("adm0_guid","adm1_guid","adm2_guid","adm3_guid").}
 
 \item{indicators}{character|NULL. Numeric indicators to validate. If NULL,
 auto-detect from numeric columns after excluding core ids.}
+
+\item{missing_vars}{character|NULL. Additional variables to check for missing data
+beyond core_id_cols. Core ID columns are always checked. If NULL, checks both
+core_id_cols and indicators (default behavior). Use this to limit missing data
+checks to specific indicators while always including core IDs.}
 
 \item{consistency_pairs}{list|NULL. Each element is list(input=, output=).
 If NULL, defaults generated from common malaria cascade rules.}
@@ -129,13 +136,15 @@ or "positive_only" (requires >0 value to count as reported).}
 \item{output_formats}{character. Any of c("xlsx","rds"). Default
 c("xlsx","rds").}
 
+\item{build_dictionary}{logical. Build data dictionary. Default TRUE.}
+
 \item{verbose}{logical. CLI messages. Default TRUE.}
 
 \item{language}{character. ISO-639-1 language code for output labels ("en", "fr", "pt"). Default "en".}
 }
 \value{
 invisible named list with elements:
-Summary, Missing values, Duplicate records, Future dates,
+Summary, Missing values, Missing values detail, Duplicate records, Future dates,
 Consistency failures, Consistency summary, Consistency details, Outliers,
 HF activeness detail, HF activeness summary, Data dictionary
 }
