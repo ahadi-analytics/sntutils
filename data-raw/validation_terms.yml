@@ -41,6 +41,14 @@ column_type:
   en: "Column Type"
   fr: "Type de Colonne"
   pt: "Tipo de Coluna"
+n_total:
+  en: "Total Records"
+  fr: "Total des Enregistrements"
+  pt: "Total de Registros"
+prop_missing:
+  en: "Proportion Missing"
+  fr: "Proportion Manquante"
+  pt: "Proporção Ausente"
 
 # Consistency tab terms
 input_indicator:
@@ -137,6 +145,10 @@ missing_values:
   en: "Missing values"
   fr: "Valeurs manquantes"
   pt: "Valores ausentes"
+missing_values_detail:
+  en: "Missing values detail"
+  fr: "Détail des valeurs manquantes"
+  pt: "Detalhe de valores ausentes"
 duplicate_records:
   en: "Duplicate records"
   fr: "Enregistrements en double"
