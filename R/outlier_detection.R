@@ -238,7 +238,7 @@ detect_outliers <- function(
   reporting_rate_col = NULL,
   reporting_rate_min = 0.5,
   key_indicators_hf = NULL,
-  classify_outbreaks = TRUE,
+  classify_outbreaks = FALSE,
   outbreak_min_run = 2,
   outbreak_prop_tolerance = 0.9,
   outbreak_max_gap = 12,
@@ -1312,6 +1312,15 @@ prepared <- data |>
 #'   The subtitle will show separate counts for outliers (red) and outbreaks
 #'   (teal). When `FALSE` (default), outbreaks and outliers are shown
 #'   together in red. Only relevant when `classify_outbreaks = TRUE`.
+#' @param consensus_colors Logical. When `TRUE` (default), creates a single plot
+#'   showing consensus strength across all methods using graduated colors. Point
+#'   colors indicate how many methods flagged each observation: grey (normal),
+#'   light red (1 method, weak signal), medium red (2 methods, moderate signal),
+#'   dark red (3 methods, strong signal). Requires at least 2 detection methods
+#'   (excluding "consensus"). When enabled, `show_outbreaks` is automatically set
+#'   to `FALSE` as the two visualization modes are mutually exclusive. A legend
+#'   is displayed showing the color-to-strength mapping. Set to `FALSE` for
+#'   standard multi-method plot behavior (separate plot per method).
 #' @param return_plots Character vector specifying which plots to return.
 #'   Can be any subset of the methods being computed: "iqr", "median",
 #'   "mean", "consensus", or "all" (default). For example, if
@@ -1443,6 +1452,18 @@ prepared <- data |>
 #'   plot_path = "outliers.png"  # All methods still saved to disk
 #' )
 #' # Returns list with only $iqr and $consensus plots
+#'
+#' # Consensus color visualization showing agreement strength
+#' consensus_plot <- outlier_plot(
+#'   data = malaria_data,
+#'   column = "confirmed_cases",
+#'   date = "date",
+#'   record_id = "facility_id",
+#'   methods = c("iqr", "median", "mean"),
+#'   consensus_colors = TRUE  # Single plot with color-coded consensus strength
+#' )
+#' # Returns single ggplot with graduated colors:
+#' # grey = normal, light red = 1 method, medium red = 2 methods, dark red = 3 methods
 #' }
 #' @export
 outlier_plot <- function(
@@ -1465,11 +1486,12 @@ outlier_plot <- function(
     reporting_rate_col = NULL,
     reporting_rate_min = 0.5,
     key_indicators_hf = NULL,
-    classify_outbreaks = TRUE,
+    classify_outbreaks = FALSE,
     outbreak_min_run = 2,
     outbreak_prop_tolerance = 0.9,
     outbreak_max_gap = 12,
     show_outbreaks = FALSE,
+    consensus_colors = TRUE,
     return_plots = "all",
     year_breaks = 2,
     target_language = "en",
@@ -1539,6 +1561,51 @@ outlier_plot <- function(
       cli::cli_abort(c(
         "Consensus requires at least 2 other methods.",
         "i" = "Include two of: 'iqr', 'median', 'mean'."
+      ))
+    }
+  }
+
+  # Resolve strictness preset to get actual multiplier values
+  strictness_info <- .resolve_strictness(
+    strictness = strictness,
+    sd_multiplier = sd_multiplier,
+    mad_constant = mad_constant,
+    mad_multiplier = mad_multiplier,
+    iqr_multiplier = iqr_multiplier
+  )
+
+  # Extract resolved values
+  sd_multiplier <- strictness_info$sd_multiplier
+  mad_constant <- strictness_info$mad_constant
+  mad_multiplier <- strictness_info$mad_multiplier
+  iqr_multiplier <- strictness_info$iqr_multiplier
+
+  # Validate consensus_colors requirements
+  if (consensus_colors) {
+    # Check 1: Multiple methods required
+    non_consensus_methods <- setdiff(methods, "consensus")
+    if (length(non_consensus_methods) < 2) {
+      cli::cli_abort(c(
+        "consensus_colors requires at least 2 detection methods",
+        "i" = "Current methods: {.val {methods}}",
+        "i" = "Include at least two of: 'iqr', 'median', 'mean'"
+      ))
+    }
+
+    # Check 2: Force show_outbreaks = FALSE
+    if (show_outbreaks) {
+      cli::cli_warn(c(
+        "!" = "consensus_colors and show_outbreaks are mutually exclusive",
+        "i" = "Setting show_outbreaks = FALSE"
+      ))
+      show_outbreaks <- FALSE
+    }
+
+    # Check 3: Warn about return_plots being ignored
+    if (!identical(return_plots, methods) && length(return_plots) > 1) {
+      cli::cli_inform(c(
+        "i" = "consensus_colors creates a single plot",
+        "i" = "return_plots parameter will be ignored"
       ))
     }
   }
@@ -1618,6 +1685,400 @@ outlier_plot <- function(
 
   # Create list to store plots
   plot_list <- list()
+
+  # Consensus colors mode: create single plot with color-coded consensus strength
+  if (consensus_colors) {
+    # calculate consensus strength for each point
+    # extract flag columns, using NA if they don't exist
+    iqr_flags <- if ("outlier_flag_iqr" %in% names(plot_data_base)) {
+      plot_data_base$outlier_flag_iqr
+    } else {
+      rep(NA_character_, nrow(plot_data_base))
+    }
+    median_flags <- if ("outlier_flag_median" %in% names(plot_data_base)) {
+      plot_data_base$outlier_flag_median
+    } else {
+      rep(NA_character_, nrow(plot_data_base))
+    }
+    mean_flags <- if ("outlier_flag_mean" %in% names(plot_data_base)) {
+      plot_data_base$outlier_flag_mean
+    } else {
+      rep(NA_character_, nrow(plot_data_base))
+    }
+
+    plot_data_consensus <- plot_data_base |>
+      dplyr::mutate(
+        consensus_strength = .calculate_consensus_strength(
+          outlier_flag_iqr = iqr_flags,
+          outlier_flag_median = median_flags,
+          outlier_flag_mean = mean_flags,
+          methods = methods
+        )
+      ) |>
+      # sort so normal plots first, strong plots last (visibility)
+      dplyr::arrange(consensus_strength)
+
+    # define color palette: blue -> yellow -> red for maximum distinction
+    strength_colors <- c(
+      "normal"   = "grey70",      # unchanged
+      "weak"     = "#3288BD",     # medium blue (1 method)
+      "moderate" = "#FDAE61",     # bright yellow-orange (2 methods)
+      "strong"   = "#A50026"      # dark red (3 methods)
+    )
+
+    # calculate summary statistics for subtitle
+    summary_stats <- plot_data_consensus |>
+      dplyr::count(consensus_strength) |>
+      dplyr::mutate(
+        pct = round(100 * n / sum(n), 1),
+        n_fmt = sntutils::big_mark(n)
+      )
+
+    # extract counts for each level
+    strong_n <- summary_stats$n_fmt[summary_stats$consensus_strength == "strong"]
+    strong_pct <- summary_stats$pct[summary_stats$consensus_strength == "strong"]
+    moderate_n <- summary_stats$n_fmt[summary_stats$consensus_strength == "moderate"]
+    moderate_pct <- summary_stats$pct[summary_stats$consensus_strength == "moderate"]
+    weak_n <- summary_stats$n_fmt[summary_stats$consensus_strength == "weak"]
+    weak_pct <- summary_stats$pct[summary_stats$consensus_strength == "weak"]
+
+    # handle missing levels (set to 0 if not present)
+    if (length(strong_n) == 0) {
+      strong_n <- "0"
+      strong_pct <- 0
+    }
+    if (length(moderate_n) == 0) {
+      moderate_n <- "0"
+      moderate_pct <- 0
+    }
+    if (length(weak_n) == 0) {
+      weak_n <- "0"
+      weak_pct <- 0
+    }
+
+    # build subtitle
+    if (target_language != "en") {
+      detected_word <- translate_text(
+        "Detected",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      strong_word <- translate_text(
+        "strong",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      moderate_word <- translate_text(
+        "moderate",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      weak_word <- translate_text(
+        "weak",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      outliers_word <- translate_text(
+        "outliers",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+
+      subtitle_text <- glue::glue(
+        "{detected_word}: {strong_n} {strong_word} ({strong_pct}%), ",
+        "{moderate_n} {moderate_word} ({moderate_pct}%), ",
+        "{weak_n} {weak_word} ({weak_pct}%) {outliers_word}"
+      )
+    } else {
+      subtitle_text <- glue::glue(
+        "Detected: {strong_n} strong ({strong_pct}%), ",
+        "{moderate_n} moderate ({moderate_pct}%), ",
+        "{weak_n} weak ({weak_pct}%) outliers"
+      )
+    }
+
+    # build title
+    if (target_language != "en") {
+      multi_method_text <- translate_text(
+        "Multi-Method Consensus",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      outlier_detection_text <- translate_text(
+        "Outlier Detection for",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      title_text <- glue::glue(
+        "{multi_method_text}: {outlier_detection_text} <b>{column}</b>"
+      )
+    } else {
+      title_text <- glue::glue(
+        "Multi-Method Consensus: Outlier Detection for <b>{column}</b>"
+      )
+    }
+
+    # translate axis labels
+    if (target_language != "en") {
+      x_label <- translate_text(
+        "Date",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      y_label <- translate_text(
+        "Value",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+    } else {
+      x_label <- "Date"
+      y_label <- "Value"
+    }
+
+    # translate legend labels
+    if (target_language != "en") {
+      normal_label <- translate_text(
+        "Normal",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      weak_label <- translate_text(
+        "Weak signal (1 method)",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      moderate_label <- translate_text(
+        "Moderate signal (2 methods)",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      strong_label <- translate_text(
+        "Strong signal (3 methods)",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      legend_title <- translate_text(
+        "Consensus Strength",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+    } else {
+      normal_label <- "Normal"
+      weak_label <- "Weak signal (1 method)"
+      moderate_label <- "Moderate signal (2 methods)"
+      strong_label <- "Strong signal (3 methods)"
+      legend_title <- "Consensus Strength"
+    }
+
+    legend_labels <- c(
+      "normal"   = normal_label,
+      "weak"     = weak_label,
+      "moderate" = moderate_label,
+      "strong"   = strong_label
+    )
+
+    # create summary for facet labels
+    percent_summary <- plot_data_consensus |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(facet_column))) |>
+      dplyr::summarise(
+        n_outlier = sum(consensus_strength != "normal", na.rm = TRUE),
+        n_total = dplyr::n(),
+        .groups = "drop"
+      ) |>
+      dplyr::mutate(
+        pct_outlier = round(100 * n_outlier / n_total, 1),
+        n_outlier_fmt = sntutils::big_mark(n_outlier),
+        n_total_fmt = sntutils::big_mark(n_total),
+        facet_value = .data[[facet_column]],
+        # truncate facet value to 15 characters
+        facet_value_display = ifelse(
+          nchar(as.character(facet_value)) > 15,
+          paste0(substr(as.character(facet_value), 1, 15), "..."),
+          as.character(facet_value)
+        ),
+        label = glue::glue(
+          "{facet_value_display}\n {pct_outlier}% ({n_outlier_fmt}/{n_total_fmt})"
+        )
+      )
+
+    facet_labels <- setNames(
+      percent_summary$label,
+      percent_summary[[facet_column]]
+    )
+
+    # build caption showing methods and parameters
+    non_consensus_methods <- setdiff(methods, "consensus")
+    method_details <- c()
+
+    if ("iqr" %in% non_consensus_methods) {
+      method_details <- c(method_details,
+        glue::glue("IQR (Q3 + {iqr_multiplier}×IQR)"))
+    }
+    if ("median" %in% non_consensus_methods) {
+      method_details <- c(method_details,
+        glue::glue("Median (median + {mad_multiplier}×MAD[k={mad_constant}])"))
+    }
+    if ("mean" %in% non_consensus_methods) {
+      method_details <- c(method_details,
+        glue::glue("Mean (mean + {sd_multiplier}×SD)"))
+    }
+
+    # add detection level clarification if levels differ
+    detection_level_text <- ""
+    if (!is.null(spatial_level) && spatial_level != facet_column) {
+      if (target_language != "en") {
+        det_word <- translate_text(
+          "Detection",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        disp_word <- translate_text(
+          "Display",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        level_word <- translate_text(
+          "level",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        detection_level_text <- glue::glue(
+          "{det_word}: {spatial_level} {level_word} | ",
+          "{disp_word}: {facet_column} {level_word}"
+        )
+      } else {
+        detection_level_text <- glue::glue(
+          "Detection: {spatial_level} level | Display: {facet_column} level"
+        )
+      }
+    }
+
+    # build caption with optional detection level note + methods
+    if (detection_level_text != "") {
+      caption_text <- paste0(
+        detection_level_text,
+        "\n",
+        paste(method_details, collapse = "; ")
+      )
+    } else {
+      caption_text <- paste(method_details, collapse = "; ")
+    }
+
+    # create the consensus plot
+    p <- ggplot2::ggplot(plot_data_consensus) +
+      ggplot2::geom_point(
+        ggplot2::aes(
+          x = date_for_plot,
+          y = value,
+          color = consensus_strength
+        ),
+        size = 2,
+        alpha = 0.7
+      ) +
+      ggplot2::scale_color_manual(
+        values = strength_colors,
+        labels = legend_labels,
+        name = legend_title
+      ) +
+      ggplot2::labs(
+        title = title_text,
+        subtitle = subtitle_text,
+        x = NULL,
+        y = paste0(y_label, "\n"),
+        caption = caption_text
+      ) +
+      ggplot2::facet_wrap(
+        stats::as.formula(paste("~", facet_column)),
+        scales = "free_y",
+        labeller = ggplot2::labeller(!!facet_column := facet_labels)
+      ) +
+      ggplot2::scale_x_date(
+        date_breaks = paste(year_breaks, "months"),
+        labels = function(x) {
+          sntutils::translate_yearmon(
+            x,
+            language = target_language,
+            format = "%Y-%m"
+          )
+        },
+        expand = ggplot2::expansion(mult = 0.02)
+      ) +
+      ggplot2::scale_y_continuous(
+        labels = scales::label_number(
+          scale_cut = scales::cut_short_scale()
+        ),
+        expand = ggplot2::expansion(mult = c(0.02, 0.1))
+      ) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(
+        legend.position = "right",  # show legend for consensus colors
+        axis.text.x = ggplot2::element_text(
+          size = 8,
+          angle = 70,
+          hjust = 1
+        ),
+        axis.text.y = ggplot2::element_text(size = 8),
+        strip.text = ggplot2::element_text(size = 9),
+        plot.title = ggtext::element_markdown(size = 14),
+        plot.subtitle = ggtext::element_markdown(size = 11),
+        panel.grid.minor = ggplot2::element_blank(),
+        panel.grid.major.x = ggplot2::element_line(
+          color = "grey90",
+          linewidth = 0.5
+        ),
+        panel.grid.major.y = ggplot2::element_line(
+          color = "grey90",
+          linewidth = 0.5
+        ),
+        panel.border = ggplot2::element_rect(fill = NA, linewidth = 0.4)
+      )
+
+    # store plot
+    plot_list[["consensus"]] <- p
+
+    # save plot if path is provided
+    if (!is.null(plot_path)) {
+      .save_outlier_plot(
+        plot = p,
+        plot_path = tools::file_path_sans_ext(plot_path),
+        method_name = "consensus_colors",
+        column = column,
+        yearmon = "yearmon",
+        adm_level = facet_column,
+        data = plot_data_consensus,
+        target_language = target_language,
+        source_language = source_language,
+        lang_cache_path = lang_cache_path,
+        compress_image = compress_image,
+        image_overwrite = image_overwrite,
+        compression_speed = compression_speed,
+        compression_verbose = compression_verbose,
+        plot_scale = plot_scale,
+        plot_width = plot_width,
+        plot_height = plot_height,
+        plot_dpi = plot_dpi
+      )
+    }
+
+  } else {
+    # Standard multi-method mode
 
   # Create plots for each requested method
   for (method in methods) {
@@ -1873,8 +2334,41 @@ outlier_plot <- function(
       y_label <- "Value"
     }
 
+    # Add detection level clarification if levels differ
+    detection_level_caption <- ""
+    if (!is.null(spatial_level) && spatial_level != facet_column) {
+      if (target_language != "en") {
+        det_word <- translate_text(
+          "Detection",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        disp_word <- translate_text(
+          "Display",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        level_word <- translate_text(
+          "level",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        detection_level_caption <- glue::glue(
+          "{det_word}: {spatial_level} {level_word} | ",
+          "{disp_word}: {facet_column} {level_word}"
+        )
+      } else {
+        detection_level_caption <- glue::glue(
+          "Detection: {spatial_level} level | Display: {facet_column} level"
+        )
+      }
+    }
+
     # Add caption for consensus explaining the rule
-    plot_caption <- if (method == "consensus") {
+    consensus_caption <- if (method == "consensus") {
       if (target_language != "en") {
         consensus_rule_text <- translate_text(
           "Consensus rule",
@@ -1912,6 +2406,17 @@ outlier_plot <- function(
           "to flag an outlier"
         )
       }
+    } else {
+      ""
+    }
+
+    # combine detection level note and method-specific caption
+    plot_caption <- if (detection_level_caption != "" && consensus_caption != "") {
+      paste0(detection_level_caption, "\n ", consensus_caption)
+    } else if (detection_level_caption != "") {
+      detection_level_caption
+    } else if (consensus_caption != "") {
+      consensus_caption
     } else {
       NULL
     }
@@ -2023,9 +2528,14 @@ outlier_plot <- function(
     }
 
   }  # End of methods loop
+  }  # End of else (standard multi-method mode)
 
   # Filter plots based on return_plots parameter
-  filtered_plot_list <- plot_list[return_plots]
+  filtered_plot_list <- if (consensus_colors) {
+    plot_list  # return full list (single consensus plot)
+  } else {
+    plot_list[return_plots]  # filter by return_plots
+  }
 
   # Return single plot or list of plots
   if (length(filtered_plot_list) == 1) {
@@ -3123,5 +3633,50 @@ outlier_plot <- function(
     usable_methods == 0 ~ "insufficient_evidence",
     outlier_votes >= consensus_rule ~ "outlier",
     TRUE ~ "normal"
+  )
+}
+
+# Calculate consensus strength across methods for consensus color visualization
+# @param data tibble with outlier_flag_* columns
+# @param methods character vector of detection methods used
+# @return ordered factor with levels: normal, weak, moderate, strong
+# @noRd
+.calculate_consensus_strength <- function(outlier_flag_iqr = NA_character_,
+                                          outlier_flag_median = NA_character_,
+                                          outlier_flag_mean = NA_character_,
+                                          methods) {
+  # extract only non-consensus methods
+  detection_methods <- setdiff(methods, "consensus")
+
+  # count outlier + outbreak flags across methods (vectorized)
+  count_col <- 0L
+
+  if ("iqr" %in% detection_methods && !all(is.na(outlier_flag_iqr))) {
+    count_col <- count_col +
+      as.integer(outlier_flag_iqr %in% c("outlier", "outbreak"))
+  }
+  if ("median" %in% detection_methods && !all(is.na(outlier_flag_median))) {
+    count_col <- count_col +
+      as.integer(outlier_flag_median %in% c("outlier", "outbreak"))
+  }
+  if ("mean" %in% detection_methods && !all(is.na(outlier_flag_mean))) {
+    count_col <- count_col +
+      as.integer(outlier_flag_mean %in% c("outlier", "outbreak"))
+  }
+
+  # map count to strength factor
+  strength <- dplyr::case_when(
+    count_col == 0L ~ "normal",
+    count_col == 1L ~ "weak",
+    count_col == 2L ~ "moderate",
+    count_col >= 3L ~ "strong",
+    TRUE ~ "normal"
+  )
+
+  # return as ordered factor for proper legend ordering
+  factor(
+    strength,
+    levels = c("normal", "weak", "moderate", "strong"),
+    ordered = TRUE
   )
 }
