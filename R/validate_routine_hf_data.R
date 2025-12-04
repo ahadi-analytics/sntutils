@@ -226,7 +226,8 @@ validate_routine_hf_data <- function(
       core_id_cols = cols$core_id_cols,
       pairs = pairs_use,
       language = language,
-      verbose = verbose
+      verbose = verbose,
+      hf_name_col = hf_name_col
     )
     results[["Consistency failures"]] <- cons$failures_by_pair
     results[["Consistency summary"]] <- cons$summary
@@ -932,7 +933,7 @@ validate_routine_hf_data <- function(
 #'
 #' @keywords internal
 #' @noRd
-.check_consistency <- function(data, core_id_cols, pairs, language, verbose) {
+.check_consistency <- function(data, core_id_cols, pairs, language, verbose, hf_name_col = "hf") {
   # print header first
   if (verbose) cli::cli_h2("Check 4: Logical Consistency")
 
@@ -982,6 +983,10 @@ validate_routine_hf_data <- function(
 
     # details subset with available ids
     ids_keep <- core_id_cols[core_id_cols %in% names(data)]
+    # explicitly include hf_name_col if it exists
+    if (hf_name_col %in% names(data) && !hf_name_col %in% ids_keep) {
+      ids_keep <- c(ids_keep, hf_name_col)
+    }
     detail <- pd |>
       dplyr::select(
         dplyr::all_of(ids_keep),
@@ -1050,7 +1055,7 @@ validate_routine_hf_data <- function(
   details <- NULL
   if (length(all_details) > 0) {
     keep_cols <- c(
-      "record_id", "date", "adm0", "adm1", "adm2", "adm3",
+      "record_id", "date", "adm0", "adm1", "adm2", "adm3", "hf", "hf_uid",
       "input_indicator", "output_indicator",
       "input_value", "output_value", "difference", "difference_prop", "difference_sd"
     )
@@ -1680,57 +1685,6 @@ validate_routine_hf_data <- function(
         col_info[[col]]$appears_in,
         tab_name
       )
-    }
-
-    # extract indicator values from consistency tabs
-    if (tab_name %in% c("Consistency summary", "Consistency details")) {
-      if ("input_indicator" %in% names(tab_data)) {
-        input_indicators <- base::unique(base::as.character(tab_data$input_indicator))
-        # filter out NA and empty strings
-        input_indicators <- input_indicators[
-          !base::is.na(input_indicators) &
-          base::nzchar(base::trimws(input_indicators))
-        ]
-
-        for (ind in input_indicators) {
-          if (base::is.null(col_info[[ind]])) {
-            col_info[[ind]] <- base::list(
-              variable = ind,
-              appears_in = base::character()
-            )
-          }
-          if (!tab_name %in% col_info[[ind]]$appears_in) {
-            col_info[[ind]]$appears_in <- base::c(
-              col_info[[ind]]$appears_in,
-              tab_name
-            )
-          }
-        }
-      }
-
-      if ("output_indicator" %in% names(tab_data)) {
-        output_indicators <- base::unique(base::as.character(tab_data$output_indicator))
-        # filter out NA and empty strings
-        output_indicators <- output_indicators[
-          !base::is.na(output_indicators) &
-          base::nzchar(base::trimws(output_indicators))
-        ]
-
-        for (ind in output_indicators) {
-          if (base::is.null(col_info[[ind]])) {
-            col_info[[ind]] <- base::list(
-              variable = ind,
-              appears_in = base::character()
-            )
-          }
-          if (!tab_name %in% col_info[[ind]]$appears_in) {
-            col_info[[ind]]$appears_in <- base::c(
-              col_info[[ind]]$appears_in,
-              tab_name
-            )
-          }
-        }
-      }
     }
   }
 
