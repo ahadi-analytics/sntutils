@@ -24,11 +24,12 @@ outlier_plot(
   reporting_rate_col = NULL,
   reporting_rate_min = 0.5,
   key_indicators_hf = NULL,
-  classify_outbreaks = TRUE,
+  classify_outbreaks = FALSE,
   outbreak_min_run = 2,
   outbreak_prop_tolerance = 0.9,
   outbreak_max_gap = 12,
   show_outbreaks = FALSE,
+  consensus_colors = TRUE,
   return_plots = "all",
   year_breaks = 2,
   target_language = "en",
@@ -140,6 +141,16 @@ from outliers in the plot using a distinct color (#52AAC2 teal).
 The subtitle will show separate counts for outliers (red) and outbreaks
 (teal). When \code{FALSE} (default), outbreaks and outliers are shown
 together in red. Only relevant when \code{classify_outbreaks = TRUE}.}
+
+\item{consensus_colors}{Logical. When \code{TRUE} (default), creates a single plot
+showing consensus strength across all methods using graduated colors. Point
+colors indicate how many methods flagged each observation: grey (normal),
+light red (1 method, weak signal), medium red (2 methods, moderate signal),
+dark red (3 methods, strong signal). Requires at least 2 detection methods
+(excluding "consensus"). When enabled, \code{show_outbreaks} is automatically set
+to \code{FALSE} as the two visualization modes are mutually exclusive. A legend
+is displayed showing the color-to-strength mapping. Set to \code{FALSE} for
+standard multi-method plot behavior (separate plot per method).}
 
 \item{return_plots}{Character vector specifying which plots to return.
 Can be any subset of the methods being computed: "iqr", "median",
@@ -294,5 +305,17 @@ selected <- outlier_plot(
   plot_path = "outliers.png"  # All methods still saved to disk
 )
 # Returns list with only $iqr and $consensus plots
+
+# Consensus color visualization showing agreement strength
+consensus_plot <- outlier_plot(
+  data = malaria_data,
+  column = "confirmed_cases",
+  date = "date",
+  record_id = "facility_id",
+  methods = c("iqr", "median", "mean"),
+  consensus_colors = TRUE  # Single plot with color-coded consensus strength
+)
+# Returns single ggplot with graduated colors:
+# grey = normal, light red = 1 method, medium red = 2 methods, dark red = 3 methods
 }
 }

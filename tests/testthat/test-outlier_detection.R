@@ -583,3 +583,73 @@ testthat::test_that("outbreak plot visualization includes outbreak category", {
   testthat::expect_s3_class(plot, "ggplot")
   testthat::expect_no_error(ggplot2::ggplot_build(plot))
 })
+
+# consensus colors tests
+test_that("consensus_colors creates single plot with graduated colors", {
+  skip_on_cran()
+
+  plot <- outlier_plot(
+    data = facility_data,
+    column = "confirmed_cases",
+    methods = c("iqr", "median", "mean"),
+    consensus_colors = TRUE,
+    show_plot = FALSE
+  )
+
+  testthat::expect_s3_class(plot, "ggplot")
+  testthat::expect_no_error(ggplot2::ggplot_build(plot))
+})
+
+test_that("consensus_colors requires multiple methods", {
+  skip_on_cran()
+
+  testthat::expect_error(
+    outlier_plot(
+      data = facility_data,
+      column = "confirmed_cases",
+      methods = "iqr",
+      consensus_colors = TRUE,
+      show_plot = FALSE
+    ),
+    "requires at least 2 detection methods"
+  )
+})
+
+test_that("consensus_colors overrides show_outbreaks with warning", {
+  skip_on_cran()
+
+  testthat::expect_warning(
+    plot <- outlier_plot(
+      data = facility_data,
+      column = "confirmed_cases",
+      methods = c("iqr", "median"),
+      consensus_colors = TRUE,
+      show_outbreaks = TRUE,
+      show_plot = FALSE
+    ),
+    "mutually exclusive"
+  )
+
+  testthat::expect_s3_class(plot, "ggplot")
+})
+
+test_that("consensus_colors works with pre-computed detection results", {
+  skip_on_cran()
+
+  # pre-compute detection
+  detection_results <- detect_outliers(
+    data = facility_data,
+    column = "confirmed_cases",
+    methods = c("iqr", "median", "mean")
+  )
+
+  # plot from results
+  plot <- outlier_plot(
+    data = detection_results,
+    column = "confirmed_cases",
+    consensus_colors = TRUE,
+    show_plot = FALSE
+  )
+
+  testthat::expect_s3_class(plot, "ggplot")
+})
