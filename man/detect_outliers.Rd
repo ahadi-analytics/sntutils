@@ -25,7 +25,7 @@ detect_outliers(
   reporting_rate_col = NULL,
   reporting_rate_min = 0.5,
   key_indicators_hf = NULL,
-  classify_outbreaks = TRUE,
+  classify_outbreaks = FALSE,
   outbreak_min_run = 2,
   outbreak_prop_tolerance = 0.9,
   outbreak_max_gap = 12,
