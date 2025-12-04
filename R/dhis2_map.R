@@ -75,10 +75,20 @@ dhis2_map <- function(data, dict, new_col, old_col, verbose = TRUE, drop_unmatch
   matched_data_cols <- data_cols_raw[matched_pos[valid_idx]]
 
   # construct mapping: new = matched data col
-  matched_mapping <- stats::setNames(matched_data_cols, new_names[valid_idx])
+  # filter out entries where new_names are empty, NA, or create duplicates
+  new_names_valid <- new_names[valid_idx]
+  keep_idx <- !is.na(new_names_valid) &
+              nzchar(trimws(new_names_valid)) &
+              !duplicated(new_names_valid)
+
+  matched_mapping <- stats::setNames(
+    matched_data_cols[keep_idx],
+    new_names_valid[keep_idx]
+  )
 
   # preserve unmatched columns (unless drop_unmatched is TRUE)
-  unmatched_cols <- setdiff(data_cols_raw, matched_data_cols)
+  # includes columns that matched but had invalid/duplicate new names
+  unmatched_cols <- setdiff(data_cols_raw, matched_data_cols[keep_idx])
 
   if (isTRUE(drop_unmatched)) {
     final_mapping <- matched_mapping
