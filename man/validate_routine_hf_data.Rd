@@ -20,30 +20,29 @@ validate_routine_hf_data(
   indicators = NULL,
   missing_vars = NULL,
   consistency_pairs = NULL,
+  outlier_pairs = NULL,
   check_future_dates = TRUE,
   check_duplicates = TRUE,
   check_outliers = TRUE,
   check_facility_activeness = TRUE,
   hf_name_col = "hf",
   key_indicators = NULL,
-  activeness_method = 3,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
   min_reporting_rate = 0.5,
-  outlier_methods = c("iqr", "median", "mean"),
+  outlier_methods = c("iqr", "median", "mean", "consensus"),
   time_mode = "across_time",
-  strictness = "balanced",
+  outlier_strictness = "balanced",
   sd_multiplier = 3,
   mad_constant = 1.4826,
   mad_multiplier = 9,
   iqr_multiplier = 2,
   min_n = 8,
   consensus_rule = 1,
-  save_results = FALSE,
   output_path = NULL,
   output_name = "validation_of_hf_routine_data",
   output_formats = c("xlsx", "rds"),
-  build_dictionary = TRUE,
+  build_dictionary = FALSE,
   verbose = TRUE,
   language = "en"
 )
@@ -82,6 +81,13 @@ checks to specific indicators while always including core IDs.}
 \item{consistency_pairs}{list|NULL. Each element is list(input=, output=).
 If NULL, defaults generated from common malaria cascade rules.}
 
+\item{outlier_pairs}{list|NULL. Pairs for outlier detection and correction.
+Structure: list(target = c("conf", "maltreat"), consistency = c("test", "conf")).
+Target variables are checked for outliers, corrected using neighbor median,
+and validated against consistency variables. If NULL, defaults generated
+from malaria cascade (same as consistency_pairs but reversed: output becomes
+target, input becomes consistency bound).}
+
 \item{check_future_dates}{logical. Default TRUE.}
 
 \item{check_duplicates}{logical. Default TRUE.}
@@ -94,10 +100,6 @@ If NULL, defaults generated from common malaria cascade rules.}
 
 \item{key_indicators}{character|NULL. Key indicators for activeness check.
 If NULL, uses all indicators. Default NULL.}
-
-\item{activeness_method}{character or numeric. Classification method for facility activity
-status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
-Defaults to 3. See \code{\link{classify_facility_activity}} for details.}
 
 \item{nonreport_window}{integer. Minimum number of consecutive non-reporting
 months to classify a facility as inactive in method 3. Defaults to 6.}
@@ -112,7 +114,7 @@ or "positive_only" (requires >0 value to count as reported).}
 
 \item{time_mode}{character. Time mode for outlier detection: "across_time" or "within_year". Default "across_time".}
 
-\item{strictness}{character. Outlier detection strictness: "balanced", "lenient", "strict", "advanced". Default "balanced".}
+\item{outlier_strictness}{character. Outlier detection strictness: "balanced", "lenient", "strict", "advanced". Default "balanced".}
 
 \item{sd_multiplier}{numeric. Standard deviation multiplier for outlier detection. Default 3.}
 
@@ -126,9 +128,7 @@ or "positive_only" (requires >0 value to count as reported).}
 
 \item{consensus_rule}{numeric. Number of methods that must agree for consensus outlier flag. Default 1.}
 
-\item{save_results}{logical. Save outputs. Default FALSE.}
-
-\item{output_path}{character|NULL. Required if save_results.}
+\item{output_path}{character|NULL. If provided, results are saved to this path.}
 
 \item{output_name}{character. Base output name. Default
 "validation_routine_data_results".}
@@ -145,8 +145,9 @@ c("xlsx","rds").}
 \value{
 invisible named list with elements:
 Summary, Missing values, Missing values detail, Duplicate records, Future dates,
-Consistency failures, Consistency summary, Consistency details, Outliers,
-HF activeness detail, HF activeness summary, Data dictionary
+Consistency summary, Consistency details,
+Outlier summary, Outlier detailed,
+HF activeness summary, HF activeness episodes, Data dictionary
 }
 \description{
 Orchestrates a suite of validation checks on routine HF data. It standardizes
