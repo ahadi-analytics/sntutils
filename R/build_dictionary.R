@@ -511,12 +511,14 @@
 #' @param vars character vector of variable names
 #' @param target_lang target language ("en", "fr", "pt")
 #' @param tree_data optional snt_var_tree data object (unused, for compatibility)
+#' @param verbose logical; if TRUE, prints fuzzy match info messages
 #'
 #' @return tibble with variable and label columns
 #' @noRd
 .match_snt_labels <- function(vars,
                               target_lang = "en",
-                              tree_data = NULL) {
+                              tree_data = NULL,
+                              verbose = TRUE) {
   # get cached lookup vectors for all languages
   lookup_en <- .get_lookup_vector_cached("en")
   lookup_fr <- .get_lookup_vector_cached("fr")
@@ -553,7 +555,8 @@
           nm,
           return = TRUE,
           schema = schema,
-          var_tree = list(schema = schema, flat_tree = flat_tree)
+          var_tree = list(schema = schema, flat_tree = flat_tree),
+          verbose = verbose
         ),
         error = function(e) NULL
       )
@@ -598,6 +601,8 @@
 #' @param trans_cache_path optional cache dir for translate_text_vec().
 #' @param override_yaml logical; if TRUE, CSV labels override YAML labels.
 #'   default FALSE (YAML takes precedence).
+#' @param verbose logical; if TRUE (default), prints info messages such as
+#'   fuzzy match notifications.
 #'
 #' @return tibble with:
 #'   variable, type, label_en, n, n_missing, pct_missing, n_unique,
@@ -623,7 +628,8 @@ build_dictionary <- function(
   max_levels = 50L,
   n_examples = 3L,
   trans_cache_path = NULL,
-  override_yaml = FALSE
+  override_yaml = FALSE,
+  verbose = TRUE
 ) {
   # validate input (sf objects inherit from data.frame)
   if (!base::inherits(data, "data.frame") && !base::inherits(data, "sf")) {
@@ -781,7 +787,7 @@ build_dictionary <- function(
   )
 
   # step 1: YAML-based SNT auto-labelling
-  snt_lbls <- .match_snt_labels(dict$variable, target_lang = "en")
+  snt_lbls <- .match_snt_labels(dict$variable, target_lang = "en", verbose = verbose)
   dict <- dplyr::left_join(dict, snt_lbls, by = "variable") |>
     dplyr::rename(label_yaml = label)
 

@@ -105,7 +105,8 @@ test_that("correct_outliers handles missing neighbors", {
 })
 
 
-test_that("correct_outliers applies failed_consistency when median > consistency_var", {
+test_that(
+  "correct_outliers applies failed_consistency when median > consistency_var", {
   test_data <- tibble::tibble(
     hf_uid = rep("facility_1", 5),
     date = as.Date(c("2023-01-01", "2023-02-01", "2023-03-01",

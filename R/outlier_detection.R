@@ -1788,17 +1788,36 @@ outlier_plot <- function(
         source_language = source_language,
         cache_path = lang_cache_path
       )
+      methods_word <- translate_text(
+        "methods",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      method_word <- translate_text(
+        "method",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
 
       subtitle_text <- glue::glue(
-        "{detected_word}: {strong_n} {strong_word} ({strong_pct}%), ",
-        "{moderate_n} {moderate_word} ({moderate_pct}%), ",
-        "{weak_n} {weak_word} ({weak_pct}%) {outliers_word}"
+        "{detected_word}: {strong_n} ",
+        "<b style='color:#A50026'>{strong_word} (3 {methods_word})</b> ({strong_pct}%), ",
+        "{moderate_n} ",
+        "<b style='color:#FDAE61'>{moderate_word} (2 {methods_word})</b> ({moderate_pct}%), ",
+        "{weak_n} ",
+        "<b style='color:#3288BD'>{weak_word} (1 {method_word})</b> ({weak_pct}%) ",
+        "{outliers_word}"
       )
     } else {
       subtitle_text <- glue::glue(
-        "Detected: {strong_n} strong ({strong_pct}%), ",
-        "{moderate_n} moderate ({moderate_pct}%), ",
-        "{weak_n} weak ({weak_pct}%) outliers"
+        "Detected: {strong_n} ",
+        "<b style='color:#A50026'>strong (3 methods)</b> ({strong_pct}%), ",
+        "{moderate_n} ",
+        "<b style='color:#FDAE61'>moderate (2 methods)</b> ({moderate_pct}%), ",
+        "{weak_n} ",
+        "<b style='color:#3288BD'>weak (1 method)</b> ({weak_pct}%) outliers"
       )
     }
 
@@ -1843,53 +1862,6 @@ outlier_plot <- function(
       x_label <- "Date"
       y_label <- "Value"
     }
-
-    # translate legend labels
-    if (target_language != "en") {
-      normal_label <- translate_text(
-        "Normal",
-        target_language = target_language,
-        source_language = source_language,
-        cache_path = lang_cache_path
-      )
-      weak_label <- translate_text(
-        "Weak signal (1 method)",
-        target_language = target_language,
-        source_language = source_language,
-        cache_path = lang_cache_path
-      )
-      moderate_label <- translate_text(
-        "Moderate signal (2 methods)",
-        target_language = target_language,
-        source_language = source_language,
-        cache_path = lang_cache_path
-      )
-      strong_label <- translate_text(
-        "Strong signal (3 methods)",
-        target_language = target_language,
-        source_language = source_language,
-        cache_path = lang_cache_path
-      )
-      legend_title <- translate_text(
-        "Consensus Strength",
-        target_language = target_language,
-        source_language = source_language,
-        cache_path = lang_cache_path
-      )
-    } else {
-      normal_label <- "Normal"
-      weak_label <- "Weak signal (1 method)"
-      moderate_label <- "Moderate signal (2 methods)"
-      strong_label <- "Strong signal (3 methods)"
-      legend_title <- "Consensus Strength"
-    }
-
-    legend_labels <- c(
-      "normal"   = normal_label,
-      "weak"     = weak_label,
-      "moderate" = moderate_label,
-      "strong"   = strong_label
-    )
 
     # create summary for facet labels
     percent_summary <- plot_data_consensus |>
@@ -1994,8 +1966,7 @@ outlier_plot <- function(
       ) +
       ggplot2::scale_color_manual(
         values = strength_colors,
-        labels = legend_labels,
-        name = legend_title
+        guide = "none"
       ) +
       ggplot2::labs(
         title = title_text,
@@ -2028,7 +1999,7 @@ outlier_plot <- function(
       ) +
       ggplot2::theme_minimal() +
       ggplot2::theme(
-        legend.position = "right",  # show legend for consensus colors
+        legend.position = "none",
         axis.text.x = ggplot2::element_text(
           size = 8,
           angle = 70,

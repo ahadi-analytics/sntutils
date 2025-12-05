@@ -396,6 +396,7 @@ snt_data_dict <- function(
 #' @param var_tree Optional list; if not provided, automatically loaded from
 #'   the package's snt_var_tree dataset.
 #' @param return Logical; if TRUE, also returns a tibble invisibly.
+#' @param verbose Logical; if TRUE (default), prints fuzzy match info messages.
 #'
 #' @return Invisibly returns a tibble with parsed components and labels.
 #'
@@ -410,7 +411,8 @@ check_snt_var <- function(
   var_name,
   schema = NULL,
   var_tree = NULL,
-  return = FALSE
+  return = FALSE,
+  verbose = TRUE
 ) {
   # -- Load schema if not provided ---------------------------------------------
   if (base::is.null(schema)) {
@@ -525,9 +527,11 @@ check_snt_var <- function(
         match_row <- flat_tree_normalized[best_idx, ]
         matched_var_name <- match_row$snt_var_name
 
-        cli::cli_alert_info(
-          "No exact match for {.val {var_name}}; using fuzzy match: {.val {matched_var_name}}"
-        )
+        if (verbose) {
+          cli::cli_alert_info(
+            "No exact match for {.val {var_name}}; using fuzzy match: {.val {matched_var_name}}"
+          )
+        }
 
         # re-tokenize using the matched variable name
         tokens <- unlist(strsplit(matched_var_name, "_"))
