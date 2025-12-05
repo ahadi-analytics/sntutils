@@ -173,14 +173,78 @@ outliers:
   en: "Outliers"
   fr: "Valeurs aberrantes"
   pt: "Outliers"
-hf_activeness_detail:
-  en: "HF activeness detail"
-  fr: "Détail de l'activité des établissements"
-  pt: "Detalhe de atividade da unidade de saúde"
+outlier_summary:
+  en: "Outlier summary"
+  fr: "Résumé des valeurs aberrantes"
+  pt: "Resumo de outliers"
+outlier_detailed:
+  en: "Outlier detailed"
+  fr: "Détails des valeurs aberrantes"
+  pt: "Detalhes de outliers"
+outlier_var:
+  en: "Outlier Variable"
+  fr: "Variable aberrante"
+  pt: "Variável de outlier"
+outlier_value:
+  en: "Outlier Value"
+  fr: "Valeur aberrante"
+  pt: "Valor de outlier"
+median_neighbour_value:
+  en: "Median Neighbour Value"
+  fr: "Valeur médiane des voisins"
+  pt: "Valor mediano dos vizinhos"
+consistency_var:
+  en: "Consistency Variable"
+  fr: "Variable de cohérence"
+  pt: "Variável de consistência"
+consistency_value:
+  en: "Consistency Value"
+  fr: "Valeur de cohérence"
+  pt: "Valor de consistência"
+corrected_value:
+  en: "Corrected Value"
+  fr: "Valeur corrigée"
+  pt: "Valor corrigido"
+correction_flag:
+  en: "Correction Flag"
+  fr: "Indicateur de correction"
+  pt: "Sinalizador de correção"
+failed_reason:
+  en: "Failed Reason"
+  fr: "Raison de l'échec"
+  pt: "Motivo da falha"
+prop_outliers:
+  en: "Proportion Outliers"
+  fr: "Proportion de valeurs aberrantes"
+  pt: "Proporção de outliers"
+prop_corrected:
+  en: "Proportion Corrected"
+  fr: "Proportion corrigée"
+  pt: "Proporção corrigida"
+prop_inconsistent:
+  en: "Proportion Inconsistent"
+  fr: "Proportion incohérente"
+  pt: "Proporção inconsistente"
+prop_missing_after:
+  en: "Proportion Missing After"
+  fr: "Proportion manquante après"
+  pt: "Proporção ausente após"
 hf_activeness_summary:
   en: "HF activeness summary"
-  fr: "Résumé de l'activité des établissements"
+  fr: "Résumé de l'activité des FOSA"
   pt: "Resumo de atividade da unidade de saúde"
+hf_activeness_episodes:
+  en: "HF activeness episodes"
+  fr: "Épisodes d'activité des établissements"
+  pt: "Episódios de atividade da unidade de saúde"
+start_date:
+  en: "Start Date"
+  fr: "Date de début"
+  pt: "Data de início"
+end_date:
+  en: "End Date"
+  fr: "Date de fin"
+  pt: "Data de término"
 
 # Data dictionary terms
 appears_in_tabs:

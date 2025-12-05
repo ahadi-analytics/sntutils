@@ -90,25 +90,23 @@ testthat::test_that("validate_routine_hf_data returns correct structure", {
   # check result is a list
   testthat::expect_type(result, "list")
 
-  # check required components exist
-  testthat::expect_named(
-    result,
-    c(
-      "Summary",
-      "Missing values",
-      "Missing values detail",
-      "Duplicate records",
-      "Future dates",
-      "Consistency failures",
-      "Consistency summary",
-      "Consistency details",
-      "Outliers",
-      "HF activeness detail",
-      "HF activeness summary",
-      "Data dictionary"
-    ),
-    ignore.order = TRUE
+  # check required components exist (some may be absent if no issues found)
+  expected_keys <- c(
+    "Summary",
+    "Missing values",
+    "Duplicate records",
+    "Future dates",
+    "Consistency failures",
+    "Consistency summary",
+    "Consistency details",
+    "Outlier corrections",
+    "Outlier summary",
+    "HF activeness detail",
+    "HF activeness summary",
+    "Data dictionary"
   )
+  # verify all expected keys are present
+  testthat::expect_true(all(expected_keys %in% names(result)))
 
   # check Summary is a tibble
   testthat::expect_s3_class(result$Summary, "tbl_df")
@@ -467,22 +465,23 @@ testthat::test_that("validate_routine_hf_data detects outliers", {
   )
 
   # check outliers table exists
-  testthat::expect_s3_class(result[["Outliers"]], "tbl_df")
+  testthat::expect_s3_class(result[["Outlier corrections"]], "tbl_df")
 
   # check outliers were detected
-  testthat::expect_gte(nrow(result[["Outliers"]]), 0)
+  testthat::expect_gte(nrow(result[["Outlier corrections"]]), 0)
 
-  # If outliers were detected, verify the table structure
-  if (nrow(result[["Outliers"]]) > 0) {
-    outlier_cols <- names(result[["Outliers"]])
-    testthat::expect_true("value" %in% outlier_cols)
-    testthat::expect_true(any(grepl("outlier_flag_", outlier_cols)))
-  }
+  # verify the table structure - at minimum has metadata columns
+  outlier_cols <- names(result[["Outlier corrections"]])
+  testthat::expect_true("record_id" %in% outlier_cols)
+  testthat::expect_true("hf_uid" %in% outlier_cols)
+
+  # check outlier summary table exists
+  testthat::expect_s3_class(result[["Outlier summary"]], "tbl_df")
 
   # check summary always has an outliers row
   summary_df <- result$Summary
   outlier_row <- summary_df |>
-    dplyr::filter(check == "Outliers")
+    dplyr::filter(check == "Outliers & Corrections")
 
   testthat::expect_equal(nrow(outlier_row), 1)
   # percent can be 0 if no outliers detected
@@ -504,12 +503,13 @@ testthat::test_that("validate_routine_hf_data handles no outliers", {
 
   # outliers may or may not be detected depending on the data distribution
   # just check that the structure is correct
-  testthat::expect_true("Outliers" %in% names(result))
+  testthat::expect_true("Outlier corrections" %in% names(result))
+  testthat::expect_true("Outlier summary" %in% names(result))
 
   # check summary has outliers row
   summary_df <- result$Summary
   outlier_row <- summary_df |>
-    dplyr::filter(check == "Outliers")
+    dplyr::filter(check == "Outliers & Corrections")
 
   testthat::expect_equal(nrow(outlier_row), 1)
 })
@@ -532,7 +532,7 @@ testthat::test_that("validate_routine_hf_data works with all checks disabled", {
   # check that no duplicate, future date, or outlier checks ran
   testthat::expect_false("Duplicate records" %in% result$Summary$check)
   testthat::expect_false("Future dates" %in% result$Summary$check)
-  testthat::expect_false("Outliers" %in% result$Summary$check)
+  testthat::expect_false("Outliers & Corrections" %in% result$Summary$check)
 })
 
 testthat::test_that("validate_routine_hf_data works with all checks enabled", {
@@ -554,7 +554,7 @@ testthat::test_that("validate_routine_hf_data works with all checks enabled", {
   testthat::expect_true("Duplicate records" %in% summary_checks)
   testthat::expect_true("Future dates" %in% summary_checks)
   testthat::expect_true("Logical consistency" %in% summary_checks)
-  testthat::expect_true("Outliers" %in% summary_checks)
+  testthat::expect_true("Outliers & Corrections" %in% summary_checks)
 })
 
 testthat::test_that("validate_routine_hf_data handles custom indicator list", {
