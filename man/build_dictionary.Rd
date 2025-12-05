@@ -11,7 +11,8 @@ build_dictionary(
   max_levels = 50L,
   n_examples = 3L,
   trans_cache_path = NULL,
-  override_yaml = FALSE
+  override_yaml = FALSE,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -30,6 +31,9 @@ override english labels.}
 
 \item{override_yaml}{logical; if TRUE, CSV labels override YAML labels.
 default FALSE (YAML takes precedence).}
+
+\item{verbose}{logical; if TRUE (default), prints info messages such as
+fuzzy match notifications.}
 }
 \value{
 tibble with:

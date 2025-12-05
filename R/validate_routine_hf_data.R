@@ -23,6 +23,12 @@
 #'   checks to specific indicators while always including core IDs.
 #' @param consistency_pairs list|NULL. Each element is list(input=, output=).
 #'   If NULL, defaults generated from common malaria cascade rules.
+#' @param outlier_pairs list|NULL. Pairs for outlier detection and correction.
+#'   Structure: list(target = c("conf", "maltreat"), consistency = c("test", "conf")).
+#'   Target variables are checked for outliers, corrected using neighbor median,
+#'   and validated against consistency variables. If NULL, defaults generated
+#'   from malaria cascade (same as consistency_pairs but reversed: output becomes
+#'   target, input becomes consistency bound).
 #' @param check_future_dates logical. Default TRUE.
 #' @param check_duplicates logical. Default TRUE.
 #' @param check_outliers logical. Default TRUE.
@@ -30,9 +36,6 @@
 #' @param hf_name_col character. Facility name column. Default "hf".
 #' @param key_indicators character|NULL. Key indicators for activeness check.
 #'   If NULL, uses all indicators. Default NULL.
-#' @param activeness_method character or numeric. Classification method for facility activity
-#'   status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
-#'   Defaults to 3. See \code{\link{classify_facility_activity}} for details.
 #' @param nonreport_window integer. Minimum number of consecutive non-reporting
 #'   months to classify a facility as inactive in method 3. Defaults to 6.
 #' @param reporting_rule character. Defines what counts as reporting for activeness:
@@ -41,15 +44,14 @@
 #' @param min_reporting_rate numeric. Minimum reporting rate threshold. Default 0.5.
 #' @param outlier_methods character. Any of c("iqr","median","mean").
 #' @param time_mode character. Time mode for outlier detection: "across_time" or "within_year". Default "across_time".
-#' @param strictness character. Outlier detection strictness: "balanced", "lenient", "strict", "advanced". Default "balanced".
+#' @param outlier_strictness character. Outlier detection strictness: "balanced", "lenient", "strict", "advanced". Default "balanced".
 #' @param sd_multiplier numeric. Standard deviation multiplier for outlier detection. Default 3.
 #' @param mad_constant numeric. MAD constant for outlier detection. Default 1.4826.
 #' @param mad_multiplier numeric. MAD multiplier for outlier detection. Default 9.
 #' @param iqr_multiplier numeric. IQR multiplier for outlier detection. Default 2.
 #' @param min_n numeric. Minimum sample size for outlier detection. Default 8.
 #' @param consensus_rule numeric. Number of methods that must agree for consensus outlier flag. Default 1.
-#' @param save_results logical. Save outputs. Default FALSE.
-#' @param output_path character|NULL. Required if save_results.
+#' @param output_path character|NULL. If provided, results are saved to this path.
 #' @param output_name character. Base output name. Default
 #'   "validation_routine_data_results".
 #' @param output_formats character. Any of c("xlsx","rds"). Default
@@ -60,8 +62,9 @@
 #'
 #' @return invisible named list with elements:
 #'   Summary, Missing values, Missing values detail, Duplicate records, Future dates,
-#'   Consistency failures, Consistency summary, Consistency details, Outliers,
-#'   HF activeness detail, HF activeness summary, Data dictionary
+#'   Consistency summary, Consistency details,
+#'   Outlier summary, Outlier detailed,
+#'   HF activeness summary, HF activeness episodes, Data dictionary
 #'
 #' @examples
 #' \dontrun{
@@ -85,41 +88,39 @@ validate_routine_hf_data <- function(
   indicators = NULL,
   missing_vars = NULL,
   consistency_pairs = NULL,
+  outlier_pairs = NULL,
   check_future_dates = TRUE,
   check_duplicates = TRUE,
   check_outliers = TRUE,
   check_facility_activeness = TRUE,
   hf_name_col = "hf",
   key_indicators = NULL,
-  activeness_method = 3,
   nonreport_window = 6,
   reporting_rule = "any_non_na",
   min_reporting_rate = 0.5,
-  outlier_methods = c("iqr", "median", "mean"),
+  outlier_methods = c("iqr", "median", "mean", "consensus"),
   time_mode = "across_time",
-  strictness = "balanced",
+  outlier_strictness = "balanced",
   sd_multiplier = 3,
   mad_constant = 1.4826,
   mad_multiplier = 9,
   iqr_multiplier = 2,
   min_n = 8,
   consensus_rule = 1,
-  save_results = FALSE,
   output_path = NULL,
   output_name = "validation_of_hf_routine_data",
   output_formats = c("xlsx", "rds"),
-  build_dictionary = TRUE,
+  build_dictionary = FALSE,
   verbose = TRUE,
   language = "en"
 ) {
   # validate args early and fail fast
   .validate_args(
     data = data,
-    save_results = save_results,
     output_path = output_path,
     outlier_methods = outlier_methods,
     time_mode = time_mode,
-    strictness = strictness
+    outlier_strictness = outlier_strictness
   )
 
   # print quick dataset header
@@ -158,6 +159,12 @@ validate_routine_hf_data <- function(
     consistency_pairs = consistency_pairs
   )
 
+  # build outlier pairs
+  outlier_pairs_use <- .build_outlier_pairs(
+    data = data,
+    outlier_pairs = outlier_pairs
+  )
+
   # prepare empty results container
   results <- base::list(
     Summary = tibble::tibble(
@@ -166,16 +173,15 @@ validate_routine_hf_data <- function(
       total_records = character(),
       percent = numeric()
     ),
+    "HF activeness summary" = NULL,
     "Missing values" = NULL,
     "Missing values detail" = NULL,
     "Duplicate records" = NULL,
     "Future dates" = NULL,
-    "Consistency failures" = base::list(),
     "Consistency summary" = NULL,
     "Consistency details" = NULL,
-    "Outliers" = NULL,
-    "HF activeness detail" = NULL,
-    "HF activeness summary" = NULL,
+    "Outlier summary" = NULL,
+    "Outlier detailed" = NULL,
     "Data dictionary" = NULL
   )
 
@@ -229,26 +235,24 @@ validate_routine_hf_data <- function(
       verbose = verbose,
       hf_name_col = hf_name_col
     )
-    results[["Consistency failures"]] <- cons$failures_by_pair
     results[["Consistency summary"]] <- cons$summary
     results[["Consistency details"]] <- cons$details
     results$Summary <- dplyr::bind_rows(results$Summary, cons$summary_row)
   }
 
-  # check 5: outliers
-  if (check_outliers && base::length(indicators_use) > 0) {
-    out <- .detect_outliers(
+  # check 5: outliers with correction
+  if (check_outliers && base::length(outlier_pairs_use) > 0) {
+    out <- .check_outliers_with_correction(
       data = data,
       id_col = cols$id_col,
+      facility_col = cols$facility_col,
       date_col = cols$date_col,
-      year_col = cols$year_col,
+      hf_name_col = hf_name_col,
       adm_cols = cols$admin_cols,
-      yearmon_col = cols$yearmon_col,
-      month_col = cols$month_col,
-      indicators = indicators_use,
+      outlier_pairs = outlier_pairs_use,
       methods = outlier_methods,
       time_mode = time_mode,
-      strictness = strictness,
+      strictness = outlier_strictness,
       sd_multiplier = sd_multiplier,
       mad_constant = mad_constant,
       mad_multiplier = mad_multiplier,
@@ -257,7 +261,11 @@ validate_routine_hf_data <- function(
       consensus_rule = consensus_rule,
       verbose = verbose
     )
-    results[["Outliers"]] <- out$combined
+    # only include outlier tabs if outliers were found
+    if (base::nrow(out$detail) > 0) {
+      results[["Outlier summary"]] <- out$summary
+      results[["Outlier detailed"]] <- out$detail
+    }
     results$Summary <- dplyr::bind_rows(results$Summary, out$summary_row)
   }
 
@@ -265,28 +273,27 @@ validate_routine_hf_data <- function(
   if (check_facility_activeness) {
     act <- .check_facility_activeness(
       data = data,
-      id_col = cols$id_col,
       facility_col = cols$facility_col,
       date_col = cols$date_col,
       hf_name_col = hf_name_col,
-      yearmon_col = cols$yearmon_col,
       admin_cols = cols$admin_cols,
       indicators = indicators_use,
       key_indicators = key_indicators,
-      activeness_method = activeness_method,
       nonreport_window = nonreport_window,
       reporting_rule = reporting_rule,
       min_reporting_rate = min_reporting_rate,
+      language = language,
       verbose = verbose
     )
-    results[["HF activeness detail"]] <- act$activeness_over_time
     results[["HF activeness summary"]] <- act$activeness_summary
     results$Summary <- dplyr::bind_rows(results$Summary, act$summary_row)
   }
 
   # build data dictionary (optional)
   if (build_dictionary) {
-    if (verbose) cli::cli_h2("Building Data Dictionary")
+    if (verbose) {
+      cli::cli_h2("Building Data Dictionary")
+    }
 
     dict <- .build_validation_dictionary(
       results = results,
@@ -322,7 +329,7 @@ validate_routine_hf_data <- function(
   }
 
   # optional translation + save
-  if (save_results) {
+  if (!base::is.null(output_path)) {
     # translate only sheet/tab names and selected headers
     res_translated <- .translate_results(
       results = results,
@@ -346,19 +353,17 @@ validate_routine_hf_data <- function(
 #' Validate top-level inputs and simple constraints
 #'
 #' @param data data.frame.
-#' @param save_results logical.
 #' @param output_path character|NULL.
 #' @param outlier_methods character.
 #' @param time_mode character.
-#' @param strictness character.
+#' @param outlier_strictness character.
 #' @keywords internal
 #' @noRd
 .validate_args <- function(data,
-                           save_results,
                            output_path,
                            outlier_methods,
                            time_mode,
-                           strictness) {
+                           outlier_strictness) {
   # check data frame
   if (!base::is.data.frame(data)) {
     cli::cli_abort("`data` must be a data frame.")
@@ -369,15 +374,9 @@ validate_routine_hf_data <- function(
     cli::cli_abort("`data` has zero rows.")
   }
 
-  # validate saving path if needed
-  if (save_results && base::is.null(output_path)) {
-    cli::cli_abort(
-      "`output_path` must be provided when `save_results = TRUE`."
-    )
-  }
 
   # validate methods content
-  allowed_methods <- c("iqr", "median", "mean")
+  allowed_methods <- c("iqr", "median", "mean", "consensus")
   bad_methods <- setdiff(outlier_methods, allowed_methods)
   if (length(bad_methods) > 0) {
     cli::cli_abort("Unsupported `outlier_methods`: {bad_methods}.")
@@ -389,10 +388,10 @@ validate_routine_hf_data <- function(
     cli::cli_abort("`time_mode` must be one of: {allowed_time_modes}.")
   }
 
-  # validate strictness
+  # validate outlier_strictness
   allowed_strictness <- c("balanced", "lenient", "strict", "advanced")
-  if (!strictness %in% allowed_strictness) {
-    cli::cli_abort("`strictness` must be one of: {allowed_strictness}.")
+  if (!outlier_strictness %in% allowed_strictness) {
+    cli::cli_abort("`outlier_strictness` must be one of: {allowed_strictness}.")
   }
 }
 
@@ -525,13 +524,6 @@ validate_routine_hf_data <- function(
     }
   }
 
-  # print if requested
-  if (verbose && length(indicators) > 0) {
-    n_ind <- sntutils::big_mark(length(indicators))
-    ind_list <- base::paste(indicators, collapse = ", ")
-    cli::cli_alert_info("Validating {n_ind} indicator(s): {ind_list}")
-  }
-
   indicators
 }
 
@@ -566,8 +558,30 @@ validate_routine_hf_data <- function(
         consistency_pairs$input,
         consistency_pairs$output
       )
+    }
+    # case 2: list(c(...), c(...)) - unnamed list of 2 character vectors
+    else if (
+      base::length(consistency_pairs) == 2 &&
+        base::is.character(consistency_pairs[[1]]) &&
+        base::is.character(consistency_pairs[[2]])
+    ) {
+      n1 <- base::length(consistency_pairs[[1]])
+      n2 <- base::length(consistency_pairs[[2]])
+
+      if (n1 != n2) {
+        cli::cli_abort(
+          "consistency_pairs vectors must have the same length."
+        )
+      }
+
+      # treat first vector as input, second as output
+      cp <- base::Map(
+        f = function(i, o) base::list(input = i, output = o),
+        consistency_pairs[[1]],
+        consistency_pairs[[2]]
+      )
     } else {
-      # case 2: already a list of list(input=, output=)
+      # case 3: already a list of list(input=, output=)
       cp <- consistency_pairs
     }
 
@@ -992,12 +1006,11 @@ validate_routine_hf_data <- function(
         dplyr::all_of(ids_keep),
         input_indicator, output_indicator,
         input_value, output_value, difference, difference_prop, difference_sd, is_inconsistent
-      ) |>
-      sntutils::auto_parse_types()
+      )
     all_details[[length(all_details) + 1]] <- detail
 
     # failures
-    fails <- pd |> dplyr::filter(is_inconsistent) |> sntutils::auto_parse_types()
+    fails <- pd |> dplyr::filter(is_inconsistent)
     failures_map[[base::paste(i, "vs", o)]] <- fails
     if (base::nrow(fails) > 0) pairs_with_fail <- pairs_with_fail + 1L
 
@@ -1048,6 +1061,42 @@ validate_routine_hf_data <- function(
       summary_table <- dplyr::bind_rows(summary_list) |>
         dplyr::arrange(dplyr::desc(difference)) |>
         sntutils::auto_parse_types()
+
+      # apply dictionary labels to summary table
+      label_col <- base::paste0("label_", language)
+
+      # extract unique column names from pairs
+      pair_cols <- base::unique(base::as.vector(base::unlist(
+        base::lapply(pairs, function(p) base::c(p$input, p$output))
+      )))
+
+      data_dict <- sntutils::build_dictionary(
+        data = data |> dplyr::select(dplyr::any_of(pair_cols)),
+        language = language, verbose = FALSE
+      )
+
+      # join input variable labels
+      if (label_col %in% base::names(data_dict)) {
+        input_labels <- data_dict |>
+          dplyr::select(variable, input_variable = dplyr::all_of(label_col))
+        output_labels <- data_dict |>
+          dplyr::select(variable, output_variable = dplyr::all_of(label_col))
+
+        summary_table <- summary_table |>
+          dplyr::left_join(input_labels, by = c("input_indicator" = "variable")) |>
+          dplyr::left_join(output_labels, by = c("output_indicator" = "variable")) |>
+          dplyr::select(
+            input_indicator,
+            input_variable,
+            output_indicator,
+            output_variable,
+            input_value,
+            output_value,
+            difference,
+            difference_prop,
+            difference_sd
+          )
+      }
     }
   }
 
@@ -1059,11 +1108,10 @@ validate_routine_hf_data <- function(
       "input_indicator", "output_indicator",
       "input_value", "output_value", "difference", "difference_prop", "difference_sd"
     )
+
     details <- dplyr::bind_rows(all_details) |>
       dplyr::filter(is_inconsistent) |>
-      dplyr::select(dplyr::any_of(keep_cols))
-
-    details <- details |>
+      dplyr::select(dplyr::any_of(keep_cols)) |>
       dplyr::arrange(dplyr::desc(difference)) |>
       sntutils::auto_parse_types()
   }
@@ -1317,20 +1365,57 @@ validate_routine_hf_data <- function(
 #' @noRd
 .translate_results <- function(results,
                                language = "en") {
-  # no-op if English
+  # helper to filter empty tabs and flatten nested lists
+  filter_and_flatten <- function(res, tr_func = base::identity) {
+    filtered_out <- base::list()
+
+    for (nm in base::names(res)) {
+      # Always keep Summary
+      if (nm == tr_func("Summary") || nm == "Summary") {
+        filtered_out[[nm]] <- res[[nm]]
+        next
+      }
+
+      content <- res[[nm]]
+
+      if (!base::is.null(content)) {
+        # For data frames/tibbles, check if they have rows
+        if (base::is.data.frame(content) && base::nrow(content) > 0) {
+          filtered_out[[nm]] <- content
+        }
+        # For lists (like Consistency failures), flatten into a single tibble
+        else if (base::is.list(content) && !base::is.data.frame(content)) {
+          tibbles_to_bind <- base::list()
+          for (item in content) {
+            if (!base::is.null(item) && base::is.data.frame(item) &&
+                base::nrow(item) > 0) {
+              tibbles_to_bind[[base::length(tibbles_to_bind) + 1L]] <- item
+            }
+          }
+          if (base::length(tibbles_to_bind) > 0) {
+            filtered_out[[nm]] <- dplyr::bind_rows(tibbles_to_bind)
+          }
+        }
+      }
+    }
+    filtered_out
+  }
+
+  # no-op if English - still filter/flatten but don't translate
+
   if (language == "en") {
-    return(.ensure_utf8(results))
+    filtered <- filter_and_flatten(results)
+    return(.ensure_utf8(filtered))
   }
 
   # load validation_terms dictionary
+
   data("validation_terms", package = "sntutils", envir = environment())
 
   # small helper to translate using dictionaries only (no API)
   tr <- function(x) {
-    # convert to snake_case key format
     key <- base::tolower(base::gsub(" ", "_", x))
 
-    # check validation_terms first
     if (key %in% base::names(validation_terms)) {
       lang_label <- validation_terms[[key]][[language]]
       if (!base::is.null(lang_label)) {
@@ -1338,60 +1423,22 @@ validate_routine_hf_data <- function(
       }
     }
 
-    # try snt_var_tree for malaria indicators
     snt_result <- .match_snt_labels(key, target_lang = language)
-    if (base::nrow(snt_result) == 1 && !base::is.na(snt_result$label) && snt_result$label != key) {
+    if (base::nrow(snt_result) == 1 && !base::is.na(snt_result$label) &&
+        snt_result$label != key) {
       return(snt_result$label)
     }
 
-    # fallback to original
     x
   }
 
-  # copy to modify
+  # copy and translate names
   out <- results
-
-  # ONLY translate top-level names (sheet/tab names)
-  # Do NOT translate column names - users can look those up in the Data Dictionary
   base::names(out) <- base::sapply(base::names(out), tr)
 
-  # Filter out empty tabs (except Summary)
-  filtered_out <- base::list()
+  # filter/flatten with translation function
+  filtered_out <- filter_and_flatten(out, tr)
 
-  for (nm in base::names(out)) {
-    # Always keep Summary
-    if (nm == tr("Summary") || nm == "Summary") {
-      filtered_out[[nm]] <- out[[nm]]
-      next
-    }
-
-    # Check if tab has content
-    content <- out[[nm]]
-
-    if (!base::is.null(content)) {
-      # For data frames/tibbles, check if they have rows
-      if (base::is.data.frame(content) && base::nrow(content) > 0) {
-        filtered_out[[nm]] <- content
-      }
-      # For lists (like Consistency failures), check if any element has content
-      else if (base::is.list(content) && !base::is.data.frame(content)) {
-        has_content <- FALSE
-        for (item in content) {
-          if (!base::is.null(item) &&
-              ((base::is.data.frame(item) && base::nrow(item) > 0) ||
-               (base::is.list(item) && base::length(item) > 0))) {
-            has_content <- TRUE
-            break
-          }
-        }
-        if (has_content) {
-          filtered_out[[nm]] <- content
-        }
-      }
-    }
-  }
-
-  # utf8 enforce
   .ensure_utf8(filtered_out)
 }
 
@@ -1461,18 +1508,16 @@ validate_routine_hf_data <- function(
 #' @keywords internal
 #' @noRd
 .check_facility_activeness <- function(data,
-                                       id_col,
                                        facility_col,
                                        date_col,
                                        hf_name_col,
-                                       yearmon_col,
                                        admin_cols,
                                        indicators,
                                        key_indicators,
-                                       activeness_method,
                                        nonreport_window,
                                        reporting_rule,
                                        min_reporting_rate,
+                                       language,
                                        verbose) {
   # check if required columns exist
   required_cols <- c(hf_name_col, facility_col)
@@ -1525,90 +1570,123 @@ validate_routine_hf_data <- function(
     ))
   }
 
-  # use classify_facility_activity for proper activeness assessment
-  activity_classification <- sntutils::classify_facility_activity(
+  # run all 3 classification methods
+  classification_m1 <- sntutils::classify_facility_activity(
     data = data,
     hf_col = facility_col,
     date_col = date_col,
     key_indicators = activeness_indicators,
-    method = activeness_method,
+    method = 1,
     nonreport_window = nonreport_window,
     reporting_rule = reporting_rule,
-    binary_classification = TRUE
+    binary_classification = FALSE
   )
 
-  # build overall facility activeness summary
-  facility_summary <- activity_classification |>
-    dplyr::group_by(dplyr::across(dplyr::all_of(c(present_cols, admin_present)))) |>
+  classification_m2 <- sntutils::classify_facility_activity(
+    data = data,
+    hf_col = facility_col,
+    date_col = date_col,
+    key_indicators = activeness_indicators,
+    method = 2,
+    nonreport_window = nonreport_window,
+    reporting_rule = reporting_rule,
+    binary_classification = FALSE
+  )
+
+  classification_m3 <- sntutils::classify_facility_activity(
+    data = data,
+    hf_col = facility_col,
+    date_col = date_col,
+    key_indicators = activeness_indicators,
+    method = 3,
+    nonreport_window = nonreport_window,
+    reporting_rule = reporting_rule,
+    binary_classification = FALSE
+  )
+
+  # build activity episodes for each method and stack
+  episodes_m1 <- .build_activity_episodes(
+    data = classification_m1,
+    hf_name_col = hf_name_col,
+    facility_col = facility_col,
+    date_col = date_col,
+    admin_cols = c("adm0", "adm1", "adm2", "adm3"),
+    method_label = 1L,
+    language = language
+  )
+
+  episodes_m2 <- .build_activity_episodes(
+    data = classification_m2,
+    hf_name_col = hf_name_col,
+    facility_col = facility_col,
+    date_col = date_col,
+    admin_cols = c("adm0", "adm1", "adm2", "adm3"),
+    method_label = 2L,
+    language = language
+  )
+
+  episodes_m3 <- .build_activity_episodes(
+    data = classification_m3,
+    hf_name_col = hf_name_col,
+    facility_col = facility_col,
+    date_col = date_col,
+    admin_cols = c("adm0", "adm1", "adm2", "adm3"),
+    method_label = 3L,
+    language = language
+  )
+
+  # stack all methods vertically
+  activeness_episodes <- dplyr::bind_rows(episodes_m1, episodes_m2, episodes_m3)
+
+  # reorder columns: admin cols, hf, hf_uid, method, activity_status, dates
+  col_order <- c(
+    admin_present, hf_name_col, facility_col, "method",
+    "activity_status", "start_date", "end_date"
+  )
+  col_order <- col_order[col_order %in% base::names(activeness_episodes)]
+  activeness_episodes <- activeness_episodes |>
+    dplyr::select(dplyr::all_of(col_order)) |>
+    dplyr::arrange(
+      method,
+      dplyr::across(dplyr::all_of(admin_present)),
+      .data[[hf_name_col]],
+      .data[[facility_col]],
+      start_date
+    )
+
+  # calculate summary statistics from method 3 for CLI output
+  facility_stats <- classification_m3 |>
+    dplyr::group_by(.data[[facility_col]]) |>
     dplyr::summarise(
+      n_active = base::sum(
+        activity_status == "Active Reporting", na.rm = TRUE
+      ),
       total_periods = dplyr::n(),
-      periods_active = base::sum(.data[["activity_status"]] == "Active", na.rm = TRUE),
-      reporting_rate = periods_active / total_periods,
-      first_reported = if (date_col %in% base::names(data)) {
-        active_periods <- .data[["activity_status"]] == "Active"
-        if (base::any(active_periods, na.rm = TRUE)) {
-          base::min(.data[[date_col]][active_periods], na.rm = TRUE)
-        } else {
-          as.Date(NA)
-        }
-      } else {
-        active_periods <- .data[["activity_status"]] == "Active"
-        if (base::any(active_periods, na.rm = TRUE)) {
-          base::min(base::as.character(.data[[yearmon_col]])[active_periods], na.rm = TRUE)
-        } else {
-          NA_character_
-        }
-      },
-      last_reported = if (date_col %in% base::names(data)) {
-        active_periods <- .data[["activity_status"]] == "Active"
-        if (base::any(active_periods, na.rm = TRUE)) {
-          base::max(.data[[date_col]][active_periods], na.rm = TRUE)
-        } else {
-          as.Date(NA)
-        }
-      } else {
-        active_periods <- .data[["activity_status"]] == "Active"
-        if (base::any(active_periods, na.rm = TRUE)) {
-          base::max(base::as.character(.data[[yearmon_col]])[active_periods], na.rm = TRUE)
-        } else {
-          NA_character_
-        }
-      },
       .groups = "drop"
     ) |>
     dplyr::mutate(
+      reporting_rate = n_active / total_periods,
       activeness_category = dplyr::case_when(
         reporting_rate == 0 ~ "never_reported",
         reporting_rate < min_reporting_rate ~ "low_reporting",
         reporting_rate < 0.8 ~ "moderate_reporting",
         TRUE ~ "high_reporting"
       )
-    ) |>
-    dplyr::arrange(activeness_category, dplyr::desc(reporting_rate)) |>
-    sntutils::auto_parse_types()
+    )
 
-  # identify problematic facilities (never reported or low reporting) for focused over-time table
-  problematic_facilities <- facility_summary |>
-    dplyr::filter(activeness_category %in% c("never_reported", "low_reporting")) |>
-    dplyr::select(dplyr::all_of(present_cols))
-
-  # build focused facility activeness over time table (only problematic facilities)
-  if (base::nrow(problematic_facilities) > 0) {
-    activeness_over_time <- activity_classification |>
-      dplyr::semi_join(problematic_facilities, by = present_cols) |>
-      dplyr::select(dplyr::all_of(c(present_cols, admin_present, yearmon_col, "activity_status"))) |>
-      dplyr::arrange(dplyr::across(dplyr::all_of(c(present_cols, yearmon_col)))) |>
-      sntutils::auto_parse_types()
-  } else {
-    activeness_over_time <- NULL
-  }
-
-  # calculate summary statistics
-  n_total <- base::nrow(facility_summary)
-  n_never_reported <- base::sum(facility_summary$activeness_category == "never_reported")
-  n_low_reporting <- base::sum(facility_summary$activeness_category == "low_reporting")
-  n_moderate_reporting <- base::sum(facility_summary$activeness_category == "moderate_reporting")
-  n_high_reporting <- base::sum(facility_summary$activeness_category == "high_reporting")
+  n_total <- base::nrow(facility_stats)
+  n_never_reported <- base::sum(
+    facility_stats$activeness_category == "never_reported"
+  )
+  n_low_reporting <- base::sum(
+    facility_stats$activeness_category == "low_reporting"
+  )
+  n_moderate_reporting <- base::sum(
+    facility_stats$activeness_category == "moderate_reporting"
+  )
+  n_high_reporting <- base::sum(
+    facility_stats$activeness_category == "high_reporting"
+  )
 
   # calculate percentages
   pct_never <- base::round(n_never_reported / n_total * 100, 1)
@@ -1620,36 +1698,118 @@ validate_routine_hf_data <- function(
   # CLI messages
   if (verbose) {
     if (n_never_reported > 0) {
-      cli::cli_alert_warning("{sntutils::big_mark(n_never_reported)} facility(ies) never reported ({pct_never}%)")
+      cli::cli_alert_warning(
+        "{sntutils::big_mark(n_never_reported)} facility(ies) never reported ({pct_never}%)"
+      )
     }
     if (n_low_reporting > 0) {
-      cli::cli_alert_info("{sntutils::big_mark(n_low_reporting)} facility(ies) with low reporting ({pct_low}%)")
+      cli::cli_alert_info(
+        "{sntutils::big_mark(n_low_reporting)} facility(ies) with low reporting ({pct_low}%)"
+      )
     }
     if (n_moderate_reporting > 0) {
-      cli::cli_alert_info("{sntutils::big_mark(n_moderate_reporting)} facility(ies) with moderate reporting ({pct_moderate}%)")
+      cli::cli_alert_info(
+        "{sntutils::big_mark(n_moderate_reporting)} facility(ies) with moderate reporting ({pct_moderate}%)"
+      )
     }
     if (n_high_reporting > 0) {
-      cli::cli_alert_success("{sntutils::big_mark(n_high_reporting)} facility(ies) with high reporting ({pct_high}%)")
+      cli::cli_alert_success(
+        "{sntutils::big_mark(n_high_reporting)} facility(ies) with high reporting ({pct_high}%)"
+      )
     }
 
-    # summary message
     active_count <- n_total - n_never_reported
-    cli::cli_alert_info("Overall: {sntutils::big_mark(active_count)} active ({pct_active}%) vs {sntutils::big_mark(n_never_reported)} inactive ({pct_never}%)")
+    cli::cli_alert_info(
+      "Overall: {sntutils::big_mark(active_count)} active ({pct_active}%) vs {sntutils::big_mark(n_never_reported)} inactive ({pct_never}%)"
+    )
   }
 
   # summary row with proportions
   row <- tibble::tibble(
     check = "HF Activeness",
     issues_found = base::paste0(pct_active, "% active, ", pct_never, "% inactive"),
-    total_records = base::as.character(n_total),
+    total_records = sntutils::big_mark(n_total),
     percent = pct_never
   )
 
   base::list(
-    activeness_over_time = activeness_over_time,
-    activeness_summary = facility_summary,
+    activeness_episodes = activeness_episodes,
+    activeness_summary = activeness_episodes,
     summary_row = row
   )
+}
+
+#' Build activity episodes from classified facility data
+#'
+#' @description
+#' Groups consecutive months with the same activity status into episodes.
+#' Detects episode transitions when status changes or date gap > 1 month.
+#'
+#' @keywords internal
+#' @noRd
+.build_activity_episodes <- function(data,
+                                     hf_name_col = "hf",
+                                     facility_col = "hf_uid",
+                                     date_col = "date",
+                                     admin_cols = c("adm0", "adm1", "adm2", "adm3"),
+                                     method_label = 1L,
+                                     language = "en") {
+  # columns to use - include full admin hierarchy
+
+  admin_present <- admin_cols[admin_cols %in% base::names(data)]
+  group_cols <- base::c(admin_present, hf_name_col, facility_col)
+  group_cols <- group_cols[group_cols %in% base::names(data)]
+
+  if (base::length(group_cols) == 0 || !date_col %in% base::names(data)) {
+    return(NULL)
+  }
+
+  # build episodes using lag to detect transitions
+  episodes <- data |>
+    dplyr::select(dplyr::all_of(c(group_cols, "activity_status", date_col))) |>
+    dplyr::arrange(dplyr::across(dplyr::all_of(c(group_cols, date_col)))) |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(group_cols))) |>
+    dplyr::mutate(
+      status_lag = dplyr::lag(activity_status),
+      date_lag = dplyr::lag(.data[[date_col]]),
+      new_episode = dplyr::case_when(
+        is.na(status_lag) ~ 1L,
+        activity_status != status_lag ~ 1L,
+        .data[[date_col]] != date_lag + lubridate::dmonths(1) ~ 1L,
+        TRUE ~ 0L
+      ),
+      episode_id = cumsum(new_episode)
+    ) |>
+    dplyr::group_by(
+      dplyr::across(dplyr::all_of(group_cols)),
+      episode_id,
+      activity_status
+    ) |>
+    dplyr::summarise(
+      start_date = min(.data[[date_col]]),
+      end_date = max(.data[[date_col]]),
+      .groups = "drop"
+    ) |>
+    dplyr::select(-episode_id) |>
+    dplyr::mutate(method = method_label)
+
+  # translate status if French
+  if (language == "fr") {
+    episodes <- episodes |>
+      dplyr::mutate(
+        activity_status = dplyr::case_when(
+          activity_status == "Active Reporting" ~
+            "FOSA actif - Rapports transmis",
+          activity_status == "Active - Not Reporting" ~
+            "FOSA actif - Pas de rapport",
+          activity_status == "Inactive" ~
+            "FOSA inactif",
+          TRUE ~ activity_status
+        )
+      )
+  }
+
+  episodes
 }
 
 #' Build data dictionary for validation results
@@ -1772,4 +1932,403 @@ validate_routine_hf_data <- function(
   }
 
   dict |> sntutils::auto_parse_types()
+}
+
+#' Build default or user-specified outlier pairs
+#'
+#' @description
+#' For outlier pairs, the target is checked for outliers and corrected,
+#' bounded by the consistency variable (target <= consistency).
+#' Default cascade: output variables from consistency pairs become targets,
+#' input variables become consistency bounds.
+#'
+#' @keywords internal
+#' @noRd
+.build_outlier_pairs <- function(data, outlier_pairs) {
+  # if user supplied, normalise then filter to present columns
+  if (!base::is.null(outlier_pairs)) {
+    # case 1: user passed list(target = <vec>, consistency = <vec>)
+    if (
+      !base::is.null(outlier_pairs$target) &&
+        !base::is.null(outlier_pairs$consistency) &&
+        !base::is.list(outlier_pairs$target) &&
+        !base::is.list(outlier_pairs$consistency)
+    ) {
+      n_tgt <- base::length(outlier_pairs$target)
+      n_con <- base::length(outlier_pairs$consistency)
+
+      if (n_tgt != n_con) {
+        cli::cli_abort(
+          "`outlier_pairs$target` and `outlier_pairs$consistency` must have the same length."
+        )
+      }
+
+      # convert to internal list-of-lists format
+      op <- base::Map(
+        f = function(t, c) base::list(target = t, consistency = c),
+        outlier_pairs$target,
+        outlier_pairs$consistency
+      )
+    }
+    # case 2: list(c(...), c(...)) - unnamed list of 2 character vectors
+    else if (
+      base::length(outlier_pairs) == 2 &&
+        base::is.character(outlier_pairs[[1]]) &&
+        base::is.character(outlier_pairs[[2]])
+    ) {
+      n1 <- base::length(outlier_pairs[[1]])
+      n2 <- base::length(outlier_pairs[[2]])
+
+      if (n1 != n2) {
+        cli::cli_abort(
+          "outlier_pairs vectors must have the same length."
+        )
+      }
+
+      # treat first vector as target, second as consistency
+      op <- base::Map(
+        f = function(t, c) base::list(target = t, consistency = c),
+        outlier_pairs[[1]],
+        outlier_pairs[[2]]
+      )
+    } else {
+      # case 3: already a list of list(target=, consistency=)
+      op <- outlier_pairs
+    }
+
+    keep <- base::Filter(
+      f = function(p) {
+        if (!base::is.list(p)) return(FALSE)
+        if (base::is.null(p$target) || base::is.null(p$consistency)) return(FALSE)
+        p$target %in% base::names(data) && p$consistency %in% base::names(data)
+      },
+      x = op
+    )
+
+    return(keep)
+  }
+
+  # default: derive from malaria cascade (reverse of consistency pairs)
+  # target is the downstream variable, consistency is the upstream variable
+  base_rules <- list(
+    list(target = "conf", consistency = "test"),
+    list(target = "maltreat", consistency = "conf"),
+    list(target = "maladm", consistency = "alladm"),
+    list(target = "maldth", consistency = "alldth"),
+    list(target = "maldth", consistency = "maladm"),
+    list(target = "susp", consistency = "allout"),
+    list(target = "test", consistency = "allout"),
+    list(target = "test", consistency = "susp"),
+    list(target = "conf_mic", consistency = "test_mic"),
+    list(target = "conf_rdt", consistency = "test_rdt")
+  )
+
+  suf <- c(
+    "_u5", "_ov5", "_preg",
+    "_mic_u5", "_mic_ov5", "_mic_preg",
+    "_rdt_u5", "_rdt_ov5", "_rdt_preg",
+    "_preg_u3m", "_preg_ov3m"
+  )
+
+  pairs <- base_rules
+
+  for (r in base_rules) {
+    for (s in suf) {
+      t <- base::paste0(r$target, s)
+      c <- base::paste0(r$consistency, s)
+      if (t %in% base::names(data) && c %in% base::names(data)) {
+        pairs[[base::length(pairs) + 1L]] <- base::list(target = t, consistency = c)
+      }
+    }
+  }
+
+  # add reverse pairs (check both directions)
+  reverse_pairs <- base::lapply(pairs, function(p) {
+    base::list(target = p$consistency, consistency = p$target)
+  })
+  pairs <- base::c(pairs, reverse_pairs)
+
+  base::Filter(
+    f = function(p) {
+      p$target %in% base::names(data) && p$consistency %in% base::names(data)
+    },
+    x = pairs
+  )
+}
+
+#' Outlier detection with neighbor-median correction
+#'
+#' @description
+#' For each (target, consistency) pair:
+#' 1. Detect outliers in target variable
+#' 2. Compute neighbor median (lag/lead)
+#' 3. Apply consistency rule: corrected <= consistency
+#' 4. Build detailed correction table
+#'
+#' @keywords internal
+#' @noRd
+.check_outliers_with_correction <- function(
+    data,
+    id_col,
+    facility_col,
+    date_col,
+    hf_name_col,
+    adm_cols,
+    outlier_pairs,
+    methods,
+    time_mode,
+    strictness,
+    sd_multiplier,
+    mad_constant,
+    mad_multiplier,
+    iqr_multiplier,
+    min_n,
+    consensus_rule,
+    verbose
+) {
+  if (verbose) cli::cli_h2("Check 5: Outlier Detection & Correction")
+
+  # metadata columns for detailed output
+  meta_cols <- c(
+    id_col, "record_id",
+    adm_cols,
+    hf_name_col, facility_col,
+    date_col, "date", "year", "month", "yearmon"
+  )
+  meta_cols <- base::unique(meta_cols[meta_cols %in% base::names(data)])
+
+  # admin columns for summary aggregation
+  admin_use <- adm_cols[adm_cols %in% base::names(data)]
+  if (base::length(admin_use) > 2) admin_use <- admin_use[seq_len(2)]
+
+  # pre-sort data once (avoid sorting inside loop)
+  data_sorted <- data |>
+    dplyr::arrange(.data[[facility_col]], .data[[date_col]])
+
+  # collect outlier details in long format
+  detail_list <- base::list()
+  total_outliers <- 0L
+  total_corrected <- 0L
+  total_failed <- 0L
+
+  for (p in outlier_pairs) {
+    target_var <- p$target
+    consistency_var <- p$consistency
+
+    if (!target_var %in% base::names(data)) next
+    if (!consistency_var %in% base::names(data)) next
+
+    # detect outliers
+    detected <- tryCatch(
+      {
+        sntutils::detect_outliers(
+          data = data,
+          column = target_var,
+          record_id = id_col,
+          admin_level = admin_use,
+          date = date_col,
+          time_mode = time_mode,
+          value_type = "count",
+          strictness = strictness,
+          sd_multiplier = sd_multiplier,
+          mad_constant = mad_constant,
+          mad_multiplier = mad_multiplier,
+          iqr_multiplier = iqr_multiplier,
+          min_n = min_n,
+          methods = methods,
+          consensus_rule = consensus_rule,
+          output_profile = "lean",
+          verbose = FALSE
+        )
+      },
+      error = function(e) {
+        if (verbose) {
+          cli::cli_warn("Outlier detection failed for {target_var}: {e$message}")
+        }
+        NULL
+      }
+    )
+
+    if (base::is.null(detected) || base::nrow(detected) == 0) next
+
+    flag_col <- "outlier_flag_consensus"
+    if (!flag_col %in% base::names(detected)) next
+
+    # join flags and compute corrections
+    merged <- data_sorted |>
+      dplyr::select(dplyr::all_of(c(
+        meta_cols, target_var, consistency_var
+      ))) |>
+      dplyr::left_join(
+        detected |> dplyr::select(dplyr::all_of(c(id_col, flag_col))),
+        by = id_col
+      )
+
+    # compute lag/lead within facility, filter to outliers only
+    outlier_rows <- merged |>
+      dplyr::group_by(.data[[facility_col]]) |>
+      dplyr::mutate(
+        .lag_val = dplyr::lag(.data[[target_var]], n = 1),
+        .lead_val = dplyr::lead(.data[[target_var]], n = 1)
+      ) |>
+      dplyr::ungroup() |>
+      dplyr::filter(.data[[flag_col]] == "outlier") |>
+      dplyr::mutate(
+        outlier_var = target_var,
+        outlier_value = .data[[target_var]],
+        median_neighbour_value = dplyr::if_else(
+          base::is.na(.lag_val) | base::is.na(.lead_val),
+          NA_real_,
+          base::round((.lag_val + .lead_val) / 2)
+        ),
+        consistency_var = consistency_var,
+        consistency_value = .data[[consistency_var]],
+        corrected_value = dplyr::case_when(
+          base::is.na(.lag_val) | base::is.na(.lead_val) ~ NA_real_,
+          median_neighbour_value > consistency_value ~ NA_real_,
+          TRUE ~ median_neighbour_value
+        ),
+        correction_flag = dplyr::case_when(
+          base::is.na(.lag_val) | base::is.na(.lead_val) ~ FALSE,
+          median_neighbour_value > consistency_value ~ FALSE,
+          TRUE ~ TRUE
+        ),
+        failed_reason = dplyr::case_when(
+          base::is.na(.lag_val) | base::is.na(.lead_val) ~ "no_neighbours",
+          median_neighbour_value > consistency_value ~ "failed_consistency",
+          TRUE ~ NA_character_
+        )
+      ) |>
+      dplyr::select(
+        dplyr::all_of(meta_cols),
+        outlier_var,
+        outlier_value,
+        consistency_var,
+        consistency_value,
+        corrected_value,
+        correction_flag,
+        failed_reason
+      )
+
+    if (base::nrow(outlier_rows) > 0) {
+      detail_list[[base::length(detail_list) + 1L]] <- outlier_rows
+    }
+
+    # count stats
+    n_outliers <- base::nrow(outlier_rows)
+    n_corrected <- base::sum(outlier_rows$correction_flag, na.rm = TRUE)
+    n_failed <- base::sum(
+      outlier_rows$failed_reason == "failed_consistency", na.rm = TRUE
+    )
+
+    total_outliers <- total_outliers + n_outliers
+    total_corrected <- total_corrected + n_corrected
+    total_failed <- total_failed + n_failed
+
+    if (verbose) {
+      if (n_outliers > 0) {
+        cli::cli_alert_info(
+          "{target_var}: {sntutils::big_mark(n_outliers)} outlier(s), {sntutils::big_mark(n_corrected)} corrected, {sntutils::big_mark(n_failed)} failed consistency"
+        )
+      } else {
+        cli::cli_alert_success("{target_var}: No outliers detected")
+      }
+    }
+  }
+
+  # build detailed table (long format, only outlier rows)
+  detail_table <- if (base::length(detail_list) > 0) {
+    dplyr::bind_rows(detail_list)
+  } else {
+    tibble::tibble(
+      outlier_var = base::character(0),
+      outlier_value = base::numeric(0),
+      consistency_var = base::character(0),
+      consistency_value = base::numeric(0),
+      corrected_value = base::numeric(0),
+      correction_flag = base::logical(0),
+      failed_reason = base::character(0)
+    )
+  }
+
+  # build summary table (aggregated by admin + year + variable)
+  # use year instead of yearmon for consistency with missing values detail
+  # include adm0, adm1, adm2, adm3 if available
+  admin_summary_cols <- c("adm0", "adm1", "adm2", "adm3")
+  admin_summary_cols <- admin_summary_cols[
+    admin_summary_cols %in% base::names(detail_table)
+  ]
+  summary_group_cols <- c(admin_summary_cols, "year")
+  summary_group_cols <- summary_group_cols[
+    summary_group_cols %in% base::names(detail_table)
+  ]
+
+  if (base::nrow(detail_table) > 0 && base::length(summary_group_cols) > 0) {
+    # get total records per group from original data
+    totals_by_group <- data |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(summary_group_cols))) |>
+      dplyr::summarise(n_total = dplyr::n(), .groups = "drop")
+
+    summary_table <- detail_table |>
+      dplyr::group_by(
+        dplyr::across(dplyr::all_of(c(summary_group_cols, "outlier_var")))
+      ) |>
+      dplyr::summarise(
+        n_outliers = dplyr::n(),
+        n_corrected = base::sum(correction_flag, na.rm = TRUE),
+        n_failed_consistency = base::sum(
+          failed_reason == "failed_consistency", na.rm = TRUE
+        ),
+        .groups = "drop"
+      ) |>
+      dplyr::left_join(totals_by_group, by = summary_group_cols) |>
+      dplyr::mutate(
+        prop_outliers = base::round(n_outliers / n_total, 4)
+      ) |>
+      dplyr::rename(variable = outlier_var) |>
+      dplyr::select(
+        dplyr::all_of(summary_group_cols),
+        variable,
+        n_total,
+        n_outliers,
+        prop_outliers,
+        n_corrected,
+        n_failed_consistency
+      ) |>
+      dplyr::arrange(dplyr::desc(prop_outliers), variable)
+  } else {
+    summary_table <- tibble::tibble(
+      variable = base::character(0),
+      n_total = base::integer(0),
+      n_outliers = base::integer(0),
+      prop_outliers = base::numeric(0),
+      n_corrected = base::integer(0),
+      n_failed_consistency = base::integer(0)
+    )
+  }
+
+  # summary row for main validation summary
+
+  pct_outliers <- base::round(total_outliers / base::nrow(data) * 100, 2)
+  summary_row <- tibble::tibble(
+    check = "Outliers & Corrections",
+    issues_found = base::paste0(
+      sntutils::big_mark(total_outliers), " outliers (",
+      sntutils::big_mark(total_corrected), " corrected)"
+    ),
+    total_records = base::as.character(sntutils::big_mark(base::nrow(data))),
+    percent = pct_outliers
+  )
+
+  if (verbose) {
+    cli::cli_alert_success(
+      "Outlier check complete: {sntutils::big_mark(total_outliers)} total outlier(s), {sntutils::big_mark(total_corrected)} corrected, {sntutils::big_mark(total_failed)} failed consistency"
+    )
+  }
+
+  base::list(
+    detail = detail_table,
+    summary = summary_table,
+    summary_row = summary_row
+  )
 }

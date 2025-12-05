@@ -4,7 +4,13 @@
 \alias{check_snt_var}
 \title{Detect and display the structural components of an SNT variable name}
 \usage{
-check_snt_var(var_name, schema = NULL, var_tree = NULL, return = FALSE)
+check_snt_var(
+  var_name,
+  schema = NULL,
+  var_tree = NULL,
+  return = FALSE,
+  verbose = TRUE
+)
 }
 \arguments{
 \item{var_name}{Character scalar - an SNT variable name.}
@@ -16,6 +22,8 @@ the package's snt_var_tree dataset.}
 the package's snt_var_tree dataset.}
 
 \item{return}{Logical; if TRUE, also returns a tibble invisibly.}
+
+\item{verbose}{Logical; if TRUE (default), prints fuzzy match info messages.}
 }
 \value{
 Invisibly returns a tibble with parsed components and labels.
