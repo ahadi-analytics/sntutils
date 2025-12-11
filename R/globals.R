@@ -211,6 +211,24 @@ globalVariables(
     ".has_any_indicator",
     "admin", "n_violations", "time_var", "viol_cat", "violation",
     "prop_missing",
-    "n_total"
+    "n_total",
+    ".lag_val",
+    ".lead_val",
+    "consensus_strength",
+    "consistency_median",
+    "consistency_value",
+    "corrected_value",
+    "correction_flag",
+    "episode_id",
+    "failed_reason",
+    "input_variable",
+    "neighbor_median",
+    "neighbor_values",
+    "new_episode",
+    "outlier_value",
+    "outlier_var",
+    "output_variable",
+    "prop_outliers",
+    "start_date"
   )
 )

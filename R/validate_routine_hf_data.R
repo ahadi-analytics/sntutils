@@ -24,11 +24,12 @@
 #' @param consistency_pairs list|NULL. Each element is list(input=, output=).
 #'   If NULL, defaults generated from common malaria cascade rules.
 #' @param outlier_pairs list|NULL. Pairs for outlier detection and correction.
-#'   Structure: list(target = c("conf", "maltreat"), consistency = c("test", "conf")).
-#'   Target variables are checked for outliers, corrected using neighbor median,
-#'   and validated against consistency variables. If NULL, defaults generated
-#'   from malaria cascade (same as consistency_pairs but reversed: output becomes
-#'   target, input becomes consistency bound).
+#'   Structure: list(input = c("test"), output = c("conf")).
+#'   Uses same format as consistency_pairs. The cascade rule is: input >= output.
+#'   Both directions are checked automatically:
+#'   (1) output outliers validated as output <= input,
+#'   (2) input outliers validated as input >= output.
+#'   Corrections use neighbor median. If NULL, defaults from malaria cascade.
 #' @param check_future_dates logical. Default TRUE.
 #' @param check_duplicates logical. Default TRUE.
 #' @param check_outliers logical. Default TRUE.
@@ -51,6 +52,7 @@
 #' @param iqr_multiplier numeric. IQR multiplier for outlier detection. Default 2.
 #' @param min_n numeric. Minimum sample size for outlier detection. Default 8.
 #' @param consensus_rule numeric. Number of methods that must agree for consensus outlier flag. Default 1.
+#' @param n_neighbour_impute integer. Number of neighboring time periods (before and after) to use for computing the imputation median. Default 3 (uses 3 before + 3 after = 6 values).
 #' @param output_path character|NULL. If provided, results are saved to this path.
 #' @param output_name character. Base output name. Default
 #'   "validation_routine_data_results".
@@ -107,6 +109,7 @@ validate_routine_hf_data <- function(
   iqr_multiplier = 2,
   min_n = 8,
   consensus_rule = 1,
+  n_neighbour_impute = 3,
   output_path = NULL,
   output_name = "validation_of_hf_routine_data",
   output_formats = c("xlsx", "rds"),
@@ -159,7 +162,7 @@ validate_routine_hf_data <- function(
     consistency_pairs = consistency_pairs
   )
 
-  # build outlier pairs
+  # build outlier pairs for correction
   outlier_pairs_use <- .build_outlier_pairs(
     data = data,
     outlier_pairs = outlier_pairs
@@ -259,11 +262,12 @@ validate_routine_hf_data <- function(
       iqr_multiplier = iqr_multiplier,
       min_n = min_n,
       consensus_rule = consensus_rule,
+      n_neighbour_impute = n_neighbour_impute,
       verbose = verbose
     )
-    # only include outlier tabs if outliers were found
+    # always include outlier summary, only include detail if outliers were found
+    results[["Outlier summary"]] <- out$summary
     if (base::nrow(out$detail) > 0) {
-      results[["Outlier summary"]] <- out$summary
       results[["Outlier detailed"]] <- out$detail
     }
     results$Summary <- dplyr::bind_rows(results$Summary, out$summary_row)
@@ -1937,90 +1941,68 @@ validate_routine_hf_data <- function(
 #' Build default or user-specified outlier pairs
 #'
 #' @description
-#' For outlier pairs, the target is checked for outliers and corrected,
-#' bounded by the consistency variable (target <= consistency).
-#' Default cascade: output variables from consistency pairs become targets,
-#' input variables become consistency bounds.
+#' Builds outlier pairs for correction validation.
+#' Each pair has: target (variable to check for outliers),
+#' consistency (variable to validate correction against),
+#' direction ("lte" means target <= consistency).
 #'
 #' @keywords internal
 #' @noRd
 .build_outlier_pairs <- function(data, outlier_pairs) {
-  # if user supplied, normalise then filter to present columns
+  # user supplied pairs
   if (!base::is.null(outlier_pairs)) {
-    # case 1: user passed list(target = <vec>, consistency = <vec>)
-    if (
-      !base::is.null(outlier_pairs$target) &&
-        !base::is.null(outlier_pairs$consistency) &&
-        !base::is.list(outlier_pairs$target) &&
-        !base::is.list(outlier_pairs$consistency)
-    ) {
-      n_tgt <- base::length(outlier_pairs$target)
-      n_con <- base::length(outlier_pairs$consistency)
-
-      if (n_tgt != n_con) {
-        cli::cli_abort(
-          "`outlier_pairs$target` and `outlier_pairs$consistency` must have the same length."
-        )
-      }
-
-      # convert to internal list-of-lists format
-      op <- base::Map(
-        f = function(t, c) base::list(target = t, consistency = c),
-        outlier_pairs$target,
-        outlier_pairs$consistency
+    if (base::is.null(outlier_pairs$input) ||
+        base::is.null(outlier_pairs$output)) {
+      cli::cli_abort(
+        "`outlier_pairs` must have `input` and `output` elements."
       )
     }
-    # case 2: list(c(...), c(...)) - unnamed list of 2 character vectors
-    else if (
-      base::length(outlier_pairs) == 2 &&
-        base::is.character(outlier_pairs[[1]]) &&
-        base::is.character(outlier_pairs[[2]])
-    ) {
-      n1 <- base::length(outlier_pairs[[1]])
-      n2 <- base::length(outlier_pairs[[2]])
 
-      if (n1 != n2) {
-        cli::cli_abort(
-          "outlier_pairs vectors must have the same length."
-        )
-      }
+    n_in <- base::length(outlier_pairs$input)
+    n_out <- base::length(outlier_pairs$output)
 
-      # treat first vector as target, second as consistency
-      op <- base::Map(
-        f = function(t, c) base::list(target = t, consistency = c),
-        outlier_pairs[[1]],
-        outlier_pairs[[2]]
+    if (n_in != n_out) {
+      cli::cli_abort(
+        "`outlier_pairs$input` and `outlier_pairs$output` must have same length."
       )
-    } else {
-      # case 3: already a list of list(target=, consistency=)
-      op <- outlier_pairs
     }
 
-    keep <- base::Filter(
-      f = function(p) {
-        if (!base::is.list(p)) return(FALSE)
-        if (base::is.null(p$target) || base::is.null(p$consistency)) return(FALSE)
-        p$target %in% base::names(data) && p$consistency %in% base::names(data)
-      },
-      x = op
-    )
-
-    return(keep)
+    # convert to internal format: generate BOTH directions
+    pairs <- base::list()
+    for (i in base::seq_len(n_in)) {
+      inp <- outlier_pairs$input[i]
+      out <- outlier_pairs$output[i]
+      if (inp %in% base::names(data) && out %in% base::names(data)) {
+        # lte direction: output <= input
+        pairs[[base::length(pairs) + 1L]] <- base::list(
+          target = out,
+          consistency = inp,
+          direction = "lte"
+        )
+        # gte direction: input >= output
+        pairs[[base::length(pairs) + 1L]] <- base::list(
+          target = inp,
+          consistency = out,
+          direction = "gte"
+        )
+      }
+    }
+    return(pairs)
   }
 
-  # default: derive from malaria cascade (reverse of consistency pairs)
-  # target is the downstream variable, consistency is the upstream variable
+  # default cascade rules: input >= output
   base_rules <- list(
-    list(target = "conf", consistency = "test"),
-    list(target = "maltreat", consistency = "conf"),
-    list(target = "maladm", consistency = "alladm"),
-    list(target = "maldth", consistency = "alldth"),
-    list(target = "maldth", consistency = "maladm"),
-    list(target = "susp", consistency = "allout"),
-    list(target = "test", consistency = "allout"),
-    list(target = "test", consistency = "susp"),
-    list(target = "conf_mic", consistency = "test_mic"),
-    list(target = "conf_rdt", consistency = "test_rdt")
+    list(input = "allout", output = "test"),
+    list(input = "allout", output = "susp"),
+    list(input = "susp", output = "test"),
+    list(input = "test", output = "conf"),
+    list(input = "conf", output = "pres"),
+    list(input = "conf", output = "maltreat"),
+    list(input = "alladm", output = "maladm"),
+    list(input = "alldth", output = "maldth"),
+    list(input = "maladm", output = "maldth"),
+    list(input = "test_mic", output = "conf_mic"),
+    list(input = "test_rdt", output = "conf_rdt")
   )
 
   suf <- c(
@@ -2030,30 +2012,42 @@ validate_routine_hf_data <- function(
     "_preg_u3m", "_preg_ov3m"
   )
 
-  pairs <- base_rules
-
+  # expand with suffixes
+  all_rules <- base_rules
   for (r in base_rules) {
     for (s in suf) {
-      t <- base::paste0(r$target, s)
-      c <- base::paste0(r$consistency, s)
-      if (t %in% base::names(data) && c %in% base::names(data)) {
-        pairs[[base::length(pairs) + 1L]] <- base::list(target = t, consistency = c)
+      i <- base::paste0(r$input, s)
+      o <- base::paste0(r$output, s)
+      if (i %in% base::names(data) && o %in% base::names(data)) {
+        all_rules[[base::length(all_rules) + 1L]] <- base::list(
+          input = i, output = o
+        )
       }
     }
   }
 
-  # add reverse pairs (check both directions)
-  reverse_pairs <- base::lapply(pairs, function(p) {
-    base::list(target = p$consistency, consistency = p$target)
-  })
-  pairs <- base::c(pairs, reverse_pairs)
+  # convert to internal format: generate BOTH directions for each rule
+  # lte: output <= input (check output outliers)
+  # gte: input >= output (check input outliers)
+  pairs <- base::list()
+  for (r in all_rules) {
+    if (r$input %in% base::names(data) && r$output %in% base::names(data)) {
+      # lte direction: output <= input
+      pairs[[base::length(pairs) + 1L]] <- base::list(
+        target = r$output,
+        consistency = r$input,
+        direction = "lte"
+      )
+      # gte direction: input >= output
+      pairs[[base::length(pairs) + 1L]] <- base::list(
+        target = r$input,
+        consistency = r$output,
+        direction = "gte"
+      )
+    }
+  }
 
-  base::Filter(
-    f = function(p) {
-      p$target %in% base::names(data) && p$consistency %in% base::names(data)
-    },
-    x = pairs
-  )
+  pairs
 }
 
 #' Outlier detection with neighbor-median correction
@@ -2061,9 +2055,9 @@ validate_routine_hf_data <- function(
 #' @description
 #' For each (target, consistency) pair:
 #' 1. Detect outliers in target variable
-#' 2. Compute neighbor median (lag/lead)
-#' 3. Apply consistency rule: corrected <= consistency
-#' 4. Build detailed correction table
+#' 2. Compute neighbor median (lag/lead) as potential correction
+#' 3. Validate correction against cascade rule (corrected <= consistency)
+#' 4. Only apply correction if it doesn't violate the cascade
 #'
 #' @keywords internal
 #' @noRd
@@ -2084,6 +2078,7 @@ validate_routine_hf_data <- function(
     iqr_multiplier,
     min_n,
     consensus_rule,
+    n_neighbour_impute,
     verbose
 ) {
   if (verbose) cli::cli_h2("Check 5: Outlier Detection & Correction")
@@ -2097,19 +2092,76 @@ validate_routine_hf_data <- function(
   )
   meta_cols <- base::unique(meta_cols[meta_cols %in% base::names(data)])
 
-  # admin columns for summary aggregation
+  # admin columns for outlier detection grouping
   admin_use <- adm_cols[adm_cols %in% base::names(data)]
   if (base::length(admin_use) > 2) admin_use <- admin_use[seq_len(2)]
 
-  # pre-sort data once (avoid sorting inside loop)
+  # pre-sort data once
   data_sorted <- data |>
     dplyr::arrange(.data[[facility_col]], .data[[date_col]])
 
-  # collect outlier details in long format
+  # collect outlier details
   detail_list <- base::list()
   total_outliers <- 0L
   total_corrected <- 0L
-  total_failed <- 0L
+  total_no_neighbours <- 0L
+  total_correction_inconsistent <- 0L
+
+  # track processed record IDs per target variable to avoid duplicates
+  processed_ids <- base::list()
+
+  # track corrections: corrections[[record_id]][[var]] = corrected_value
+  # used to look up corrected consistency values for lte checks
+
+  corrections <- base::list()
+
+  # sort pairs: gte first (input/test), then lte (output/conf)
+  # this ensures input corrections are available when checking output
+  outlier_pairs <- outlier_pairs[base::order(
+    base::sapply(outlier_pairs, function(p) p$direction != "gte")
+  )]
+
+  # pre-detect outliers for ALL unique target variables
+  # used to skip cascade check when consistency var is also an outlier
+  all_target_vars <- base::unique(
+    base::sapply(outlier_pairs, function(p) p$target)
+  )
+  outlier_record_ids <- base::list()
+  for (var in all_target_vars) {
+    if (!var %in% base::names(data)) next
+    detected_pre <- tryCatch(
+      {
+        sntutils::detect_outliers(
+          data = data,
+          column = var,
+          record_id = id_col,
+          admin_level = admin_use,
+          date = date_col,
+          time_mode = time_mode,
+          value_type = "count",
+          strictness = strictness,
+          sd_multiplier = sd_multiplier,
+          mad_constant = mad_constant,
+          mad_multiplier = mad_multiplier,
+          iqr_multiplier = iqr_multiplier,
+          min_n = min_n,
+          methods = methods,
+          consensus_rule = consensus_rule,
+          output_profile = "lean",
+          verbose = FALSE
+        )
+      },
+      error = function(e) NULL
+    )
+    if (!base::is.null(detected_pre) && base::nrow(detected_pre) > 0) {
+      flag_col <- "outlier_flag_consensus"
+      if (flag_col %in% base::names(detected_pre)) {
+        outlier_record_ids[[var]] <- detected_pre |>
+          dplyr::filter(.data[[flag_col]] == "outlier") |>
+          dplyr::pull(dplyr::all_of(id_col))
+      }
+    }
+  }
 
   for (p in outlier_pairs) {
     target_var <- p$target
@@ -2118,7 +2170,7 @@ validate_routine_hf_data <- function(
     if (!target_var %in% base::names(data)) next
     if (!consistency_var %in% base::names(data)) next
 
-    # detect outliers
+    # detect outliers for target
     detected <- tryCatch(
       {
         sntutils::detect_outliers(
@@ -2156,87 +2208,241 @@ validate_routine_hf_data <- function(
 
     # join flags and compute corrections
     merged <- data_sorted |>
-      dplyr::select(dplyr::all_of(c(
-        meta_cols, target_var, consistency_var
-      ))) |>
+      dplyr::select(dplyr::all_of(c(meta_cols, target_var, consistency_var))) |>
       dplyr::left_join(
         detected |> dplyr::select(dplyr::all_of(c(id_col, flag_col))),
         by = id_col
       )
 
-    # compute lag/lead within facility, filter to outliers only
-    outlier_rows <- merged |>
-      dplyr::group_by(.data[[facility_col]]) |>
-      dplyr::mutate(
-        .lag_val = dplyr::lag(.data[[target_var]], n = 1),
-        .lead_val = dplyr::lead(.data[[target_var]], n = 1)
-      ) |>
-      dplyr::ungroup() |>
-      dplyr::filter(.data[[flag_col]] == "outlier") |>
+    # compute n lag/lead values within facility, filter to outliers only
+    # build lag and lead columns dynamically
+    merged_with_neighbours <- merged |>
+      dplyr::group_by(.data[[facility_col]])
+
+    # add lag columns
+    for (i in base::seq_len(n_neighbour_impute)) {
+      lag_col <- base::paste0(".lag_", i)
+      merged_with_neighbours <- merged_with_neighbours |>
+        dplyr::mutate(!!lag_col := dplyr::lag(.data[[target_var]], n = i))
+    }
+
+    # add lead columns for target
+    for (i in base::seq_len(n_neighbour_impute)) {
+      lead_col <- base::paste0(".lead_", i)
+      merged_with_neighbours <- merged_with_neighbours |>
+        dplyr::mutate(!!lead_col := dplyr::lead(.data[[target_var]], n = i))
+    }
+
+    # add lag columns for consistency variable
+    for (i in base::seq_len(n_neighbour_impute)) {
+      lag_col <- base::paste0(".cons_lag_", i)
+      merged_with_neighbours <- merged_with_neighbours |>
+        dplyr::mutate(!!lag_col := dplyr::lag(.data[[consistency_var]], n = i))
+    }
+
+    # add lead columns for consistency variable
+    for (i in base::seq_len(n_neighbour_impute)) {
+      lead_col <- base::paste0(".cons_lead_", i)
+      merged_with_neighbours <- merged_with_neighbours |>
+        dplyr::mutate(!!lead_col := dplyr::lead(.data[[consistency_var]], n = i))
+    }
+
+    merged_with_neighbours <- merged_with_neighbours |>
+      dplyr::ungroup()
+
+    # filter to outliers and compute neighbor median
+    lag_cols <- base::paste0(".lag_", base::seq_len(n_neighbour_impute))
+    lead_cols <- base::paste0(".lead_", base::seq_len(n_neighbour_impute))
+    cons_lag_cols <- base::paste0(".cons_lag_", base::seq_len(n_neighbour_impute))
+    cons_lead_cols <- base::paste0(".cons_lead_", base::seq_len(n_neighbour_impute))
+
+    outlier_rows <- merged_with_neighbours |>
+      dplyr::filter(.data[[flag_col]] == "outlier")
+
+    # compute neighbor median row by row (for both target and consistency vars)
+    if (base::nrow(outlier_rows) > 0) {
+      results <- base::lapply(
+        base::seq_len(base::nrow(outlier_rows)),
+        function(i) {
+          row <- outlier_rows[i, ]
+
+          # target variable neighbors
+          lag_vals <- base::as.numeric(base::unlist(row[, lag_cols]))
+          lead_vals <- base::as.numeric(base::unlist(row[, lead_cols]))
+          all_lags_na <- base::all(base::is.na(lag_vals))
+          all_leads_na <- base::all(base::is.na(lead_vals))
+          all_vals <- base::c(lag_vals, lead_vals)
+
+          neighbor_vals_str <- base::paste(
+            base::ifelse(base::is.na(all_vals), "NA", all_vals),
+            collapse = ","
+          )
+
+          # consistency variable neighbors
+          cons_lag_vals <- base::as.numeric(base::unlist(row[, cons_lag_cols]))
+          cons_lead_vals <- base::as.numeric(base::unlist(row[, cons_lead_cols]))
+          cons_all_vals <- base::c(cons_lag_vals, cons_lead_vals)
+          cons_median <- stats::median(cons_all_vals, na.rm = TRUE)
+          if (!base::is.na(cons_median)) {
+            cons_median <- base::round(cons_median)
+          }
+
+          if (all_lags_na || all_leads_na) {
+            return(base::list(
+              median = NA_real_,
+              no_neighbours = TRUE,
+              vals_str = neighbor_vals_str,
+              cons_median = cons_median
+            ))
+          }
+
+          base::list(
+            median = base::round(stats::median(all_vals, na.rm = TRUE)),
+            no_neighbours = FALSE,
+            vals_str = neighbor_vals_str,
+            cons_median = cons_median
+          )
+        }
+      )
+
+      outlier_rows <- outlier_rows |>
+        dplyr::mutate(
+          neighbor_median = base::sapply(results, function(x) x$median),
+          .no_neighbours = base::sapply(results, function(x) x$no_neighbours),
+          neighbor_values = base::sapply(results, function(x) x$vals_str),
+          consistency_median = base::sapply(results, function(x) x$cons_median)
+        )
+    } else {
+      outlier_rows <- outlier_rows |>
+        dplyr::mutate(
+          neighbor_median = base::numeric(0),
+          .no_neighbours = base::logical(0),
+          neighbor_values = base::character(0),
+          consistency_median = base::numeric(0)
+        )
+    }
+
+    outlier_rows <- outlier_rows |>
       dplyr::mutate(
         outlier_var = target_var,
         outlier_value = .data[[target_var]],
-        median_neighbour_value = dplyr::if_else(
-          base::is.na(.lag_val) | base::is.na(.lead_val),
-          NA_real_,
-          base::round((.lag_val + .lead_val) / 2)
-        ),
         consistency_var = consistency_var,
-        consistency_value = .data[[consistency_var]],
+        consistency_value = .data[[consistency_var]]
+      ) |>
+      dplyr::select(-dplyr::all_of(c(
+        lag_cols, lead_cols, cons_lag_cols, cons_lead_cols
+      )))
+
+    # check if consistency var is also an outlier for each record
+    # if so, skip cascade check (both values unreliable, just apply correction)
+    consistency_outlier_ids <- outlier_record_ids[[consistency_var]]
+    if (base::is.null(consistency_outlier_ids)) {
+      consistency_outlier_ids <- base::character(0)
+    }
+
+    # cascade check: compare corrected_target vs corrected_consistency
+    # use consistency_median (neighbor median of consistency var)
+    outlier_rows <- outlier_rows |>
+      dplyr::mutate(
+        # skip cascade check if consistency var is also an outlier
+        consistency_is_outlier = .data[[id_col]] %in% consistency_outlier_ids,
+        # check if correction would violate cascade
+        # lte: corrected must be <= consistency_median
+        # gte: corrected must be >= consistency_median
+        cascade_violated = dplyr::case_when(
+          consistency_is_outlier ~ FALSE,
+          base::is.na(neighbor_median) ~ NA,
+          base::is.na(consistency_median) ~ NA,
+          p$direction == "lte" ~ neighbor_median > consistency_median,
+          p$direction == "gte" ~ neighbor_median < consistency_median,
+          TRUE ~ FALSE
+        ),
+        # corrected value: use median only if cascade is not violated
         corrected_value = dplyr::case_when(
-          base::is.na(.lag_val) | base::is.na(.lead_val) ~ NA_real_,
-          median_neighbour_value > consistency_value ~ NA_real_,
-          TRUE ~ median_neighbour_value
+          .no_neighbours ~ NA_real_,
+          base::is.na(consistency_median) ~ neighbor_median,
+          cascade_violated ~ NA_real_,
+          TRUE ~ neighbor_median
         ),
         correction_flag = dplyr::case_when(
-          base::is.na(.lag_val) | base::is.na(.lead_val) ~ FALSE,
-          median_neighbour_value > consistency_value ~ FALSE,
+          .no_neighbours ~ FALSE,
+          base::is.na(consistency_median) ~ TRUE,
+          cascade_violated ~ FALSE,
           TRUE ~ TRUE
         ),
         failed_reason = dplyr::case_when(
-          base::is.na(.lag_val) | base::is.na(.lead_val) ~ "no_neighbours",
-          median_neighbour_value > consistency_value ~ "failed_consistency",
+          .no_neighbours ~ "no_neighbours",
+          !base::is.na(cascade_violated) & cascade_violated ~ "correction_inconsistent",
           TRUE ~ NA_character_
         )
       ) |>
+      dplyr::select(-".no_neighbours") |>
       dplyr::select(
         dplyr::all_of(meta_cols),
         outlier_var,
         outlier_value,
         consistency_var,
         consistency_value,
+        neighbor_values,
+        neighbor_median,
+        consistency_median,
         corrected_value,
         correction_flag,
         failed_reason
       )
 
+    # store corrections for use in subsequent lte checks
     if (base::nrow(outlier_rows) > 0) {
+      corrected_rows <- outlier_rows |>
+        dplyr::filter(correction_flag == TRUE)
+      for (i in base::seq_len(base::nrow(corrected_rows))) {
+        rec_id <- corrected_rows[[id_col]][i]
+        var_name <- corrected_rows$outlier_var[i]
+        corr_val <- corrected_rows$corrected_value[i]
+        if (base::is.null(corrections[[rec_id]])) {
+          corrections[[rec_id]] <- base::list()
+        }
+        corrections[[rec_id]][[var_name]] <- corr_val
+      }
+    }
+
+    # filter out records already processed for this target variable
+    already_processed <- processed_ids[[target_var]]
+    if (!base::is.null(already_processed) && base::length(already_processed) > 0) {
+      outlier_rows <- outlier_rows |>
+        dplyr::filter(!.data[[id_col]] %in% already_processed)
+    }
+
+    # track these record IDs as processed
+    if (base::nrow(outlier_rows) > 0) {
+      new_ids <- outlier_rows[[id_col]]
+      processed_ids[[target_var]] <- base::c(already_processed, new_ids)
       detail_list[[base::length(detail_list) + 1L]] <- outlier_rows
     }
 
     # count stats
     n_outliers <- base::nrow(outlier_rows)
     n_corrected <- base::sum(outlier_rows$correction_flag, na.rm = TRUE)
-    n_failed <- base::sum(
-      outlier_rows$failed_reason == "failed_consistency", na.rm = TRUE
+    n_no_neighbours <- base::sum(
+      outlier_rows$failed_reason == "no_neighbours", na.rm = TRUE
+    )
+    n_correction_inconsistent <- base::sum(
+      outlier_rows$failed_reason == "correction_inconsistent", na.rm = TRUE
     )
 
     total_outliers <- total_outliers + n_outliers
     total_corrected <- total_corrected + n_corrected
-    total_failed <- total_failed + n_failed
+    total_no_neighbours <- total_no_neighbours + n_no_neighbours
+    total_correction_inconsistent <- total_correction_inconsistent + n_correction_inconsistent
 
-    if (verbose) {
-      if (n_outliers > 0) {
-        cli::cli_alert_info(
-          "{target_var}: {sntutils::big_mark(n_outliers)} outlier(s), {sntutils::big_mark(n_corrected)} corrected, {sntutils::big_mark(n_failed)} failed consistency"
-        )
-      } else {
-        cli::cli_alert_success("{target_var}: No outliers detected")
-      }
+    if (verbose && n_outliers > 0) {
+      cli::cli_alert_info(
+        "{target_var}: {sntutils::big_mark(n_outliers)} outlier(s), {sntutils::big_mark(n_corrected)} corrected"
+      )
     }
   }
 
-  # build detailed table (long format, only outlier rows)
+  # build detailed table
   detail_table <- if (base::length(detail_list) > 0) {
     dplyr::bind_rows(detail_list)
   } else {
@@ -2245,6 +2451,8 @@ validate_routine_hf_data <- function(
       outlier_value = base::numeric(0),
       consistency_var = base::character(0),
       consistency_value = base::numeric(0),
+      neighbor_values = base::character(0),
+      neighbor_median = base::numeric(0),
       corrected_value = base::numeric(0),
       correction_flag = base::logical(0),
       failed_reason = base::character(0)
@@ -2252,8 +2460,6 @@ validate_routine_hf_data <- function(
   }
 
   # build summary table (aggregated by admin + year + variable)
-  # use year instead of yearmon for consistency with missing values detail
-  # include adm0, adm1, adm2, adm3 if available
   admin_summary_cols <- c("adm0", "adm1", "adm2", "adm3")
   admin_summary_cols <- admin_summary_cols[
     admin_summary_cols %in% base::names(detail_table)
@@ -2276,8 +2482,11 @@ validate_routine_hf_data <- function(
       dplyr::summarise(
         n_outliers = dplyr::n(),
         n_corrected = base::sum(correction_flag, na.rm = TRUE),
-        n_failed_consistency = base::sum(
-          failed_reason == "failed_consistency", na.rm = TRUE
+        n_no_neighbours = base::sum(
+          failed_reason == "no_neighbours", na.rm = TRUE
+        ),
+        n_correction_inconsistent = base::sum(
+          failed_reason == "correction_inconsistent", na.rm = TRUE
         ),
         .groups = "drop"
       ) |>
@@ -2293,7 +2502,8 @@ validate_routine_hf_data <- function(
         n_outliers,
         prop_outliers,
         n_corrected,
-        n_failed_consistency
+        n_no_neighbours,
+        n_correction_inconsistent
       ) |>
       dplyr::arrange(dplyr::desc(prop_outliers), variable)
   } else {
@@ -2303,12 +2513,12 @@ validate_routine_hf_data <- function(
       n_outliers = base::integer(0),
       prop_outliers = base::numeric(0),
       n_corrected = base::integer(0),
-      n_failed_consistency = base::integer(0)
+      n_no_neighbours = base::integer(0),
+      n_correction_inconsistent = base::integer(0)
     )
   }
 
   # summary row for main validation summary
-
   pct_outliers <- base::round(total_outliers / base::nrow(data) * 100, 2)
   summary_row <- tibble::tibble(
     check = "Outliers & Corrections",
@@ -2321,9 +2531,15 @@ validate_routine_hf_data <- function(
   )
 
   if (verbose) {
+    total_failed <- total_no_neighbours + total_correction_inconsistent
     cli::cli_alert_success(
-      "Outlier check complete: {sntutils::big_mark(total_outliers)} total outlier(s), {sntutils::big_mark(total_corrected)} corrected, {sntutils::big_mark(total_failed)} failed consistency"
+      "Outlier check complete: {sntutils::big_mark(total_outliers)} outlier(s), {sntutils::big_mark(total_corrected)} corrected, {sntutils::big_mark(total_failed)} failed"
     )
+    if (total_failed > 0) {
+      cli::cli_alert_info(
+        "Failures: {sntutils::big_mark(total_no_neighbours)} no neighbours, {sntutils::big_mark(total_correction_inconsistent)} cascade violation"
+      )
+    }
   }
 
   base::list(

@@ -84,7 +84,8 @@ testthat::test_that("validate_routine_hf_data returns correct structure", {
     data = data,
     verbose = FALSE,
     check_outliers = TRUE,
-    outlier_methods = c("iqr", "median", "mean")
+    outlier_methods = c("iqr", "median", "mean"),
+    build_dictionary = TRUE
   )
 
   # check result is a list
@@ -94,14 +95,13 @@ testthat::test_that("validate_routine_hf_data returns correct structure", {
   expected_keys <- c(
     "Summary",
     "Missing values",
+    "Missing values detail",
     "Duplicate records",
     "Future dates",
-    "Consistency failures",
     "Consistency summary",
     "Consistency details",
-    "Outlier corrections",
+    "Outlier detailed",
     "Outlier summary",
-    "HF activeness detail",
     "HF activeness summary",
     "Data dictionary"
   )
@@ -305,10 +305,6 @@ testthat::test_that("validate_routine_hf_data detects consistency violations", {
     check_outliers = FALSE
   )
 
-  # check consistency failures exist
-  testthat::expect_type(result[["Consistency failures"]], "list")
-  testthat::expect_gt(length(result[["Consistency failures"]]), 0)
-
   # check consistency details table
   testthat::expect_s3_class(result[["Consistency details"]], "tbl_df")
   testthat::expect_gt(nrow(result[["Consistency details"]]), 0)
@@ -383,7 +379,8 @@ testthat::test_that("validate_routine_hf_data includes data dictionary", {
   result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
-    check_outliers = FALSE
+    check_outliers = FALSE,
+    build_dictionary = TRUE
   )
 
   # check dictionary exists
@@ -408,7 +405,8 @@ testthat::test_that("data dictionary supports translation from dictionaries", {
     data = data,
     verbose = FALSE,
     check_outliers = FALSE,
-    language = "fr"
+    language = "fr",
+    build_dictionary = TRUE
   )
 
   # check French label column exists
@@ -445,9 +443,14 @@ testthat::test_that("validate_routine_hf_data handles custom consistency pairs",
     check_outliers = FALSE
   )
 
-  # check that only one pair is checked
-  testthat::expect_type(result[["Consistency failures"]], "list")
-  testthat::expect_true("test vs conf" %in% names(result[["Consistency failures"]]))
+  # check that only one pair is checked - verify in Consistency summary
+  testthat::expect_s3_class(result[["Consistency summary"]], "tbl_df")
+  summary_pairs <- base::paste(
+    result[["Consistency summary"]]$input_indicator,
+    result[["Consistency summary"]]$output_indicator,
+    sep = " vs "
+  )
+  testthat::expect_true("test vs conf" %in% summary_pairs)
 })
 
 # test outlier detection -----------------------------------------------------
@@ -464,18 +467,7 @@ testthat::test_that("validate_routine_hf_data detects outliers", {
     outlier_methods = c("iqr", "median", "mean")
   )
 
-  # check outliers table exists
-  testthat::expect_s3_class(result[["Outlier corrections"]], "tbl_df")
-
-  # check outliers were detected
-  testthat::expect_gte(nrow(result[["Outlier corrections"]]), 0)
-
-  # verify the table structure - at minimum has metadata columns
-  outlier_cols <- names(result[["Outlier corrections"]])
-  testthat::expect_true("record_id" %in% outlier_cols)
-  testthat::expect_true("hf_uid" %in% outlier_cols)
-
-  # check outlier summary table exists
+  # check outlier summary table always exists (even if no outliers found)
   testthat::expect_s3_class(result[["Outlier summary"]], "tbl_df")
 
   # check summary always has an outliers row
@@ -486,6 +478,17 @@ testthat::test_that("validate_routine_hf_data detects outliers", {
   testthat::expect_equal(nrow(outlier_row), 1)
   # percent can be 0 if no outliers detected
   testthat::expect_gte(outlier_row$percent, 0)
+
+  # if outliers detected, check detailed table structure
+  if (!base::is.null(result[["Outlier detailed"]])) {
+    testthat::expect_s3_class(result[["Outlier detailed"]], "tbl_df")
+    testthat::expect_gte(nrow(result[["Outlier detailed"]]), 0)
+
+    # verify the table structure - at minimum has metadata columns
+    outlier_cols <- names(result[["Outlier detailed"]])
+    testthat::expect_true("record_id" %in% outlier_cols)
+    testthat::expect_true("hf_uid" %in% outlier_cols)
+  }
 })
 
 testthat::test_that("validate_routine_hf_data handles no outliers", {
@@ -503,7 +506,7 @@ testthat::test_that("validate_routine_hf_data handles no outliers", {
 
   # outliers may or may not be detected depending on the data distribution
   # just check that the structure is correct
-  testthat::expect_true("Outlier corrections" %in% names(result))
+  testthat::expect_true("Outlier detailed" %in% names(result))
   testthat::expect_true("Outlier summary" %in% names(result))
 
   # check summary has outliers row
@@ -708,7 +711,6 @@ testthat::test_that("validate_routine_hf_data handles language translation", {
   result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
-    save_results = TRUE,
     output_path = temp_dir,
     output_name = "test_validation",
     output_formats = "xlsx",
@@ -773,7 +775,8 @@ testthat::test_that("data dictionary includes input columns from non-duplicate t
     verbose = FALSE,
     check_duplicates = TRUE,
     check_future_dates = TRUE,
-    check_outliers = TRUE
+    check_outliers = TRUE,
+    build_dictionary = TRUE
   )
 
   dict <- result[["Data dictionary"]]
@@ -801,7 +804,8 @@ testthat::test_that("data dictionary excludes columns ONLY in Duplicate records 
     check_duplicates = TRUE,
     check_future_dates = FALSE,
     check_outliers = FALSE,
-    check_facility_activeness = FALSE
+    check_facility_activeness = FALSE,
+    build_dictionary = TRUE
   )
 
   dict <- result[["Data dictionary"]]
@@ -822,7 +826,8 @@ testthat::test_that("data dictionary provides labels for input columns", {
   result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
-    check_outliers = TRUE
+    check_outliers = TRUE,
+    build_dictionary = TRUE
   )
 
   dict <- result[["Data dictionary"]]
@@ -849,7 +854,8 @@ testthat::test_that("data dictionary provides labels for malaria indicators", {
   result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
-    check_outliers = TRUE
+    check_outliers = TRUE,
+    build_dictionary = TRUE
   )
 
   dict <- result[["Data dictionary"]]
@@ -876,7 +882,8 @@ testthat::test_that("data dictionary supports multilingual labels for input colu
     data = data,
     verbose = FALSE,
     check_outliers = TRUE,
-    language = "fr"
+    language = "fr",
+    build_dictionary = TRUE
   )
 
   dict <- result[["Data dictionary"]]
@@ -905,7 +912,8 @@ testthat::test_that("data dictionary includes validation-created columns", {
   result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
-    check_outliers = TRUE
+    check_outliers = TRUE,
+    build_dictionary = TRUE
   )
 
   dict <- result[["Data dictionary"]]
@@ -932,7 +940,8 @@ testthat::test_that("data dictionary appears_in_tabs shows correct tabs", {
     verbose = FALSE,
     check_duplicates = TRUE,
     check_future_dates = TRUE,
-    check_outliers = TRUE
+    check_outliers = TRUE,
+    build_dictionary = TRUE
   )
 
   dict <- result[["Data dictionary"]]
