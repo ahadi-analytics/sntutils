@@ -2273,11 +2273,6 @@ validate_routine_hf_data <- function(
           all_leads_na <- base::all(base::is.na(lead_vals))
           all_vals <- base::c(lag_vals, lead_vals)
 
-          neighbor_vals_str <- base::paste(
-            base::ifelse(base::is.na(all_vals), "NA", all_vals),
-            collapse = ","
-          )
-
           # consistency variable neighbors
           cons_lag_vals <- base::as.numeric(base::unlist(row[, cons_lag_cols]))
           cons_lead_vals <- base::as.numeric(base::unlist(row[, cons_lead_cols]))
@@ -2291,7 +2286,6 @@ validate_routine_hf_data <- function(
             return(base::list(
               median = NA_real_,
               no_neighbours = TRUE,
-              vals_str = neighbor_vals_str,
               cons_median = cons_median
             ))
           }
@@ -2299,7 +2293,6 @@ validate_routine_hf_data <- function(
           base::list(
             median = base::round(stats::median(all_vals, na.rm = TRUE)),
             no_neighbours = FALSE,
-            vals_str = neighbor_vals_str,
             cons_median = cons_median
           )
         }
@@ -2309,7 +2302,6 @@ validate_routine_hf_data <- function(
         dplyr::mutate(
           neighbor_median = base::sapply(results, function(x) x$median),
           .no_neighbours = base::sapply(results, function(x) x$no_neighbours),
-          neighbor_values = base::sapply(results, function(x) x$vals_str),
           consistency_median = base::sapply(results, function(x) x$cons_median)
         )
     } else {
@@ -2317,7 +2309,6 @@ validate_routine_hf_data <- function(
         dplyr::mutate(
           neighbor_median = base::numeric(0),
           .no_neighbours = base::logical(0),
-          neighbor_values = base::character(0),
           consistency_median = base::numeric(0)
         )
     }
@@ -2383,7 +2374,6 @@ validate_routine_hf_data <- function(
         outlier_value,
         consistency_var,
         consistency_value,
-        neighbor_values,
         neighbor_median,
         consistency_median,
         corrected_value,
@@ -2451,8 +2441,8 @@ validate_routine_hf_data <- function(
       outlier_value = base::numeric(0),
       consistency_var = base::character(0),
       consistency_value = base::numeric(0),
-      neighbor_values = base::character(0),
       neighbor_median = base::numeric(0),
+      consistency_median = base::numeric(0),
       corrected_value = base::numeric(0),
       correction_flag = base::logical(0),
       failed_reason = base::character(0)
