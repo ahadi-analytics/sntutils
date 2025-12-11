@@ -30,14 +30,14 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y pngquant libnetcdf-dev
+          sudo apt-get install -y pngquant libnetcdf-dev libgdal-dev libgeos-dev libproj-dev libudunits2-dev
 
       - name: Install system dependencies on macOS
         if: runner.os == 'macOS'
         run: |
-          brew install pngquant netcdf
-          # Ensure nc-config is in PATH
+          brew install pngquant netcdf gdal geos proj udunits
           echo "$(brew --prefix netcdf)/bin" >> $GITHUB_PATH
+          echo "$(brew --prefix gdal)/bin" >> $GITHUB_PATH
 
       - name: Install R dependencies (cli)
         uses: r-lib/actions/setup-r-dependencies@v2
