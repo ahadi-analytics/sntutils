@@ -1898,15 +1898,15 @@ outlier_plot <- function(
 
     if ("iqr" %in% non_consensus_methods) {
       method_details <- c(method_details,
-        glue::glue("IQR (Q3 + {iqr_multiplier}×IQR)"))
+        glue::glue("IQR (Q3 + {iqr_multiplier}*IQR)"))
     }
     if ("median" %in% non_consensus_methods) {
       method_details <- c(method_details,
-        glue::glue("Median (median + {mad_multiplier}×MAD[k={mad_constant}])"))
+        glue::glue("Median (median + {mad_multiplier}*MAD[k={mad_constant}])"))
     }
     if ("mean" %in% non_consensus_methods) {
       method_details <- c(method_details,
-        glue::glue("Mean (mean + {sd_multiplier}×SD)"))
+        glue::glue("Mean (mean + {sd_multiplier}*SD)"))
     }
 
     # add detection level clarification if levels differ
