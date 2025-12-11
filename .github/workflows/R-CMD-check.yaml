@@ -44,11 +44,11 @@ jobs:
         run: |
           if [[ "$RUNNER_OS" == "Linux" ]]; then
             sudo apt-get update
-            sudo apt-get install -y libnetcdf-dev
+            sudo apt-get install -y libnetcdf-dev libgdal-dev libgeos-dev libproj-dev libudunits2-dev
           elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            brew install netcdf
-            # Ensure nc-config is in PATH
+            brew install netcdf gdal geos proj
             echo "$(brew --prefix netcdf)/bin" >> $GITHUB_PATH
+            echo "$(brew --prefix gdal)/bin" >> $GITHUB_PATH
           fi
         shell: bash
 
