@@ -39,6 +39,7 @@ validate_routine_hf_data(
   iqr_multiplier = 2,
   min_n = 8,
   consensus_rule = 1,
+  n_neighbour_impute = 3,
   output_path = NULL,
   output_name = "validation_of_hf_routine_data",
   output_formats = c("xlsx", "rds"),
@@ -82,11 +83,12 @@ checks to specific indicators while always including core IDs.}
 If NULL, defaults generated from common malaria cascade rules.}
 
 \item{outlier_pairs}{list|NULL. Pairs for outlier detection and correction.
-Structure: list(target = c("conf", "maltreat"), consistency = c("test", "conf")).
-Target variables are checked for outliers, corrected using neighbor median,
-and validated against consistency variables. If NULL, defaults generated
-from malaria cascade (same as consistency_pairs but reversed: output becomes
-target, input becomes consistency bound).}
+Structure: list(input = c("test"), output = c("conf")).
+Uses same format as consistency_pairs. The cascade rule is: input >= output.
+Both directions are checked automatically:
+(1) output outliers validated as output <= input,
+(2) input outliers validated as input >= output.
+Corrections use neighbor median. If NULL, defaults from malaria cascade.}
 
 \item{check_future_dates}{logical. Default TRUE.}
 
@@ -127,6 +129,8 @@ or "positive_only" (requires >0 value to count as reported).}
 \item{min_n}{numeric. Minimum sample size for outlier detection. Default 8.}
 
 \item{consensus_rule}{numeric. Number of methods that must agree for consensus outlier flag. Default 1.}
+
+\item{n_neighbour_impute}{integer. Number of neighboring time periods (before and after) to use for computing the imputation median. Default 3 (uses 3 before + 3 after = 6 values).}
 
 \item{output_path}{character|NULL. If provided, results are saved to this path.}
 
