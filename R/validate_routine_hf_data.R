@@ -2259,41 +2259,70 @@ validate_routine_hf_data <- function(
     outlier_rows <- merged_with_neighbours |>
       dplyr::filter(.data[[flag_col]] == "outlier")
 
-    # compute neighbor median row by row (for both target and consistency vars)
+    # skip records where consistency var is also an outlier (likely outbreak, not error)
+    consistency_outlier_ids <- outlier_record_ids[[consistency_var]]
+    if (!base::is.null(consistency_outlier_ids) &&
+        base::length(consistency_outlier_ids) > 0) {
+      outlier_rows <- outlier_rows |>
+        dplyr::filter(!.data[[id_col]] %in% consistency_outlier_ids)
+    }
+
+    # compute neighbor median row by row
     if (base::nrow(outlier_rows) > 0) {
       results <- base::lapply(
         base::seq_len(base::nrow(outlier_rows)),
         function(i) {
           row <- outlier_rows[i, ]
 
-          # target variable neighbors
+          # target variable neighbors (reverse lags so order is: lag_n...lag_1, lead_1...lead_n)
           lag_vals <- base::as.numeric(base::unlist(row[, lag_cols]))
           lead_vals <- base::as.numeric(base::unlist(row[, lead_cols]))
           all_lags_na <- base::all(base::is.na(lag_vals))
           all_leads_na <- base::all(base::is.na(lead_vals))
           all_vals <- base::c(lag_vals, lead_vals)
 
-          # consistency variable neighbors
+          # format with outlier in middle: "lag_n, ..., [outlier], ..., lead_n"
+          ordered_vals <- base::c(base::rev(lag_vals), lead_vals)
+          ordered_strs <- base::ifelse(base::is.na(ordered_vals), "NA", ordered_vals)
+          outlier_val <- row[[target_var]]
+          outlier_str <- base::paste0("[", outlier_val, "]")
+          # insert outlier value in the middle
+          mid_pos <- base::length(lag_vals) + 1L
+          outlier_neighbors <- base::paste(
+            base::c(ordered_strs[seq_len(mid_pos - 1L)], outlier_str,
+                    ordered_strs[mid_pos:base::length(ordered_strs)]),
+            collapse = ", "
+          )
+
+          # consistency variable neighbors with value in middle
           cons_lag_vals <- base::as.numeric(base::unlist(row[, cons_lag_cols]))
           cons_lead_vals <- base::as.numeric(base::unlist(row[, cons_lead_cols]))
-          cons_all_vals <- base::c(cons_lag_vals, cons_lead_vals)
-          cons_median <- stats::median(cons_all_vals, na.rm = TRUE)
-          if (!base::is.na(cons_median)) {
-            cons_median <- base::round(cons_median)
-          }
+          cons_ordered_vals <- base::c(base::rev(cons_lag_vals), cons_lead_vals)
+          cons_ordered_strs <- base::ifelse(
+            base::is.na(cons_ordered_vals), "NA", cons_ordered_vals
+          )
+          cons_val <- row[[consistency_var]]
+          cons_str <- base::paste0("[", cons_val, "]")
+          consistency_neighbors <- base::paste(
+            base::c(cons_ordered_strs[seq_len(mid_pos - 1L)], cons_str,
+                    cons_ordered_strs[mid_pos:base::length(cons_ordered_strs)]),
+            collapse = ", "
+          )
 
           if (all_lags_na || all_leads_na) {
             return(base::list(
               median = NA_real_,
               no_neighbours = TRUE,
-              cons_median = cons_median
+              outlier_neighbors = outlier_neighbors,
+              consistency_neighbors = consistency_neighbors
             ))
           }
 
           base::list(
             median = base::round(stats::median(all_vals, na.rm = TRUE)),
             no_neighbours = FALSE,
-            cons_median = cons_median
+            outlier_neighbors = outlier_neighbors,
+            consistency_neighbors = consistency_neighbors
           )
         }
       )
@@ -2302,14 +2331,18 @@ validate_routine_hf_data <- function(
         dplyr::mutate(
           neighbor_median = base::sapply(results, function(x) x$median),
           .no_neighbours = base::sapply(results, function(x) x$no_neighbours),
-          consistency_median = base::sapply(results, function(x) x$cons_median)
+          outlier_neighbors = base::sapply(results, function(x) x$outlier_neighbors),
+          consistency_neighbors = base::sapply(
+            results, function(x) x$consistency_neighbors
+          )
         )
     } else {
       outlier_rows <- outlier_rows |>
         dplyr::mutate(
           neighbor_median = base::numeric(0),
           .no_neighbours = base::logical(0),
-          consistency_median = base::numeric(0)
+          outlier_neighbors = base::character(0),
+          consistency_neighbors = base::character(0)
         )
     }
 
@@ -2324,40 +2357,28 @@ validate_routine_hf_data <- function(
         lag_cols, lead_cols, cons_lag_cols, cons_lead_cols
       )))
 
-    # check if consistency var is also an outlier for each record
-    # if so, skip cascade check (both values unreliable, just apply correction)
-    consistency_outlier_ids <- outlier_record_ids[[consistency_var]]
-    if (base::is.null(consistency_outlier_ids)) {
-      consistency_outlier_ids <- base::character(0)
-    }
-
-    # cascade check: compare corrected_target vs corrected_consistency
-    # use consistency_median (neighbor median of consistency var)
+    # cascade check: compare corrected_target vs actual consistency_value
+    # lte: corrected must be <= consistency_value
+    # gte: corrected must be >= consistency_value
     outlier_rows <- outlier_rows |>
       dplyr::mutate(
-        # skip cascade check if consistency var is also an outlier
-        consistency_is_outlier = .data[[id_col]] %in% consistency_outlier_ids,
-        # check if correction would violate cascade
-        # lte: corrected must be <= consistency_median
-        # gte: corrected must be >= consistency_median
         cascade_violated = dplyr::case_when(
-          consistency_is_outlier ~ FALSE,
           base::is.na(neighbor_median) ~ NA,
-          base::is.na(consistency_median) ~ NA,
-          p$direction == "lte" ~ neighbor_median > consistency_median,
-          p$direction == "gte" ~ neighbor_median < consistency_median,
+          base::is.na(consistency_value) ~ NA,
+          p$direction == "lte" ~ neighbor_median > consistency_value,
+          p$direction == "gte" ~ neighbor_median < consistency_value,
           TRUE ~ FALSE
         ),
         # corrected value: use median only if cascade is not violated
         corrected_value = dplyr::case_when(
           .no_neighbours ~ NA_real_,
-          base::is.na(consistency_median) ~ neighbor_median,
+          base::is.na(consistency_value) ~ neighbor_median,
           cascade_violated ~ NA_real_,
           TRUE ~ neighbor_median
         ),
         correction_flag = dplyr::case_when(
           .no_neighbours ~ FALSE,
-          base::is.na(consistency_median) ~ TRUE,
+          base::is.na(consistency_value) ~ TRUE,
           cascade_violated ~ FALSE,
           TRUE ~ TRUE
         ),
@@ -2372,10 +2393,11 @@ validate_routine_hf_data <- function(
         dplyr::all_of(meta_cols),
         outlier_var,
         outlier_value,
+        outlier_neighbors,
         consistency_var,
         consistency_value,
+        consistency_neighbors,
         neighbor_median,
-        consistency_median,
         corrected_value,
         correction_flag,
         failed_reason
@@ -2439,10 +2461,11 @@ validate_routine_hf_data <- function(
     tibble::tibble(
       outlier_var = base::character(0),
       outlier_value = base::numeric(0),
+      outlier_neighbors = base::character(0),
       consistency_var = base::character(0),
       consistency_value = base::numeric(0),
+      consistency_neighbors = base::character(0),
       neighbor_median = base::numeric(0),
-      consistency_median = base::numeric(0),
       corrected_value = base::numeric(0),
       correction_flag = base::logical(0),
       failed_reason = base::character(0)
