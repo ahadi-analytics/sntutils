@@ -2201,16 +2201,9 @@ save_single_plot <- function(plot, plot_data, plot_path,
     ""
   }
 
-  # Simplify vars_of_interest for filename if there are too many
+  # simplify vars_of_interest for filename if there are too many
   vars_of_interest_str <- if (length(vars_of_interest) > 3) {
-    translated_str <- translate_text(
-      "multiple variables",
-      target_language = target_language,
-      source_language = source_language,
-      cache_path = lang_cache_path
-    )
-    translated_str <- tolower(translated_str)
-    gsub(" ", "_", translated_str)
+    "multivars"
   } else {
     tolower(translated_terms$vars_of_interest_str)
   }
@@ -2258,13 +2251,12 @@ save_single_plot <- function(plot, plot_data, plot_path,
     ""
   }
 
-  # Construct filename
+  # construct filename (compact format for OneDrive compatibility)
   save_path <- glue::glue(
-    "{translated_terms$prefix}_{translated_terms$for_word}_",
-    "{vars_of_interest_str}_{translated_terms$by_word}_",
+    "{translated_terms$prefix}_{vars_of_interest_str}_",
     "{tolower(translated_terms$x_title)}{y_var_part}",
-    "{param_suffix}_",
-    "{translated_terms$year_range}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
+    "{param_suffix}_{translated_terms$year_range}_",
+    "v{format(Sys.Date(), '%Y-%m-%d')}.png"
   )
 
   full_path <- file.path(plot_path, save_path)
@@ -2370,6 +2362,48 @@ calculate_plot_dimensions <- function(plot_data, x_var, y_var = NULL) {
   # Return dimensions
   list(width = width, height = height)
 }
+#' Get abbreviated filename slug for common terms
+#'
+#' Returns short, language-aware abbreviations for plot filename components.
+#' Keeps filenames concise for OneDrive sync compatibility.
+#'
+#' @param term The term to abbreviate (in English)
+#' @param target_language Target language code (e.g., "fr", "en")
+#'
+#' @return Abbreviated slug string
+.get_filename_abbrev <- function(term, target_language) {
+  # mapping of English terms to abbreviated slugs per language
+  abbrev_map <- list(
+    "reporting rate" = list(en = "rr", fr = "tdr", default = "rr"),
+    "year and month" = list(en = "yr_mo", fr = "an_mois", default = "yr_mo"),
+    "year" = list(en = "yr", fr = "an", default = "yr"),
+    "month" = list(en = "mo", fr = "mois", default = "mo"),
+    "multiple variables" = list(en = "multivars", fr = "multivars",
+                                default = "multivars"),
+    "outlier plot" = list(en = "outliers", fr = "aberr", default = "outliers"),
+    "health facility activeness status" = list(en = "hf_status",
+                                               fr = "fosa_statut",
+                                               default = "hf_status")
+  )
+
+  term_lower <- tolower(term)
+  if (term_lower %in% names(abbrev_map)) {
+    mapping <- abbrev_map[[term_lower]]
+    lang_key <- if (target_language %in% names(mapping)) {
+      target_language
+    } else {
+      "default"
+    }
+    return(mapping[[lang_key]])
+  }
+
+
+  # fallback: slugify the term
+  slug <- tolower(term)
+  slug <- gsub(" ", "_", slug)
+  slug
+}
+
 #' Get translated terms for plot filenames
 #'
 #' @param target_language Target language code
@@ -2385,55 +2419,21 @@ calculate_plot_dimensions <- function(plot_data, x_var, y_var = NULL) {
 get_translated_terms <- function(target_language, source_language,
                                  lang_cache_path, x_var,
                                  vars_of_interest, save_title_prefix, data) {
-  # Translate and format the prefix
-  save_title_prefix_tr <- translate_text(
-    save_title_prefix,
-    target_language = target_language,
-    source_language = source_language,
-    cache_path = lang_cache_path
-  )
-  save_title_prefix_tr <- tolower(save_title_prefix_tr)
-  save_title_prefix_tr <- gsub(" ", "_", save_title_prefix_tr)
+  # use abbreviated prefix for filename (keeps it short for OneDrive)
+  prefix_abbrev <- .get_filename_abbrev(save_title_prefix, target_language)
 
-  # Format x_var for title
-  x_title <- if (x_var == "yearmon") "year and month" else x_var
-  x_title <- translate_text(
-    x_title,
-    target_language = target_language,
-    source_language = source_language,
-    cache_path = lang_cache_path
-  )
-  x_title <- tolower(x_title)
-  x_title <- gsub(" ", "_", x_title)
+  # use abbreviated x_title for filename
+  x_title_raw <- if (x_var == "yearmon") "year and month" else x_var
+  x_title_abbrev <- .get_filename_abbrev(x_title_raw, target_language)
 
-  # Translate common words
-  for_word <- translate_text(
-    "for",
-    target_language = target_language,
-    source_language = source_language,
-    cache_path = lang_cache_path
-  )
-  by_word <- translate_text(
-    "by",
-    target_language = target_language,
-    source_language = source_language,
-    cache_path = lang_cache_path
-  )
-  in_word <- translate_text(
-    "in",
-    target_language = target_language,
-    source_language = source_language,
-    cache_path = lang_cache_path
-  )
-
-  # Format vars_of_interest for filename
+  # format vars_of_interest for filename
   vars_of_interest_str <- if (length(vars_of_interest) > 1) {
     paste(vars_of_interest, collapse = "_")
   } else {
     vars_of_interest
   }
 
-  # Get year range (filter NA to avoid warnings)
+  # get year range (filter NA to avoid warnings)
   year_values <- if (!is.null(data$year)) {
     data$year[!is.na(data$year)]
   } else {
@@ -2448,12 +2448,9 @@ get_translated_terms <- function(target_language, source_language,
   }
 
   list(
-    prefix = save_title_prefix_tr,
-    for_word = for_word,
-    by_word = by_word,
-    in_word = in_word,
+    prefix = prefix_abbrev,
     vars_of_interest_str = vars_of_interest_str,
-    x_title = x_title,
+    x_title = x_title_abbrev,
     year_range = year_range
   )
 }

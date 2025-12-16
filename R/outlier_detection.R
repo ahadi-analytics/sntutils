@@ -2578,35 +2578,23 @@ outlier_plot <- function(
     }
   }
 
-  # Translate terms for filename
-  # Translate "outlier plot" as two separate words for better translation
-  outlier_tr <- .translate_quiet("outlier") |>
-    tolower()
-  plot_tr <- .translate_quiet("plot") |>
-    tolower()
-  outlier_plot_tr <- paste(gsub(" ", "_", outlier_tr), plot_tr, sep = "_")
+  # use abbreviated terms for compact filenames (OneDrive compatibility)
+  outlier_abbrev <- if (target_language == "fr") "aberr" else "outliers"
 
-  method_tr <- .translate_quiet(method_name) |>
-    tolower()
+  method_slug <- tolower(method_name)
 
-  for_tr <- .translate_quiet("for")
+  # abbreviated yearmon label
 
-  by_tr <- .translate_quiet("by")
-
-  # Translate yearmon label
-  yearmon_label <- if (yearmon == "yearmon") {
-    .translate_quiet("year_month") |>
-      tolower() |>
-      gsub(" ", "_", x = _)
+  yearmon_slug <- if (yearmon == "yearmon") {
+    if (target_language == "fr") "an_mois" else "yr_mo"
   } else {
     yearmon
   }
 
-  adm_level_tr <- .translate_quiet(adm_level) |>
-    tolower() |>
+  adm_level_slug <- tolower(adm_level) |>
     gsub(" ", "_", x = _)
 
-  # Get year range
+  # get year range
   year_range <- if (!is.null(data$year) && length(unique(data$year)) > 1) {
     glue::glue("{min(data$year, na.rm = TRUE)}-{max(data$year, na.rm = TRUE)}")
   } else if (!is.null(data$year)) {
@@ -2615,11 +2603,10 @@ outlier_plot <- function(
     format(Sys.Date(), "%Y")
   }
 
-  # Construct filename
+  # construct filename (compact format, no connector words)
   save_path <- glue::glue(
-    "{outlier_plot_tr}_{method_tr}_{for_tr}_{column}_{by_tr}_",
-    "{yearmon_label}_&_{adm_level_tr}_{year_range}_",
-    "v{format(Sys.Date(), '%Y-%m-%d')}.png"
+    "{outlier_abbrev}_{method_slug}_{column}_{yearmon_slug}_",
+    "{adm_level_slug}_{year_range}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
   )
 
   full_path <- file.path(plot_path, save_path)
