@@ -1796,6 +1796,131 @@ dhs_pfpr:
     description_fr: "Strate d'enquête DHS pour l'analyse basée sur le plan d'échantillonnage"
     description_pt: "Estrato de pesquisa DHS para análise baseada no desenho amostral"
 
+dhs_iptp:
+  _description: "DHS Intermittent Preventive Treatment in Pregnancy (IPTp) indicators."
+  label_en: "DHS IPTp indicators"
+  label_fr: "Indicateurs de TPI DHS"
+  label_pt: "Indicadores de TIPg DHS"
+
+  # ── IPTp coverage indicators ─────────────────────────────────────────────────
+  dhs_iptp_1:
+    snt_var_name: dhs_iptp_1
+    label_en: "DHS IPTp 1+ dose coverage (%)"
+    label_fr: "Couverture TPI 1+ dose DHS (%)"
+    label_pt: "Cobertura TIPg 1+ dose DHS (%)"
+    description_en: "Percentage of women who received at least 1 dose of IPTp during pregnancy from DHS survey"
+    description_fr: "Pourcentage de femmes ayant reçu au moins 1 dose de TPI pendant la grossesse selon l'enquête DHS"
+    description_pt: "Percentual de mulheres que receberam pelo menos 1 dose de TIPg durante a gravidez segundo a pesquisa DHS"
+
+  dhs_iptp_1_low:
+    snt_var_name: dhs_iptp_1_low
+    label_en: "DHS IPTp 1+ dose lower CI (%)"
+    label_fr: "IC inférieur TPI 1+ dose DHS (%)"
+    label_pt: "IC inferior TIPg 1+ dose DHS (%)"
+    description_en: "95% lower confidence interval for DHS IPTp 1+ dose estimate"
+    description_fr: "Intervalle de confiance inférieur à 95% pour l'estimation TPI 1+ dose DHS"
+    description_pt: "Intervalo de confiança inferior de 95% para estimativa TIPg 1+ dose DHS"
+
+  dhs_iptp_1_upp:
+    snt_var_name: dhs_iptp_1_upp
+    label_en: "DHS IPTp 1+ dose upper CI (%)"
+    label_fr: "IC supérieur TPI 1+ dose DHS (%)"
+    label_pt: "IC superior TIPg 1+ dose DHS (%)"
+    description_en: "95% upper confidence interval for DHS IPTp 1+ dose estimate"
+    description_fr: "Intervalle de confiance supérieur à 95% pour l'estimation TPI 1+ dose DHS"
+    description_pt: "Intervalo de confiança superior de 95% para estimativa TIPg 1+ dose DHS"
+
+  dhs_iptp_2:
+    snt_var_name: dhs_iptp_2
+    label_en: "DHS IPTp 2+ dose coverage (%)"
+    label_fr: "Couverture TPI 2+ doses DHS (%)"
+    label_pt: "Cobertura TIPg 2+ doses DHS (%)"
+    description_en: "Percentage of women who received at least 2 doses of IPTp during pregnancy from DHS survey"
+    description_fr: "Pourcentage de femmes ayant reçu au moins 2 doses de TPI pendant la grossesse selon l'enquête DHS"
+    description_pt: "Percentual de mulheres que receberam pelo menos 2 doses de TIPg durante a gravidez segundo a pesquisa DHS"
+
+  dhs_iptp_2_low:
+    snt_var_name: dhs_iptp_2_low
+    label_en: "DHS IPTp 2+ dose lower CI (%)"
+    label_fr: "IC inférieur TPI 2+ doses DHS (%)"
+    label_pt: "IC inferior TIPg 2+ doses DHS (%)"
+    description_en: "95% lower confidence interval for DHS IPTp 2+ dose estimate"
+    description_fr: "Intervalle de confiance inférieur à 95% pour l'estimation TPI 2+ doses DHS"
+    description_pt: "Intervalo de confiança inferior de 95% para estimativa TIPg 2+ doses DHS"
+
+  dhs_iptp_2_upp:
+    snt_var_name: dhs_iptp_2_upp
+    label_en: "DHS IPTp 2+ dose upper CI (%)"
+    label_fr: "IC supérieur TPI 2+ doses DHS (%)"
+    label_pt: "IC superior TIPg 2+ doses DHS (%)"
+    description_en: "95% upper confidence interval for DHS IPTp 2+ dose estimate"
+    description_fr: "Intervalle de confiance supérieur à 95% pour l'estimation TPI 2+ doses DHS"
+    description_pt: "Intervalo de confiança superior de 95% para estimativa TIPg 2+ doses DHS"
+
+  dhs_iptp_3:
+    snt_var_name: dhs_iptp_3
+    label_en: "DHS IPTp 3+ dose coverage (%)"
+    label_fr: "Couverture TPI 3+ doses DHS (%)"
+    label_pt: "Cobertura TIPg 3+ doses DHS (%)"
+    description_en: "Percentage of women who received at least 3 doses of IPTp during pregnancy from DHS survey"
+    description_fr: "Pourcentage de femmes ayant reçu au moins 3 doses de TPI pendant la grossesse selon l'enquête DHS"
+    description_pt: "Percentual de mulheres que receberam pelo menos 3 doses de TIPg durante a gravidez segundo a pesquisa DHS"
+
+  dhs_iptp_3_low:
+    snt_var_name: dhs_iptp_3_low
+    label_en: "DHS IPTp 3+ dose lower CI (%)"
+    label_fr: "IC inférieur TPI 3+ doses DHS (%)"
+    label_pt: "IC inferior TIPg 3+ doses DHS (%)"
+    description_en: "95% lower confidence interval for DHS IPTp 3+ dose estimate"
+    description_fr: "Intervalle de confiance inférieur à 95% pour l'estimation TPI 3+ doses DHS"
+    description_pt: "Intervalo de confiança inferior de 95% para estimativa TIPg 3+ doses DHS"
+
+  dhs_iptp_3_upp:
+    snt_var_name: dhs_iptp_3_upp
+    label_en: "DHS IPTp 3+ dose upper CI (%)"
+    label_fr: "IC supérieur TPI 3+ doses DHS (%)"
+    label_pt: "IC superior TIPg 3+ doses DHS (%)"
+    description_en: "95% upper confidence interval for DHS IPTp 3+ dose estimate"
+    description_fr: "Intervalle de confiance supérieur à 95% pour l'estimation TPI 3+ doses DHS"
+    description_pt: "Intervalo de confiança superior de 95% para estimativa TIPg 3+ doses DHS"
+
+  # ── Sample sizes ──────────────────────────────────────────────────────────────
+  dhs_n_women:
+    snt_var_name: dhs_n_women
+    label_en: "DHS number of women surveyed"
+    label_fr: "Nombre de femmes enquêtées DHS"
+    label_pt: "Número de mulheres pesquisadas DHS"
+    description_en: "Number of women with a live birth in the past 2 years in the DHS survey for this administrative unit"
+    description_fr: "Nombre de femmes ayant eu une naissance vivante dans les 2 dernières années dans l'enquête DHS pour cette unité administrative"
+    description_pt: "Número de mulheres com nascimento vivo nos últimos 2 anos na pesquisa DHS para esta unidade administrativa"
+
+  dhs_n_iptp_1plus:
+    snt_var_name: dhs_n_iptp_1plus
+    label_en: "DHS women who received IPTp 1+ dose"
+    label_fr: "Femmes ayant reçu TPI 1+ dose DHS"
+    label_pt: "Mulheres que receberam TIPg 1+ dose DHS"
+    description_en: "Number of women who received at least 1 dose of IPTp during pregnancy"
+    description_fr: "Nombre de femmes ayant reçu au moins 1 dose de TPI pendant la grossesse"
+    description_pt: "Número de mulheres que receberam pelo menos 1 dose de TIPg durante a gravidez"
+
+  dhs_n_iptp_2plus:
+    snt_var_name: dhs_n_iptp_2plus
+    label_en: "DHS women who received IPTp 2+ doses"
+    label_fr: "Femmes ayant reçu TPI 2+ doses DHS"
+    label_pt: "Mulheres que receberam TIPg 2+ doses DHS"
+    description_en: "Number of women who received at least 2 doses of IPTp during pregnancy"
+    description_fr: "Nombre de femmes ayant reçu au moins 2 doses de TPI pendant la grossesse"
+    description_pt: "Número de mulheres que receberam pelo menos 2 doses de TIPg durante a gravidez"
+
+  dhs_n_iptp_3plus:
+    snt_var_name: dhs_n_iptp_3plus
+    label_en: "DHS women who received IPTp 3+ doses"
+    label_fr: "Femmes ayant reçu TPI 3+ doses DHS"
+    label_pt: "Mulheres que receberam TIPg 3+ doses DHS"
+    description_en: "Number of women who received at least 3 doses of IPTp during pregnancy"
+    description_fr: "Nombre de femmes ayant reçu au moins 3 doses de TPI pendant la grossesse"
+    description_pt: "Número de mulheres que receberam pelo menos 3 doses de TIPg durante a gravidez"
+
 schema:
   _description: "Standardized disaggregation schema used across indicators."
   label_en: "Standard disaggregation schema"

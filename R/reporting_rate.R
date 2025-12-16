@@ -1660,6 +1660,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       source_language = source_language,
       cache_path = lang_cache_path
     )
+    # ensure sentence case for legend label
+    fill_label_translated <- stringr::str_to_sentence(fill_label_translated)
   }
 
   # Create common plot elements
@@ -2375,6 +2377,10 @@ calculate_plot_dimensions <- function(plot_data, x_var, y_var = NULL) {
   # mapping of English terms to abbreviated slugs per language
   abbrev_map <- list(
     "reporting rate" = list(en = "rr", fr = "tdr", default = "rr"),
+    "health facility reporting rate" = list(en = "hf_rr", fr = "fosa_tdr",
+                                            default = "hf_rr"),
+    "missing rate" = list(en = "miss", fr = "manq", default = "miss"),
+    "consistency check" = list(en = "consist", fr = "consist", default = "consist"),
     "year and month" = list(en = "yr_mo", fr = "an_mois", default = "yr_mo"),
     "year" = list(en = "yr", fr = "an", default = "yr"),
     "month" = list(en = "mo", fr = "mois", default = "mo"),

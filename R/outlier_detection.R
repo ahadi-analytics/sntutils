@@ -259,7 +259,8 @@ detect_outliers <- function(
   verbose = TRUE
 ) {
   if (column %in% names(data) && !is.numeric(data[[column]])) {
-    cli::cli_abort("Column {.val {column}} must be numeric.")
+    cli::cli_warn("Skipping column {.val {column}}: not numeric.")
+    return(invisible(NULL))
   }
 
   activeness_applied <- FALSE
@@ -1660,6 +1661,11 @@ outlier_plot <- function(
       outbreak_prop_tolerance = outbreak_prop_tolerance,
       outbreak_max_gap = outbreak_max_gap
       )
+
+    # handle non-numeric columns gracefully
+    if (is.null(outlier_results)) {
+      return(invisible(NULL))
+    }
   }
 
   # Show summary box once before creating plots

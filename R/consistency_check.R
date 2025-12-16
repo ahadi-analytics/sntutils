@@ -514,99 +514,18 @@ consistency_check <- function(data,
 
     # Generate filename based on single vs multiple pairs
     if (length(inputs) == 1 && length(outputs) == 1) {
-      # Single pair: use actual variable names with translated filename components
-      # Extract year range from data
-      year_range <- tryCatch({
-        if ("year" %in% names(data)) {
-          years <- data$year[!is.na(data$year)]
-          if (length(years) > 0) {
-            min_year <- min(years)
-            max_year <- max(years)
-            if (min_year == max_year) {
-              as.character(min_year)
-            } else {
-              paste0(min_year, "-", max_year)
-            }
-          } else {
-            NA
-          }
-        } else {
-          NA
-        }
-      }, error = function(e) NA)
-
-      if (target_language != "en") {
-        # Try to get translations for filename components, fall back to English if not available
-        check_word <- tryCatch({
-          translate_text(
-            "consistency check",
-            target_language = target_language,
-            source_language = source_language,
-            cache_path = lang_cache_path
-          ) |> stringr::str_replace_all(" ", "_")
-        }, error = function(e) "consistency_check")
-
-        # Add "pour" (for) after consistency check in non-English languages
-        pour_word <- tryCatch({
-          translate_text(
-            "for",
-            target_language = target_language,
-            source_language = source_language,
-            cache_path = lang_cache_path
-          )
-        }, error = function(e) "for")
-
-        vs_word <- "vs"  # Always keep "vs" untranslated in filenames
-
-        by_word <- if (!is.null(facet_by)) {
-          by_translated <- tryCatch({
-            translate_text(
-              "by",
-              target_language = target_language,
-              source_language = source_language,
-              cache_path = lang_cache_path
-            )
-          }, error = function(e) "by")
-          paste0("_", by_translated, "_", facet_by)
-        } else {
-          ""
-        }
-      } else {
-        check_word <- "consistency_check"
-        pour_word <- ""  # No "for" in English filenames
-        vs_word <- "vs"
-        by_word <- if (!is.null(facet_by)) paste0("_by_", facet_by) else ""
-      }
-
-      # Add year range to filename if available
-      year_suffix <- if (!is.na(year_range)) paste0("_", year_range) else ""
-
-      # Add "pour" word if not empty
-      pour_part <- if (pour_word != "") paste0("_", pour_word) else ""
+      # Single pair: compact format (no year range)
+      facet_slug <- if (!is.null(facet_by)) paste0("_", facet_by) else ""
 
       basename <- glue::glue(
-        "{check_word}{pour_part}_{inputs[1]}_{vs_word}_{outputs[1]}{by_word}{year_suffix}_",
+        "consist_{inputs[1]}_vs_{outputs[1]}{facet_slug}_",
         "v{format(Sys.Date(), '%Y-%m-%d')}.png"
       )
     } else {
-      # Multiple pairs: use translated terms approach
-      translated_terms <- get_translated_terms(
-        target_language = target_language,
-        source_language = source_language,
-        lang_cache_path = lang_cache_path,
-        x_var = "inputs",
-        vars_of_interest = paste(inputs, collapse = "_"),
-        data = data,
-        save_title_prefix = "consistency check"
-      )
-
+      # Multiple pairs: use compact format with "multivars" (no year range)
       basename <- glue::glue(
-        "{translated_terms$prefix}_{translated_terms$for_word}_",
-        "{paste(inputs[0:3], collapse = '_')}_vs_",
-        "{paste(outputs[0:3], collapse = '_')}_",
-        "{translated_terms$year_range}_",
-        "v{format(Sys.Date(), '%Y-%m-%d')}.png"
-      ) |> stringr::str_remove_all("_NA")
+        "consist_multivars_v{format(Sys.Date(), '%Y-%m-%d')}.png"
+      )
     }
 
     full_path <- file.path(plot_path, basename)
