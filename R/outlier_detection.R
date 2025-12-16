@@ -19,7 +19,10 @@
 #'   Defaults to `c("adm1", "adm2")`.
 #' @param date Date column (Date, POSIXt, or parseable character string).
 #'   Year, month, and yearmon are automatically derived from this column.
-#' @param time_mode Pooling strategy: `"across_time"` or `"within_year"`.
+#' @param time_mode Pooling strategy: `"across_time"`, `"within_year"`, or
+#'   `"seasonal"`. Seasonal mode groups by month across all years (e.g., all
+#'   Januaries together), useful for detecting values that are unusual for a
+#'   specific month regardless of year.
 #' @param value_type Indicator type: `"count"` or `"rate"`. Counts floor lower
 #'   bounds at 0.
 #'
@@ -215,6 +218,17 @@
 #'   time_mode = "across_time",
 #'   key_indicators_hf = c("allout", "test", "conf")
 #' )
+#'
+#' # 6) Seasonal comparison (same month across years)
+#' # Compares all Januaries together, all Februaries together, etc.
+#' # Useful for detecting values unusual for a specific month
+#' detect_outliers(
+#'   data = malaria_data,
+#'   column = "conf",
+#'   date = "date",
+#'   admin_level = c("adm1", "adm2"),
+#'   time_mode = "seasonal"
+#' )
 #' }
 #' @export
 detect_outliers <- function(
@@ -224,7 +238,7 @@ detect_outliers <- function(
   admin_level = c("adm1", "adm2"),
   spatial_level = "hf_uid",
   date = "date",
-  time_mode = c("across_time", "within_year"),
+  time_mode = c("across_time", "within_year", "seasonal"),
   value_type = c("count", "rate"),
   strictness = c("balanced", "lenient", "strict", "advanced"),
   methods = c("iqr", "median", "mean", "consensus"),
@@ -346,7 +360,7 @@ detect_outliers <- function(
     output_profile) {
   resolved_time_mode <- base::match.arg(
     time_mode,
-    c("across_time", "within_year")
+    c("across_time", "within_year", "seasonal")
   )
   resolved_value_type <- base::match.arg(
     value_type,
@@ -570,6 +584,7 @@ prepared <- data |>
     time_mode,
     within_year = "Within-year pooling",
     across_time = "Across-time pooling",
+    seasonal = "Seasonal pooling (same month across years)",
     ""
   )
   metadata <- list(
@@ -935,6 +950,7 @@ prepared <- data |>
     "by_month" = "months",
     "within_year" = "within each year",
     "across_time" = "across all time",
+    "seasonal" = "same month across years",
     "unknown"
   )
   level_used <- tail(admin_level, 1)
@@ -1473,7 +1489,7 @@ outlier_plot <- function(
     admin_level = c("adm1", "adm2"),
     spatial_level = "hf_uid",
     date = "date",
-    time_mode = c("across_time", "within_year"),
+    time_mode = c("across_time", "within_year", "seasonal"),
     value_type = c("count", "rate"),
     strictness = c("balanced", "lenient", "strict", "advanced"),
     methods = c("iqr", "median", "mean", "consensus"),
@@ -2742,7 +2758,7 @@ outlier_plot <- function(
     )
   }
 
-  allowed_time_mode <- c("within_year", "across_time", "by_month")
+  allowed_time_mode <- c("within_year", "across_time", "seasonal", "by_month")
   if (!time_mode %in% allowed_time_mode) {
     cli::cli_abort(
       "{.arg time_mode} must be one of {.val {allowed_time_mode}}."
@@ -3043,6 +3059,7 @@ outlier_plot <- function(
     time_mode,
     within_year = c(year),
     across_time = character(),
+    seasonal = c(month),
     by_month = c(month),
     character()
   )

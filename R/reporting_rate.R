@@ -1478,6 +1478,42 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
   title_prefix <- prepared_data$title_prefix
   save_title_prefix <- prepared_data$save_title_prefix
 
+  # Filter out NA values from y_var if present
+  if (!is.null(y_var) && y_var %in% names(plot_data)) {
+    plot_data <- plot_data |>
+      dplyr::filter(!is.na(.data[[y_var]]))
+  }
+
+  # Aggregate per-variable rates when using group_plot with multiple variables.
+  # Without this, geom_tile overlays multiple values per tile and only shows
+  # the last one, which is misleading.
+  if (!is.null(y_var) &&
+      length(vars_of_interest) > 1 &&
+      !require_all &&
+      "variable" %in% names(plot_data)) {
+    # Preserve attributes before aggregation
+    n_total_attr <- attr(plot_data, "n_total_facilities")
+    n_active_attr <- attr(plot_data, "n_active_facilities")
+
+    plot_data <- plot_data |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(c(x_var, y_var)))) |>
+      dplyr::summarise(
+        rep = sum(rep),
+        exp = sum(exp),
+        reprate = mean(reprate, na.rm = TRUE),
+        missrate = mean(missrate, na.rm = TRUE),
+        dplyr::across(
+          dplyr::matches("reprate_w|missrate_w"),
+          ~ mean(.x, na.rm = TRUE)
+        ),
+        .groups = "drop"
+      )
+
+    # Restore attributes
+    attr(plot_data, "n_total_facilities") <- n_total_attr
+    attr(plot_data, "n_active_facilities") <- n_active_attr
+  }
+
   # Set default y_axis_label if not provided
   if (is.null(y_axis_label)) {
     y_axis_label <- prepared_data$y_axis_label
@@ -1492,15 +1528,18 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     en = list(rep = "Reporting Rate", miss = "Missing Rate",
               fac = "Facility-level", row = "Row-level",
               active = "active", denom = "Denominator",
-              all_vars = "ALL vars", per_var = "per-variable"),
+              all_vars = "ALL vars", per_var = "per-variable",
+              mean_vars = "mean across vars"),
     fr = list(rep = "Taux de rapportage", miss = "Taux manquantes",
               fac = "Niveau \u00e9tablissement", row = "Niveau ligne",
               active = "actifs", denom = "D\u00e9nominateur",
-              all_vars = "TOUTES vars", per_var = "par variable"),
+              all_vars = "TOUTES vars", per_var = "par variable",
+              mean_vars = "moyenne des vars"),
     pt = list(rep = "Taxa de relato", miss = "Taxa ausentes",
               fac = "N\u00edvel instala\u00e7\u00e3o", row = "N\u00edvel linha",
               active = "ativos", denom = "Denominador",
-              all_vars = "TODAS vars", per_var = "por vari\u00e1vel")
+              all_vars = "TODAS vars", per_var = "por vari\u00e1vel",
+              mean_vars = "m\u00e9dia das vars")
   )
 
   lang <- if (target_language %in% names(cap_trans)) {
@@ -1536,7 +1575,13 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
 
     # Numerator approach (multiple vars only)
     if (length(vars_of_interest) > 1) {
-      numerator_txt <- if (require_all) tr$all_vars else tr$per_var
+      numerator_txt <- if (require_all) {
+        tr$all_vars
+      } else if (!is.null(y_var)) {
+        tr$mean_vars
+      } else {
+        tr$per_var
+      }
       cap_parts <- c(cap_parts, numerator_txt)
     }
 
@@ -1588,14 +1633,32 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     subtitle <- paste(subtitle_base, indicators_display)
   }
 
+
   # Set fill scale limits
+
   fill_limits <- if (full_range) {
     c(0, 100)
   } else {
     fill_var_values <- plot_data[[fill_var]]
-    c(
-      floor(min(fill_var_values, na.rm = TRUE)),
-      ceiling(max(fill_var_values, na.rm = TRUE))
+    fill_var_values <- fill_var_values[!is.na(fill_var_values)]
+    if (length(fill_var_values) == 0) {
+      c(0, 100)
+    } else {
+      c(
+        floor(min(fill_var_values)),
+        ceiling(max(fill_var_values))
+      )
+    }
+  }
+
+  # Translate fill_label if needed
+  fill_label_translated <- fill_label
+  if (target_language != "en") {
+    fill_label_translated <- translate_text(
+      fill_label,
+      target_language = target_language,
+      source_language = source_language,
+      cache_path = lang_cache_path
     )
   }
 
@@ -1603,7 +1666,9 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
   common_elements <- create_common_elements(
     fill_var = fill_var,
     fill_limits = fill_limits,
-    use_reprate = use_reprate
+    use_reprate = use_reprate,
+    target_language = target_language,
+    fill_label = fill_label_translated
   )
 
   # Create plot based on scenario
@@ -1642,7 +1707,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
       target_language = target_language,
       source_language = source_language,
       lang_cache_path = lang_cache_path,
-      x_axis_breaks = x_axis_breaks
+      x_axis_breaks = x_axis_breaks,
+      use_reprate = use_reprate
     ),
     "facility" = if (is.null(y_var)) {
       # Facility-level time trends without grouping
@@ -1680,7 +1746,8 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
         target_language = target_language,
         source_language = source_language,
         lang_cache_path = lang_cache_path,
-        x_axis_breaks = x_axis_breaks
+        x_axis_breaks = x_axis_breaks,
+        use_reprate = use_reprate
       )
     }
   )
@@ -1763,26 +1830,29 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
                            target_language = "en", source_language = "en",
                            lang_cache_path = tempdir(),
                            x_axis_breaks = 6) {
-  # Use x_var directly as factor for consistent discrete plotting
+  # use x_var directly as factor for consistent discrete plotting
   plot_data <- plot_data |>
     dplyr::mutate(
       .x_axis_var = as.factor(.data[[x_var]])
     )
 
-  # Create plot with variables on y-axis
+  # standard single-layer plot
   plot <- ggplot2::ggplot(
     plot_data,
     ggplot2::aes(
       x = .x_axis_var,
-      y = variable, # Use variable names on y-axis
+      y = variable,
       fill = !!rlang::sym(fill_var)
     )
   ) +
-    common_elements +
+    common_elements
+
+  # add labels
+  plot <- plot +
     ggplot2::labs(
       title = if (include_plot_title) {
         if (grepl("Percentage of HF", title_prefix)) {
-          title_prefix  # Use as-is for the new standardized title
+          title_prefix
         } else {
           paste0(
             title_prefix,
@@ -1797,7 +1867,9 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
       x = "",
       y = "Variable",
       fill = fill_label
-    ) +
+    )
+
+  plot <- plot +
     ggplot2::scale_x_discrete(
       breaks = levels(plot_data$.x_axis_var)[seq(
         1,
@@ -1806,7 +1878,7 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
       )]
     )
 
-  # Translate labels if needed
+  # translate labels if needed
   if (target_language != "en") {
     plot <- translate_plot_labels(
       plot,
@@ -1843,6 +1915,9 @@ variables_plot <- function(plot_data, x_var, vars_of_interest,
 #' @param lang_cache_path Path for translation cache, defaults to tempdir()
 #' @param x_axis_breaks Numeric value specifying the interval for x-axis breaks.
 #'   Default `6`. For example, `2` shows every second tick and `6` every sixth.
+#' @param use_reprate Logical. If TRUE, displays reporting rate; if FALSE,
+#'   displays missing rate with special handling for 100% missing values.
+#'   Default TRUE.
 #'
 #' @return A ggplot2 object
 group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
@@ -1852,29 +1927,141 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
                        y_axis_label, common_elements,
                        target_language = "en", source_language = "en",
                        lang_cache_path = tempdir(),
-                       x_axis_breaks = 6) {
+                       x_axis_breaks = 6,
+                       use_reprate = TRUE) {
   vars_label <- if (length(vars_of_interest) <= 5) {
     paste(vars_of_interest, collapse = ", ")
   } else {
     "multiple variables"
   }
 
-  # Use x_var directly as factor for consistent discrete plotting
+  # filter NA y_var values and use x_var directly as factor
   plot_data <- plot_data |>
+    dplyr::filter(!is.na(.data[[y_var]])) |>
     dplyr::mutate(
-      .x_axis_var = as.factor(.data[[x_var]])
+      .x_axis_var = as.factor(.data[[x_var]]),
+      # drop unused factor levels from y_var to remove NA from axis
+      !!y_var := droplevels(factor(.data[[y_var]]))
     )
 
-  # Create plot with grouping variable on y-axis
-  plot <- ggplot2::ggplot(
-    plot_data,
-    ggplot2::aes(
-      x = .x_axis_var,
-      y = !!rlang::sym(y_var),
-      fill = !!rlang::sym(fill_var)
-    )
-  ) +
-    common_elements +
+  # For missing rate with ggnewscale, use separate layers for <100 and ==100
+  if (!use_reprate && requireNamespace("ggnewscale", quietly = TRUE)) {
+    # Split data
+    data_under_100 <- plot_data |>
+      dplyr::filter(!is.na(.data[[fill_var]]) & .data[[fill_var]] < 100)
+    data_100 <- plot_data |>
+      dplyr::filter(!is.na(.data[[fill_var]]) & .data[[fill_var]] >= 100)
+
+    # Translate 100% missing label
+    missing_label <- "100% missing"
+    if (target_language != "en") {
+      missing_label <- translate_text(
+        missing_label,
+        target_language = target_language,
+        source_language = "en"
+      )
+    }
+
+    # Get base palette
+    base_pal <- if (requireNamespace("wesanderson", quietly = TRUE)) {
+      wesanderson::wes_palette("Zissou1", 100, type = "continuous")
+    } else {
+      grDevices::heat.colors(100)
+    }
+
+    # Build plot with two layers
+    plot <- ggplot2::ggplot() +
+      # Layer 1: 0-99% with gradient
+      ggplot2::geom_tile(
+        data = data_under_100,
+        ggplot2::aes(
+          x = .x_axis_var,
+          y = !!rlang::sym(y_var),
+          fill = !!rlang::sym(fill_var)
+        ),
+        colour = "white", linewidth = 0.2
+      ) +
+      ggplot2::scale_fill_gradientn(
+        colours = base_pal,
+        limits = c(0, 99),
+        breaks = c(0, 25, 50, 75, 99),
+        name = fill_label,
+        guide = ggplot2::guide_colorbar(
+          order = 1,
+          title.position = "top",
+          label.position = "bottom",
+          direction = "horizontal",
+          barheight = ggplot2::unit(0.2, "cm"),
+          barwidth = ggplot2::unit(4, "cm"),
+          ticks = TRUE,
+          draw.ulim = TRUE,
+          draw.llim = TRUE
+        )
+      ) +
+      ggnewscale::new_scale_fill() +
+      # Layer 2: 100% with grey
+      ggplot2::geom_tile(
+        data = data_100,
+        ggplot2::aes(
+          x = .x_axis_var,
+          y = !!rlang::sym(y_var),
+          fill = missing_label
+        ),
+        colour = "white", linewidth = 0.2
+      ) +
+      ggplot2::scale_fill_manual(
+        values = stats::setNames("#4d4d4d", missing_label),
+        limits = missing_label,
+        drop = FALSE,
+        name = "",
+        guide = ggplot2::guide_legend(
+          order = 2,
+          title.position = "top",
+          label.position = "bottom",
+          direction = "horizontal",
+          keywidth = ggplot2::unit(0.8, "cm"),
+          keyheight = ggplot2::unit(0.2, "cm")
+        )
+      ) +
+      ggplot2::scale_y_discrete(expand = c(0, 0), na.translate = FALSE) +
+      ggplot2::theme_bw() +
+      ggplot2::theme(
+        legend.title = ggplot2::element_text(size = 12, face = "bold", family = "sans"),
+        legend.position = "bottom",
+        legend.justification = c(0, 0.5),
+        legend.direction = "horizontal",
+        legend.box = "horizontal",
+        legend.box.just = "left",
+        legend.margin = ggplot2::margin(t = 0, unit = "cm"),
+        legend.text = ggplot2::element_text(size = 8, family = "sans"),
+        axis.title.x = ggplot2::element_text(margin = ggplot2::margin(t = 5, unit = "pt")),
+        axis.title.y = ggplot2::element_text(margin = ggplot2::margin(r = 10, unit = "pt")),
+        axis.text.x = ggplot2::element_text(angle = 75, hjust = 1, family = "sans"),
+        axis.text = ggplot2::element_text(family = "sans"),
+        axis.title = ggplot2::element_text(family = "sans"),
+        plot.title = ggtext::element_markdown(size = 12, family = "sans",
+                                              margin = ggplot2::margin(b = 10)),
+        strip.text = ggplot2::element_text(family = "sans", face = "bold"),
+        panel.grid.minor = ggplot2::element_blank(),
+        panel.grid.major = ggplot2::element_blank(),
+        panel.background = ggplot2::element_blank(),
+        strip.background = ggplot2::element_rect(fill = "grey90")
+      )
+  } else {
+    # standard single-layer plot
+    plot <- ggplot2::ggplot(
+      plot_data,
+      ggplot2::aes(
+        x = .x_axis_var,
+        y = !!rlang::sym(y_var),
+        fill = !!rlang::sym(fill_var)
+      )
+    ) +
+      common_elements
+  }
+
+  # add labels
+  plot <- plot +
     ggplot2::labs(
       title = if (include_plot_title) {
         paste0(
@@ -1890,7 +2077,9 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
       x = "",
       y = y_axis_label,
       fill = fill_label
-    ) +
+    )
+
+  plot <- plot +
     ggplot2::scale_x_discrete(
       breaks = levels(plot_data$.x_axis_var)[seq(
         1,
@@ -1899,7 +2088,7 @@ group_plot <- function(plot_data, x_var, y_var, vars_of_interest,
       )]
     )
 
-  # Translate labels if needed
+  # translate labels if needed
   if (target_language != "en") {
     plot <- translate_plot_labels(
       plot,
@@ -2244,13 +2433,16 @@ get_translated_terms <- function(target_language, source_language,
     vars_of_interest
   }
 
-  # Get year range
-  year_range <- if (!is.null(data$year) && length(unique(data$year)) > 1) {
-    glue::glue(
-      "{min(data$year, na.rm = TRUE)}-{max(data$year, na.rm = TRUE)}"
-    )
-  } else if (!is.null(data$year)) {
-    as.character(min(data$year, na.rm = TRUE))
+  # Get year range (filter NA to avoid warnings)
+  year_values <- if (!is.null(data$year)) {
+    data$year[!is.na(data$year)]
+  } else {
+    integer(0)
+  }
+  year_range <- if (length(year_values) > 1) {
+    glue::glue("{min(year_values)}-{max(year_values)}")
+  } else if (length(year_values) == 1) {
+    as.character(year_values[1])
   } else {
     format(Sys.Date(), "%Y")
   }
@@ -2419,25 +2611,63 @@ translate_plot_labels <- function(plot, target_language,
 #' @param fill_var Fill variable name
 #' @param fill_limits Limits for the fill scale
 #' @param use_reprate Whether to use reporting rate colors
+#' @param target_language Target language for translation
+#' @param fill_label Label for the fill legend
 #'
 #' @return List of ggplot elements to apply to plots
-create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
-  # Set up plot aesthetics
-  color_pal <- if (use_reprate) {
-    if (requireNamespace("wesanderson", quietly = TRUE)) {
-      rev(wesanderson::wes_palette("Zissou1", 100, type = "continuous"))
-    } else {
-      rev(grDevices::heat.colors(100))
-    }
+create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE,
+                                   target_language = "en", fill_label = NULL) {
+  # set up color palette
+  base_pal <- if (requireNamespace("wesanderson", quietly = TRUE)) {
+    wesanderson::wes_palette("Zissou1", 100, type = "continuous")
   } else {
-    if (requireNamespace("wesanderson", quietly = TRUE)) {
-      wesanderson::wes_palette("Zissou1", 100, type = "continuous")
-    } else {
-      grDevices::heat.colors(100)
-    }
+    grDevices::heat.colors(100)
   }
 
-  # Define common theme elements
+  # for reporting rate: reverse palette
+  # for missing rate: use palette with grey at 100%
+  if (use_reprate) {
+    color_pal <- rev(base_pal)
+    fill_scale <- ggplot2::scale_fill_gradientn(
+      colours = color_pal,
+      limits = fill_limits,
+      name = fill_label,
+      guide = ggplot2::guide_colorbar(
+        order = 1,
+        title.position = "top",
+        label.position = "bottom",
+        direction = "horizontal",
+        barheight = ggplot2::unit(0.2, "cm"),
+        barwidth = ggplot2::unit(4, "cm"),
+        ticks = TRUE,
+        draw.ulim = TRUE,
+        draw.llim = TRUE
+      )
+    )
+  } else {
+    # missing rate: grey (#4d4d4d) for 100%
+    color_pal <- c(base_pal[1:99], "#4d4d4d")
+    fill_scale <- ggplot2::scale_fill_gradientn(
+      colours = color_pal,
+      values = scales::rescale(c(0:99, 100)),
+      limits = c(0, 100),
+      breaks = c(0, 25, 50, 75, 99),
+      name = fill_label,
+      guide = ggplot2::guide_colorbar(
+        order = 1,
+        title.position = "top",
+        label.position = "bottom",
+        direction = "horizontal",
+        barheight = ggplot2::unit(0.2, "cm"),
+        barwidth = ggplot2::unit(4, "cm"),
+        ticks = TRUE,
+        draw.ulim = TRUE,
+        draw.llim = TRUE
+      )
+    )
+  }
+
+  # define common theme elements
   base_theme <- ggplot2::theme_bw() +
     ggplot2::theme(
       legend.title = ggplot2::element_text(
@@ -2483,30 +2713,53 @@ create_common_elements <- function(fill_var, fill_limits, use_reprate = TRUE) {
       strip.background = ggplot2::element_rect(fill = "grey90")
     )
 
-  # Define common plot elements
+  # define common plot elements
   common_elements <- list(
     ggplot2::geom_tile(colour = "white", linewidth = .2),
-    ggplot2::scale_fill_gradientn(
-      colours = color_pal,
-      limits = fill_limits
-    ),
-    ggplot2::scale_y_discrete(expand = c(0, 0)),
-    base_theme,
-    ggplot2::guides(
-      fill = ggplot2::guide_colorbar(
-        title.position = "top",
-        label.position = "bottom",
-        direction = "horizontal",
-        barheight = ggplot2::unit(0.2, "cm"),
-        barwidth = ggplot2::unit(4, "cm"),
-        ticks = TRUE,
-        draw.ulim = TRUE,
-        draw.llim = TRUE
-      )
-    )
+    fill_scale,
+    ggplot2::scale_y_discrete(expand = c(0, 0), na.translate = FALSE),
+    base_theme
   )
 
-  # Let ggplot2 handle x-axis scale automatically
+  # for missing rate, add discrete legend entry for "100% missing"
+  if (!use_reprate && requireNamespace("ggnewscale", quietly = TRUE)) {
+    # translate label
+    missing_label <- "100% missing"
+    if (target_language != "en") {
+      missing_label <- translate_text(
+        missing_label,
+        target_language = target_language,
+        source_language = "en"
+      )
+    }
+
+    legend_data <- data.frame(.x = NA_real_, .y = NA_character_,
+                              .label = missing_label)
+    common_elements <- c(
+      common_elements,
+      list(
+        ggnewscale::new_scale_fill(),
+        ggplot2::geom_tile(
+          data = legend_data,
+          ggplot2::aes(x = .x, y = .y, fill = .label),
+          na.rm = TRUE,
+          inherit.aes = FALSE
+        ),
+        ggplot2::scale_fill_manual(
+          values = stats::setNames("#4d4d4d", missing_label),
+          name = "",
+          guide = ggplot2::guide_legend(
+            order = 2,
+            title.position = "top",
+            label.position = "bottom",
+            direction = "horizontal",
+            keywidth = ggplot2::unit(0.8, "cm"),
+            keyheight = ggplot2::unit(0.2, "cm")
+          )
+        )
+      )
+    )
+  }
 
   common_elements
 }
@@ -2882,18 +3135,20 @@ reporting_rate_map <- function(
     )
 
   # Palette setup - match reporting_rate_plot color scheme
-  color_pal <- if (use_reprate) {
-    if (requireNamespace("wesanderson", quietly = TRUE)) {
-      rev(wesanderson::wes_palette("Zissou1", 100, type = "continuous"))
-    } else {
-      rev(grDevices::heat.colors(100))
-    }
+  base_pal <- if (requireNamespace("wesanderson", quietly = TRUE)) {
+    wesanderson::wes_palette("Zissou1", 100, type = "continuous")
   } else {
-    if (requireNamespace("wesanderson", quietly = TRUE)) {
-      wesanderson::wes_palette("Zissou1", 100, type = "continuous")
-    } else {
-      grDevices::heat.colors(100)
-    }
+    grDevices::heat.colors(100)
+  }
+
+  # for reporting rate: reverse palette
+  # for missing rate: use palette with grey at 100%
+  if (use_reprate) {
+    color_pal <- rev(base_pal)
+    color_values <- NULL
+  } else {
+    color_pal <- c(base_pal[1:99], "#4d4d4d")
+    color_values <- scales::rescale(c(0:99, 100))
   }
 
   # Translate labels if needed
@@ -3015,56 +3270,41 @@ reporting_rate_map <- function(
   fill_limits <- if (full_range) {
     c(0, 100)
   } else {
-    # Calculate limits from the actual data
+    # Calculate limits from the actual data (filter NA first to avoid warnings)
     rate_values <- merged[[rate_var]]
-    c(
-      floor(min(rate_values, na.rm = TRUE)),
-      ceiling(max(rate_values, na.rm = TRUE))
-    )
+    rate_values <- rate_values[!is.na(rate_values)]
+    if (length(rate_values) == 0) {
+      c(0, 100)
+    } else {
+      c(
+        floor(min(rate_values)),
+        ceiling(max(rate_values))
+      )
+    }
   }
 
-  # Create plot
-  p <- ggplot2::ggplot(merged) +
-    ggplot2::geom_sf(
-      ggplot2::aes(fill = .data[[rate_var]]),
-      color = "white",
-      size = 0.2
-    ) +
-    ggplot2::facet_wrap(
-      ~time_factor,
-      ncol = facet_ncol,
-      labeller = ggplot2::labeller(
-        time_factor = function(x) {
-          if (x_var %in% c("yearmon", "month", "date")) {
-            # Try to parse as date and use translate_yearmon
-            dates <- tryCatch(
-              as.Date(as.character(x)),
-              error = function(e) NA
-            )
-            if (!any(is.na(dates))) {
-              return(sntutils::translate_yearmon(
-                dates,
-                language = target_language
-              ))
-            }
-          }
-          return(as.character(x))
+  # common facet labeller
+  facet_labeller <- ggplot2::labeller(
+    time_factor = function(x) {
+      if (x_var %in% c("yearmon", "month", "date")) {
+        dates <- tryCatch(
+          as.Date(as.character(x)),
+          error = function(e) NA
+        )
+        if (!any(is.na(dates))) {
+          return(sntutils::translate_yearmon(
+            dates,
+            language = target_language
+          ))
         }
-      )
-    ) +
-    ggplot2::scale_fill_gradientn(
-      colours = color_pal,
-      limits = fill_limits,
-      na.value = "grey90",
-      name = fill_label
-    ) +
-    ggplot2::labs(
-      title = if (show_title) stringr::str_to_sentence(title_full) else NULL,
-      caption = plot_caption
-    ) +
-    ggplot2::theme_minimal() +
+      }
+      return(as.character(x))
+    }
+  )
+
+  # common theme for map
+  map_theme <- ggplot2::theme_minimal() +
     ggplot2::theme(
-      # Legend styling to match create_common_elements exactly
       legend.title = ggplot2::element_text(
         size = 12,
         face = "bold",
@@ -3080,31 +3320,43 @@ reporting_rate_map <- function(
         size = 8,
         family = "sans"
       ),
-      # Title styling - use element_markdown to match reporting_rate.R
       plot.title = ggtext::element_markdown(
         size = 12,
         family = "sans",
         margin = ggplot2::margin(b = 10)
       ),
-      # Map-specific elements (no axis for maps)
       axis.text = ggplot2::element_blank(),
       axis.title = ggplot2::element_blank(),
       axis.ticks = ggplot2::element_blank(),
-      # Grid styling to match reporting_rate.R
       panel.grid.minor = ggplot2::element_blank(),
       panel.grid.major = ggplot2::element_blank(),
       panel.background = ggplot2::element_blank(),
-      # Facet strip styling to match reporting_rate.R exactly
       strip.text = ggplot2::element_text(
         family = "sans",
         face = "bold"
       ),
-      # Panel spacing
       panel.spacing = grid::unit(0.5, "lines")
+    )
+
+  # create plot
+  p <- ggplot2::ggplot(merged) +
+    ggplot2::geom_sf(
+      ggplot2::aes(fill = .data[[rate_var]]),
+      color = "white",
+      size = 0.2
     ) +
-    # Guide colorbar to match create_common_elements exactly
-    ggplot2::guides(
-      fill = ggplot2::guide_colorbar(
+    ggplot2::facet_wrap(
+      ~time_factor,
+      ncol = facet_ncol,
+      labeller = facet_labeller
+    ) +
+    ggplot2::scale_fill_gradientn(
+      colours = if (use_reprate) color_pal else c(base_pal[1:99], "#4d4d4d"),
+      values = if (use_reprate) NULL else scales::rescale(c(0:99, 100)),
+      limits = if (use_reprate) fill_limits else c(0, 100),
+      na.value = "grey90",
+      name = fill_label,
+      guide = ggplot2::guide_colorbar(
         title.position = "top",
         label.position = "bottom",
         direction = "horizontal",
@@ -3114,7 +3366,12 @@ reporting_rate_map <- function(
         draw.ulim = TRUE,
         draw.llim = TRUE
       )
-    )
+    ) +
+    ggplot2::labs(
+      title = if (show_title) stringr::str_to_sentence(title_full) else NULL,
+      caption = plot_caption
+    ) +
+    map_theme
 
   # Save plot if requested
   if (!is.null(plot_path)) {
@@ -3189,19 +3446,27 @@ reporting_rate_map <- function(
       # Add admin level to filename
       admin_part <- paste0("_", tolower(gsub(" ", "_", admin_label)))
 
-      # Get year range from data
+      # Get year range from data (filter NA to avoid warnings)
       year_range <- tryCatch({
-        if ("year" %in% names(data) && length(unique(data$year)) > 1) {
-          paste0(min(data$year, na.rm = TRUE), "-", max(data$year, na.rm = TRUE))
-        } else if ("year" %in% names(data)) {
-          as.character(min(data$year, na.rm = TRUE))
+        year_vals <- if ("year" %in% names(data)) {
+          data$year[!is.na(data$year)]
+        } else {
+          integer(0)
+        }
+        if (length(year_vals) > 1) {
+          paste0(min(year_vals), "-", max(year_vals))
+        } else if (length(year_vals) == 1) {
+          as.character(year_vals[1])
         } else {
           # Try to extract year from x_var values
           years <- unique(format(as.Date(merged[[x_var]]), "%Y"))
+          years <- years[!is.na(years)]
           if (length(years) > 1) {
             paste0(min(years), "-", max(years))
-          } else {
+          } else if (length(years) == 1) {
             years[1]
+          } else {
+            format(Sys.Date(), "%Y")
           }
         }
       }, error = function(e) {

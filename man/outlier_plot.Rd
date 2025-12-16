@@ -11,7 +11,7 @@ outlier_plot(
   admin_level = c("adm1", "adm2"),
   spatial_level = "hf_uid",
   date = "date",
-  time_mode = c("across_time", "within_year"),
+  time_mode = c("across_time", "within_year", "seasonal"),
   value_type = c("count", "rate"),
   strictness = c("balanced", "lenient", "strict", "advanced"),
   methods = c("iqr", "median", "mean", "consensus"),
@@ -68,7 +68,10 @@ spatial granularity. Default is \code{hf_uid}.}
 \item{date}{Date column (Date, POSIXt, or parseable character string).
 Year, month, and yearmon are automatically derived from this column.}
 
-\item{time_mode}{Pooling strategy: \code{"across_time"} or \code{"within_year"}.}
+\item{time_mode}{Pooling strategy: \code{"across_time"}, \code{"within_year"}, or
+\code{"seasonal"}. Seasonal mode groups by month across all years (e.g., all
+Januaries together), useful for detecting values that are unusual for a
+specific month regardless of year.}
 
 \item{value_type}{Indicator type: \code{"count"} or \code{"rate"}. Counts floor lower
 bounds at 0.}

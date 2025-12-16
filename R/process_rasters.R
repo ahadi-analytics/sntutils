@@ -502,65 +502,70 @@ batch_extract_weighted_stats <- function(
   weight_na_as_zero = TRUE,
   stat_type = "mean"
 ) {
-  # Input validation
+  # validate stat_type input
   if (!stat_type %in% c("mean", "median", "both")) {
     cli::cli_abort("stat_type must be 'mean', 'median', or 'both'")
   }
 
-  # Detect time pattern and extract components
+  # detect time pattern in filename
   pattern_info <- detect_time_pattern(value_raster_file)
+
+  # extract year/month components
   components <- extract_time_components(value_raster_file, pattern_info)
 
-  # Load rasters
+  # load rasters
   value_rast <- terra::rast(value_raster_file)[[value_layer_to_process]]
   pop_rast <- terra::rast(pop_raster_file)[[1]]
 
-  # Reproject population raster to match value raster CRS
+  # reproject and resample population raster to match value raster exactly
   pop_rast_proj <- terra::project(pop_rast, terra::crs(value_rast))
+  pop_rast_proj <- terra::resample(pop_rast_proj, value_rast, method = "bilinear")
 
-  # Reproject shapefile to match raster CRS if needed
+  # reproject shapefile if needed
   if (!sf::st_crs(shapefile)$wkt == terra::crs(value_rast)) {
     shapefile <- sf::st_transform(shapefile, terra::crs(value_rast))
   }
 
-  # Align population raster grid with value raster grid
-  terra::origin(pop_rast_proj) <- terra::origin(value_rast)
-
-  # Calculate population sum per polygon (for fallback detection)
+  # calculate polygon population sum
   suppressWarnings(
-    pop_sum <-
-      exactextractr::exact_extract(
-        pop_rast_proj,
-        shapefile,
-        fun = "sum",
-        progress = FALSE
-      ) |>
+    pop_sum <- exactextractr::exact_extract(
+      pop_rast_proj,
+      shapefile,
+      fun = "sum",
+      progress = FALSE
+    ) |>
       round()
   )
 
-  # Calculate population-weighted mean
+  # calculate population-weighted mean
   suppressWarnings(
-  weighted_mean <- exactextractr::exact_extract(
-    value_rast,
-    shapefile,
-    fun = "weighted_mean",
-    weights = pop_rast_proj,
-    default_weight = if (weight_na_as_zero) 0 else NA,
-    progress = FALSE
+    weighted_mean <- exactextractr::exact_extract(
+      value_rast,
+      shapefile,
+      fun = "weighted_mean",
+      weights = pop_rast_proj,
+      default_weight = if (weight_na_as_zero) 0 else NA,
+      progress = FALSE
+    )
   )
-  )
-  # Define weighted median function
+
+  # define weighted median function
   weighted_median_fun <- function(values, coverage_fractions, weights) {
+    # compute weights adjusted by coverage fraction
     total_weights <- weights * coverage_fractions
+
+    # identify valid values
     valid_idx <- !is.na(values) &
       !is.na(total_weights) &
       total_weights > 0 &
       coverage_fractions > 0
 
-    if (sum(valid_idx) == 0 || length(values[valid_idx]) == 0) {
+    # return missing if no valid data
+    if (sum(valid_idx) == 0) {
       return(NA_real_)
     }
 
+    # compute weighted median
     matrixStats::weightedMedian(
       values[valid_idx],
       w = total_weights[valid_idx],
@@ -568,38 +573,58 @@ batch_extract_weighted_stats <- function(
     )
   }
 
-  # Calculate population-weighted median
+  # calculate population-weighted median
   suppressWarnings(
-  weighted_median <- exactextractr::exact_extract(
-    value_rast,
-    shapefile,
-    fun = weighted_median_fun,
-    weights = pop_rast_proj,
-    default_weight = if (weight_na_as_zero) 0 else NA,
-    progress = FALSE
-  )
+    weighted_median <- exactextractr::exact_extract(
+      value_rast,
+      shapefile,
+      fun = weighted_median_fun,
+      weights = pop_rast_proj,
+      default_weight = if (weight_na_as_zero) 0 else NA,
+      progress = FALSE
+    )
   )
 
+  # calculate unweighted mean
   suppressWarnings(
-  # Calculate unweighted mean for fallback
-  unweighted_mean <- exactextractr::exact_extract(
-    value_rast,
-    shapefile,
-    fun = "mean",
-    progress = FALSE
+    unweighted_mean <- exactextractr::exact_extract(
+      value_rast,
+      shapefile,
+      fun = "mean",
+      progress = FALSE
+    )
   )
-)
 
-  # Define aggregation columns based on stat_type
+  # calculate unweighted median
+  suppressWarnings(
+    unweighted_median <- exactextractr::exact_extract(
+      value_rast,
+      shapefile,
+      fun = "median",
+      progress = FALSE
+    )
+  )
+
+  # decide which summary columns to return
   if (stat_type == "mean") {
     aggregations <- c("pop_sum", "weighted_mean", "unweighted_mean")
   } else if (stat_type == "median") {
-    aggregations <- c("pop_sum", "weighted_median", "unweighted_mean")
+    aggregations <- c(
+      "pop_sum",
+      "weighted_median",
+      "unweighted_median"
+    )
   } else if (stat_type == "both") {
-    aggregations <- c("pop_sum", "weighted_mean", "weighted_median", "unweighted_mean")
+    aggregations <- c(
+      "pop_sum",
+      "weighted_mean",
+      "weighted_median",
+      "unweighted_mean",
+      "unweighted_median"
+    )
   }
 
-  # Create initial results dataframe
+  # construct output dataframe
   result_df <- dplyr::bind_cols(
     shapefile |>
       dplyr::select(dplyr::all_of(id_cols)) |>
@@ -609,23 +634,24 @@ batch_extract_weighted_stats <- function(
       pop_sum = pop_sum,
       weighted_mean = weighted_mean,
       weighted_median = weighted_median,
-      unweighted_mean = unweighted_mean
+      unweighted_mean = unweighted_mean,
+      unweighted_median = unweighted_median
     )
   )
 
-  # Add month if pattern is monthly
+  # add month column if needed
   if (pattern_info$pattern == "monthly") {
     result_df <- result_df |> dplyr::mutate(month = components$month)
   }
 
-  # Define time columns based on pattern
+  # identify time columns
   time_cols <- if (pattern_info$pattern == "monthly") {
     c("year", "month")
   } else {
     "year"
   }
 
-  # Return final results with only requested columns
+  # return final results
   result_df |>
     dplyr::select(
       dplyr::all_of(id_cols),
@@ -633,7 +659,6 @@ batch_extract_weighted_stats <- function(
       dplyr::any_of(aggregations)
     )
 }
-
 
 #' Process Weighted Raster Data in Batch
 #'

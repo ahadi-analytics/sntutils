@@ -39,7 +39,7 @@ validate_routine_hf_data(
   iqr_multiplier = 2,
   min_n = 8,
   consensus_rule = 1,
-  n_neighbour_impute = 3,
+  n_neighbour_impute = 5,
   output_path = NULL,
   output_name = "validation_of_hf_routine_data",
   output_formats = c("xlsx", "rds"),
@@ -114,7 +114,9 @@ or "positive_only" (requires >0 value to count as reported).}
 
 \item{outlier_methods}{character. Any of c("iqr","median","mean").}
 
-\item{time_mode}{character. Time mode for outlier detection: "across_time" or "within_year". Default "across_time".}
+\item{time_mode}{character. Time mode for outlier detection: "across_time",
+"within_year", or "seasonal". Seasonal compares same month across years.
+Default "across_time".}
 
 \item{outlier_strictness}{character. Outlier detection strictness: "balanced", "lenient", "strict", "advanced". Default "balanced".}
 
@@ -130,7 +132,7 @@ or "positive_only" (requires >0 value to count as reported).}
 
 \item{consensus_rule}{numeric. Number of methods that must agree for consensus outlier flag. Default 1.}
 
-\item{n_neighbour_impute}{integer. Number of neighboring time periods (before and after) to use for computing the imputation median. Default 3 (uses 3 before + 3 after = 6 values).}
+\item{n_neighbour_impute}{integer. Number of neighboring time periods (before and after) to use for computing the imputation median. Default 5 (uses 5 before + 5 after = 10 values).}
 
 \item{output_path}{character|NULL. If provided, results are saved to this path.}
 

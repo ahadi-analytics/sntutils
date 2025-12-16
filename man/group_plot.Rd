@@ -20,7 +20,8 @@ group_plot(
   target_language = "en",
   source_language = "en",
   lang_cache_path = tempdir(),
-  x_axis_breaks = 6
+  x_axis_breaks = 6,
+  use_reprate = TRUE
 )
 }
 \arguments{
@@ -58,6 +59,10 @@ missing rates}
 
 \item{x_axis_breaks}{Numeric value specifying the interval for x-axis breaks.
 Default \code{6}. For example, \code{2} shows every second tick and \code{6} every sixth.}
+
+\item{use_reprate}{Logical. If TRUE, displays reporting rate; if FALSE,
+displays missing rate with special handling for 100\% missing values.
+Default TRUE.}
 }
 \value{
 A ggplot2 object
