@@ -247,7 +247,7 @@ download_chirps <- function(dataset, start, end = NULL,
           # Clean the names to see what they would become
           cleaned_names <- clean_filenames(all_files)
           # Check if our target file would match any cleaned name
-          target_pattern <- sprintf("chirps.*v2.*%s\\.(tif|tif\\.gz)$", month)
+          target_pattern <- sprintf("chirps.*v2.*%s\\.%s\\.(tif|tif\\.gz)$", year, month)
           matching_cleaned <- grep(target_pattern, cleaned_names, value = TRUE)
           if (length(matching_cleaned) > 0) {
             # Find the original file that corresponds to this cleaned name
@@ -316,8 +316,8 @@ download_chirps <- function(dataset, start, end = NULL,
             # Clean the names to see what they would become
             cleaned_names <- clean_filenames(all_files)
             # Check if our target file would match any cleaned name
-            target_pattern <- sprintf("chirps.*v2.*%s\\.%s\\.(tif|tif\\.gz)$",
-                                    month, subperiod)
+            target_pattern <- sprintf("chirps.*v2.*%s\\.%s\\.%s\\.(tif|tif\\.gz)$",
+                                    year, month, subperiod)
             matching_cleaned <- grep(target_pattern, cleaned_names, value = TRUE)
             if (length(matching_cleaned) > 0) {
               # Find the original file that corresponds to this cleaned name
