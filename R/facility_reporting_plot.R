@@ -1007,56 +1007,35 @@ facility_reporting_plot <- function(
 
     file_start <- format(base::min(data[[date_col]], na.rm = TRUE), "%Y-%m")
     file_end <- format(base::max(data[[date_col]], na.rm = TRUE), "%Y-%m")
-    connector_word <- if (should_translate) {
-      translate_text(
-        "to",
-        target_language = target_language,
-        source_language = source_language,
-        cache_path = lang_cache_path
-      )
-    } else {
-      "to"
-    }
 
-    date_range_text <- if (identical(file_start, file_end)) {
+    # compact date range (no connector word for shorter filenames)
+    date_range_slug <- if (identical(file_start, file_end)) {
       file_start
     } else {
-      glue::glue("{file_start} {connector_word} {file_end}")
+      glue::glue("{file_start}_{file_end}")
     }
 
-    base_label <- "Health facility activeness status"
-    if (should_translate) {
-      base_label <- translate_text(
-        base_label,
-        target_language = target_language,
-        source_language = source_language,
-        cache_path = lang_cache_path
-      )
+    # use abbreviated base label for compact filenames
+    file_base <- if (target_language == "fr") {
+      "fosa_statut"
+    } else {
+      "hf_status"
     }
 
-    file_base <- make_slug(base_label)
-    date_range_slug <- make_slug(date_range_text)
+    # extract method number for compact filename
     method_slug <- make_slug(method_normalized)
 
-    # Add facet column to filename if provided
+    # add facet column to filename if provided (without "by" word)
     if (!is.null(facet_col)) {
-      by_word <- if (should_translate) {
-        translate_text(
-          "by",
-          target_language = target_language,
-          source_language = source_language,
-          cache_path = lang_cache_path
-        )
-      } else {
-        "by"
-      }
-      facet_slug <- make_slug(paste(by_word, facet_col))
+      facet_slug <- make_slug(facet_col)
       file_name <- glue::glue(
-        "{file_base}_{method_slug}_{facet_slug}_{date_range_slug}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
+        "{file_base}_{method_slug}_{facet_slug}_{date_range_slug}_",
+        "v{format(Sys.Date(), '%Y-%m-%d')}.png"
       )
     } else {
       file_name <- glue::glue(
-        "{file_base}_{method_slug}_{date_range_slug}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
+        "{file_base}_{method_slug}_{date_range_slug}_",
+        "v{format(Sys.Date(), '%Y-%m-%d')}.png"
       )
     }
     file_path <- fs::path(plot_path, file_name)
