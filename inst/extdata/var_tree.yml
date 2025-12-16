@@ -1291,6 +1291,33 @@ dhs_csb:
     description_fr: "Nombre d'enfants de 0-59 mois qui ont eu de la fièvre dans les 2 dernières semaines dans le dataset DHS"
     description_pt: "Número de crianças de 0-59 meses que tiveram febre nas últimas 2 semanas no conjunto de dados DHS"
 
+  dhs_n_public:
+    snt_var_name: dhs_n_public
+    label_en: "DHS children who sought care in public sector"
+    label_fr: "Enfants ayant cherché des soins dans le secteur public DHS"
+    label_pt: "Crianças que procuraram cuidados no setor público DHS"
+    description_en: "Number of children with fever who sought care in a public health facility"
+    description_fr: "Nombre d'enfants avec fièvre ayant cherché des soins dans une formation sanitaire publique"
+    description_pt: "Número de crianças com febre que procuraram cuidados em uma unidade de saúde pública"
+
+  dhs_n_private:
+    snt_var_name: dhs_n_private
+    label_en: "DHS children who sought care in private sector"
+    label_fr: "Enfants ayant cherché des soins dans le secteur privé DHS"
+    label_pt: "Crianças que procuraram cuidados no setor privado DHS"
+    description_en: "Number of children with fever who sought care in a private health facility"
+    description_fr: "Nombre d'enfants avec fièvre ayant cherché des soins dans une formation sanitaire privée"
+    description_pt: "Número de crianças com febre que procuraram cuidados em uma unidade de saúde privada"
+
+  dhs_n_none:
+    snt_var_name: dhs_n_none
+    label_en: "DHS children with no care-seeking"
+    label_fr: "Enfants sans recours aux soins DHS"
+    label_pt: "Crianças sem procura de cuidados DHS"
+    description_en: "Number of children with fever for whom no care was sought"
+    description_fr: "Nombre d'enfants avec fièvre pour lesquels aucun soin n'a été recherché"
+    description_pt: "Número de crianças com febre para as quais não foram procurados cuidados"
+
 dhs_itn:
   _description: "DHS Insecticide-Treated Net coverage and usage indicators."
   label_en: "DHS ITN indicators"
@@ -1920,6 +1947,59 @@ dhs_iptp:
     description_en: "Number of women who received at least 3 doses of IPTp during pregnancy"
     description_fr: "Nombre de femmes ayant reçu au moins 3 doses de TPI pendant la grossesse"
     description_pt: "Número de mulheres que receberam pelo menos 3 doses de TIPg durante a gravidez"
+
+dhs_anemia:
+  _description: "DHS severe anemia indicators for children 6-59 months."
+  label_en: "DHS severe anemia indicators"
+  label_fr: "Indicateurs d'anémie sévère DHS"
+  label_pt: "Indicadores de anemia grave DHS"
+
+  # ── Severe anemia prevalence ─────────────────────────────────────────────────
+  dhs_severe_anemia:
+    snt_var_name: dhs_severe_anemia
+    label_en: "DHS severe anemia prevalence (%)"
+    label_fr: "Prévalence d'anémie sévère DHS (%)"
+    label_pt: "Prevalência de anemia grave DHS (%)"
+    description_en: "Percentage of children 6-59 months with severe anemia (Hb < 7 g/dL) from DHS survey"
+    description_fr: "Pourcentage d'enfants de 6-59 mois avec anémie sévère (Hb < 7 g/dL) selon l'enquête DHS"
+    description_pt: "Percentual de crianças de 6-59 meses com anemia grave (Hb < 7 g/dL) segundo a pesquisa DHS"
+
+  dhs_severe_anemia_low:
+    snt_var_name: dhs_severe_anemia_low
+    label_en: "DHS severe anemia lower CI (%)"
+    label_fr: "IC inférieur anémie sévère DHS (%)"
+    label_pt: "IC inferior anemia grave DHS (%)"
+    description_en: "95% lower confidence interval for DHS severe anemia prevalence estimate"
+    description_fr: "Intervalle de confiance inférieur à 95% pour l'estimation de prévalence d'anémie sévère DHS"
+    description_pt: "Intervalo de confiança inferior de 95% para estimativa de prevalência de anemia grave DHS"
+
+  dhs_severe_anemia_upp:
+    snt_var_name: dhs_severe_anemia_upp
+    label_en: "DHS severe anemia upper CI (%)"
+    label_fr: "IC supérieur anémie sévère DHS (%)"
+    label_pt: "IC superior anemia grave DHS (%)"
+    description_en: "95% upper confidence interval for DHS severe anemia prevalence estimate"
+    description_fr: "Intervalle de confiance supérieur à 95% pour l'estimation de prévalence d'anémie sévère DHS"
+    description_pt: "Intervalo de confiança superior de 95% para estimativa de prevalência de anemia grave DHS"
+
+  # ── Sample sizes ──────────────────────────────────────────────────────────────
+  dhs_n_tested_hb:
+    snt_var_name: dhs_n_tested_hb
+    label_en: "DHS children with valid Hb measurement"
+    label_fr: "Enfants DHS avec mesure d'Hb valide"
+    label_pt: "Crianças DHS com medição de Hb válida"
+    description_en: "Number of children 6-59 months with valid hemoglobin measurements in the DHS survey"
+    description_fr: "Nombre d'enfants de 6-59 mois avec des mesures d'hémoglobine valides dans l'enquête DHS"
+    description_pt: "Número de crianças de 6-59 meses com medições de hemoglobina válidas na pesquisa DHS"
+
+  dhs_n_severe_anemia:
+    snt_var_name: dhs_n_severe_anemia
+    label_en: "DHS children with severe anemia"
+    label_fr: "Enfants DHS avec anémie sévère"
+    label_pt: "Crianças DHS com anemia grave"
+    description_en: "Number of children 6-59 months with severe anemia (Hb < 7 g/dL) in the DHS survey"
+    description_fr: "Nombre d'enfants de 6-59 mois avec anémie sévère (Hb < 7 g/dL) dans l'enquête DHS"
+    description_pt: "Número de crianças de 6-59 meses com anemia grave (Hb < 7 g/dL) na pesquisa DHS"
 
 schema:
   _description: "Standardized disaggregation schema used across indicators."
