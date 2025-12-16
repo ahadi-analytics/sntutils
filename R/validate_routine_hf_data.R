@@ -44,7 +44,9 @@
 #'   or "positive_only" (requires >0 value to count as reported).
 #' @param min_reporting_rate numeric. Minimum reporting rate threshold. Default 0.5.
 #' @param outlier_methods character. Any of c("iqr","median","mean").
-#' @param time_mode character. Time mode for outlier detection: "across_time" or "within_year". Default "across_time".
+#' @param time_mode character. Time mode for outlier detection: "across_time",
+#'   "within_year", or "seasonal". Seasonal compares same month across years.
+#'   Default "across_time".
 #' @param outlier_strictness character. Outlier detection strictness: "balanced", "lenient", "strict", "advanced". Default "balanced".
 #' @param sd_multiplier numeric. Standard deviation multiplier for outlier detection. Default 3.
 #' @param mad_constant numeric. MAD constant for outlier detection. Default 1.4826.
@@ -52,7 +54,7 @@
 #' @param iqr_multiplier numeric. IQR multiplier for outlier detection. Default 2.
 #' @param min_n numeric. Minimum sample size for outlier detection. Default 8.
 #' @param consensus_rule numeric. Number of methods that must agree for consensus outlier flag. Default 1.
-#' @param n_neighbour_impute integer. Number of neighboring time periods (before and after) to use for computing the imputation median. Default 3 (uses 3 before + 3 after = 6 values).
+#' @param n_neighbour_impute integer. Number of neighboring time periods (before and after) to use for computing the imputation median. Default 5 (uses 5 before + 5 after = 10 values).
 #' @param output_path character|NULL. If provided, results are saved to this path.
 #' @param output_name character. Base output name. Default
 #'   "validation_routine_data_results".
@@ -109,7 +111,7 @@ validate_routine_hf_data <- function(
   iqr_multiplier = 2,
   min_n = 8,
   consensus_rule = 1,
-  n_neighbour_impute = 3,
+  n_neighbour_impute = 5,
   output_path = NULL,
   output_name = "validation_of_hf_routine_data",
   output_formats = c("xlsx", "rds"),
@@ -387,7 +389,7 @@ validate_routine_hf_data <- function(
   }
 
   # validate time_mode
-  allowed_time_modes <- c("across_time", "within_year")
+  allowed_time_modes <- c("across_time", "within_year", "seasonal")
   if (!time_mode %in% allowed_time_modes) {
     cli::cli_abort("`time_mode` must be one of: {allowed_time_modes}.")
   }
@@ -2136,6 +2138,7 @@ validate_routine_hf_data <- function(
           column = var,
           record_id = id_col,
           admin_level = admin_use,
+          spatial_level = facility_col,
           date = date_col,
           time_mode = time_mode,
           value_type = "count",
@@ -2178,6 +2181,7 @@ validate_routine_hf_data <- function(
           column = target_var,
           record_id = id_col,
           admin_level = admin_use,
+          spatial_level = facility_col,
           date = date_col,
           time_mode = time_mode,
           value_type = "count",
@@ -2288,7 +2292,7 @@ validate_routine_hf_data <- function(
           outlier_str <- base::paste0("[", outlier_val, "]")
           # insert outlier value in the middle
           mid_pos <- base::length(lag_vals) + 1L
-          outlier_neighbors <- base::paste(
+          outlier_temporal_neighbors <- base::paste(
             base::c(ordered_strs[seq_len(mid_pos - 1L)], outlier_str,
                     ordered_strs[mid_pos:base::length(ordered_strs)]),
             collapse = ", "
@@ -2303,7 +2307,7 @@ validate_routine_hf_data <- function(
           )
           cons_val <- row[[consistency_var]]
           cons_str <- base::paste0("[", cons_val, "]")
-          consistency_neighbors <- base::paste(
+          consistency_temporal_neighbors <- base::paste(
             base::c(cons_ordered_strs[seq_len(mid_pos - 1L)], cons_str,
                     cons_ordered_strs[mid_pos:base::length(cons_ordered_strs)]),
             collapse = ", "
@@ -2313,16 +2317,16 @@ validate_routine_hf_data <- function(
             return(base::list(
               median = NA_real_,
               no_neighbours = TRUE,
-              outlier_neighbors = outlier_neighbors,
-              consistency_neighbors = consistency_neighbors
+              outlier_temporal_neighbors = outlier_temporal_neighbors,
+              consistency_temporal_neighbors = consistency_temporal_neighbors
             ))
           }
 
           base::list(
             median = base::round(stats::median(all_vals, na.rm = TRUE)),
             no_neighbours = FALSE,
-            outlier_neighbors = outlier_neighbors,
-            consistency_neighbors = consistency_neighbors
+            outlier_temporal_neighbors = outlier_temporal_neighbors,
+            consistency_temporal_neighbors = consistency_temporal_neighbors
           )
         }
       )
@@ -2331,9 +2335,11 @@ validate_routine_hf_data <- function(
         dplyr::mutate(
           neighbor_median = base::sapply(results, function(x) x$median),
           .no_neighbours = base::sapply(results, function(x) x$no_neighbours),
-          outlier_neighbors = base::sapply(results, function(x) x$outlier_neighbors),
-          consistency_neighbors = base::sapply(
-            results, function(x) x$consistency_neighbors
+          outlier_temporal_neighbors = base::sapply(
+            results, function(x) x$outlier_temporal_neighbors
+          ),
+          consistency_temporal_neighbors = base::sapply(
+            results, function(x) x$consistency_temporal_neighbors
           )
         )
     } else {
@@ -2341,8 +2347,8 @@ validate_routine_hf_data <- function(
         dplyr::mutate(
           neighbor_median = base::numeric(0),
           .no_neighbours = base::logical(0),
-          outlier_neighbors = base::character(0),
-          consistency_neighbors = base::character(0)
+          outlier_temporal_neighbors = base::character(0),
+          consistency_temporal_neighbors = base::character(0)
         )
     }
 
@@ -2393,10 +2399,8 @@ validate_routine_hf_data <- function(
         dplyr::all_of(meta_cols),
         outlier_var,
         outlier_value,
-        outlier_neighbors,
         consistency_var,
         consistency_value,
-        consistency_neighbors,
         neighbor_median,
         corrected_value,
         correction_flag,
@@ -2461,10 +2465,10 @@ validate_routine_hf_data <- function(
     tibble::tibble(
       outlier_var = base::character(0),
       outlier_value = base::numeric(0),
-      outlier_neighbors = base::character(0),
+      outlier_temporal_neighbors = base::character(0),
       consistency_var = base::character(0),
       consistency_value = base::numeric(0),
-      consistency_neighbors = base::character(0),
+      consistency_temporal_neighbors = base::character(0),
       neighbor_median = base::numeric(0),
       corrected_value = base::numeric(0),
       correction_flag = base::logical(0),
