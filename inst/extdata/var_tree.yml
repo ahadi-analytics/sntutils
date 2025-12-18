@@ -21,15 +21,15 @@ metadata:
 
   adm1:
     snt_var_name: adm1
-    label_en: "Administrative level 1 (province)"
-    label_fr: "Niveau administratif 1 (province)"
-    label_pt: "Nível administrativo 1 (província)"
+    label_en: "Administrative level 1 (province/region)"
+    label_fr: "Niveau administratif 1 (province/région)"
+    label_pt: "Nível administrativo 1 (província/região)"
 
   adm2:
     snt_var_name: adm2
-    label_en: "Administrative level 2 (district)"
-    label_fr: "Niveau administratif 2 (district)"
-    label_pt: "Nível administrativo 2 (distrito)"
+    label_en: "Administrative level 2 (district/health zone)"
+    label_fr: "Niveau administratif 2 (district/zone de santé)"
+    label_pt: "Nível administrativo 2 (distrito/zona de saúde)"
 
   adm3:
     snt_var_name: adm3
@@ -1120,49 +1120,34 @@ dhs_u5mr:
   # ── U5MR core indicators ──────────────────────────────────────────────────────
   dhs_u5mr:
     snt_var_name: dhs_u5mr
-    label_en: "DHS Under-5 mortality rate (per 1,000 live births)"
-    label_fr: "Taux de mortalité des moins de 5 ans DHS (pour 1 000 naissances vivantes)"
-    label_pt: "Taxa de mortalidade de menores de 5 anos DHS (por 1.000 nascidos vivos)"
-    description_en: "Under-5 mortality rate calculated from DHS Children's Recode data using standard DHS methodology"
-    description_fr: "Taux de mortalité des moins de 5 ans calculé à partir des données DHS KR selon la méthodologie standard DHS"
-    description_pt: "Taxa de mortalidade de menores de 5 anos calculada a partir de dados DHS KR usando metodologia padrão DHS"
+    label_en: "Under-5 mortality rate per 1,000 live births. Probability of dying between birth and exact age 5 years, expressed per 1,000 live births."
+    label_fr: "Taux de mortalité des moins de 5 ans pour 1 000 naissances vivantes. Probabilité de décéder entre la naissance et l'âge exact de 5 ans, exprimée pour 1 000 naissances vivantes."
+    label_pt: "Taxa de mortalidade de menores de 5 anos por 1.000 nascidos vivos. Probabilidade de morrer entre o nascimento e os 5 anos exatos, expressa por 1.000 nascidos vivos."
 
   dhs_u5mr_low:
     snt_var_name: dhs_u5mr_low
-    label_en: "DHS Under-5 mortality rate lower CI (per 1,000 live births)"
-    label_fr: "IC inférieur taux de mortalité des moins de 5 ans DHS (pour 1 000 naissances vivantes)"
-    label_pt: "IC inferior taxa de mortalidade de menores de 5 anos DHS (por 1.000 nascidos vivos)"
-    description_en: "Lower 95% confidence interval for DHS Under-5 mortality rate estimate"
-    description_fr: "Intervalle de confiance inférieur à 95% pour l'estimation du taux de mortalité des moins de 5 ans DHS"
-    description_pt: "Intervalo de confiança inferior de 95% para estimativa da taxa de mortalidade de menores de 5 anos DHS"
+    label_en: "Lower 95% confidence interval for under-5 mortality rate (per 1,000 live births)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour le taux de mortalité des moins de 5 ans (pour 1 000 naissances vivantes)"
+    label_pt: "Intervalo de confiança inferior de 95% para a taxa de mortalidade de menores de 5 anos (por 1.000 nascidos vivos)"
 
   dhs_u5mr_upp:
     snt_var_name: dhs_u5mr_upp
-    label_en: "DHS Under-5 mortality rate upper CI (per 1,000 live births)"
-    label_fr: "IC supérieur taux de mortalité des moins de 5 ans DHS (pour 1 000 naissances vivantes)"
-    label_pt: "IC superior taxa de mortalidade de menores de 5 anos DHS (por 1.000 nascidos vivos)"
-    description_en: "Upper 95% confidence interval for DHS Under-5 mortality rate estimate"
-    description_fr: "Intervalle de confiance supérieur à 95% pour l'estimation du taux de mortalité des moins de 5 ans DHS"
-    description_pt: "Intervalo de confiança superior de 95% para estimativa da taxa de mortalidade de menores de 5 anos DHS"
+    label_en: "Upper 95% confidence interval for under-5 mortality rate (per 1,000 live births)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour le taux de mortalité des moins de 5 ans (pour 1 000 naissances vivantes)"
+    label_pt: "Intervalo de confiança superior de 95% para a taxa de mortalidade de menores de 5 anos (por 1.000 nascidos vivos)"
 
   # ── Sample sizes ──────────────────────────────────────────────────────────────
   dhs_n_births:
     snt_var_name: dhs_n_births
-    label_en: "DHS number of births"
-    label_fr: "Nombre de naissances DHS"
-    label_pt: "Número de nascimentos DHS"
-    description_en: "Total number of births in the DHS Children's Recode dataset for this administrative unit"
-    description_fr: "Nombre total de naissances dans le dataset DHS KR pour cette unité administrative"
-    description_pt: "Número total de nascimentos no conjunto de dados DHS KR para esta unidade administrativa"
+    label_en: "Number of live births in the 5 years preceding the survey (denominator for mortality calculation)"
+    label_fr: "Nombre de naissances vivantes dans les 5 années précédant l'enquête (dénominateur pour le calcul de la mortalité)"
+    label_pt: "Número de nascidos vivos nos 5 anos anteriores à pesquisa (denominador para cálculo de mortalidade)"
 
   dhs_n_deaths:
     snt_var_name: dhs_n_deaths
-    label_en: "DHS number of under-5 deaths"
-    label_fr: "Nombre de décès de moins de 5 ans DHS"
-    label_pt: "Número de óbitos de menores de 5 anos DHS"
-    description_en: "Number of deaths under age 5 in the DHS Children's Recode dataset for this administrative unit"
-    description_fr: "Nombre de décès de moins de 5 ans dans le dataset DHS KR pour cette unité administrative"
-    description_pt: "Número de óbitos de menores de 5 anos no conjunto de dados DHS KR para esta unidade administrativa"
+    label_en: "Number of deaths among children under 5 years in the 5 years preceding the survey (numerator for mortality calculation)"
+    label_fr: "Nombre de décès parmi les enfants de moins de 5 ans dans les 5 années précédant l'enquête (numérateur pour le calcul de la mortalité)"
+    label_pt: "Número de óbitos entre crianças menores de 5 anos nos 5 anos anteriores à pesquisa (numerador para cálculo de mortalidade)"
 
 dhs_csb:
   _description: "DHS Care-Seeking Behavior indicators for children with fever."
@@ -1173,150 +1158,102 @@ dhs_csb:
   # ── CSB core indicators ──────────────────────────────────────────────────────
   dhs_csb_any:
     snt_var_name: dhs_csb_any
-    label_en: "DHS care-seeking for fever - any source (%)"
-    label_fr: "Recours aux soins pour fièvre DHS - toute source (%)"
-    label_pt: "Procura de cuidados para febre DHS - qualquer fonte (%)"
-    description_en: "Percentage of children aged 0-59 months with fever in the last 2 weeks for whom care was sought from any source"
-    description_fr: "Pourcentage d'enfants de 0-59 mois avec fièvre dans les 2 dernières semaines pour lesquels des soins ont été recherchés de toute source"
-    description_pt: "Percentual de crianças de 0-59 meses com febre nas últimas 2 semanas para as quais foram procurados cuidados de qualquer fonte"
+    label_en: "Care-seeking from any source for fever among children 0-59 months (%). Numerator: children with fever who sought care from any provider. Denominator: children with fever."
+    label_fr: "Recours aux soins de toute source pour fièvre chez les enfants de 0-59 mois (%). Numérateur: enfants fiévreux ayant consulté tout prestataire. Dénominateur: enfants fiévreux."
+    label_pt: "Procura de cuidados de qualquer fonte para febre em crianças de 0-59 meses (%). Numerador: crianças febris que procuraram qualquer prestador. Denominador: crianças febris."
 
   dhs_csb_any_low:
     snt_var_name: dhs_csb_any_low
-    label_en: "DHS care-seeking any source lower CI (%)"
-    label_fr: "IC inférieur recours aux soins toute source DHS (%)"
-    label_pt: "IC inferior procura de cuidados qualquer fonte DHS (%)"
-    description_en: "Lower 95% confidence interval for DHS care-seeking from any source"
-    description_fr: "Intervalle de confiance inférieur à 95% pour le recours aux soins DHS toute source"
-    description_pt: "Intervalo de confiança inferior de 95% para procura de cuidados DHS qualquer fonte"
+    label_en: "Lower 95% confidence interval for care-seeking from any source (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour le recours aux soins de toute source (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para procura de cuidados de qualquer fonte (%)"
 
   dhs_csb_any_upp:
     snt_var_name: dhs_csb_any_upp
-    label_en: "DHS care-seeking any source upper CI (%)"
-    label_fr: "IC supérieur recours aux soins toute source DHS (%)"
-    label_pt: "IC superior procura de cuidados qualquer fonte DHS (%)"
-    description_en: "Upper 95% confidence interval for DHS care-seeking from any source"
-    description_fr: "Intervalle de confiance supérieur à 95% pour le recours aux soins DHS toute source"
-    description_pt: "Intervalo de confiança superior de 95% para procura de cuidados DHS qualquer fonte"
+    label_en: "Upper 95% confidence interval for care-seeking from any source (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour le recours aux soins de toute source (%)"
+    label_pt: "Intervalo de confiança superior de 95% para procura de cuidados de qualquer fonte (%)"
 
   # ── CSB by sector ─────────────────────────────────────────────────────────────
   dhs_csb_public:
     snt_var_name: dhs_csb_public
-    label_en: "DHS care-seeking for fever - public sector (%)"
-    label_fr: "Recours aux soins pour fièvre DHS - secteur public (%)"
-    label_pt: "Procura de cuidados para febre DHS - setor público (%)"
-    description_en: "Percentage of children aged 0-59 months with fever in the last 2 weeks for whom care was sought from public health facilities"
-    description_fr: "Pourcentage d'enfants de 0-59 mois avec fièvre dans les 2 dernières semaines pour lesquels des soins ont été recherchés dans les formations sanitaires publiques"
-    description_pt: "Percentual de crianças de 0-59 meses com febre nas últimas 2 semanas para as quais foram procurados cuidados em unidades de saúde públicas"
+    label_en: "Care-seeking from public sector for fever among children 0-59 months (%). Includes government hospitals, health centers, community health workers. Numerator: children who sought care in public sector. Denominator: children with fever."
+    label_fr: "Recours aux soins du secteur public pour fièvre chez les enfants de 0-59 mois (%). Comprend hôpitaux publics, centres de santé, agents de santé communautaires. Numérateur: enfants ayant consulté le secteur public. Dénominateur: enfants fiévreux."
+    label_pt: "Procura de cuidados do setor público para febre em crianças de 0-59 meses (%). Inclui hospitais públicos, centros de saúde, agentes comunitários. Numerador: crianças que procuraram setor público. Denominador: crianças febris."
 
   dhs_csb_public_low:
     snt_var_name: dhs_csb_public_low
-    label_en: "DHS care-seeking public sector lower CI (%)"
-    label_fr: "IC inférieur recours aux soins secteur public DHS (%)"
-    label_pt: "IC inferior procura de cuidados setor público DHS (%)"
-    description_en: "Lower 95% confidence interval for DHS care-seeking from public sector"
-    description_fr: "Intervalle de confiance inférieur à 95% pour le recours aux soins DHS secteur public"
-    description_pt: "Intervalo de confiança inferior de 95% para procura de cuidados DHS setor público"
+    label_en: "Lower 95% confidence interval for care-seeking from public sector (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour le recours aux soins du secteur public (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para procura de cuidados do setor público (%)"
 
   dhs_csb_public_upp:
     snt_var_name: dhs_csb_public_upp
-    label_en: "DHS care-seeking public sector upper CI (%)"
-    label_fr: "IC supérieur recours aux soins secteur public DHS (%)"
-    label_pt: "IC superior procura de cuidados setor público DHS (%)"
-    description_en: "Upper 95% confidence interval for DHS care-seeking from public sector"
-    description_fr: "Intervalle de confiance supérieur à 95% pour le recours aux soins DHS secteur public"
-    description_pt: "Intervalo de confiança superior de 95% para procura de cuidados DHS setor público"
+    label_en: "Upper 95% confidence interval for care-seeking from public sector (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour le recours aux soins du secteur public (%)"
+    label_pt: "Intervalo de confiança superior de 95% para procura de cuidados do setor público (%)"
 
   dhs_csb_private:
     snt_var_name: dhs_csb_private
-    label_en: "DHS care-seeking for fever - private sector (%)"
-    label_fr: "Recours aux soins pour fièvre DHS - secteur privé (%)"
-    label_pt: "Procura de cuidados para febre DHS - setor privado (%)"
-    description_en: "Percentage of children aged 0-59 months with fever in the last 2 weeks for whom care was sought from private health facilities"
-    description_fr: "Pourcentage d'enfants de 0-59 mois avec fièvre dans les 2 dernières semaines pour lesquels des soins ont été recherchés dans les formations sanitaires privées"
-    description_pt: "Percentual de crianças de 0-59 meses com febre nas últimas 2 semanas para as quais foram procurados cuidados em unidades de saúde privadas"
+    label_en: "Care-seeking from private sector for fever among children 0-59 months (%). Includes private hospitals/clinics, pharmacies, private doctors. Numerator: children who sought care in private sector. Denominator: children with fever."
+    label_fr: "Recours aux soins du secteur privé pour fièvre chez les enfants de 0-59 mois (%). Comprend hôpitaux/cliniques privés, pharmacies, médecins privés. Numérateur: enfants ayant consulté le secteur privé. Dénominateur: enfants fiévreux."
+    label_pt: "Procura de cuidados do setor privado para febre em crianças de 0-59 meses (%). Inclui hospitais/clínicas privadas, farmácias, médicos privados. Numerador: crianças que procuraram setor privado. Denominador: crianças febris."
 
   dhs_csb_private_low:
     snt_var_name: dhs_csb_private_low
-    label_en: "DHS care-seeking private sector lower CI (%)"
-    label_fr: "IC inférieur recours aux soins secteur privé DHS (%)"
-    label_pt: "IC inferior procura de cuidados setor privado DHS (%)"
-    description_en: "Lower 95% confidence interval for DHS care-seeking from private sector"
-    description_fr: "Intervalle de confiance inférieur à 95% pour le recours aux soins DHS secteur privé"
-    description_pt: "Intervalo de confiança inferior de 95% para procura de cuidados DHS setor privado"
+    label_en: "Lower 95% confidence interval for care-seeking from private sector (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour le recours aux soins du secteur privé (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para procura de cuidados do setor privado (%)"
 
   dhs_csb_private_upp:
     snt_var_name: dhs_csb_private_upp
-    label_en: "DHS care-seeking private sector upper CI (%)"
-    label_fr: "IC supérieur recours aux soins secteur privé DHS (%)"
-    label_pt: "IC superior procura de cuidados setor privado DHS (%)"
-    description_en: "Upper 95% confidence interval for DHS care-seeking from private sector"
-    description_fr: "Intervalle de confiance supérieur à 95% pour le recours aux soins DHS secteur privé"
-    description_pt: "Intervalo de confiança superior de 95% para procura de cuidados DHS setor privado"
+    label_en: "Upper 95% confidence interval for care-seeking from private sector (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour le recours aux soins du secteur privé (%)"
+    label_pt: "Intervalo de confiança superior de 95% para procura de cuidados do setor privado (%)"
 
   # ── No care-seeking ───────────────────────────────────────────────────────────
   dhs_csb_none:
     snt_var_name: dhs_csb_none
-    label_en: "DHS no care-seeking for fever (%)"
-    label_fr: "Aucun recours aux soins pour fièvre DHS (%)"
-    label_pt: "Sem procura de cuidados para febre DHS (%)"
-    description_en: "Percentage of children aged 0-59 months with fever in the last 2 weeks for whom no care was sought"
-    description_fr: "Pourcentage d'enfants de 0-59 mois avec fièvre dans les 2 dernières semaines pour lesquels aucun soin n'a été recherché"
-    description_pt: "Percentual de crianças de 0-59 meses com febre nas últimas 2 semanas para as quais não foram procurados cuidados"
+    label_en: "No care-seeking for fever among children 0-59 months (%). Numerator: children with fever who did not seek any care. Denominator: children with fever."
+    label_fr: "Absence de recours aux soins pour fièvre chez les enfants de 0-59 mois (%). Numérateur: enfants fiévreux n'ayant consulté aucun prestataire. Dénominateur: enfants fiévreux."
+    label_pt: "Ausência de procura de cuidados para febre em crianças de 0-59 meses (%). Numerador: crianças febris que não procuraram cuidados. Denominador: crianças febris."
 
   dhs_csb_none_low:
     snt_var_name: dhs_csb_none_low
-    label_en: "DHS no care-seeking lower CI (%)"
-    label_fr: "IC inférieur aucun recours aux soins DHS (%)"
-    label_pt: "IC inferior sem procura de cuidados DHS (%)"
-    description_en: "Lower 95% confidence interval for DHS no care-seeking"
-    description_fr: "Intervalle de confiance inférieur à 95% pour aucun recours aux soins DHS"
-    description_pt: "Intervalo de confiança inferior de 95% para sem procura de cuidados DHS"
+    label_en: "Lower 95% confidence interval for no care-seeking (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour l'absence de recours aux soins (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para ausência de procura de cuidados (%)"
 
   dhs_csb_none_upp:
     snt_var_name: dhs_csb_none_upp
-    label_en: "DHS no care-seeking upper CI (%)"
-    label_fr: "IC supérieur aucun recours aux soins DHS (%)"
-    label_pt: "IC superior sem procura de cuidados DHS (%)"
-    description_en: "Upper 95% confidence interval for DHS no care-seeking"
-    description_fr: "Intervalle de confiance supérieur à 95% pour aucun recours aux soins DHS"
-    description_pt: "Intervalo de confiança superior de 95% para sem procura de cuidados DHS"
+    label_en: "Upper 95% confidence interval for no care-seeking (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour l'absence de recours aux soins (%)"
+    label_pt: "Intervalo de confiança superior de 95% para ausência de procura de cuidados (%)"
 
   # ── Sample sizes ──────────────────────────────────────────────────────────────
   dhs_n_fever:
     snt_var_name: dhs_n_fever
-    label_en: "DHS number of children with fever"
-    label_fr: "Nombre d'enfants avec fièvre DHS"
-    label_pt: "Número de crianças com febre DHS"
-    description_en: "Number of children aged 0-59 months who had fever in the last 2 weeks in the DHS dataset"
-    description_fr: "Nombre d'enfants de 0-59 mois qui ont eu de la fièvre dans les 2 dernières semaines dans le dataset DHS"
-    description_pt: "Número de crianças de 0-59 meses que tiveram febre nas últimas 2 semanas no conjunto de dados DHS"
+    label_en: "Number of children 0-59 months with fever in the 2 weeks preceding the survey (denominator for care-seeking indicators)"
+    label_fr: "Nombre d'enfants de 0-59 mois ayant eu de la fièvre dans les 2 semaines précédant l'enquête (dénominateur pour les indicateurs de recours aux soins)"
+    label_pt: "Número de crianças de 0-59 meses com febre nas 2 semanas anteriores à pesquisa (denominador para indicadores de procura de cuidados)"
 
   dhs_n_public:
     snt_var_name: dhs_n_public
-    label_en: "DHS children who sought care in public sector"
-    label_fr: "Enfants ayant cherché des soins dans le secteur public DHS"
-    label_pt: "Crianças que procuraram cuidados no setor público DHS"
-    description_en: "Number of children with fever who sought care in a public health facility"
-    description_fr: "Nombre d'enfants avec fièvre ayant cherché des soins dans une formation sanitaire publique"
-    description_pt: "Número de crianças com febre que procuraram cuidados em uma unidade de saúde pública"
+    label_en: "Number of children 0-59 months with fever who sought care in public sector (numerator for dhs_csb_public)"
+    label_fr: "Nombre d'enfants de 0-59 mois fiévreux ayant consulté le secteur public (numérateur pour dhs_csb_public)"
+    label_pt: "Número de crianças de 0-59 meses febris que procuraram setor público (numerador para dhs_csb_public)"
 
   dhs_n_private:
     snt_var_name: dhs_n_private
-    label_en: "DHS children who sought care in private sector"
-    label_fr: "Enfants ayant cherché des soins dans le secteur privé DHS"
-    label_pt: "Crianças que procuraram cuidados no setor privado DHS"
-    description_en: "Number of children with fever who sought care in a private health facility"
-    description_fr: "Nombre d'enfants avec fièvre ayant cherché des soins dans une formation sanitaire privée"
-    description_pt: "Número de crianças com febre que procuraram cuidados em uma unidade de saúde privada"
+    label_en: "Number of children 0-59 months with fever who sought care in private sector (numerator for dhs_csb_private)"
+    label_fr: "Nombre d'enfants de 0-59 mois fiévreux ayant consulté le secteur privé (numérateur pour dhs_csb_private)"
+    label_pt: "Número de crianças de 0-59 meses febris que procuraram setor privado (numerador para dhs_csb_private)"
 
   dhs_n_none:
     snt_var_name: dhs_n_none
-    label_en: "DHS children with no care-seeking"
-    label_fr: "Enfants sans recours aux soins DHS"
-    label_pt: "Crianças sem procura de cuidados DHS"
-    description_en: "Number of children with fever for whom no care was sought"
-    description_fr: "Nombre d'enfants avec fièvre pour lesquels aucun soin n'a été recherché"
-    description_pt: "Número de crianças com febre para as quais não foram procurados cuidados"
+    label_en: "Number of children 0-59 months with fever who did not seek care (numerator for dhs_csb_none)"
+    label_fr: "Nombre d'enfants de 0-59 mois fiévreux n'ayant pas consulté (numérateur pour dhs_csb_none)"
+    label_pt: "Número de crianças de 0-59 meses febris que não procuraram cuidados (numerador para dhs_csb_none)"
 
 dhs_itn:
   _description: "DHS Insecticide-Treated Net coverage and usage indicators."
@@ -1342,261 +1279,177 @@ dhs_itn:
   # ── ITN ownership ─────────────────────────────────────────────────────────────
   dhs_itn_ownership:
     snt_var_name: dhs_itn_ownership
-    label_en: "DHS household ITN ownership (%)"
-    label_fr: "Possession de MII par les ménages DHS (%)"
-    label_pt: "Posse de MILD pelos agregados familiares DHS (%)"
-    description_en: "Percentage of households that own at least one ITN from DHS survey"
-    description_fr: "Pourcentage de ménages possédant au moins une MII selon l'enquête DHS"
-    description_pt: "Percentual de agregados familiares que possuem pelo menos uma MILD segundo a pesquisa DHS"
+    label_en: "Household ITN ownership (%). Numerator: households with at least one ITN. Denominator: all households surveyed."
+    label_fr: "Possession de MILDA par les ménages (%). Numérateur: ménages possédant au moins une MILDA. Dénominateur: tous les ménages enquêtés."
+    label_pt: "Posse de MILDA pelos agregados familiares (%). Numerador: agregados com pelo menos uma MILDA. Denominador: todos os agregados pesquisados."
 
   dhs_itn_ownership_low:
     snt_var_name: dhs_itn_ownership_low
-    label_en: "DHS household ITN ownership lower CI (%)"
-    label_fr: "IC inférieur possession de MII par les ménages DHS (%)"
-    label_pt: "IC inferior posse de MILD pelos agregados familiares DHS (%)"
-    description_en: "Lower 95% confidence interval for DHS household ITN ownership"
-    description_fr: "Intervalle de confiance inférieur à 95% pour la possession de MII par les ménages DHS"
-    description_pt: "Intervalo de confiança inferior de 95% para posse de MILD pelos agregados familiares DHS"
+    label_en: "Lower 95% confidence interval for household ITN ownership (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la possession de MILDA par les ménages (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para posse de MILDA pelos agregados familiares (%)"
 
   dhs_itn_ownership_upp:
     snt_var_name: dhs_itn_ownership_upp
-    label_en: "DHS household ITN ownership upper CI (%)"
-    label_fr: "IC supérieur possession de MII par les ménages DHS (%)"
-    label_pt: "IC superior posse de MILD pelos agregados familiares DHS (%)"
-    description_en: "Upper 95% confidence interval for DHS household ITN ownership"
-    description_fr: "Intervalle de confiance supérieur à 95% pour la possession de MII par les ménages DHS"
-    description_pt: "Intervalo de confiança superior de 95% para posse de MILD pelos agregados familiares DHS"
+    label_en: "Upper 95% confidence interval for household ITN ownership (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la possession de MILDA par les ménages (%)"
+    label_pt: "Intervalo de confiança superior de 95% para posse de MILDA pelos agregados familiares (%)"
 
   # ── ITN sufficiency ───────────────────────────────────────────────────────────
   dhs_itn_sufficient:
     snt_var_name: dhs_itn_sufficient
-    label_en: "DHS households with sufficient ITNs (%)"
-    label_fr: "Ménages avec MII suffisantes DHS (%)"
-    label_pt: "Agregados familiares com MILD suficientes DHS (%)"
-    description_en: "Percentage of households with at least one ITN for every two people from DHS survey"
-    description_fr: "Pourcentage de ménages avec au moins une MII pour deux personnes selon l'enquête DHS"
-    description_pt: "Percentual de agregados familiares com pelo menos uma MILD para cada duas pessoas segundo a pesquisa DHS"
+    label_en: "Households with sufficient ITNs (%). Numerator: households with at least 1 ITN per 2 persons. Denominator: all households surveyed."
+    label_fr: "Ménages avec suffisamment de MILDA (%). Numérateur: ménages avec au moins 1 MILDA pour 2 personnes. Dénominateur: tous les ménages enquêtés."
+    label_pt: "Agregados familiares com MILDA suficientes (%). Numerador: agregados com pelo menos 1 MILDA por 2 pessoas. Denominador: todos os agregados pesquisados."
 
   dhs_itn_sufficient_low:
     snt_var_name: dhs_itn_sufficient_low
-    label_en: "DHS households with sufficient ITNs lower CI (%)"
-    label_fr: "IC inférieur ménages avec MII suffisantes DHS (%)"
-    label_pt: "IC inferior agregados familiares com MILD suficientes DHS (%)"
-    description_en: "Lower 95% confidence interval for DHS households with sufficient ITNs"
-    description_fr: "Intervalle de confiance inférieur à 95% pour les ménages avec MII suffisantes DHS"
-    description_pt: "Intervalo de confiança inferior de 95% para agregados familiares com MILD suficientes DHS"
+    label_en: "Lower 95% confidence interval for households with sufficient ITNs (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour les ménages avec suffisamment de MILDA (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para agregados familiares com MILDA suficientes (%)"
 
   dhs_itn_sufficient_upp:
     snt_var_name: dhs_itn_sufficient_upp
-    label_en: "DHS households with sufficient ITNs upper CI (%)"
-    label_fr: "IC supérieur ménages avec MII suffisantes DHS (%)"
-    label_pt: "IC superior agregados familiares com MILD suficientes DHS (%)"
-    description_en: "Upper 95% confidence interval for DHS households with sufficient ITNs"
-    description_fr: "Intervalle de confiance supérieur à 95% pour les ménages avec MII suffisantes DHS"
-    description_pt: "Intervalo de confiança superior de 95% para agregados familiares com MILD suficientes DHS"
+    label_en: "Upper 95% confidence interval for households with sufficient ITNs (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour les ménages avec suffisamment de MILDA (%)"
+    label_pt: "Intervalo de confiança superior de 95% para agregados familiares com MILDA suficientes (%)"
 
   # ── ITN access ────────────────────────────────────────────────────────────────
   dhs_itn_access:
     snt_var_name: dhs_itn_access
-    label_en: "DHS population with access to ITN (%)"
-    label_fr: "Population avec accès aux MII DHS (%)"
-    label_pt: "População com acesso a MILD DHS (%)"
-    description_en: "Percentage of population with access to an ITN within their household from DHS survey"
-    description_fr: "Pourcentage de la population ayant accès à une MII dans leur ménage selon l'enquête DHS"
-    description_pt: "Percentual da população com acesso a uma MILD em seu agregado familiar segundo a pesquisa DHS"
+    label_en: "Population with access to an ITN within their household (%). Numerator: individuals who could sleep under an ITN if each ITN is used by 2 people. Denominator: de facto household population."
+    label_fr: "Population ayant accès à une MILDA dans leur ménage (%). Numérateur: individus pouvant dormir sous une MILDA si chaque MILDA est utilisée par 2 personnes. Dénominateur: population de fait du ménage."
+    label_pt: "População com acesso a uma MILDA em seu agregado (%). Numerador: indivíduos que poderiam dormir sob uma MILDA se cada MILDA for usada por 2 pessoas. Denominador: população de facto do agregado."
 
   dhs_itn_access_low:
     snt_var_name: dhs_itn_access_low
-    label_en: "DHS population with access to ITN lower CI (%)"
-    label_fr: "IC inférieur population avec accès aux MII DHS (%)"
-    label_pt: "IC inferior população com acesso a MILD DHS (%)"
-    description_en: "Lower 95% confidence interval for DHS population with access to ITN"
-    description_fr: "Intervalle de confiance inférieur à 95% pour la population avec accès aux MII DHS"
-    description_pt: "Intervalo de confiança inferior de 95% para população com acesso a MILD DHS"
+    label_en: "Lower 95% confidence interval for population with ITN access (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la population ayant accès à une MILDA (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para população com acesso a MILDA (%)"
 
   dhs_itn_access_upp:
     snt_var_name: dhs_itn_access_upp
-    label_en: "DHS population with access to ITN upper CI (%)"
-    label_fr: "IC supérieur population avec accès aux MII DHS (%)"
-    label_pt: "IC superior população com acesso a MILD DHS (%)"
-    description_en: "Upper 95% confidence interval for DHS population with access to ITN"
-    description_fr: "Intervalle de confiance supérieur à 95% pour la population avec accès aux MII DHS"
-    description_pt: "Intervalo de confiança superior de 95% para população com acesso a MILD DHS"
+    label_en: "Upper 95% confidence interval for population with ITN access (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la population ayant accès à une MILDA (%)"
+    label_pt: "Intervalo de confiança superior de 95% para população com acesso a MILDA (%)"
 
   # ── ITN use (all population) ─────────────────────────────────────────────────
   dhs_itn_use:
     snt_var_name: dhs_itn_use
-    label_en: "DHS population who slept under ITN (%)"
-    label_fr: "Population ayant dormi sous MII DHS (%)"
-    label_pt: "População que dormiu sob MILD DHS (%)"
-    description_en: "Percentage of population who slept under an ITN the previous night from DHS survey"
-    description_fr: "Pourcentage de la population ayant dormi sous une MII la nuit précédente selon l'enquête DHS"
-    description_pt: "Percentual da população que dormiu sob uma MILD na noite anterior segundo a pesquisa DHS"
+    label_en: "Population who slept under an ITN the previous night (%). Numerator: individuals who slept under an ITN. Denominator: de facto household population."
+    label_fr: "Population ayant dormi sous une MILDA la nuit précédente (%). Numérateur: individus ayant dormi sous une MILDA. Dénominateur: population de fait du ménage."
+    label_pt: "População que dormiu sob uma MILDA na noite anterior (%). Numerador: indivíduos que dormiram sob uma MILDA. Denominador: população de facto do agregado."
 
   dhs_itn_use_low:
     snt_var_name: dhs_itn_use_low
-    label_en: "DHS population who slept under ITN lower CI (%)"
-    label_fr: "IC inférieur population ayant dormi sous MII DHS (%)"
-    label_pt: "IC inferior população que dormiu sob MILD DHS (%)"
-    description_en: "Lower 95% confidence interval for DHS population who slept under ITN"
-    description_fr: "Intervalle de confiance inférieur à 95% pour la population ayant dormi sous MII DHS"
-    description_pt: "Intervalo de confiança inferior de 95% para população que dormiu sob MILD DHS"
+    label_en: "Lower 95% confidence interval for population who slept under an ITN (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la population ayant dormi sous une MILDA (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para população que dormiu sob uma MILDA (%)"
 
   dhs_itn_use_upp:
     snt_var_name: dhs_itn_use_upp
-    label_en: "DHS population who slept under ITN upper CI (%)"
-    label_fr: "IC supérieur population ayant dormi sous MII DHS (%)"
-    label_pt: "IC superior população que dormiu sob MILD DHS (%)"
-    description_en: "Upper 95% confidence interval for DHS population who slept under ITN"
-    description_fr: "Intervalle de confiance supérieur à 95% pour la population ayant dormi sous MII DHS"
-    description_pt: "Intervalo de confiança superior de 95% para população que dormiu sob MILD DHS"
+    label_en: "Upper 95% confidence interval for population who slept under an ITN (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la population ayant dormi sous une MILDA (%)"
+    label_pt: "Intervalo de confiança superior de 95% para população que dormiu sob uma MILDA (%)"
 
   # ── ITN use (children under 5) ───────────────────────────────────────────────
   dhs_itn_use_u5:
     snt_var_name: dhs_itn_use_u5
-    label_en: "DHS children under 5 who slept under ITN (%)"
-    label_fr: "Enfants de moins de 5 ans ayant dormi sous MII DHS (%)"
-    label_pt: "Crianças menores de 5 anos que dormiram sob MILD DHS (%)"
-    description_en: "Percentage of children under 5 years who slept under an ITN the previous night from DHS survey"
-    description_fr: "Pourcentage d'enfants de moins de 5 ans ayant dormi sous une MII la nuit précédente selon l'enquête DHS"
-    description_pt: "Percentual de crianças menores de 5 anos que dormiram sob uma MILD na noite anterior segundo a pesquisa DHS"
+    label_en: "Children under 5 who slept under an ITN the previous night (%). Numerator: children <5 who slept under an ITN. Denominator: children <5 who spent the night in the household."
+    label_fr: "Enfants de moins de 5 ans ayant dormi sous une MILDA la nuit précédente (%). Numérateur: enfants <5 ans ayant dormi sous une MILDA. Dénominateur: enfants <5 ans ayant passé la nuit dans le ménage."
+    label_pt: "Crianças menores de 5 anos que dormiram sob uma MILDA na noite anterior (%). Numerador: crianças <5 anos que dormiram sob uma MILDA. Denominador: crianças <5 anos que passaram a noite no agregado."
 
   dhs_itn_use_u5_low:
     snt_var_name: dhs_itn_use_u5_low
-    label_en: "DHS children under 5 who slept under ITN lower CI (%)"
-    label_fr: "IC inférieur enfants de moins de 5 ans ayant dormi sous MII DHS (%)"
-    label_pt: "IC inferior crianças menores de 5 anos que dormiram sob MILD DHS (%)"
-    description_en: "Lower 95% confidence interval for DHS children under 5 who slept under ITN"
-    description_fr: "Intervalle de confiance inférieur à 95% pour les enfants de moins de 5 ans ayant dormi sous MII DHS"
-    description_pt: "Intervalo de confiança inferior de 95% para crianças menores de 5 anos que dormiram sob MILD DHS"
+    label_en: "Lower 95% confidence interval for children <5 who slept under an ITN (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour les enfants <5 ans ayant dormi sous une MILDA (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para crianças <5 anos que dormiram sob uma MILDA (%)"
 
   dhs_itn_use_u5_upp:
     snt_var_name: dhs_itn_use_u5_upp
-    label_en: "DHS children under 5 who slept under ITN upper CI (%)"
-    label_fr: "IC supérieur enfants de moins de 5 ans ayant dormi sous MII DHS (%)"
-    label_pt: "IC superior crianças menores de 5 anos que dormiram sob MILD DHS (%)"
-    description_en: "Upper 95% confidence interval for DHS children under 5 who slept under ITN"
-    description_fr: "Intervalle de confiance supérieur à 95% pour les enfants de moins de 5 ans ayant dormi sous MII DHS"
-    description_pt: "Intervalo de confiança superior de 95% para crianças menores de 5 anos que dormiram sob MILD DHS"
+    label_en: "Upper 95% confidence interval for children <5 who slept under an ITN (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour les enfants <5 ans ayant dormi sous une MILDA (%)"
+    label_pt: "Intervalo de confiança superior de 95% para crianças <5 anos que dormiram sob uma MILDA (%)"
 
   # ── ITN use (pregnant women) ─────────────────────────────────────────────────
   dhs_itn_use_preg:
     snt_var_name: dhs_itn_use_preg
-    label_en: "DHS pregnant women who slept under ITN (%)"
-    label_fr: "Femmes enceintes ayant dormi sous MII DHS (%)"
-    label_pt: "Mulheres grávidas que dormiram sob MILD DHS (%)"
-    description_en: "Percentage of pregnant women who slept under an ITN the previous night from DHS survey"
-    description_fr: "Pourcentage de femmes enceintes ayant dormi sous une MII la nuit précédente selon l'enquête DHS"
-    description_pt: "Percentual de mulheres grávidas que dormiram sob uma MILD na noite anterior segundo a pesquisa DHS"
+    label_en: "Pregnant women aged 15-49 who slept under an ITN the previous night (%). Numerator: pregnant women who slept under an ITN. Denominator: pregnant women who spent the night in the household."
+    label_fr: "Femmes enceintes de 15-49 ans ayant dormi sous une MILDA la nuit précédente (%). Numérateur: femmes enceintes ayant dormi sous une MILDA. Dénominateur: femmes enceintes ayant passé la nuit dans le ménage."
+    label_pt: "Mulheres grávidas de 15-49 anos que dormiram sob uma MILDA na noite anterior (%). Numerador: mulheres grávidas que dormiram sob uma MILDA. Denominador: mulheres grávidas que passaram a noite no agregado."
 
   dhs_itn_use_preg_low:
     snt_var_name: dhs_itn_use_preg_low
-    label_en: "DHS pregnant women who slept under ITN lower CI (%)"
-    label_fr: "IC inférieur femmes enceintes ayant dormi sous MII DHS (%)"
-    label_pt: "IC inferior mulheres grávidas que dormiram sob MILD DHS (%)"
-    description_en: "Lower 95% confidence interval for DHS pregnant women who slept under ITN"
-    description_fr: "Intervalle de confiance inférieur à 95% pour les femmes enceintes ayant dormi sous MII DHS"
-    description_pt: "Intervalo de confiança inferior de 95% para mulheres grávidas que dormiram sob MILD DHS"
+    label_en: "Lower 95% confidence interval for pregnant women who slept under an ITN (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour les femmes enceintes ayant dormi sous une MILDA (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para mulheres grávidas que dormiram sob uma MILDA (%)"
 
   dhs_itn_use_preg_upp:
     snt_var_name: dhs_itn_use_preg_upp
-    label_en: "DHS pregnant women who slept under ITN upper CI (%)"
-    label_fr: "IC supérieur femmes enceintes ayant dormi sous MII DHS (%)"
-    label_pt: "IC superior mulheres grávidas que dormiram sob MILD DHS (%)"
-    description_en: "Upper 95% confidence interval for DHS pregnant women who slept under ITN"
-    description_fr: "Intervalle de confiance supérieur à 95% pour les femmes enceintes ayant dormi sous MII DHS"
-    description_pt: "Intervalo de confiança superior de 95% para mulheres grávidas que dormiram sob MILD DHS"
+    label_en: "Upper 95% confidence interval for pregnant women who slept under an ITN (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour les femmes enceintes ayant dormi sous une MILDA (%)"
+    label_pt: "Intervalo de confiança superior de 95% para mulheres grávidas que dormiram sob uma MILDA (%)"
 
   # ── Sample sizes ──────────────────────────────────────────────────────────────
   dhs_n_households:
     snt_var_name: dhs_n_households
-    label_en: "DHS number of households surveyed"
-    label_fr: "Nombre de ménages enquêtés DHS"
-    label_pt: "Número de agregados familiares pesquisados DHS"
-    description_en: "Total number of households surveyed in the DHS dataset for this administrative unit"
-    description_fr: "Nombre total de ménages enquêtés dans le dataset DHS pour cette unité administrative"
-    description_pt: "Número total de agregados familiares pesquisados no conjunto de dados DHS para esta unidade administrativa"
+    label_en: "Number of households surveyed (denominator for household-level ITN indicators)"
+    label_fr: "Nombre de ménages enquêtés (dénominateur pour les indicateurs MILDA au niveau ménage)"
+    label_pt: "Número de agregados familiares pesquisados (denominador para indicadores MILDA ao nível do agregado)"
 
   dhs_n_individuals:
     snt_var_name: dhs_n_individuals
-    label_en: "DHS number of individuals"
-    label_fr: "Nombre d'individus DHS"
-    label_pt: "Número de indivíduos DHS"
-    description_en: "Total number of individuals in households surveyed in the DHS dataset"
-    description_fr: "Nombre total d'individus dans les ménages enquêtés dans le dataset DHS"
-    description_pt: "Número total de indivíduos nos agregados familiares pesquisados no conjunto de dados DHS"
+    label_en: "Number of de facto household members (denominator for population ITN access/use)"
+    label_fr: "Nombre de membres de fait du ménage (dénominateur pour l'accès/utilisation MILDA de la population)"
+    label_pt: "Número de membros de facto do agregado (denominador para acesso/uso de MILDA da população)"
 
   dhs_n_under5:
     snt_var_name: dhs_n_under5
-    label_en: "DHS number of children under 5"
-    label_fr: "Nombre d'enfants de moins de 5 ans DHS"
-    label_pt: "Número de crianças menores de 5 anos DHS"
-    description_en: "Number of children under 5 years in the DHS dataset for this administrative unit"
-    description_fr: "Nombre d'enfants de moins de 5 ans dans le dataset DHS pour cette unité administrative"
-    description_pt: "Número de crianças menores de 5 anos no conjunto de dados DHS para esta unidade administrativa"
+    label_en: "Number of children under 5 years who spent the previous night in the household (denominator for dhs_itn_use_u5)"
+    label_fr: "Nombre d'enfants de moins de 5 ans ayant passé la nuit précédente dans le ménage (dénominateur pour dhs_itn_use_u5)"
+    label_pt: "Número de crianças menores de 5 anos que passaram a noite anterior no agregado (denominador para dhs_itn_use_u5)"
 
   dhs_n_pregnant:
     snt_var_name: dhs_n_pregnant
-    label_en: "DHS number of pregnant women"
-    label_fr: "Nombre de femmes enceintes DHS"
-    label_pt: "Número de mulheres grávidas DHS"
-    description_en: "Number of pregnant women in the DHS dataset for this administrative unit"
-    description_fr: "Nombre de femmes enceintes dans le dataset DHS pour cette unité administrative"
-    description_pt: "Número de mulheres grávidas no conjunto de dados DHS para esta unidade administrativa"
+    label_en: "Number of pregnant women aged 15-49 who spent the previous night in the household (denominator for dhs_itn_use_preg)"
+    label_fr: "Nombre de femmes enceintes de 15-49 ans ayant passé la nuit précédente dans le ménage (dénominateur pour dhs_itn_use_preg)"
+    label_pt: "Número de mulheres grávidas de 15-49 anos que passaram a noite anterior no agregado (denominador para dhs_itn_use_preg)"
 
   dhs_n_hh_with_itn:
     snt_var_name: dhs_n_hh_with_itn
-    label_en: "DHS households with at least one ITN"
-    label_fr: "Ménages avec au moins une MII DHS"
-    label_pt: "Agregados familiares com pelo menos uma MILD DHS"
-    description_en: "Number of households with at least one ITN in the DHS dataset"
-    description_fr: "Nombre de ménages avec au moins une MII dans le dataset DHS"
-    description_pt: "Número de agregados familiares com pelo menos uma MILD no conjunto de dados DHS"
+    label_en: "Number of households with at least one ITN (numerator for dhs_itn_ownership)"
+    label_fr: "Nombre de ménages possédant au moins une MILDA (numérateur pour dhs_itn_ownership)"
+    label_pt: "Número de agregados familiares com pelo menos uma MILDA (numerador para dhs_itn_ownership)"
 
   dhs_n_hh_sufficient:
     snt_var_name: dhs_n_hh_sufficient
-    label_en: "DHS households with sufficient ITNs"
-    label_fr: "Ménages avec MII suffisantes DHS"
-    label_pt: "Agregados familiares com MILD suficientes DHS"
-    description_en: "Number of households with at least one ITN per two people in the DHS dataset"
-    description_fr: "Nombre de ménages avec au moins une MII pour deux personnes dans le dataset DHS"
-    description_pt: "Número de agregados familiares com pelo menos uma MILD para cada duas pessoas no conjunto de dados DHS"
+    label_en: "Number of households with sufficient ITNs (at least 1 ITN per 2 persons) (numerator for dhs_itn_sufficient)"
+    label_fr: "Nombre de ménages avec suffisamment de MILDA (au moins 1 MILDA pour 2 personnes) (numérateur pour dhs_itn_sufficient)"
+    label_pt: "Número de agregados familiares com MILDA suficientes (pelo menos 1 MILDA por 2 pessoas) (numerador para dhs_itn_sufficient)"
 
   dhs_n_with_access:
     snt_var_name: dhs_n_with_access
-    label_en: "DHS individuals with access to ITN"
-    label_fr: "Individus avec accès aux MII DHS"
-    label_pt: "Indivíduos com acesso a MILD DHS"
-    description_en: "Number of individuals with access to an ITN in their household in the DHS dataset"
-    description_fr: "Nombre d'individus avec accès à une MII dans leur ménage dans le dataset DHS"
-    description_pt: "Número de indivíduos com acesso a uma MILD em seu agregado familiar no conjunto de dados DHS"
+    label_en: "Number of individuals with access to an ITN within their household (numerator for dhs_itn_access)"
+    label_fr: "Nombre d'individus ayant accès à une MILDA dans leur ménage (numérateur pour dhs_itn_access)"
+    label_pt: "Número de indivíduos com acesso a uma MILDA em seu agregado (numerador para dhs_itn_access)"
 
   dhs_n_used_itn:
     snt_var_name: dhs_n_used_itn
-    label_en: "DHS individuals who slept under ITN"
-    label_fr: "Individus ayant dormi sous MII DHS"
-    label_pt: "Indivíduos que dormiram sob MILD DHS"
-    description_en: "Number of individuals who slept under an ITN the previous night in the DHS dataset"
-    description_fr: "Nombre d'individus ayant dormi sous une MII la nuit précédente dans le dataset DHS"
-    description_pt: "Número de indivíduos que dormiram sob uma MILD na noite anterior no conjunto de dados DHS"
+    label_en: "Number of individuals who slept under an ITN the previous night (numerator for dhs_itn_use)"
+    label_fr: "Nombre d'individus ayant dormi sous une MILDA la nuit précédente (numérateur pour dhs_itn_use)"
+    label_pt: "Número de indivíduos que dormiram sob uma MILDA na noite anterior (numerador para dhs_itn_use)"
 
   dhs_n_under5_used:
     snt_var_name: dhs_n_under5_used
-    label_en: "DHS children under 5 who slept under ITN"
-    label_fr: "Enfants de moins de 5 ans ayant dormi sous MII DHS"
-    label_pt: "Crianças menores de 5 anos que dormiram sob MILD DHS"
-    description_en: "Number of children under 5 who slept under an ITN the previous night in the DHS dataset"
-    description_fr: "Nombre d'enfants de moins de 5 ans ayant dormi sous une MII la nuit précédente dans le dataset DHS"
-    description_pt: "Número de crianças menores de 5 anos que dormiram sob uma MILD na noite anterior no conjunto de dados DHS"
+    label_en: "Number of children under 5 who slept under an ITN the previous night (numerator for dhs_itn_use_u5)"
+    label_fr: "Nombre d'enfants de moins de 5 ans ayant dormi sous une MILDA la nuit précédente (numérateur pour dhs_itn_use_u5)"
+    label_pt: "Número de crianças menores de 5 anos que dormiram sob uma MILDA na noite anterior (numerador para dhs_itn_use_u5)"
 
   dhs_n_pregnant_used:
     snt_var_name: dhs_n_pregnant_used
-    label_en: "DHS pregnant women who slept under ITN"
-    label_fr: "Femmes enceintes ayant dormi sous MII DHS"
-    label_pt: "Mulheres grávidas que dormiram sob MILD DHS"
-    description_en: "Number of pregnant women who slept under an ITN the previous night in the DHS dataset"
-    description_fr: "Nombre de femmes enceintes ayant dormi sous une MII la nuit précédente dans le dataset DHS"
-    description_pt: "Número de mulheres grávidas que dormiram sob uma MILD na noite anterior no conjunto de dados DHS"
+    label_en: "Number of pregnant women aged 15-49 who slept under an ITN the previous night (numerator for dhs_itn_use_preg)"
+    label_fr: "Nombre de femmes enceintes de 15-49 ans ayant dormi sous une MILDA la nuit précédente (numérateur pour dhs_itn_use_preg)"
+    label_pt: "Número de mulheres grávidas de 15-49 anos que dormiram sob uma MILDA na noite anterior (numerador para dhs_itn_use_preg)"
 
 dhs_wealth:
   _description: "DHS wealth quintile distribution and inequality indicators."
@@ -1607,76 +1460,52 @@ dhs_wealth:
   # ── Wealth quintile proportions ──────────────────────────────────────────────
   dhs_prop_poorest:
     snt_var_name: dhs_prop_poorest
-    label_en: "DHS proportion in poorest quintile (%)"
-    label_fr: "Proportion dans le quintile le plus pauvre DHS (%)"
-    label_pt: "Proporção no quintil mais pobre DHS (%)"
-    description_en: "Percentage of population in the poorest wealth quintile from DHS survey"
-    description_fr: "Pourcentage de la population dans le quintile de richesse le plus pauvre selon l'enquête DHS"
-    description_pt: "Percentual da população no quintil de riqueza mais pobre segundo a pesquisa DHS"
+    label_en: "Proportion of population in the poorest wealth quintile (%). Based on national DHS wealth index quintiles."
+    label_fr: "Proportion de la population dans le quintile de richesse le plus pauvre (%). Basé sur les quintiles de l'indice de richesse national de l'EDS."
+    label_pt: "Proporção da população no quintil de riqueza mais pobre (%). Baseado nos quintis do índice de riqueza nacional do DHS."
 
   dhs_prop_poorer:
     snt_var_name: dhs_prop_poorer
-    label_en: "DHS proportion in poorer quintile (%)"
-    label_fr: "Proportion dans le quintile pauvre DHS (%)"
-    label_pt: "Proporção no quintil pobre DHS (%)"
-    description_en: "Percentage of population in the poorer wealth quintile from DHS survey"
-    description_fr: "Pourcentage de la population dans le quintile de richesse pauvre selon l'enquête DHS"
-    description_pt: "Percentual da população no quintil de riqueza pobre segundo a pesquisa DHS"
+    label_en: "Proportion of population in the poorer (second) wealth quintile (%). Based on national DHS wealth index quintiles."
+    label_fr: "Proportion de la population dans le quintile de richesse pauvre (deuxième) (%). Basé sur les quintiles de l'indice de richesse national de l'EDS."
+    label_pt: "Proporção da população no quintil de riqueza pobre (segundo) (%). Baseado nos quintis do índice de riqueza nacional do DHS."
 
   dhs_prop_middle:
     snt_var_name: dhs_prop_middle
-    label_en: "DHS proportion in middle quintile (%)"
-    label_fr: "Proportion dans le quintile moyen DHS (%)"
-    label_pt: "Proporção no quintil médio DHS (%)"
-    description_en: "Percentage of population in the middle wealth quintile from DHS survey"
-    description_fr: "Pourcentage de la population dans le quintile de richesse moyen selon l'enquête DHS"
-    description_pt: "Percentual da população no quintil de riqueza médio segundo a pesquisa DHS"
+    label_en: "Proportion of population in the middle (third) wealth quintile (%). Based on national DHS wealth index quintiles."
+    label_fr: "Proportion de la population dans le quintile de richesse moyen (troisième) (%). Basé sur les quintiles de l'indice de richesse national de l'EDS."
+    label_pt: "Proporção da população no quintil de riqueza médio (terceiro) (%). Baseado nos quintis do índice de riqueza nacional do DHS."
 
   dhs_prop_richer:
     snt_var_name: dhs_prop_richer
-    label_en: "DHS proportion in richer quintile (%)"
-    label_fr: "Proportion dans le quintile plus riche DHS (%)"
-    label_pt: "Proporção no quintil mais rico DHS (%)"
-    description_en: "Percentage of population in the richer wealth quintile from DHS survey"
-    description_fr: "Pourcentage de la population dans le quintile de richesse plus riche selon l'enquête DHS"
-    description_pt: "Percentual da população no quintil de riqueza mais rico segundo a pesquisa DHS"
+    label_en: "Proportion of population in the richer (fourth) wealth quintile (%). Based on national DHS wealth index quintiles."
+    label_fr: "Proportion de la population dans le quintile de richesse riche (quatrième) (%). Basé sur les quintiles de l'indice de richesse national de l'EDS."
+    label_pt: "Proporção da população no quintil de riqueza rico (quarto) (%). Baseado nos quintis do índice de riqueza nacional do DHS."
 
   dhs_prop_richest:
     snt_var_name: dhs_prop_richest
-    label_en: "DHS proportion in richest quintile (%)"
-    label_fr: "Proportion dans le quintile le plus riche DHS (%)"
-    label_pt: "Proporção no quintil mais rico DHS (%)"
-    description_en: "Percentage of population in the richest wealth quintile from DHS survey"
-    description_fr: "Pourcentage de la population dans le quintile de richesse le plus riche selon l'enquête DHS"
-    description_pt: "Percentual da população no quintil de riqueza mais rico segundo a pesquisa DHS"
+    label_en: "Proportion of population in the richest (fifth) wealth quintile (%). Based on national DHS wealth index quintiles."
+    label_fr: "Proportion de la population dans le quintile de richesse le plus riche (cinquième) (%). Basé sur les quintiles de l'indice de richesse national de l'EDS."
+    label_pt: "Proporção da população no quintil de riqueza mais rico (quinto) (%). Baseado nos quintis do índice de riqueza nacional do DHS."
 
   # ── Dominant quintile and inequality ─────────────────────────────────────────
   dhs_dominant_quintile:
     snt_var_name: dhs_dominant_quintile
-    label_en: "DHS dominant wealth quintile"
-    label_fr: "Quintile de richesse dominant DHS"
-    label_pt: "Quintil de riqueza dominante DHS"
-    description_en: "Wealth quintile with the largest proportion of population from DHS survey"
-    description_fr: "Quintile de richesse avec la plus grande proportion de population selon l'enquête DHS"
-    description_pt: "Quintil de riqueza com a maior proporção de população segundo a pesquisa DHS"
+    label_en: "Most common wealth quintile in the area. Categories: poorest, poorer, middle, richer, richest."
+    label_fr: "Quintile de richesse le plus fréquent dans la zone. Catégories: le plus pauvre, pauvre, moyen, riche, le plus riche."
+    label_pt: "Quintil de riqueza mais comum na área. Categorias: mais pobre, pobre, médio, rico, mais rico."
 
   dhs_dominant_prop:
     snt_var_name: dhs_dominant_prop
-    label_en: "DHS proportion in dominant quintile (%)"
-    label_fr: "Proportion dans le quintile dominant DHS (%)"
-    label_pt: "Proporção no quintil dominante DHS (%)"
-    description_en: "Percentage of population in the dominant wealth quintile from DHS survey"
-    description_fr: "Pourcentage de la population dans le quintile de richesse dominant selon l'enquête DHS"
-    description_pt: "Percentual da população no quintil de riqueza dominante segundo a pesquisa DHS"
+    label_en: "Proportion of population in the dominant wealth quintile (%)"
+    label_fr: "Proportion de la population dans le quintile de richesse dominant (%)"
+    label_pt: "Proporção da população no quintil de riqueza dominante (%)"
 
   dhs_gini:
     snt_var_name: dhs_gini
-    label_en: "DHS Gini coefficient"
-    label_fr: "Coefficient de Gini DHS"
-    label_pt: "Coeficiente de Gini DHS"
-    description_en: "Gini coefficient measuring wealth inequality (0=perfect equality, 1=perfect inequality) from DHS survey"
-    description_fr: "Coefficient de Gini mesurant l'inégalité de richesse (0=égalité parfaite, 1=inégalité parfaite) selon l'enquête DHS"
-    description_pt: "Coeficiente de Gini medindo desigualdade de riqueza (0=igualdade perfeita, 1=desigualdade perfeita) segundo a pesquisa DHS"
+    label_en: "Gini coefficient measuring wealth inequality (0-1 scale). 0 = perfect equality, 1 = perfect inequality."
+    label_fr: "Coefficient de Gini mesurant l'inégalité de richesse (échelle 0-1). 0 = égalité parfaite, 1 = inégalité parfaite."
+    label_pt: "Coeficiente de Gini medindo desigualdade de riqueza (escala 0-1). 0 = igualdade perfeita, 1 = desigualdade perfeita."
 
 dhs_pfpr:
   _description: "DHS malaria parasite prevalence rate indicators."
@@ -1687,95 +1516,65 @@ dhs_pfpr:
   # ── PfPR by RDT ───────────────────────────────────────────────────────────────
   dhs_pfpr_rdt:
     snt_var_name: dhs_pfpr_rdt
-    label_en: "DHS parasite prevalence rate by RDT (%)"
-    label_fr: "Taux de prévalence parasitaire DHS par TDR (%)"
-    label_pt: "Taxa de prevalência parasitária DHS por TDR (%)"
-    description_en: "Plasmodium falciparum parasite rate among children 6-59 months by rapid diagnostic test from DHS survey"
-    description_fr: "Taux de parasitémie à Plasmodium falciparum chez les enfants de 6-59 mois par test de diagnostic rapide de l'enquête DHS"
-    description_pt: "Taxa de parasitemia por Plasmodium falciparum em crianças de 6-59 meses por teste de diagnóstico rápido da pesquisa DHS"
+    label_en: "Malaria parasite prevalence by RDT among children 6-59 months (%). Numerator: children positive by RDT. Denominator: children tested by RDT."
+    label_fr: "Prévalence du paludisme par TDR chez les enfants de 6-59 mois (%). Numérateur: enfants positifs par TDR. Dénominateur: enfants testés par TDR."
+    label_pt: "Prevalência de malária por TDR em crianças de 6-59 meses (%). Numerador: crianças positivas por TDR. Denominador: crianças testadas por TDR."
 
   dhs_pfpr_rdt_low:
     snt_var_name: dhs_pfpr_rdt_low
-    label_en: "DHS PfPR RDT lower CI (%)"
-    label_fr: "IC inférieur PfPR DHS TDR (%)"
-    label_pt: "IC inferior PfPR DHS TDR (%)"
-    description_en: "Lower 95% confidence interval for DHS RDT-based PfPR"
-    description_fr: "Intervalle de confiance inférieur à 95% pour le PfPR DHS par TDR"
-    description_pt: "Intervalo de confiança inferior de 95% para PfPR DHS por TDR"
+    label_en: "Lower 95% confidence interval for malaria prevalence by RDT among children 6-59 months (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la prévalence du paludisme par TDR chez les enfants de 6-59 mois (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para prevalência de malária por TDR em crianças de 6-59 meses (%)"
 
   dhs_pfpr_rdt_upp:
     snt_var_name: dhs_pfpr_rdt_upp
-    label_en: "DHS PfPR RDT upper CI (%)"
-    label_fr: "IC supérieur PfPR DHS TDR (%)"
-    label_pt: "IC superior PfPR DHS TDR (%)"
-    description_en: "Upper 95% confidence interval for DHS RDT-based PfPR"
-    description_fr: "Intervalle de confiance supérieur à 95% pour le PfPR DHS par TDR"
-    description_pt: "Intervalo de confiança superior de 95% para PfPR DHS por TDR"
+    label_en: "Upper 95% confidence interval for malaria prevalence by RDT among children 6-59 months (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la prévalence du paludisme par TDR chez les enfants de 6-59 mois (%)"
+    label_pt: "Intervalo de confiança superior de 95% para prevalência de malária por TDR em crianças de 6-59 meses (%)"
 
   # ── PfPR by Microscopy ────────────────────────────────────────────────────────
   dhs_pfpr_mic:
     snt_var_name: dhs_pfpr_mic
-    label_en: "DHS parasite prevalence rate by microscopy (%)"
-    label_fr: "Taux de prévalence parasitaire DHS par microscopie (%)"
-    label_pt: "Taxa de prevalência parasitária DHS por microscopia (%)"
-    description_en: "Plasmodium falciparum parasite rate among children 6-59 months by microscopy from DHS survey"
-    description_fr: "Taux de parasitémie à Plasmodium falciparum chez les enfants de 6-59 mois par microscopie de l'enquête DHS"
-    description_pt: "Taxa de parasitemia por Plasmodium falciparum em crianças de 6-59 meses por microscopia da pesquisa DHS"
+    label_en: "Malaria parasite prevalence by microscopy among children 6-59 months (%). Numerator: children positive by microscopy. Denominator: children tested by microscopy."
+    label_fr: "Prévalence du paludisme par microscopie chez les enfants de 6-59 mois (%). Numérateur: enfants positifs par microscopie. Dénominateur: enfants testés par microscopie."
+    label_pt: "Prevalência de malária por microscopia em crianças de 6-59 meses (%). Numerador: crianças positivas por microscopia. Denominador: crianças testadas por microscopia."
 
   dhs_pfpr_mic_low:
     snt_var_name: dhs_pfpr_mic_low
-    label_en: "DHS PfPR microscopy lower CI (%)"
-    label_fr: "IC inférieur PfPR DHS microscopie (%)"
-    label_pt: "IC inferior PfPR DHS microscopia (%)"
-    description_en: "Lower 95% confidence interval for DHS microscopy-based PfPR"
-    description_fr: "Intervalle de confiance inférieur à 95% pour le PfPR DHS par microscopie"
-    description_pt: "Intervalo de confiança inferior de 95% para PfPR DHS por microscopia"
+    label_en: "Lower 95% confidence interval for malaria prevalence by microscopy among children 6-59 months (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la prévalence du paludisme par microscopie chez les enfants de 6-59 mois (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para prevalência de malária por microscopia em crianças de 6-59 meses (%)"
 
   dhs_pfpr_mic_upp:
     snt_var_name: dhs_pfpr_mic_upp
-    label_en: "DHS PfPR microscopy upper CI (%)"
-    label_fr: "IC supérieur PfPR DHS microscopie (%)"
-    label_pt: "IC superior PfPR DHS microscopia (%)"
-    description_en: "Upper 95% confidence interval for DHS microscopy-based PfPR"
-    description_fr: "Intervalle de confiance supérieur à 95% pour le PfPR DHS par microscopie"
-    description_pt: "Intervalo de confiança superior de 95% para PfPR DHS por microscopia"
+    label_en: "Upper 95% confidence interval for malaria prevalence by microscopy among children 6-59 months (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la prévalence du paludisme par microscopie chez les enfants de 6-59 mois (%)"
+    label_pt: "Intervalo de confiança superior de 95% para prevalência de malária por microscopia em crianças de 6-59 meses (%)"
 
   # ── Sample sizes and denominators ─────────────────────────────────────────────
   dhs_n_tested_rdt:
     snt_var_name: dhs_n_tested_rdt
-    label_en: "DHS number tested by RDT"
-    label_fr: "Nombre DHS testés par TDR"
-    label_pt: "Número DHS testado por TDR"
-    description_en: "Total number of children 6-59 months tested by RDT in DHS survey"
-    description_fr: "Nombre total d'enfants de 6-59 mois testés par TDR dans l'enquête DHS"
-    description_pt: "Número total de crianças de 6-59 meses testadas por TDR na pesquisa DHS"
+    label_en: "Number of children 6-59 months tested for malaria by RDT (denominator for dhs_pfpr_rdt)"
+    label_fr: "Nombre d'enfants de 6-59 mois testés pour le paludisme par TDR (dénominateur pour dhs_pfpr_rdt)"
+    label_pt: "Número de crianças de 6-59 meses testadas para malária por TDR (denominador para dhs_pfpr_rdt)"
 
   dhs_n_pos_rdt:
     snt_var_name: dhs_n_pos_rdt
-    label_en: "DHS number positive by RDT"
-    label_fr: "Nombre DHS positifs par TDR"
-    label_pt: "Número DHS positivo por TDR"
-    description_en: "Number of children 6-59 months positive by RDT in DHS survey"
-    description_fr: "Nombre d'enfants de 6-59 mois positifs par TDR dans l'enquête DHS"
-    description_pt: "Número de crianças de 6-59 meses positivas por TDR na pesquisa DHS"
+    label_en: "Number of children 6-59 months positive for malaria by RDT (numerator for dhs_pfpr_rdt)"
+    label_fr: "Nombre d'enfants de 6-59 mois positifs pour le paludisme par TDR (numérateur pour dhs_pfpr_rdt)"
+    label_pt: "Número de crianças de 6-59 meses positivas para malária por TDR (numerador para dhs_pfpr_rdt)"
 
   dhs_n_tested_mic:
     snt_var_name: dhs_n_tested_mic
-    label_en: "DHS number tested by microscopy"
-    label_fr: "Nombre DHS testés par microscopie"
-    label_pt: "Número DHS testado por microscopia"
-    description_en: "Total number of children 6-59 months tested by microscopy in DHS survey"
-    description_fr: "Nombre total d'enfants de 6-59 mois testés par microscopie dans l'enquête DHS"
-    description_pt: "Número total de crianças de 6-59 meses testadas por microscopia na pesquisa DHS"
+    label_en: "Number of children 6-59 months tested for malaria by microscopy (denominator for dhs_pfpr_mic)"
+    label_fr: "Nombre d'enfants de 6-59 mois testés pour le paludisme par microscopie (dénominateur pour dhs_pfpr_mic)"
+    label_pt: "Número de crianças de 6-59 meses testadas para malária por microscopia (denominador para dhs_pfpr_mic)"
 
   dhs_n_pos_mic:
     snt_var_name: dhs_n_pos_mic
-    label_en: "DHS number positive by microscopy"
-    label_fr: "Nombre DHS positifs par microscopie"
-    label_pt: "Número DHS positivo por microscopia"
-    description_en: "Number of children 6-59 months positive by microscopy in DHS survey"
-    description_fr: "Nombre d'enfants de 6-59 mois positifs par microscopie dans l'enquête DHS"
-    description_pt: "Número de crianças de 6-59 meses positivas por microscopia na pesquisa DHS"
+    label_en: "Number of children 6-59 months positive for malaria by microscopy (numerator for dhs_pfpr_mic)"
+    label_fr: "Nombre d'enfants de 6-59 mois positifs pour le paludisme par microscopie (numérateur pour dhs_pfpr_mic)"
+    label_pt: "Número de crianças de 6-59 meses positivas para malária por microscopia (numerador para dhs_pfpr_mic)"
 
   # ── Aggregation and quality metrics ───────────────────────────────────────────
   dhs_n_clusters:
@@ -1832,121 +1631,82 @@ dhs_iptp:
   # ── IPTp coverage indicators ─────────────────────────────────────────────────
   dhs_iptp_1:
     snt_var_name: dhs_iptp_1
-    label_en: "DHS IPTp 1+ dose coverage (%)"
-    label_fr: "Couverture TPI 1+ dose DHS (%)"
-    label_pt: "Cobertura TIPg 1+ dose DHS (%)"
-    description_en: "Percentage of women who received at least 1 dose of IPTp during pregnancy from DHS survey"
-    description_fr: "Pourcentage de femmes ayant reçu au moins 1 dose de TPI pendant la grossesse selon l'enquête DHS"
-    description_pt: "Percentual de mulheres que receberam pelo menos 1 dose de TIPg durante a gravidez segundo a pesquisa DHS"
+    label_en: "IPTp 1+ dose coverage among women 15-49 with live birth in past 2 years (%). Numerator: women who received at least 1 dose of SP/Fansidar during pregnancy. Denominator: women with live birth in past 2 years."
+    label_fr: "Couverture TPIg 1+ dose chez les femmes de 15-49 ans ayant eu une naissance vivante dans les 2 dernières années (%). Numérateur: femmes ayant reçu au moins 1 dose de SP/Fansidar pendant la grossesse. Dénominateur: femmes avec naissance vivante dans les 2 dernières années."
+    label_pt: "Cobertura TIPg 1+ dose entre mulheres de 15-49 anos com nascimento vivo nos últimos 2 anos (%). Numerador: mulheres que receberam pelo menos 1 dose de SP/Fansidar durante a gravidez. Denominador: mulheres com nascimento vivo nos últimos 2 anos."
 
   dhs_iptp_1_low:
     snt_var_name: dhs_iptp_1_low
-    label_en: "DHS IPTp 1+ dose lower CI (%)"
-    label_fr: "IC inférieur TPI 1+ dose DHS (%)"
-    label_pt: "IC inferior TIPg 1+ dose DHS (%)"
-    description_en: "95% lower confidence interval for DHS IPTp 1+ dose estimate"
-    description_fr: "Intervalle de confiance inférieur à 95% pour l'estimation TPI 1+ dose DHS"
-    description_pt: "Intervalo de confiança inferior de 95% para estimativa TIPg 1+ dose DHS"
+    label_en: "Lower 95% confidence interval for IPTp 1+ dose coverage (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la couverture TPIg 1+ dose (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para cobertura TIPg 1+ dose (%)"
 
   dhs_iptp_1_upp:
     snt_var_name: dhs_iptp_1_upp
-    label_en: "DHS IPTp 1+ dose upper CI (%)"
-    label_fr: "IC supérieur TPI 1+ dose DHS (%)"
-    label_pt: "IC superior TIPg 1+ dose DHS (%)"
-    description_en: "95% upper confidence interval for DHS IPTp 1+ dose estimate"
-    description_fr: "Intervalle de confiance supérieur à 95% pour l'estimation TPI 1+ dose DHS"
-    description_pt: "Intervalo de confiança superior de 95% para estimativa TIPg 1+ dose DHS"
+    label_en: "Upper 95% confidence interval for IPTp 1+ dose coverage (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la couverture TPIg 1+ dose (%)"
+    label_pt: "Intervalo de confiança superior de 95% para cobertura TIPg 1+ dose (%)"
 
   dhs_iptp_2:
     snt_var_name: dhs_iptp_2
-    label_en: "DHS IPTp 2+ dose coverage (%)"
-    label_fr: "Couverture TPI 2+ doses DHS (%)"
-    label_pt: "Cobertura TIPg 2+ doses DHS (%)"
-    description_en: "Percentage of women who received at least 2 doses of IPTp during pregnancy from DHS survey"
-    description_fr: "Pourcentage de femmes ayant reçu au moins 2 doses de TPI pendant la grossesse selon l'enquête DHS"
-    description_pt: "Percentual de mulheres que receberam pelo menos 2 doses de TIPg durante a gravidez segundo a pesquisa DHS"
+    label_en: "IPTp 2+ dose coverage among women 15-49 with live birth in past 2 years (%). Numerator: women who received at least 2 doses of SP/Fansidar during pregnancy. Denominator: women with live birth in past 2 years."
+    label_fr: "Couverture TPIg 2+ doses chez les femmes de 15-49 ans ayant eu une naissance vivante dans les 2 dernières années (%). Numérateur: femmes ayant reçu au moins 2 doses de SP/Fansidar pendant la grossesse. Dénominateur: femmes avec naissance vivante dans les 2 dernières années."
+    label_pt: "Cobertura TIPg 2+ doses entre mulheres de 15-49 anos com nascimento vivo nos últimos 2 anos (%). Numerador: mulheres que receberam pelo menos 2 doses de SP/Fansidar durante a gravidez. Denominador: mulheres com nascimento vivo nos últimos 2 anos."
 
   dhs_iptp_2_low:
     snt_var_name: dhs_iptp_2_low
-    label_en: "DHS IPTp 2+ dose lower CI (%)"
-    label_fr: "IC inférieur TPI 2+ doses DHS (%)"
-    label_pt: "IC inferior TIPg 2+ doses DHS (%)"
-    description_en: "95% lower confidence interval for DHS IPTp 2+ dose estimate"
-    description_fr: "Intervalle de confiance inférieur à 95% pour l'estimation TPI 2+ doses DHS"
-    description_pt: "Intervalo de confiança inferior de 95% para estimativa TIPg 2+ doses DHS"
+    label_en: "Lower 95% confidence interval for IPTp 2+ dose coverage (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la couverture TPIg 2+ doses (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para cobertura TIPg 2+ doses (%)"
 
   dhs_iptp_2_upp:
     snt_var_name: dhs_iptp_2_upp
-    label_en: "DHS IPTp 2+ dose upper CI (%)"
-    label_fr: "IC supérieur TPI 2+ doses DHS (%)"
-    label_pt: "IC superior TIPg 2+ doses DHS (%)"
-    description_en: "95% upper confidence interval for DHS IPTp 2+ dose estimate"
-    description_fr: "Intervalle de confiance supérieur à 95% pour l'estimation TPI 2+ doses DHS"
-    description_pt: "Intervalo de confiança superior de 95% para estimativa TIPg 2+ doses DHS"
+    label_en: "Upper 95% confidence interval for IPTp 2+ dose coverage (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la couverture TPIg 2+ doses (%)"
+    label_pt: "Intervalo de confiança superior de 95% para cobertura TIPg 2+ doses (%)"
 
   dhs_iptp_3:
     snt_var_name: dhs_iptp_3
-    label_en: "DHS IPTp 3+ dose coverage (%)"
-    label_fr: "Couverture TPI 3+ doses DHS (%)"
-    label_pt: "Cobertura TIPg 3+ doses DHS (%)"
-    description_en: "Percentage of women who received at least 3 doses of IPTp during pregnancy from DHS survey"
-    description_fr: "Pourcentage de femmes ayant reçu au moins 3 doses de TPI pendant la grossesse selon l'enquête DHS"
-    description_pt: "Percentual de mulheres que receberam pelo menos 3 doses de TIPg durante a gravidez segundo a pesquisa DHS"
+    label_en: "IPTp 3+ dose coverage among women 15-49 with live birth in past 2 years (%). Numerator: women who received at least 3 doses of SP/Fansidar during pregnancy. Denominator: women with live birth in past 2 years. WHO recommends 3+ doses."
+    label_fr: "Couverture TPIg 3+ doses chez les femmes de 15-49 ans ayant eu une naissance vivante dans les 2 dernières années (%). Numérateur: femmes ayant reçu au moins 3 doses de SP/Fansidar pendant la grossesse. Dénominateur: femmes avec naissance vivante dans les 2 dernières années. L'OMS recommande 3+ doses."
+    label_pt: "Cobertura TIPg 3+ doses entre mulheres de 15-49 anos com nascimento vivo nos últimos 2 anos (%). Numerador: mulheres que receberam pelo menos 3 doses de SP/Fansidar durante a gravidez. Denominador: mulheres com nascimento vivo nos últimos 2 anos. OMS recomenda 3+ doses."
 
   dhs_iptp_3_low:
     snt_var_name: dhs_iptp_3_low
-    label_en: "DHS IPTp 3+ dose lower CI (%)"
-    label_fr: "IC inférieur TPI 3+ doses DHS (%)"
-    label_pt: "IC inferior TIPg 3+ doses DHS (%)"
-    description_en: "95% lower confidence interval for DHS IPTp 3+ dose estimate"
-    description_fr: "Intervalle de confiance inférieur à 95% pour l'estimation TPI 3+ doses DHS"
-    description_pt: "Intervalo de confiança inferior de 95% para estimativa TIPg 3+ doses DHS"
+    label_en: "Lower 95% confidence interval for IPTp 3+ dose coverage (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la couverture TPIg 3+ doses (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para cobertura TIPg 3+ doses (%)"
 
   dhs_iptp_3_upp:
     snt_var_name: dhs_iptp_3_upp
-    label_en: "DHS IPTp 3+ dose upper CI (%)"
-    label_fr: "IC supérieur TPI 3+ doses DHS (%)"
-    label_pt: "IC superior TIPg 3+ doses DHS (%)"
-    description_en: "95% upper confidence interval for DHS IPTp 3+ dose estimate"
-    description_fr: "Intervalle de confiance supérieur à 95% pour l'estimation TPI 3+ doses DHS"
-    description_pt: "Intervalo de confiança superior de 95% para estimativa TIPg 3+ doses DHS"
+    label_en: "Upper 95% confidence interval for IPTp 3+ dose coverage (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la couverture TPIg 3+ doses (%)"
+    label_pt: "Intervalo de confiança superior de 95% para cobertura TIPg 3+ doses (%)"
 
   # ── Sample sizes ──────────────────────────────────────────────────────────────
   dhs_n_women:
     snt_var_name: dhs_n_women
-    label_en: "DHS number of women surveyed"
-    label_fr: "Nombre de femmes enquêtées DHS"
-    label_pt: "Número de mulheres pesquisadas DHS"
-    description_en: "Number of women with a live birth in the past 2 years in the DHS survey for this administrative unit"
-    description_fr: "Nombre de femmes ayant eu une naissance vivante dans les 2 dernières années dans l'enquête DHS pour cette unité administrative"
-    description_pt: "Número de mulheres com nascimento vivo nos últimos 2 anos na pesquisa DHS para esta unidade administrativa"
+    label_en: "Number of women aged 15-49 with a live birth in the 2 years preceding the survey (denominator for IPTp indicators)"
+    label_fr: "Nombre de femmes de 15-49 ans ayant eu une naissance vivante dans les 2 années précédant l'enquête (dénominateur pour les indicateurs TPIg)"
+    label_pt: "Número de mulheres de 15-49 anos com nascimento vivo nos 2 anos anteriores à pesquisa (denominador para indicadores TIPg)"
 
   dhs_n_iptp_1plus:
     snt_var_name: dhs_n_iptp_1plus
-    label_en: "DHS women who received IPTp 1+ dose"
-    label_fr: "Femmes ayant reçu TPI 1+ dose DHS"
-    label_pt: "Mulheres que receberam TIPg 1+ dose DHS"
-    description_en: "Number of women who received at least 1 dose of IPTp during pregnancy"
-    description_fr: "Nombre de femmes ayant reçu au moins 1 dose de TPI pendant la grossesse"
-    description_pt: "Número de mulheres que receberam pelo menos 1 dose de TIPg durante a gravidez"
+    label_en: "Number of women who received at least 1 dose of SP/Fansidar during pregnancy (numerator for dhs_iptp_1)"
+    label_fr: "Nombre de femmes ayant reçu au moins 1 dose de SP/Fansidar pendant la grossesse (numérateur pour dhs_iptp_1)"
+    label_pt: "Número de mulheres que receberam pelo menos 1 dose de SP/Fansidar durante a gravidez (numerador para dhs_iptp_1)"
 
   dhs_n_iptp_2plus:
     snt_var_name: dhs_n_iptp_2plus
-    label_en: "DHS women who received IPTp 2+ doses"
-    label_fr: "Femmes ayant reçu TPI 2+ doses DHS"
-    label_pt: "Mulheres que receberam TIPg 2+ doses DHS"
-    description_en: "Number of women who received at least 2 doses of IPTp during pregnancy"
-    description_fr: "Nombre de femmes ayant reçu au moins 2 doses de TPI pendant la grossesse"
-    description_pt: "Número de mulheres que receberam pelo menos 2 doses de TIPg durante a gravidez"
+    label_en: "Number of women who received at least 2 doses of SP/Fansidar during pregnancy (numerator for dhs_iptp_2)"
+    label_fr: "Nombre de femmes ayant reçu au moins 2 doses de SP/Fansidar pendant la grossesse (numérateur pour dhs_iptp_2)"
+    label_pt: "Número de mulheres que receberam pelo menos 2 doses de SP/Fansidar durante a gravidez (numerador para dhs_iptp_2)"
 
   dhs_n_iptp_3plus:
     snt_var_name: dhs_n_iptp_3plus
-    label_en: "DHS women who received IPTp 3+ doses"
-    label_fr: "Femmes ayant reçu TPI 3+ doses DHS"
-    label_pt: "Mulheres que receberam TIPg 3+ doses DHS"
-    description_en: "Number of women who received at least 3 doses of IPTp during pregnancy"
-    description_fr: "Nombre de femmes ayant reçu au moins 3 doses de TPI pendant la grossesse"
-    description_pt: "Número de mulheres que receberam pelo menos 3 doses de TIPg durante a gravidez"
+    label_en: "Number of women who received at least 3 doses of SP/Fansidar during pregnancy (numerator for dhs_iptp_3)"
+    label_fr: "Nombre de femmes ayant reçu au moins 3 doses de SP/Fansidar pendant la grossesse (numérateur pour dhs_iptp_3)"
+    label_pt: "Número de mulheres que receberam pelo menos 3 doses de SP/Fansidar durante a gravidez (numerador para dhs_iptp_3)"
 
 dhs_anemia:
   _description: "DHS severe anemia indicators for children 6-59 months."
@@ -1957,49 +1717,34 @@ dhs_anemia:
   # ── Severe anemia prevalence ─────────────────────────────────────────────────
   dhs_severe_anemia:
     snt_var_name: dhs_severe_anemia
-    label_en: "DHS severe anemia prevalence (%)"
-    label_fr: "Prévalence d'anémie sévère DHS (%)"
-    label_pt: "Prevalência de anemia grave DHS (%)"
-    description_en: "Percentage of children 6-59 months with severe anemia (Hb < 7 g/dL) from DHS survey"
-    description_fr: "Pourcentage d'enfants de 6-59 mois avec anémie sévère (Hb < 7 g/dL) selon l'enquête DHS"
-    description_pt: "Percentual de crianças de 6-59 meses com anemia grave (Hb < 7 g/dL) segundo a pesquisa DHS"
+    label_en: "Severe anemia prevalence among children 6-59 months (%). Defined as hemoglobin <8.0 g/dL (altitude-adjusted). Numerator: children with Hb <8.0 g/dL. Denominator: children with valid hemoglobin measurement."
+    label_fr: "Prévalence de l'anémie sévère chez les enfants de 6-59 mois (%). Définie comme hémoglobine <8,0 g/dL (ajustée pour l'altitude). Numérateur: enfants avec Hb <8,0 g/dL. Dénominateur: enfants avec mesure d'hémoglobine valide."
+    label_pt: "Prevalência de anemia grave em crianças de 6-59 meses (%). Definida como hemoglobina <8,0 g/dL (ajustada para altitude). Numerador: crianças com Hb <8,0 g/dL. Denominador: crianças com medição de hemoglobina válida."
 
   dhs_severe_anemia_low:
     snt_var_name: dhs_severe_anemia_low
-    label_en: "DHS severe anemia lower CI (%)"
-    label_fr: "IC inférieur anémie sévère DHS (%)"
-    label_pt: "IC inferior anemia grave DHS (%)"
-    description_en: "95% lower confidence interval for DHS severe anemia prevalence estimate"
-    description_fr: "Intervalle de confiance inférieur à 95% pour l'estimation de prévalence d'anémie sévère DHS"
-    description_pt: "Intervalo de confiança inferior de 95% para estimativa de prevalência de anemia grave DHS"
+    label_en: "Lower 95% confidence interval for severe anemia prevalence among children 6-59 months (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la prévalence de l'anémie sévère chez les enfants de 6-59 mois (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para prevalência de anemia grave em crianças de 6-59 meses (%)"
 
   dhs_severe_anemia_upp:
     snt_var_name: dhs_severe_anemia_upp
-    label_en: "DHS severe anemia upper CI (%)"
-    label_fr: "IC supérieur anémie sévère DHS (%)"
-    label_pt: "IC superior anemia grave DHS (%)"
-    description_en: "95% upper confidence interval for DHS severe anemia prevalence estimate"
-    description_fr: "Intervalle de confiance supérieur à 95% pour l'estimation de prévalence d'anémie sévère DHS"
-    description_pt: "Intervalo de confiança superior de 95% para estimativa de prevalência de anemia grave DHS"
+    label_en: "Upper 95% confidence interval for severe anemia prevalence among children 6-59 months (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la prévalence de l'anémie sévère chez les enfants de 6-59 mois (%)"
+    label_pt: "Intervalo de confiança superior de 95% para prevalência de anemia grave em crianças de 6-59 meses (%)"
 
   # ── Sample sizes ──────────────────────────────────────────────────────────────
   dhs_n_tested_hb:
     snt_var_name: dhs_n_tested_hb
-    label_en: "DHS children with valid Hb measurement"
-    label_fr: "Enfants DHS avec mesure d'Hb valide"
-    label_pt: "Crianças DHS com medição de Hb válida"
-    description_en: "Number of children 6-59 months with valid hemoglobin measurements in the DHS survey"
-    description_fr: "Nombre d'enfants de 6-59 mois avec des mesures d'hémoglobine valides dans l'enquête DHS"
-    description_pt: "Número de crianças de 6-59 meses com medições de hemoglobina válidas na pesquisa DHS"
+    label_en: "Number of children 6-59 months with valid hemoglobin measurement (denominator for dhs_severe_anemia)"
+    label_fr: "Nombre d'enfants de 6-59 mois avec mesure d'hémoglobine valide (dénominateur pour dhs_severe_anemia)"
+    label_pt: "Número de crianças de 6-59 meses com medição de hemoglobina válida (denominador para dhs_severe_anemia)"
 
   dhs_n_severe_anemia:
     snt_var_name: dhs_n_severe_anemia
-    label_en: "DHS children with severe anemia"
-    label_fr: "Enfants DHS avec anémie sévère"
-    label_pt: "Crianças DHS com anemia grave"
-    description_en: "Number of children 6-59 months with severe anemia (Hb < 7 g/dL) in the DHS survey"
-    description_fr: "Nombre d'enfants de 6-59 mois avec anémie sévère (Hb < 7 g/dL) dans l'enquête DHS"
-    description_pt: "Número de crianças de 6-59 meses com anemia grave (Hb < 7 g/dL) na pesquisa DHS"
+    label_en: "Number of children 6-59 months with severe anemia (Hb <8.0 g/dL) (numerator for dhs_severe_anemia)"
+    label_fr: "Nombre d'enfants de 6-59 mois atteints d'anémie sévère (Hb <8,0 g/dL) (numérateur pour dhs_severe_anemia)"
+    label_pt: "Número de crianças de 6-59 meses com anemia grave (Hb <8,0 g/dL) (numerador para dhs_severe_anemia)"
 
 schema:
   _description: "Standardized disaggregation schema used across indicators."
