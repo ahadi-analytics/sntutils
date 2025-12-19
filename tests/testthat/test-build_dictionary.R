@@ -286,11 +286,11 @@ testthat::test_that("build_dictionary integrates YAML labels for SNT variables",
   # exact matches from YAML
   testthat::expect_equal(
     unname(lem["adm1"]),
-    "Administrative level 1 (province)"
+    "Administrative level 1 (province/region)"
   )
   testthat::expect_equal(
     unname(lem["adm2"]),
-    "Administrative level 2 (district)"
+    "Administrative level 2 (district/health zone)"
   )
 
   # token-based inference
@@ -331,7 +331,7 @@ testthat::test_that("build_dictionary uses YAML labels by default, CSV doesn't o
   lem <- setNames(dict$label_en, dict$variable)
 
   # YAML labels should win (CSV ignored)
-  testthat::expect_equal(unname(lem["adm1"]), "Administrative level 1 (province)")
+  testthat::expect_equal(unname(lem["adm1"]), "Administrative level 1 (province/region)")
   testthat::expect_match(
     unname(lem["conf_rdt_u5"]),
     "Confirmed malaria cases.*RDT.*Under 5 years"
@@ -340,7 +340,7 @@ testthat::test_that("build_dictionary uses YAML labels by default, CSV doesn't o
   # non-overridden variable still gets YAML label
   testthat::expect_equal(
     unname(lem["adm2"]),
-    "Administrative level 2 (district)"
+    "Administrative level 2 (district/health zone)"
   )
 })
 
@@ -373,7 +373,7 @@ testthat::test_that("build_dictionary respects CSV when override_yaml = TRUE", {
   # non-overridden variable still gets YAML label
   testthat::expect_equal(
     unname(lem["adm2"]),
-    "Administrative level 2 (district)"
+    "Administrative level 2 (district/health zone)"
   )
 })
 
@@ -396,17 +396,17 @@ testthat::test_that("build_dictionary supports Portuguese labels", {
   # exact match from YAML
   testthat::expect_equal(
     unname(lpt["adm1"]),
-    "Nível administrativo 1 (província)"
+    "Nível administrativo 1 (província/região)"
   )
 
   # token-based inference
   testthat::expect_match(
     unname(lpt["conf_rdt_u5"]),
-    "Casos confirmados de malária.*RDT.*Menores de 5 anos"
+    "Casos confirmados de malária.*RDT.*Menos de 5 anos"
   )
   testthat::expect_match(
     unname(lpt["test_mic_priv"]),
-    "Testado para malária.*[Mm]icroscopia.*Setor privado"
+    "Pessoas testadas para malária.*[Mm]icroscopia.*Setor privado"
   )
 })
 

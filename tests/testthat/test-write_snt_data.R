@@ -66,7 +66,7 @@ testthat::test_that("rejects bad inputs", {
     write_snt_data(
       obj = mtcars,
       path = tmp,
-      data_name = "a b",
+      data_name = "a/b",
       file_formats = "rds",
       quiet = FALSE
     )

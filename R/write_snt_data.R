@@ -28,8 +28,9 @@
     cli::cli_abort("`path` is not a directory: {path}.")
   }
 
-  if (!grepl("^[A-Za-z0-9._-]+$", data_name)) {
-    cli::cli_abort("`data_name` contains illegal characters.")
+
+  if (!nzchar(data_name) || grepl("[/\\\\:*?\"<>|]", data_name)) {
+    cli::cli_abort("`data_name` is empty or contains illegal characters.")
   }
 
   file_formats <- tolower(file_formats)
