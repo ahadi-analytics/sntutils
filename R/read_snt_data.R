@@ -15,8 +15,8 @@ read_snt_data <- function(path, data_name, file_formats = NULL, quiet = TRUE) {
   if (is.null(path) || !nzchar(path) || !fs::dir_exists(path)) {
     cli::cli_abort("Invalid or missing directory: {path}.")
   }
-  if (!grepl("^[A-Za-z0-9._-]+$", data_name)) {
-    cli::cli_abort("`data_name` contains illegal characters.")
+  if (!nzchar(data_name) || grepl("[/\\\\:*?\"<>|]", data_name)) {
+    cli::cli_abort("`data_name` is empty or contains illegal characters.")
   }
 
   all_ok <- c("rds", "csv", "tsv", "xlsx", "parquet", "feather", "qs2", "geojson")
