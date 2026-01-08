@@ -713,8 +713,11 @@ handle_user_interaction <- function(input_data, levels, level,
       !is.na(matched_names) & !is.na(name_to_match)
     )
 
-  # set cachees for looping
-  unique_names <- unique(input_data$name_to_match)
+  # set cachees for looping - use unique (name, context) pairs to avoid
+
+  # cross-context contamination when same name appears in multiple hierarchies
+  unique_contexts <- input_data |>
+    dplyr::distinct(name_to_match, long_geo)
 
   # initialize empty lists to store user choices
   user_choices <- list()
@@ -723,7 +726,7 @@ handle_user_interaction <- function(input_data, levels, level,
   # loop through unmatched records in input_data
   # Initialize the index
   i <- 1
-  while (i <= length(unique_names)) {
+  while (i <= nrow(unique_contexts)) {
     # clear console
     if (clear_console) {
       .clear_console()
@@ -738,10 +741,12 @@ handle_user_interaction <- function(input_data, levels, level,
 
     # set up choices -----------------------------------------------------------
     # select the cache to clean and suggested replacements
-    name_to_clean <- unique_names[i]
+    name_to_clean <- unique_contexts$name_to_match[i]
+    current_long_geo <- unique_contexts$long_geo[i]
     replacement_name <- input_data |>
       dplyr::filter(
-        name_to_match == name_to_clean
+        name_to_match == name_to_clean,
+        long_geo == current_long_geo
       ) |>
       dplyr::distinct(matched_names) |>
       # narrow down to top max_options
@@ -749,10 +754,11 @@ handle_user_interaction <- function(input_data, levels, level,
       dplyr::pull() |>
       stringr::str_to_title()
 
-    # get unique long names
+    # get unique long names for this specific context
     unique_geo_long <- input_data |>
       dplyr::filter(
-        name_to_match == name_to_clean
+        name_to_match == name_to_clean,
+        long_geo == current_long_geo
       ) |>
       dplyr::distinct()
 
@@ -760,7 +766,7 @@ handle_user_interaction <- function(input_data, levels, level,
 
     # set up main header to keep track
     main_header <- glue::glue(
-      "{stringr::str_to_title(level)} {i} of {length(unique_names)}"
+      "{stringr::str_to_title(level)} {i} of {nrow(unique_contexts)}"
     )
 
     if (!is.na(levels[2]) && level == levels[2]) {
