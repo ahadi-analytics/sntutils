@@ -251,6 +251,7 @@ globalVariables(
     "total_overlap_prop",
     "split_flag",
     "merge_flag",
+    "point_id",
     "YYYYMMDD",
     "YEAR",
     "MM",

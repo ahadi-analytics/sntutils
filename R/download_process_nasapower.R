@@ -1,3 +1,64 @@
+#' Sample random points from a polygon
+#'
+#' Internal helper that generates random sample points within a polygon.
+#' Falls back gracefully if the polygon is too small for the requested count.
+#'
+#' @param polygon An sf/sfc polygon geometry.
+#' @param n_points Number of points to sample.
+#' @param admin_row Single-row data frame with admin columns to attach.
+#' @param admin_cols Character vector of admin column names.
+#' @param point_crs EPSG code for point sampling.
+#'
+#' @return Data frame with admin columns, lon, lat, and point_id.
+#'
+#' @noRd
+.sample_polygon_points <- function(
+    polygon,
+    n_points,
+    admin_row,
+    admin_cols,
+    point_crs
+) {
+  # transform to equal-area CRS for sampling
+
+  poly_proj <- sf::st_transform(polygon, point_crs)
+
+  # try to sample n_points; reduce if polygon is too small
+  sampled <- tryCatch(
+    {
+      pts <- sf::st_sample(poly_proj, size = n_points, type = "random")
+      if (length(pts) == 0) NULL else pts
+    },
+    error = function(e) NULL
+  )
+
+  # fallback to point-on-surface if sampling fails
+
+  if (is.null(sampled) || length(sampled) == 0) {
+    sampled <- sf::st_point_on_surface(poly_proj)
+  }
+
+  # transform back to WGS84 and extract coordinates
+  pts_wgs84 <- sf::st_transform(sampled, 4326)
+  coords <- sf::st_coordinates(pts_wgs84)
+
+  # build result data frame
+  n_actual <- nrow(coords)
+  result <- data.frame(
+    lon = coords[, 1],
+    lat = coords[, 2],
+    point_id = seq_len(n_actual)
+  )
+
+  # attach admin columns
+
+  for (col in admin_cols) {
+    result[[col]] <- admin_row[[col]]
+  }
+
+  result
+}
+
 #' Download NASA POWER data for a single location
 #'
 #' Internal helper that downloads daily climate data from NASA POWER API for
@@ -68,10 +129,14 @@
 #' administrative units, processes them into daily and monthly datasets, and
 #' generates data dictionaries for each output.
 #'
-#' Representative locations are derived using a point-on-surface approach
-#' applied to administrative polygons. Returned values correspond to NASA POWER
-#' grid-cell averages (approximately 0.5 degree resolution) and should be
-#' interpreted as regional conditions rather than point measurements.
+#' For each polygon, multiple random points are sampled and data is downloaded
+#' for each point. The median across sample points is computed to produce a
+#' single representative value per administrative unit. This approach reduces
+#' sensitivity to within-polygon spatial variability.
+#'
+#' Returned values correspond to NASA POWER grid-cell averages (approximately
+#' 0.5 degree resolution) and should be interpreted as regional conditions
+#' rather than point measurements.
 #'
 #' The function is robust to partial download failures. Administrative units
 #' that fail to download after the specified number of retries are skipped with
@@ -90,7 +155,11 @@
 #'
 #' @param power_vars Character vector of NASA POWER variable codes to download.
 #'
-#' @param point_crs EPSG code used for representative point extraction.
+#' @param n_sample_points Number of random points to sample per polygon.
+#'   Median is computed across points. Smaller polygons may yield fewer points.
+#'   Default is 10.
+#'
+#' @param point_crs EPSG code used for point sampling.
 #'   Default is 6933 (World Cylindrical Equal Area).
 #'
 #' @param power_community NASA POWER community parameter. Default is "ag"
@@ -142,6 +211,7 @@ download_process_nasapower <- function(
       "TS_MIN",
       "RH2M"
     ),
+    n_sample_points = 10,
     point_crs = 6933,
     power_community = "ag",
     max_retries = 3,
@@ -198,38 +268,45 @@ download_process_nasapower <- function(
   cli::cli_alert_info("Community: {power_community}")
 
   # -------------------------------------------------------------------------
-  # representative points
+  # sample points from polygons
   # -------------------------------------------------------------------------
 
-  cli::cli_h2("Deriving representative locations")
+  cli::cli_h2("Sampling points from polygons")
 
   cli::cli_alert_info(
-    "Using point-on-surface (attributes assumed constant within polygons)"
+    "Sampling {n_sample_points} random points per polygon (median computed)"
   )
 
-  # suppress sf warning since we inform user above
-  admin_coords <- suppressWarnings({
-    adm_sf |>
-      sf::st_transform(point_crs) |>
-      sf::st_point_on_surface() |>
-      sf::st_transform(4326) |>
-      dplyr::mutate(
-        lon = sf::st_coordinates(geometry)[, 1],
-        lat = sf::st_coordinates(geometry)[, 2]
-      ) |>
-      sf::st_drop_geometry()
-  })
+  # sample points from each polygon
+  sample_list <- vector("list", nrow(adm_sf))
+
+  for (i in seq_len(nrow(adm_sf))) {
+    sample_list[[i]] <- suppressWarnings(
+      .sample_polygon_points(
+        polygon = adm_sf[i, ],
+        n_points = n_sample_points,
+        admin_row = sf::st_drop_geometry(adm_sf[i, ]),
+        admin_cols = admin_cols,
+        point_crs = point_crs
+      )
+    )
+  }
+
+  admin_coords <- dplyr::bind_rows(sample_list)
 
   cli::cli_alert_info(
     "NASA POWER returns grid-cell averages (~0.5 deg resolution)"
   )
 
   if (nrow(admin_coords) == 0) {
-    cli::cli_abort("No administrative units produced")
+    cli::cli_abort("No sample points produced")
   }
 
+  n_polygons <- nrow(adm_sf)
+  n_points_total <- nrow(admin_coords)
+
   cli::cli_alert_success(
-    "Derived {nrow(admin_coords)} representative locations"
+    "Sampled {n_points_total} points from {n_polygons} polygons"
   )
 
   # -------------------------------------------------------------------------
@@ -238,20 +315,19 @@ download_process_nasapower <- function(
 
   cli::cli_h2("Downloading POWER data")
 
-  n_units <- nrow(admin_coords)
+  n_points <- nrow(admin_coords)
   success_count <- 0
   fail_count <- 0
-  failed_units <- character(0)
 
-  results_list <- vector("list", n_units)
+  results_list <- vector("list", n_points)
 
   cli::cli_progress_bar(
     "Downloading",
-    total = n_units,
+    total = n_points,
     format = "{cli::pb_spin} Downloading [{cli::pb_current}/{cli::pb_total}] | "
   )
 
-  for (i in seq_len(n_units)) {
+  for (i in seq_len(n_points)) {
     result <- .download_power_location(
       row = admin_coords[i, ],
       power_community = power_community,
@@ -268,7 +344,6 @@ download_process_nasapower <- function(
       success_count <- success_count + 1
     } else {
       fail_count <- fail_count + 1
-      failed_units <- c(failed_units, admin_coords[[unit_col]][i])
     }
 
     cli::cli_progress_update()
@@ -279,13 +354,13 @@ download_process_nasapower <- function(
   # report download results
   if (success_count > 0) {
     cli::cli_alert_success(
-      "Downloaded data for {success_count}/{n_units} units"
+      "Downloaded data for {success_count}/{n_points} sample points"
     )
   }
 
   if (fail_count > 0) {
     cli::cli_alert_warning(
-      "Failed to download {fail_count} units: {.val {failed_units}}"
+      "Failed to download {fail_count} sample points"
     )
   }
 
@@ -295,6 +370,27 @@ download_process_nasapower <- function(
     cli::cli_abort("No POWER data downloaded")
   }
 
+  # -------------------------------------------------------------------------
+  # aggregate sample points (median)
+  # -------------------------------------------------------------------------
+
+  cli::cli_h2("Aggregating sample points")
+
+  power_data_agg <- power_data_raw |>
+    dplyr::group_by(dplyr::across(dplyr::all_of(c(admin_cols, "YYYYMMDD")))) |>
+    dplyr::summarise(
+      YEAR = dplyr::first(YEAR),
+      MM = dplyr::first(MM),
+      dplyr::across(
+        dplyr::all_of(power_vars),
+        \(x) stats::median(x, na.rm = TRUE)
+      ),
+      .groups = "drop"
+    )
+
+  cli::cli_alert_success(
+    "Aggregated to {nrow(power_data_agg)} admin-date records (median of points)"
+  )
 
   # -------------------------------------------------------------------------
   # daily processing
@@ -302,7 +398,7 @@ download_process_nasapower <- function(
 
   cli::cli_h2("Processing daily data")
 
-  power_daily <- power_data_raw |>
+  power_daily <- power_data_agg |>
     dplyr::mutate(
       date = as.Date(YYYYMMDD),
       year = YEAR,
