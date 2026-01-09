@@ -157,7 +157,7 @@
 #'
 #' @param n_sample_points Number of random points to sample per polygon.
 #'   Median is computed across points. Smaller polygons may yield fewer points.
-#'   Default is 10.
+#'   Default is 3.
 #'
 #' @param point_crs EPSG code used for point sampling.
 #'   Default is 6933 (World Cylindrical Equal Area).
@@ -211,7 +211,7 @@ download_process_nasapower <- function(
       "TS_MIN",
       "RH2M"
     ),
-    n_sample_points = 10,
+    n_sample_points = 3,
     point_crs = 6933,
     power_community = "ag",
     max_retries = 3,
