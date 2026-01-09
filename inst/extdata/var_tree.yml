@@ -1848,6 +1848,15 @@ schema:
 
   # ── Climate variables ───────────────────────────────────────────────────────
 
+  rainfall_mm:
+    snt_var_name: rainfall_mm
+    label_en: "Rainfall (mm)"
+    label_fr: "Précipitations (mm)"
+    label_pt: "Precipitação (mm)"
+    description_en: "Daily rainfall in millimetres."
+    description_fr: "Précipitations quotidiennes en millimètres."
+    description_pt: "Precipitação diária em milímetros."
+
   total_rainfall_mm:
     snt_var_name: total_rainfall_mm
     label_en: "Total rainfall (mm)"
