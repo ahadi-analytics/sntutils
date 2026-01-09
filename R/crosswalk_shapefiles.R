@@ -57,6 +57,7 @@
 #'   area_crs = 32735
 #' )
 #' }
+#' @export
 crosswalk_shapefiles_sf <- function(
   old_sf,
   new_sf,
