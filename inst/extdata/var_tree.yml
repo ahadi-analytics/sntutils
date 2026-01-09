@@ -1895,3 +1895,377 @@ schema:
       des températures maximales quotidiennes."
     description_pt: "Temperatura máxima mensal em graus Celsius, derivada das
       temperaturas máximas diárias."
+
+  mean_humidity_pct:
+    snt_var_name: mean_humidity_pct
+    label_en: "Mean relative humidity (%)"
+    label_fr: "Humidité relative moyenne (%)"
+    label_pt: "Umidade relativa média (%)"
+    description_en: "Monthly mean relative humidity as a percentage, averaged
+      from daily values."
+    description_fr: "Humidité relative moyenne mensuelle en pourcentage,
+      calculée à partir des valeurs quotidiennes."
+    description_pt: "Umidade relativa média mensal em porcentagem, calculada
+      a partir dos valores diários."
+
+  median_humidity_pct:
+    snt_var_name: median_humidity_pct
+    label_en: "Median relative humidity (%)"
+    label_fr: "Humidité relative médiane (%)"
+    label_pt: "Umidade relativa mediana (%)"
+    description_en: "Monthly median relative humidity as a percentage, derived
+      from daily values."
+    description_fr: "Humidité relative médiane mensuelle en pourcentage,
+      dérivée des valeurs quotidiennes."
+    description_pt: "Umidade relativa mediana mensal em porcentagem, derivada
+      dos valores diários."
+
+  min_humidity_pct:
+    snt_var_name: min_humidity_pct
+    label_en: "Minimum relative humidity (%)"
+    label_fr: "Humidité relative minimale (%)"
+    label_pt: "Umidade relativa mínima (%)"
+    description_en: "Monthly minimum relative humidity as a percentage, derived
+      from daily minimum values."
+    description_fr: "Humidité relative minimale mensuelle en pourcentage,
+      dérivée des valeurs minimales quotidiennes."
+    description_pt: "Umidade relativa mínima mensal em porcentagem, derivada
+      dos valores mínimos diários."
+
+  max_humidity_pct:
+    snt_var_name: max_humidity_pct
+    label_en: "Maximum relative humidity (%)"
+    label_fr: "Humidité relative maximale (%)"
+    label_pt: "Umidade relativa máxima (%)"
+    description_en: "Monthly maximum relative humidity as a percentage, derived
+      from daily maximum values."
+    description_fr: "Humidité relative maximale mensuelle en pourcentage,
+      dérivée des valeurs maximales quotidiennes."
+    description_pt: "Umidade relativa máxima mensal em porcentagem, derivada
+      dos valores máximos diários."
+
+  humidity_pct:
+    snt_var_name: humidity_pct
+    label_en: "Relative humidity (%)"
+    label_fr: "Humidité relative (%)"
+    label_pt: "Umidade relativa (%)"
+    description_en: "Relative humidity at 2 meters above ground as a percentage."
+    description_fr: "Humidité relative à 2 mètres au-dessus du sol en pourcentage."
+    description_pt: "Umidade relativa a 2 metros acima do solo em porcentagem."
+
+  mean_air_temperature_c:
+    snt_var_name: mean_air_temperature_c
+    label_en: "Mean air temperature (°C)"
+    label_fr: "Température de l'air moyenne (°C)"
+    label_pt: "Temperatura do ar média (°C)"
+    description_en: "Mean air temperature at 2 meters above ground in degrees
+      Celsius."
+    description_fr: "Température de l'air moyenne à 2 mètres au-dessus du sol
+      en degrés Celsius."
+    description_pt: "Temperatura do ar média a 2 metros acima do solo em graus
+      Celsius."
+
+  min_air_temperature_c:
+    snt_var_name: min_air_temperature_c
+    label_en: "Minimum air temperature (°C)"
+    label_fr: "Température de l'air minimale (°C)"
+    label_pt: "Temperatura do ar mínima (°C)"
+    description_en: "Minimum air temperature at 2 meters above ground in degrees
+      Celsius."
+    description_fr: "Température de l'air minimale à 2 mètres au-dessus du sol
+      en degrés Celsius."
+    description_pt: "Temperatura do ar mínima a 2 metros acima do solo em graus
+      Celsius."
+
+  max_air_temperature_c:
+    snt_var_name: max_air_temperature_c
+    label_en: "Maximum air temperature (°C)"
+    label_fr: "Température de l'air maximale (°C)"
+    label_pt: "Temperatura do ar máxima (°C)"
+    description_en: "Maximum air temperature at 2 meters above ground in degrees
+      Celsius."
+    description_fr: "Température de l'air maximale à 2 mètres au-dessus du sol
+      en degrés Celsius."
+    description_pt: "Temperatura do ar máxima a 2 metros acima do solo em graus
+      Celsius."
+
+  mean_land_temperature_c:
+    snt_var_name: mean_land_temperature_c
+    label_en: "Mean land surface temperature (°C)"
+    label_fr: "Température de surface moyenne (°C)"
+    label_pt: "Temperatura da superfície média (°C)"
+    description_en: "Mean land surface temperature in degrees Celsius."
+    description_fr: "Température moyenne de la surface terrestre en degrés
+      Celsius."
+    description_pt: "Temperatura média da superfície terrestre em graus Celsius."
+
+  min_land_temperature_c:
+    snt_var_name: min_land_temperature_c
+    label_en: "Minimum land surface temperature (°C)"
+    label_fr: "Température de surface minimale (°C)"
+    label_pt: "Temperatura da superfície mínima (°C)"
+    description_en: "Minimum land surface temperature in degrees Celsius."
+    description_fr: "Température minimale de la surface terrestre en degrés
+      Celsius."
+    description_pt: "Temperatura mínima da superfície terrestre em graus Celsius."
+
+  max_land_temperature_c:
+    snt_var_name: max_land_temperature_c
+    label_en: "Maximum land surface temperature (°C)"
+    label_fr: "Température de surface maximale (°C)"
+    label_pt: "Temperatura da superfície máxima (°C)"
+    description_en: "Maximum land surface temperature in degrees Celsius."
+    description_fr: "Température maximale de la surface terrestre en degrés
+      Celsius."
+    description_pt: "Temperatura máxima da superfície terrestre em graus Celsius."
+
+  mean_rainfall_mm:
+    snt_var_name: mean_rainfall_mm
+    label_en: "Mean rainfall (mm)"
+    label_fr: "Précipitations moyennes (mm)"
+    label_pt: "Precipitação média (mm)"
+    description_en: "Mean daily rainfall in millimetres."
+    description_fr: "Précipitations quotidiennes moyennes en millimètres."
+    description_pt: "Precipitação diária média em milímetros."
+
+  median_rainfall_mm:
+    snt_var_name: median_rainfall_mm
+    label_en: "Median rainfall (mm)"
+    label_fr: "Précipitations médianes (mm)"
+    label_pt: "Precipitação mediana (mm)"
+    description_en: "Median daily rainfall in millimetres."
+    description_fr: "Précipitations quotidiennes médianes en millimètres."
+    description_pt: "Precipitação diária mediana em milímetros."
+
+  min_rainfall_mm:
+    snt_var_name: min_rainfall_mm
+    label_en: "Minimum rainfall (mm)"
+    label_fr: "Précipitations minimales (mm)"
+    label_pt: "Precipitação mínima (mm)"
+    description_en: "Minimum daily rainfall in millimetres."
+    description_fr: "Précipitations quotidiennes minimales en millimètres."
+    description_pt: "Precipitação diária mínima em milímetros."
+
+  max_rainfall_mm:
+    snt_var_name: max_rainfall_mm
+    label_en: "Maximum rainfall (mm)"
+    label_fr: "Précipitations maximales (mm)"
+    label_pt: "Precipitação máxima (mm)"
+    description_en: "Maximum daily rainfall in millimetres."
+    description_fr: "Précipitations quotidiennes maximales en millimètres."
+    description_pt: "Precipitação diária máxima em milímetros."
+
+  median_air_temperature_c:
+    snt_var_name: median_air_temperature_c
+    label_en: "Median air temperature (°C)"
+    label_fr: "Température de l'air médiane (°C)"
+    label_pt: "Temperatura do ar mediana (°C)"
+    description_en: "Median air temperature at 2 meters above ground in degrees
+      Celsius."
+    description_fr: "Température de l'air médiane à 2 mètres au-dessus du sol
+      en degrés Celsius."
+    description_pt: "Temperatura do ar mediana a 2 metros acima do solo em graus
+      Celsius."
+
+  mean_max_air_temperature_c:
+    snt_var_name: mean_max_air_temperature_c
+    label_en: "Mean of maximum air temperature (°C)"
+    label_fr: "Moyenne des températures maximales de l'air (°C)"
+    label_pt: "Média das temperaturas máximas do ar (°C)"
+    description_en: "Mean of daily maximum air temperature at 2 meters in
+      degrees Celsius."
+    description_fr: "Moyenne des températures maximales quotidiennes de l'air
+      à 2 mètres en degrés Celsius."
+    description_pt: "Média das temperaturas máximas diárias do ar a 2 metros
+      em graus Celsius."
+
+  median_max_air_temperature_c:
+    snt_var_name: median_max_air_temperature_c
+    label_en: "Median of maximum air temperature (°C)"
+    label_fr: "Médiane des températures maximales de l'air (°C)"
+    label_pt: "Mediana das temperaturas máximas do ar (°C)"
+    description_en: "Median of daily maximum air temperature at 2 meters in
+      degrees Celsius."
+    description_fr: "Médiane des températures maximales quotidiennes de l'air
+      à 2 mètres en degrés Celsius."
+    description_pt: "Mediana das temperaturas máximas diárias do ar a 2 metros
+      em graus Celsius."
+
+  min_max_air_temperature_c:
+    snt_var_name: min_max_air_temperature_c
+    label_en: "Minimum of maximum air temperature (°C)"
+    label_fr: "Minimum des températures maximales de l'air (°C)"
+    label_pt: "Mínimo das temperaturas máximas do ar (°C)"
+    description_en: "Minimum of daily maximum air temperature at 2 meters in
+      degrees Celsius."
+    description_fr: "Minimum des températures maximales quotidiennes de l'air
+      à 2 mètres en degrés Celsius."
+    description_pt: "Mínimo das temperaturas máximas diárias do ar a 2 metros
+      em graus Celsius."
+
+  max_max_air_temperature_c:
+    snt_var_name: max_max_air_temperature_c
+    label_en: "Maximum of maximum air temperature (°C)"
+    label_fr: "Maximum des températures maximales de l'air (°C)"
+    label_pt: "Máximo das temperaturas máximas do ar (°C)"
+    description_en: "Maximum of daily maximum air temperature at 2 meters in
+      degrees Celsius."
+    description_fr: "Maximum des températures maximales quotidiennes de l'air
+      à 2 mètres en degrés Celsius."
+    description_pt: "Máximo das temperaturas máximas diárias do ar a 2 metros
+      em graus Celsius."
+
+  mean_min_air_temperature_c:
+    snt_var_name: mean_min_air_temperature_c
+    label_en: "Mean of minimum air temperature (°C)"
+    label_fr: "Moyenne des températures minimales de l'air (°C)"
+    label_pt: "Média das temperaturas mínimas do ar (°C)"
+    description_en: "Mean of daily minimum air temperature at 2 meters in
+      degrees Celsius."
+    description_fr: "Moyenne des températures minimales quotidiennes de l'air
+      à 2 mètres en degrés Celsius."
+    description_pt: "Média das temperaturas mínimas diárias do ar a 2 metros
+      em graus Celsius."
+
+  median_min_air_temperature_c:
+    snt_var_name: median_min_air_temperature_c
+    label_en: "Median of minimum air temperature (°C)"
+    label_fr: "Médiane des températures minimales de l'air (°C)"
+    label_pt: "Mediana das temperaturas mínimas do ar (°C)"
+    description_en: "Median of daily minimum air temperature at 2 meters in
+      degrees Celsius."
+    description_fr: "Médiane des températures minimales quotidiennes de l'air
+      à 2 mètres en degrés Celsius."
+    description_pt: "Mediana das temperaturas mínimas diárias do ar a 2 metros
+      em graus Celsius."
+
+  min_min_air_temperature_c:
+    snt_var_name: min_min_air_temperature_c
+    label_en: "Minimum of minimum air temperature (°C)"
+    label_fr: "Minimum des températures minimales de l'air (°C)"
+    label_pt: "Mínimo das temperaturas mínimas do ar (°C)"
+    description_en: "Minimum of daily minimum air temperature at 2 meters in
+      degrees Celsius."
+    description_fr: "Minimum des températures minimales quotidiennes de l'air
+      à 2 mètres en degrés Celsius."
+    description_pt: "Mínimo das temperaturas mínimas diárias do ar a 2 metros
+      em graus Celsius."
+
+  max_min_air_temperature_c:
+    snt_var_name: max_min_air_temperature_c
+    label_en: "Maximum of minimum air temperature (°C)"
+    label_fr: "Maximum des températures minimales de l'air (°C)"
+    label_pt: "Máximo das temperaturas mínimas do ar (°C)"
+    description_en: "Maximum of daily minimum air temperature at 2 meters in
+      degrees Celsius."
+    description_fr: "Maximum des températures minimales quotidiennes de l'air
+      à 2 mètres en degrés Celsius."
+    description_pt: "Máximo das temperaturas mínimas diárias do ar a 2 metros
+      em graus Celsius."
+
+  median_land_temperature_c:
+    snt_var_name: median_land_temperature_c
+    label_en: "Median land surface temperature (°C)"
+    label_fr: "Température de surface médiane (°C)"
+    label_pt: "Temperatura da superfície mediana (°C)"
+    description_en: "Median land surface temperature in degrees Celsius."
+    description_fr: "Température médiane de la surface terrestre en degrés
+      Celsius."
+    description_pt: "Temperatura mediana da superfície terrestre em graus
+      Celsius."
+
+  mean_max_land_temperature_c:
+    snt_var_name: mean_max_land_temperature_c
+    label_en: "Mean of maximum land surface temperature (°C)"
+    label_fr: "Moyenne des températures de surface maximales (°C)"
+    label_pt: "Média das temperaturas máximas da superfície (°C)"
+    description_en: "Mean of daily maximum land surface temperature in degrees
+      Celsius."
+    description_fr: "Moyenne des températures maximales quotidiennes de la
+      surface terrestre en degrés Celsius."
+    description_pt: "Média das temperaturas máximas diárias da superfície
+      terrestre em graus Celsius."
+
+  median_max_land_temperature_c:
+    snt_var_name: median_max_land_temperature_c
+    label_en: "Median of maximum land surface temperature (°C)"
+    label_fr: "Médiane des températures de surface maximales (°C)"
+    label_pt: "Mediana das temperaturas máximas da superfície (°C)"
+    description_en: "Median of daily maximum land surface temperature in degrees
+      Celsius."
+    description_fr: "Médiane des températures maximales quotidiennes de la
+      surface terrestre en degrés Celsius."
+    description_pt: "Mediana das temperaturas máximas diárias da superfície
+      terrestre em graus Celsius."
+
+  min_max_land_temperature_c:
+    snt_var_name: min_max_land_temperature_c
+    label_en: "Minimum of maximum land surface temperature (°C)"
+    label_fr: "Minimum des températures de surface maximales (°C)"
+    label_pt: "Mínimo das temperaturas máximas da superfície (°C)"
+    description_en: "Minimum of daily maximum land surface temperature in
+      degrees Celsius."
+    description_fr: "Minimum des températures maximales quotidiennes de la
+      surface terrestre en degrés Celsius."
+    description_pt: "Mínimo das temperaturas máximas diárias da superfície
+      terrestre em graus Celsius."
+
+  max_max_land_temperature_c:
+    snt_var_name: max_max_land_temperature_c
+    label_en: "Maximum of maximum land surface temperature (°C)"
+    label_fr: "Maximum des températures de surface maximales (°C)"
+    label_pt: "Máximo das temperaturas máximas da superfície (°C)"
+    description_en: "Maximum of daily maximum land surface temperature in
+      degrees Celsius."
+    description_fr: "Maximum des températures maximales quotidiennes de la
+      surface terrestre en degrés Celsius."
+    description_pt: "Máximo das temperaturas máximas diárias da superfície
+      terrestre em graus Celsius."
+
+  mean_min_land_temperature_c:
+    snt_var_name: mean_min_land_temperature_c
+    label_en: "Mean of minimum land surface temperature (°C)"
+    label_fr: "Moyenne des températures de surface minimales (°C)"
+    label_pt: "Média das temperaturas mínimas da superfície (°C)"
+    description_en: "Mean of daily minimum land surface temperature in degrees
+      Celsius."
+    description_fr: "Moyenne des températures minimales quotidiennes de la
+      surface terrestre en degrés Celsius."
+    description_pt: "Média das temperaturas mínimas diárias da superfície
+      terrestre em graus Celsius."
+
+  median_min_land_temperature_c:
+    snt_var_name: median_min_land_temperature_c
+    label_en: "Median of minimum land surface temperature (°C)"
+    label_fr: "Médiane des températures de surface minimales (°C)"
+    label_pt: "Mediana das temperaturas mínimas da superfície (°C)"
+    description_en: "Median of daily minimum land surface temperature in degrees
+      Celsius."
+    description_fr: "Médiane des températures minimales quotidiennes de la
+      surface terrestre en degrés Celsius."
+    description_pt: "Mediana das temperaturas mínimas diárias da superfície
+      terrestre em graus Celsius."
+
+  min_min_land_temperature_c:
+    snt_var_name: min_min_land_temperature_c
+    label_en: "Minimum of minimum land surface temperature (°C)"
+    label_fr: "Minimum des températures de surface minimales (°C)"
+    label_pt: "Mínimo das temperaturas mínimas da superfície (°C)"
+    description_en: "Minimum of daily minimum land surface temperature in
+      degrees Celsius."
+    description_fr: "Minimum des températures minimales quotidiennes de la
+      surface terrestre en degrés Celsius."
+    description_pt: "Mínimo das temperaturas mínimas diárias da superfície
+      terrestre em graus Celsius."
+
+  max_min_land_temperature_c:
+    snt_var_name: max_min_land_temperature_c
+    label_en: "Maximum of minimum land surface temperature (°C)"
+    label_fr: "Maximum des températures de surface minimales (°C)"
+    label_pt: "Máximo das temperaturas mínimas da superfície (°C)"
+    description_en: "Maximum of daily minimum land surface temperature in
+      degrees Celsius."
+    description_fr: "Maximum des températures minimales quotidiennes de la
+      surface terrestre en degrés Celsius."
+    description_pt: "Máximo das temperaturas mínimas diárias da superfície
+      terrestre em graus Celsius."
