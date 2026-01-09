@@ -11,7 +11,7 @@ download_process_nasapower(
   end_date = "2025-12-31",
   power_vars = c("PRECTOTCORR", "T2M_MAX", "T2M_MIN", "T2M", "TS", "TS_MAX", "TS_MIN",
     "RH2M"),
-  n_sample_points = 10,
+  n_sample_points = 3,
   point_crs = 6933,
   power_community = "ag",
   max_retries = 3,
@@ -34,7 +34,7 @@ unit identifier. Default is \code{c("adm0", "adm1", "adm2")}.}
 
 \item{n_sample_points}{Number of random points to sample per polygon.
 Median is computed across points. Smaller polygons may yield fewer points.
-Default is 10.}
+Default is 3.}
 
 \item{point_crs}{EPSG code used for point sampling.
 Default is 6933 (World Cylindrical Equal Area).}
