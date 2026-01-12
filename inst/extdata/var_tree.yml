@@ -1211,24 +1211,43 @@ dhs_csb:
     label_fr: "Intervalle de confiance supérieur à 95% pour le recours aux soins du secteur privé (%)"
     label_pt: "Intervalo de confiança superior de 95% para procura de cuidados do setor privado (%)"
 
+  # ── Care-seeking from trained provider ────────────────────────────────────────
+  dhs_csb_trained:
+    snt_var_name: dhs_csb_trained
+    label_en: "DHS care-seeking for fever - trained provider (%)"
+    label_fr: "DHS recours aux soins pour fièvre - prestataire formé (%)"
+    label_pt: "DHS procura de cuidados para febre - prestador treinado (%)"
+
+  dhs_csb_trained_low:
+    snt_var_name: dhs_csb_trained_low
+    label_en: "DHS care-seeking trained provider lower CI (%)"
+    label_fr: "DHS recours aux soins prestataire formé IC inférieur (%)"
+    label_pt: "DHS procura de cuidados prestador treinado IC inferior (%)"
+
+  dhs_csb_trained_upp:
+    snt_var_name: dhs_csb_trained_upp
+    label_en: "DHS care-seeking trained provider upper CI (%)"
+    label_fr: "DHS recours aux soins prestataire formé IC supérieur (%)"
+    label_pt: "DHS procura de cuidados prestador treinado IC superior (%)"
+
   # ── No care-seeking ───────────────────────────────────────────────────────────
   dhs_csb_none:
     snt_var_name: dhs_csb_none
-    label_en: "No care-seeking for fever among children 0-59 months (%). Numerator: children with fever who did not seek any care. Denominator: children with fever."
-    label_fr: "Absence de recours aux soins pour fièvre chez les enfants de 0-59 mois (%). Numérateur: enfants fiévreux n'ayant consulté aucun prestataire. Dénominateur: enfants fiévreux."
-    label_pt: "Ausência de procura de cuidados para febre em crianças de 0-59 meses (%). Numerador: crianças febris que não procuraram cuidados. Denominador: crianças febris."
+    label_en: "DHS no care-seeking for fever (%)"
+    label_fr: "DHS absence de recours aux soins pour fièvre (%)"
+    label_pt: "DHS ausência de procura de cuidados para febre (%)"
 
   dhs_csb_none_low:
     snt_var_name: dhs_csb_none_low
-    label_en: "Lower 95% confidence interval for no care-seeking (%)"
-    label_fr: "Intervalle de confiance inférieur à 95% pour l'absence de recours aux soins (%)"
-    label_pt: "Intervalo de confiança inferior de 95% para ausência de procura de cuidados (%)"
+    label_en: "DHS no care-seeking lower CI (%)"
+    label_fr: "DHS absence de recours aux soins IC inférieur (%)"
+    label_pt: "DHS ausência de procura de cuidados IC inferior (%)"
 
   dhs_csb_none_upp:
     snt_var_name: dhs_csb_none_upp
-    label_en: "Upper 95% confidence interval for no care-seeking (%)"
-    label_fr: "Intervalle de confiance supérieur à 95% pour l'absence de recours aux soins (%)"
-    label_pt: "Intervalo de confiança superior de 95% para ausência de procura de cuidados (%)"
+    label_en: "DHS no care-seeking upper CI (%)"
+    label_fr: "DHS absence de recours aux soins IC supérieur (%)"
+    label_pt: "DHS ausência de procura de cuidados IC superior (%)"
 
   # ── Sample sizes ──────────────────────────────────────────────────────────────
   dhs_n_fever:
@@ -1239,21 +1258,27 @@ dhs_csb:
 
   dhs_n_public:
     snt_var_name: dhs_n_public
-    label_en: "Number of children 0-59 months with fever who sought care in public sector (numerator for dhs_csb_public)"
-    label_fr: "Nombre d'enfants de 0-59 mois fiévreux ayant consulté le secteur public (numérateur pour dhs_csb_public)"
-    label_pt: "Número de crianças de 0-59 meses febris que procuraram setor público (numerador para dhs_csb_public)"
+    label_en: "DHS number seeking public sector care"
+    label_fr: "DHS nombre ayant consulté le secteur public"
+    label_pt: "DHS número que procurou setor público"
 
   dhs_n_private:
     snt_var_name: dhs_n_private
-    label_en: "Number of children 0-59 months with fever who sought care in private sector (numerator for dhs_csb_private)"
-    label_fr: "Nombre d'enfants de 0-59 mois fiévreux ayant consulté le secteur privé (numérateur pour dhs_csb_private)"
-    label_pt: "Número de crianças de 0-59 meses febris que procuraram setor privado (numerador para dhs_csb_private)"
+    label_en: "DHS number seeking private sector care"
+    label_fr: "DHS nombre ayant consulté le secteur privé"
+    label_pt: "DHS número que procurou setor privado"
 
   dhs_n_none:
     snt_var_name: dhs_n_none
-    label_en: "Number of children 0-59 months with fever who did not seek care (numerator for dhs_csb_none)"
-    label_fr: "Nombre d'enfants de 0-59 mois fiévreux n'ayant pas consulté (numérateur pour dhs_csb_none)"
-    label_pt: "Número de crianças de 0-59 meses febris que não procuraram cuidados (numerador para dhs_csb_none)"
+    label_en: "DHS number not seeking care"
+    label_fr: "DHS nombre n'ayant pas consulté"
+    label_pt: "DHS número que não procurou cuidados"
+
+  dhs_n_trained:
+    snt_var_name: dhs_n_trained
+    label_en: "DHS number seeking trained provider care"
+    label_fr: "DHS nombre ayant consulté un prestataire formé"
+    label_pt: "DHS número que procurou prestador treinado"
 
 dhs_itn:
   _description: "DHS Insecticide-Treated Net coverage and usage indicators."
