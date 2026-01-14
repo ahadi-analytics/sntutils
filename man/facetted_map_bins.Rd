@@ -8,6 +8,7 @@ facetted_map_bins(
   data,
   fill_col,
   facet_col,
+  facet_row = NULL,
   adm1_shp = NULL,
   fill_colors,
   title,
@@ -17,7 +18,8 @@ facetted_map_bins(
   output_file = NULL,
   width = 7,
   height = 10,
-  dpi = 300
+  dpi = 300,
+  scale = 1
 )
 }
 \arguments{
@@ -28,8 +30,12 @@ Must include the columns specified in \code{fill_col} and \code{facet_col}.}
 polygon fill. This column should be a factor or character vector with
 levels matching \code{fill_colors}.}
 
-\item{facet_col}{Character scalar. Name of the column used for faceting,
-typically a time variable such as \code{year}.}
+\item{facet_col}{Character scalar. Name of the column used for faceting
+columns, typically a time variable such as \code{year}.}
+
+\item{facet_row}{Optional character scalar. Name of the column used for
+faceting rows. When provided, the function uses \code{facet_grid(row ~ col)}
+instead of \code{facet_wrap()}. Default is \code{NULL}.}
 
 \item{adm1_shp}{Optional \code{sf} object containing higher-level administrative
 boundaries (e.g. ADM1). When provided, boundaries are overlaid as thin
@@ -44,7 +50,8 @@ exactly to the levels in \code{fill_col}. Colors should be hex codes.}
 
 \item{fill_label}{Character scalar. Legend title for the fill scale.}
 
-\item{ncol}{Integer. Number of columns in the facet layout. Default is \code{3}.}
+\item{ncol}{Integer. Number of columns in the facet layout. Only used when
+\code{facet_row} is \code{NULL} (i.e., when using \code{facet_wrap()}). Default is \code{3}.}
 
 \item{output_file}{Optional character scalar. File path where the plot
 should be saved. If \code{NULL}, the plot is not saved to disk.}
@@ -55,6 +62,10 @@ should be saved. If \code{NULL}, the plot is not saved to disk.}
 
 \item{dpi}{Numeric. Resolution (dots per inch) for saved output.
 Default is \code{300}.}
+
+\item{scale}{Numeric. Scaling factor for the plot. Values greater than 1
+make text and elements relatively smaller; values less than 1 make them
+larger. Default is \code{1}.}
 }
 \value{
 A \code{ggplot} object. If \code{output_file} is provided, the plot is also written
