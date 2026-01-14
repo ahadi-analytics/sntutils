@@ -22,8 +22,12 @@
 #'   polygon fill. This column should be a factor or character vector with
 #'   levels matching `fill_colors`.
 #'
-#' @param facet_col Character scalar. Name of the column used for faceting,
-#'   typically a time variable such as `year`.
+#' @param facet_col Character scalar. Name of the column used for faceting
+#'   columns, typically a time variable such as `year`.
+#'
+#' @param facet_row Optional character scalar. Name of the column used for
+#'   faceting rows. When provided, the function uses `facet_grid(row ~ col)`
+#'   instead of `facet_wrap()`. Default is `NULL`.
 #'
 #' @param adm1_shp Optional `sf` object containing higher-level administrative
 #'   boundaries (e.g. ADM1). When provided, boundaries are overlaid as thin
@@ -38,7 +42,8 @@
 #'
 #' @param fill_label Character scalar. Legend title for the fill scale.
 #'
-#' @param ncol Integer. Number of columns in the facet layout. Default is `3`.
+#' @param ncol Integer. Number of columns in the facet layout. Only used when
+#'   `facet_row` is `NULL` (i.e., when using `facet_wrap()`). Default is `3`.
 #'
 #' @param output_file Optional character scalar. File path where the plot
 #'   should be saved. If `NULL`, the plot is not saved to disk.
@@ -49,6 +54,10 @@
 #'
 #' @param dpi Numeric. Resolution (dots per inch) for saved output.
 #'   Default is `300`.
+#'
+#' @param scale Numeric. Scaling factor for the plot. Values greater than 1
+#'   make text and elements relatively smaller; values less than 1 make them
+#'   larger. Default is `1`.
 #'
 #' @return
 #' A `ggplot` object. If `output_file` is provided, the plot is also written
@@ -97,6 +106,7 @@ facetted_map_bins <- function(
   data,
   fill_col,
   facet_col,
+  facet_row = NULL,
   adm1_shp = NULL,
   fill_colors,
   title,
@@ -106,7 +116,8 @@ facetted_map_bins <- function(
   output_file = NULL,
   width = 7,
   height = 10,
-  dpi = 300
+  dpi = 300,
+  scale = 1
 ) {
   plot_obj <-
     ggplot2::ggplot(data) +
@@ -147,11 +158,27 @@ facetted_map_bins <- function(
         nrow = 1,
         byrow = TRUE
       )
-    ) +
-    ggplot2::facet_wrap(
-      stats::as.formula(paste0("~", facet_col)),
-      ncol = ncol
-    ) +
+    )
+
+  if (!is.null(facet_row)) {
+    plot_obj <-
+      plot_obj +
+      ggplot2::facet_grid(
+        rows = ggplot2::vars(.data[[facet_row]]),
+        cols = ggplot2::vars(.data[[facet_col]]),
+        drop = FALSE
+      )
+  } else {
+    plot_obj <-
+      plot_obj +
+      ggplot2::facet_wrap(
+        stats::as.formula(paste0("~", facet_col)),
+        ncol = ncol
+      )
+  }
+
+  plot_obj <-
+    plot_obj +
     ggplot2::labs(
       title = title,
       subtitle = subtitle,
@@ -161,6 +188,7 @@ facetted_map_bins <- function(
     ggplot2::theme(
       legend.position = "bottom",
       strip.text = ggplot2::element_text(face = "bold", size = 10),
+      strip.text.y = ggplot2::element_text(angle = -90),
       panel.spacing = ggplot2::unit(1, "lines"),
       plot.title = ggplot2::element_text(
         margin = ggplot2::margin(b = 8)
@@ -179,7 +207,8 @@ facetted_map_bins <- function(
       filename = output_file,
       width = width,
       height = height,
-      dpi = dpi
+      dpi = dpi,
+      scale = scale
     )
   }
 
