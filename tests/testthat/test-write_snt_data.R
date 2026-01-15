@@ -305,7 +305,8 @@ testthat::test_that(
     quiet = FALSE
   )
   testthat::expect_true(res2$ok[[1]])
-  testthat::expect_identical(res1$path[[1]], res2$path[[1]])
+  # compare basenames to avoid symlink resolution differences on macOS
+  testthat::expect_identical(basename(res1$path[[1]]), basename(res2$path[[1]]))
   testthat::expect_true(fs::file_exists(res2$path[[1]]))
   info2 <- fs::file_info(res2$path[[1]])
 
