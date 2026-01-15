@@ -784,6 +784,58 @@ calculate_reporting_metrics <- function(
   result
 }
 
+#' Calculate reporting rate and active status for health facilities
+  #'
+  #' @param data Data frame with facility data
+  #' @param start_col Name of column with facility opening date
+  #' @param end_col Name of column with facility closing/end date
+  #' @param var Name of column with actual report count
+  #' @param ref_date Reference date to check active status (default: today)
+  #' @return Data frame with reprate and active_status columns
+  #' @export
+  calculate_reporting_metrics_dates <- function(
+    data,
+    start_col,
+    end_col,
+    var,
+    ref_date = Sys.Date()
+  ) {
+    required_cols <- c(start_col, end_col, var)
+    missing_cols <- setdiff(required_cols, names(data))
+    if (length(missing_cols) > 0) {
+      cli::cli_abort("Column(s) not found: {.val {missing_cols}}")
+    }
+
+    if (nrow(data) == 0) {
+      data[["reprate"]] <- numeric(0)
+      data[["active_status"]] <- character(0)
+      return(data)
+    }
+
+    ref_date <- as.Date(ref_date)
+
+    data |>
+      dplyr::mutate(
+        .start = as.Date(.data[[start_col]]),
+        .end = as.Date(.data[[end_col]]),
+        .months_open = as.numeric((.end - .start) / 30.44),
+        .months_open = dplyr::case_when(
+          is.na(.months_open) ~ NA_real_,
+          .months_open <= 0 ~ NA_real_,
+          TRUE ~ .months_open
+        ),
+        reprate = .data[[var]] / .months_open,
+        reprate = pmin(reprate, 1) |> round(2),
+        activity_status = dplyr::case_when(
+          is.na(.start) | is.na(.end) ~ NA_character_,
+          .start > ref_date ~ "Inactive",
+          .end < ref_date ~ "Inactive",
+          TRUE ~ "Active"
+        )
+      ) |>
+      dplyr::select(-".start", -".end", -".months_open")
+  }
+
 # Internal helper to normalize method parameter
 #' @noRd
 .normalize_method <- function(method) {
