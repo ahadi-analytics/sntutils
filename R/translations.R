@@ -311,8 +311,8 @@ translate_text_vec <- function(text, ...) {
 #' in malaria program contexts. the first French acronym listed is treated
 #' as the preferred one when enforcing acronyms.
 #'
-#' @return tibble with columns: english_acronyms (list), english_full,
-#'   french_acronyms (list), french_full, preferred_french_acronym
+#' @return tibble with columns: english_acronyms, english_full,
+#'   french_acronyms, french_full, preferred_french_acronym
 #'
 #' @examples
 #' tbl <- french_malaria_acronyms()
@@ -384,9 +384,17 @@ french_malaria_acronyms <- function() {
   )
 
   tibble::tibble(
-    english_acronyms = english_acronyms,
+    english_acronyms = vapply(
+      english_acronyms,
+      function(x) paste(x, collapse = "; "),
+      character(1)
+    ),
     english_full = english_full,
-    french_acronyms = french_acronyms,
+    french_acronyms = vapply(
+      french_acronyms,
+      function(x) paste(x, collapse = "; "),
+      character(1)
+    ),
     french_full = french_full,
     preferred_french_acronym = preferred
   )

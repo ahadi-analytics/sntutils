@@ -8,13 +8,19 @@
   round(x / to) * to
 }
 
-#' Format number with commas
+#' Format number with K/M suffix for large values
 #'
 #' @param x Numeric vector.
-#' @return Character vector with comma-separated thousands.
+#' @param digits Integer. Decimal places for K/M values.
+#' @return Character vector with K (thousands) or M (millions) suffix.
 #' @noRd
-.format_number <- function(x) {
-  formatC(x, format = "f", digits = 0, big.mark = ",")
+.format_number <- function(x, digits = 0) {
+  dplyr::case_when(
+    is.na(x) ~ NA_character_,
+    abs(x) >= 1e6 ~ paste0(round(x / 1e6, digits), "M"),
+    abs(x) >= 1e3 ~ paste0(round(x / 1e3, digits), "K"),
+    TRUE ~ formatC(x, format = "f", digits = digits, big.mark = ",")
+  )
 }
 
 #' List available palette names
@@ -355,7 +361,7 @@ auto_bin <- function(
 
   # helper to build labels
   make_labels <- function(lower, upper, digits) {
-    fmt <- function(x) formatC(x, format = "f", digits = digits, big.mark = ",")
+    fmt <- function(x) .format_number(x, digits = digits)
     ifelse(
       is.infinite(upper),
       paste0(">", fmt(lower)),

@@ -85,7 +85,9 @@
   }
 
   fname <- paste0(data_name, suffix, ".", file_format)
-  fs::path_abs(fs::path(path, fname))
+  # normalize the directory first (which exists), then append filename
+  norm_dir <- normalizePath(path, winslash = "/", mustWork = FALSE)
+  fs::path(norm_dir, fname)
 }
 
 # encoding ---------------------------------------------------------------------
@@ -657,7 +659,7 @@
     return(character(0))
   }
 
-  files <- fs::path_abs(files)
+  files <- normalizePath(files, winslash = "/", mustWork = FALSE)
   fmt <- tolower(fmt)
   files <- files[tolower(fs::path_ext(files)) == fmt]
   if (length(files) <= keep) {
@@ -675,7 +677,10 @@
     seq_len(base::min(keep, base::length(ord)))
   ]
   keep_paths <- files[keep_idx]
-  keep_paths <- unique(c(keep_paths, fs::path_abs(protect)))
+  keep_paths <- unique(c(
+    keep_paths,
+    normalizePath(protect, winslash = "/", mustWork = FALSE)
+  ))
 
   drop <- setdiff(files, keep_paths)
   if (length(drop) == 0L) {
@@ -797,14 +802,14 @@ write_snt_data <- function(
           "Refusing to overwrite existing file (non-versioned).",
           "i" = "Set `overwrite = TRUE`, enable `include_date`, ",
           "i" = "or supply a `version_tag`.",
-          "x" = "Path: {fs::path_abs(write_path)}"
+          "x" = "Path: {normalizePath(write_path, winslash = '/', mustWork = FALSE)}"
         ))
       }
       ok_rm <- try(fs::file_delete(write_path), silent = TRUE)
       if (inherits(ok_rm, "try-error") && fs::file_exists(write_path)) {
         cli::cli_abort(c(
           "Failed to remove existing file before overwrite.",
-          "x" = "Path: {fs::path_abs(write_path)}"
+          "x" = "Path: {normalizePath(write_path, winslash = '/', mustWork = FALSE)}"
         ))
       }
     }

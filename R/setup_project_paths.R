@@ -31,7 +31,7 @@ setup_project_paths <- function(base_path = NULL, quiet = FALSE) {
   if (is.null(base_path)) {
     if (requireNamespace("here", quietly = TRUE)) {
       # here::here() returns a path; make absolute for safety
-      root <- fs::path_abs(here::here())
+      root <- normalizePath(here::here(), winslash = "/", mustWork = FALSE)
     }
     # fallback to rprojroot heuristics
     if (
@@ -44,12 +44,16 @@ setup_project_paths <- function(base_path = NULL, quiet = FALSE) {
       if (inherits(root, "try-error")) {
         root <- NULL
       }
-      if (!is.null(root)) root <- fs::path_abs(root)
+      if (!is.null(root)) {
+        root <- normalizePath(root, winslash = "/", mustWork = FALSE)
+      }
     }
     # final fallback
-    if (is.null(root)) root <- fs::path_abs(getwd())
+    if (is.null(root)) {
+      root <- normalizePath(getwd(), winslash = "/", mustWork = FALSE)
+    }
   } else {
-    root <- fs::path_abs(base_path)
+    root <- normalizePath(base_path, winslash = "/", mustWork = FALSE)
   }
 
   # small join helper to keep width tidy

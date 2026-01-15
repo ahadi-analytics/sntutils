@@ -45,7 +45,7 @@ read_snt_data <- function(path, data_name, file_formats = NULL, quiet = TRUE) {
   cand <- if (length(ver_files) > 0) ver_files else unv_files
   if (length(cand) == 0) {
     cli::cli_abort(c(
-      "No files found for '{data_name}' in {fs::path_abs(path)}.",
+      "No files found for '{data_name}' in {normalizePath(path, winslash = '/', mustWork = FALSE)}.",
       "i" = if (is.null(file_formats)) {
         "Tried any supported format."
       } else {
