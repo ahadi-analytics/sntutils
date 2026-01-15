@@ -122,7 +122,10 @@ testthat::test_that("base_path normalization produces absolute core", {
   paths <- setup_project_paths(base_path = nested, quiet = TRUE)
 
   testthat::expect_true(fs::is_absolute_path(paths$core))
-  testthat::expect_identical(paths$core, fs::path_abs(nested))
+  testthat::expect_identical(
+    paths$core,
+    normalizePath(nested, winslash = "/", mustWork = FALSE)
+  )
 })
 
 testthat::test_that("quiet = TRUE is silent; quiet = FALSE emits warnings", {
@@ -146,5 +149,8 @@ testthat::test_that(
   # even if those packages are not installed, passing base_path must work
   tmp <- withr::local_tempdir()
   paths <- setup_project_paths(base_path = tmp, quiet = TRUE)
-  testthat::expect_identical(paths$core, fs::path_abs(tmp))
+  testthat::expect_identical(
+    paths$core,
+    normalizePath(tmp, winslash = "/", mustWork = FALSE)
+  )
 })
