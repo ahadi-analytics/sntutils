@@ -98,12 +98,12 @@ get_palette <- function(palette, n = NULL) {
       "#fc9272", "#fb6a4a", "#de2d26", "#a50f15"
     ),
     byor = c(
-      "#9ecae1", "#6baed6", "#4292c6", "#fecc5c",
-      "#fd8d3c", "#f46d43", "#e31a1c", "#800026"
+      "#084594", "#2171b5", "#6baed6", "#c6dbef",
+      "#fed976", "#fd8d3c", "#e31a1c", "#800026"
     ),
     gyor = c(
-      "#31a354", "#a1d99b", "#a6cee3", "#fecc5c",
-      "#fd8d3c", "#f46d43", "#e31a1c", "#800026"
+      "#005a32", "#238b45", "#74c476", "#c7e9c0",
+      "#fed976", "#fd8d3c", "#e31a1c", "#800026"
     ),
     # colorbrewer sequential
     ylord = c(
