@@ -661,3 +661,119 @@ test_that("consensus_colors works with pre-computed detection results", {
 
   testthat::expect_s3_class(plot, "ggplot")
 })
+
+# impute_outlier_ma tests ---------------------------------------------------
+
+test_that("impute_outlier_ma replaces single outlier with mean of neighbors", {
+  x <- c(10, 12, 100, 14, 11)
+  result <- impute_outlier_ma(x, threshold = 50)
+
+  # 100 should be replaced with mean(12, 14) = 13
+
+  testthat::expect_equal(result, c(10, 12, 13, 14, 11))
+})
+
+test_that("impute_outlier_ma handles consecutive outliers", {
+  x <- c(10, 100, 200, 15)
+  result <- impute_outlier_ma(x, threshold = 50)
+
+  # first outlier (100): only valid neighbor is 10 (prev), next is outlier
+
+  # second outlier (200): only valid neighbor is 15 (next), prev is outlier
+  testthat::expect_equal(result, c(10, 10, 15, 15))
+})
+
+test_that("impute_outlier_ma keeps values at or below threshold", {
+  x <- c(10, 50, 30, 50, 20)
+  result <- impute_outlier_ma(x, threshold = 50)
+
+  # all values <= 50, nothing should change
+
+  testthat::expect_equal(result, x)
+})
+
+test_that("impute_outlier_ma handles outlier at start of vector", {
+  x <- c(100, 10, 12, 14)
+  result <- impute_outlier_ma(x, threshold = 50)
+
+  # outlier at start: only valid neighbor is 10 (next), no prev
+  testthat::expect_equal(result, c(10, 10, 12, 14))
+})
+
+test_that("impute_outlier_ma handles outlier at end of vector", {
+  x <- c(10, 12, 14, 100)
+  result <- impute_outlier_ma(x, threshold = 50)
+
+  # outlier at end: only valid neighbor is 14 (prev), no next
+  testthat::expect_equal(result, c(10, 12, 14, 14))
+})
+
+test_that("impute_outlier_ma keeps outlier when all neighbors are outliers", {
+  x <- c(100, 200, 100)
+  result <- impute_outlier_ma(x, threshold = 50)
+
+  # middle value 200: both neighbors are outliers, no valid neighbors
+  # edge values: each has one neighbor that's an outlier
+  # all should be kept as-is since no valid adjacent values
+
+  testthat::expect_equal(result, c(100, 200, 100))
+})
+
+test_that("impute_outlier_ma handles NA values", {
+  x <- c(10, NA, 100, 14, 11)
+  result <- impute_outlier_ma(x, threshold = 50)
+
+  # NA is <= threshold evaluates to NA, so prev neighbor for 100 is NA
+  # 100 should use only next neighbor (14)
+  testthat::expect_equal(result[3], 14)
+  testthat::expect_true(is.na(result[2]))
+})
+
+test_that("impute_outlier_ma returns same length vector", {
+  x <- c(1, 2, 100, 4, 5, 200, 7)
+  result <- impute_outlier_ma(x, threshold = 50)
+
+  testthat::expect_equal(length(result), length(x))
+})
+
+test_that("impute_outlier_ma rounds result to integer", {
+  x <- c(10, 13, 100, 14, 11)
+  result <- impute_outlier_ma(x, threshold = 50)
+
+  # mean(13, 14) = 13.5, should round to 14
+  testthat::expect_equal(result[3], 14)
+})
+test_that("impute_outlier_ma works with dplyr grouped operations", {
+  data <- tibble::tibble(
+    group = c("A", "A", "A", "B", "B", "B"),
+    value = c(10, 100, 12, 20, 200, 22)
+  )
+
+  result <- data |>
+    dplyr::group_by(group) |>
+    dplyr::mutate(imputed = impute_outlier_ma(value, threshold = 50)) |>
+    dplyr::ungroup()
+
+  # group A: 100 replaced with mean(10, 12) = 11
+  # group B: 200 replaced with mean(20, 22) = 21
+  testthat::expect_equal(result$imputed, c(10, 11, 12, 20, 21, 22))
+})
+
+test_that("impute_outlier_ma errors on non-numeric input", {
+  testthat::expect_error(
+    impute_outlier_ma(c("a", "b", "c"), threshold = 50),
+    "must be a numeric vector"
+  )
+})
+
+test_that("impute_outlier_ma errors on invalid threshold", {
+  testthat::expect_error(
+    impute_outlier_ma(c(1, 2, 3), threshold = "high"),
+    "must be a single numeric value"
+  )
+
+  testthat::expect_error(
+    impute_outlier_ma(c(1, 2, 3), threshold = c(10, 20)),
+    "must be a single numeric value"
+  )
+})
