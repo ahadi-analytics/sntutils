@@ -1,5 +1,25 @@
 # helpers ----------------------------------------------------------------------
 
+#' smart round: 2 decimals for doubles, preserve integers (internal)
+#'
+#' @param x numeric scalar to format.
+#'
+#' @return character string.
+#'
+#' @keywords internal
+#' @noRd
+.smart_round <- function(x) {
+  if (base::is.numeric(x) && !base::inherits(x, c("Date", "POSIXt"))) {
+    base::ifelse(
+      x == base::floor(x),
+      base::as.character(base::as.integer(x)),
+      base::as.character(base::round(x, 2))
+    )
+  } else {
+    base::as.character(x)
+  }
+}
+
 #' guess a compact semantic type (internal)
 #'
 #' @description
@@ -121,9 +141,17 @@
     base::unique(utils::head(x, n))
   }
 
+  # apply smart rounding for numeric values
+  formatted_vals <- if (base::is.numeric(vals) &&
+                        !base::inherits(vals, c("Date", "POSIXt"))) {
+    base::vapply(vals, .smart_round, character(1))
+  } else {
+    base::as.character(vals)
+  }
+
   # collapse into a string
   out <- base::paste(
-    utils::head(base::as.character(vals), n),
+    utils::head(formatted_vals, n),
     collapse = ", "
   )
 
@@ -160,8 +188,8 @@
   # compute range
   rng <- base::range(x2)
 
-  # return as character
-  c(base::as.character(rng[1L]), base::as.character(rng[2L]))
+  # return as character with smart rounding
+  c(.smart_round(rng[1L]), .smart_round(rng[2L]))
 }
 
 #' read a name/label mapping from csv (internal)
@@ -373,9 +401,17 @@
     base::unique(utils::head(x, n))
   }
 
+  # apply smart rounding for numeric values
+  formatted_vals <- if (base::is.numeric(vals) &&
+                        !base::inherits(vals, c("Date", "POSIXt"))) {
+    base::vapply(vals, .smart_round, character(1))
+  } else {
+    base::as.character(vals)
+  }
+
   # collapse into a string
   out <- base::paste(
-    utils::head(base::as.character(vals), n),
+    utils::head(formatted_vals, n),
     collapse = ", "
   )
 
@@ -412,8 +448,8 @@
   # compute range
   rng <- base::range(x2)
 
-  # return as character
-  c(base::as.character(rng[1L]), base::as.character(rng[2L]))
+  # return as character with smart rounding
+  c(.smart_round(rng[1L]), .smart_round(rng[2L]))
 }
 
 #' read a name/label mapping from csv (internal)

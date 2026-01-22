@@ -647,21 +647,9 @@ validate_process_spatial <- function(
   )
   results$spatial_extent <- sf::st_bbox(shp_std)
 
-  # Create admin level aggregations
+  # Create admin level aggregations (includes hole removal and validation)
   results$final_spat_vec <-
     .create_admin_aggregations(shp_std, admin_mapping, quiet)
-
-  # remove holes across all admin levels when detected earlier
-  if (
-    !is.null(results$checks) &&
-      !is.null(results$checks$geometries_with_holes) &&
-      nrow(results$checks$geometries_with_holes) > 0
-  ) {
-    results$final_spat_vec <- lapply(
-      results$final_spat_vec,
-      nngeo::st_remove_holes
-    )
-  }
 
   # Create column dictionary
   results$column_dictionary <- .create_spatial_column_dictionary(
@@ -824,7 +812,18 @@ validate_process_spatial <- function(
           dplyr::summarise(
             geometry = sf::st_union(geometry),
             .groups = "drop"
-          ) |>
+          )
+
+        # clean aggregated geometries: make valid and remove interior holes
+        if (any(!sf::st_is_valid(agg_shp))) {
+          agg_shp <- sf::st_make_valid(agg_shp)
+        }
+        if (rlang::is_installed("nngeo")) {
+          agg_shp <- nngeo::st_remove_holes(agg_shp)
+        }
+
+        # recompute geometry hash after cleaning
+        agg_shp <- agg_shp |>
           dplyr::mutate(
             geometry_hash = sntutils::vdigest(geometry, algo = "xxhash64")
           )

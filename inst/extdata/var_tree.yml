@@ -891,6 +891,179 @@ interventions:
       label_fr: "Couverture AMM (%)"
       label_pt: "Cobertura AMM (%)"
 
+  # ── Incidence Cascade ──────────────────────────────────────────────────────────
+  # Stepwise adjustments to estimate true malaria burden from routine data.
+  # N0-N2: Available at monthly and annual levels
+  # N3-N4: Annual level only (requires care-seeking data)
+  incidence_cascade:
+    label_en: "Incidence cascade adjustments"
+    label_fr: "Ajustements en cascade de l'incidence"
+    label_pt: "Ajustes em cascata da incidência"
+
+    # ── Care-seeking proportions (inputs for N3/N4 adjustments) ────────────────
+    cs_public:
+      snt_var_name: cs_public
+      label_en: "Proportion seeking care at public facilities"
+      label_fr: "Proportion recourant aux soins dans les établissements publics"
+      label_pt: "Proporção que procura cuidados em unidades públicas"
+
+    cs_private:
+      snt_var_name: cs_private
+      label_en: "Proportion seeking care at private facilities"
+      label_fr: "Proportion recourant aux soins dans les établissements privés"
+      label_pt: "Proporção que procura cuidados em unidades privadas"
+
+    cs_none:
+      snt_var_name: cs_none
+      label_en: "Proportion seeking no care"
+      label_fr: "Proportion ne recourant pas aux soins"
+      label_pt: "Proporção que não procura cuidados"
+
+    # ── N0: Crude (raw counts, no adjustments) ─────────────────────────────────
+    n0_cases:
+      snt_var_name: n0_cases
+      label_en: "N0 cases: Crude confirmed cases (no adjustment)"
+      label_fr: "Cas N0 : Cas confirmés bruts (sans ajustement)"
+      label_pt: "Casos N0: Casos confirmados brutos (sem ajuste)"
+
+    n0_incidence:
+      snt_var_name: n0_incidence
+      label_en: "N0 incidence: Crude incidence rate (per 1,000)"
+      label_fr: "Incidence N0 : Taux d'incidence brut (pour 1 000)"
+      label_pt: "Incidência N0: Taxa de incidência bruta (por 1.000)"
+
+    # ── N1: Testing-adjusted ───────────────────────────────────────────────────
+    n1_cases:
+      snt_var_name: n1_cases
+      label_en: "N1 cases: Testing-adjusted (adds estimated positives from presumed)"
+      label_fr: "Cas N1 : Ajustés pour les tests (ajoute les positifs estimés des présumés)"
+      label_pt: "Casos N1: Ajustados para testes (adiciona positivos estimados dos presumidos)"
+
+    n1_incidence:
+      snt_var_name: n1_incidence
+      label_en: "N1 incidence: Testing-adjusted incidence rate (per 1,000)"
+      label_fr: "Incidence N1 : Taux d'incidence ajusté pour les tests (pour 1 000)"
+      label_pt: "Incidência N1: Taxa de incidência ajustada para testes (por 1.000)"
+
+    # ── N2: Reporting-adjusted ─────────────────────────────────────────────────
+    n2_cases:
+      snt_var_name: n2_cases
+      label_en: "N2 cases: Reporting-adjusted (inflates for non-reporting facilities)"
+      label_fr: "Cas N2 : Ajustés pour la notification (corrigés pour les établissements non déclarants)"
+      label_pt: "Casos N2: Ajustados para notificação (corrigidos para unidades não notificantes)"
+
+    n2_incidence:
+      snt_var_name: n2_incidence
+      label_en: "N2 incidence: Reporting-adjusted incidence rate (per 1,000)"
+      label_fr: "Incidence N2 : Taux d'incidence ajusté pour la notification (pour 1 000)"
+      label_pt: "Incidência N2: Taxa de incidência ajustada para notificação (por 1.000)"
+
+    # ── N3: Care-seeking-adjusted (ANNUAL ONLY) ────────────────────────────────
+    n3_cases:
+      snt_var_name: n3_cases
+      label_en: "N3 cases: Care-seeking-adjusted (adds private + non-seekers) [ANNUAL]"
+      label_fr: "Cas N3 : Ajustés pour le recours aux soins (ajoute privé + non-recours) [ANNUEL]"
+      label_pt: "Casos N3: Ajustados para procura de cuidados (adiciona privado + não-procura) [ANUAL]"
+
+    n3_incidence:
+      snt_var_name: n3_incidence
+      label_en: "N3 incidence: Full community-level estimate (per 1,000) [ANNUAL]"
+      label_fr: "Incidence N3 : Estimation complète au niveau communautaire (pour 1 000) [ANNUEL]"
+      label_pt: "Incidência N3: Estimativa completa a nível comunitário (por 1.000) [ANUAL]"
+
+    # ── N4: Conservative estimate (ANNUAL ONLY) ────────────────────────────────
+    n4_cases:
+      snt_var_name: n4_cases
+      label_en: "N4 cases: Public + non-seekers only (excludes private) [ANNUAL]"
+      label_fr: "Cas N4 : Public + non-recours uniquement (exclut le privé) [ANNUEL]"
+      label_pt: "Casos N4: Público + não-procura apenas (exclui privado) [ANUAL]"
+
+    n4_incidence:
+      snt_var_name: n4_incidence
+      label_en: "N4 incidence: Conservative estimate excluding private (per 1,000) [ANNUAL]"
+      label_fr: "Incidence N4 : Estimation conservatrice excluant le privé (pour 1 000) [ANNUEL]"
+      label_pt: "Incidência N4: Estimativa conservadora excluindo privado (por 1.000) [ANUAL]"
+
+    # ── Under-5 routine data ─────────────────────────────────────────────────────
+    conf_u5:
+      snt_var_name: conf_u5
+      label_en: "Confirmed malaria cases - Under 5 years"
+      label_fr: "Cas confirmés de paludisme - Moins de 5 ans"
+      label_pt: "Casos confirmados de malária - Menores de 5 anos"
+
+    test_u5:
+      snt_var_name: test_u5
+      label_en: "Tested for malaria - Under 5 years"
+      label_fr: "Personnes testées pour le paludisme - Moins de 5 ans"
+      label_pt: "Pessoas testadas para malária - Menores de 5 anos"
+
+    pres_u5:
+      snt_var_name: pres_u5
+      label_en: "Presumed malaria cases (treated without test) - Under 5 years"
+      label_fr: "Cas présumés de paludisme (traités sans test) - Moins de 5 ans"
+      label_pt: "Casos presumidos de malária (tratados sem teste) - Menores de 5 anos"
+
+    # ── Under-5 adjusted estimates ───────────────────────────────────────────────
+    n0_cases_u5:
+      snt_var_name: n0_cases_u5
+      label_en: "N0 cases - Under 5 years"
+      label_fr: "Cas N0 - Moins de 5 ans"
+      label_pt: "Casos N0 - Menores de 5 anos"
+
+    n0_incidence_u5:
+      snt_var_name: n0_incidence_u5
+      label_en: "N0 incidence - Under 5 years"
+      label_fr: "Incidence N0 - Moins de 5 ans"
+      label_pt: "Incidência N0 - Menores de 5 anos"
+
+    n1_cases_u5:
+      snt_var_name: n1_cases_u5
+      label_en: "N1 cases - Under 5 years"
+      label_fr: "Cas N1 - Moins de 5 ans"
+      label_pt: "Casos N1 - Menores de 5 anos"
+
+    n1_incidence_u5:
+      snt_var_name: n1_incidence_u5
+      label_en: "N1 incidence - Under 5 years"
+      label_fr: "Incidence N1 - Moins de 5 ans"
+      label_pt: "Incidência N1 - Menores de 5 anos"
+
+    n2_cases_u5:
+      snt_var_name: n2_cases_u5
+      label_en: "N2 cases - Under 5 years"
+      label_fr: "Cas N2 - Moins de 5 ans"
+      label_pt: "Casos N2 - Menores de 5 anos"
+
+    n2_incidence_u5:
+      snt_var_name: n2_incidence_u5
+      label_en: "N2 incidence - Under 5 years"
+      label_fr: "Incidence N2 - Moins de 5 ans"
+      label_pt: "Incidência N2 - Menores de 5 anos"
+
+    n3_cases_u5:
+      snt_var_name: n3_cases_u5
+      label_en: "N3 cases - Under 5 years"
+      label_fr: "Cas N3 - Moins de 5 ans"
+      label_pt: "Casos N3 - Menores de 5 anos"
+
+    n3_incidence_u5:
+      snt_var_name: n3_incidence_u5
+      label_en: "N3 incidence - Under 5 years"
+      label_fr: "Incidence N3 - Moins de 5 ans"
+      label_pt: "Incidência N3 - Menores de 5 anos"
+
+    n4_cases_u5:
+      snt_var_name: n4_cases_u5
+      label_en: "N4 cases - Under 5 years"
+      label_fr: "Cas N4 - Moins de 5 ans"
+      label_pt: "Casos N4 - Menores de 5 anos"
+
+    n4_incidence_u5:
+      snt_var_name: n4_incidence_u5
+      label_en: "N4 incidence - Under 5 years"
+      label_fr: "Incidence N4 - Moins de 5 ans"
+      label_pt: "Incidência N4 - Menores de 5 anos"
+
 stock_management:
   _description: "Commodity availability, usage, and reporting."
   label_en: "Commodity and stock management"
@@ -2303,3 +2476,891 @@ schema:
       surface terrestre en degrés Celsius."
     description_pt: "Máximo das temperaturas mínimas diárias da superfície
       terrestre em graus Celsius."
+
+# ══════════════════════════════════════════════════════════════════════════════
+# MBG ESTIMATES (Model-Based Geostatistics)
+# ══════════════════════════════════════════════════════════════════════════════
+
+# ── PfPR - Parasite Prevalence ────────────────────────────────────────────────
+
+  pfpr_rdt_u5_mean:
+    snt_var_name: pfpr_rdt_u5_mean
+    label_en: "PfPR by RDT (6-59 months) - Mean"
+    label_fr: "PfPR par TDR (6-59 mois) - Moyenne"
+    label_pt: "PfPR por TDR (6-59 meses) - Média"
+  pfpr_rdt_u5_lower:
+    snt_var_name: pfpr_rdt_u5_lower
+    label_en: "PfPR by RDT (6-59 months) - Lower CI"
+    label_fr: "PfPR par TDR (6-59 mois) - IC inférieur"
+    label_pt: "PfPR por TDR (6-59 meses) - IC inferior"
+  pfpr_rdt_u5_upper:
+    snt_var_name: pfpr_rdt_u5_upper
+    label_en: "PfPR by RDT (6-59 months) - Upper CI"
+    label_fr: "PfPR par TDR (6-59 mois) - IC supérieur"
+    label_pt: "PfPR por TDR (6-59 meses) - IC superior"
+
+  pfpr_mic_u5_mean:
+    snt_var_name: pfpr_mic_u5_mean
+    label_en: "PfPR by microscopy (6-59 months) - Mean"
+    label_fr: "PfPR par microscopie (6-59 mois) - Moyenne"
+    label_pt: "PfPR por microscopia (6-59 meses) - Média"
+  pfpr_mic_u5_lower:
+    snt_var_name: pfpr_mic_u5_lower
+    label_en: "PfPR by microscopy (6-59 months) - Lower CI"
+    label_fr: "PfPR par microscopie (6-59 mois) - IC inférieur"
+    label_pt: "PfPR por microscopia (6-59 meses) - IC inferior"
+  pfpr_mic_u5_upper:
+    snt_var_name: pfpr_mic_u5_upper
+    label_en: "PfPR by microscopy (6-59 months) - Upper CI"
+    label_fr: "PfPR par microscopie (6-59 mois) - IC supérieur"
+    label_pt: "PfPR por microscopia (6-59 meses) - IC superior"
+
+  pfpr_rdt_5_9_mean:
+    snt_var_name: pfpr_rdt_5_9_mean
+    label_en: "PfPR by RDT (5-9 years) - Mean"
+    label_fr: "PfPR par TDR (5-9 ans) - Moyenne"
+    label_pt: "PfPR por TDR (5-9 anos) - Média"
+  pfpr_rdt_5_9_lower:
+    snt_var_name: pfpr_rdt_5_9_lower
+    label_en: "PfPR by RDT (5-9 years) - Lower CI"
+    label_fr: "PfPR par TDR (5-9 ans) - IC inférieur"
+    label_pt: "PfPR por TDR (5-9 anos) - IC inferior"
+  pfpr_rdt_5_9_upper:
+    snt_var_name: pfpr_rdt_5_9_upper
+    label_en: "PfPR by RDT (5-9 years) - Upper CI"
+    label_fr: "PfPR par TDR (5-9 ans) - IC supérieur"
+    label_pt: "PfPR por TDR (5-9 anos) - IC superior"
+
+  pfpr_mic_5_9_mean:
+    snt_var_name: pfpr_mic_5_9_mean
+    label_en: "PfPR by microscopy (5-9 years) - Mean"
+    label_fr: "PfPR par microscopie (5-9 ans) - Moyenne"
+    label_pt: "PfPR por microscopia (5-9 anos) - Média"
+  pfpr_mic_5_9_lower:
+    snt_var_name: pfpr_mic_5_9_lower
+    label_en: "PfPR by microscopy (5-9 years) - Lower CI"
+    label_fr: "PfPR par microscopie (5-9 ans) - IC inférieur"
+    label_pt: "PfPR por microscopia (5-9 anos) - IC inferior"
+  pfpr_mic_5_9_upper:
+    snt_var_name: pfpr_mic_5_9_upper
+    label_en: "PfPR by microscopy (5-9 years) - Upper CI"
+    label_fr: "PfPR par microscopie (5-9 ans) - IC supérieur"
+    label_pt: "PfPR por microscopia (5-9 anos) - IC superior"
+
+  pfpr_rdt_u10_mean:
+    snt_var_name: pfpr_rdt_u10_mean
+    label_en: "PfPR by RDT (6mo-10yrs) - Mean"
+    label_fr: "PfPR par TDR (6m-10ans) - Moyenne"
+    label_pt: "PfPR por TDR (6m-10anos) - Média"
+  pfpr_rdt_u10_lower:
+    snt_var_name: pfpr_rdt_u10_lower
+    label_en: "PfPR by RDT (6mo-10yrs) - Lower CI"
+    label_fr: "PfPR par TDR (6m-10ans) - IC inférieur"
+    label_pt: "PfPR por TDR (6m-10anos) - IC inferior"
+  pfpr_rdt_u10_upper:
+    snt_var_name: pfpr_rdt_u10_upper
+    label_en: "PfPR by RDT (6mo-10yrs) - Upper CI"
+    label_fr: "PfPR par TDR (6m-10ans) - IC supérieur"
+    label_pt: "PfPR por TDR (6m-10anos) - IC superior"
+
+  pfpr_mic_u10_mean:
+    snt_var_name: pfpr_mic_u10_mean
+    label_en: "PfPR by microscopy (6mo-10yrs) - Mean"
+    label_fr: "PfPR par microscopie (6m-10ans) - Moyenne"
+    label_pt: "PfPR por microscopia (6m-10anos) - Média"
+  pfpr_mic_u10_lower:
+    snt_var_name: pfpr_mic_u10_lower
+    label_en: "PfPR by microscopy (6mo-10yrs) - Lower CI"
+    label_fr: "PfPR par microscopie (6m-10ans) - IC inférieur"
+    label_pt: "PfPR por microscopia (6m-10anos) - IC inferior"
+  pfpr_mic_u10_upper:
+    snt_var_name: pfpr_mic_u10_upper
+    label_en: "PfPR by microscopy (6mo-10yrs) - Upper CI"
+    label_fr: "PfPR par microscopie (6m-10ans) - IC supérieur"
+    label_pt: "PfPR por microscopia (6m-10anos) - IC superior"
+
+  pfpr_rdt_2_10_mean:
+    snt_var_name: pfpr_rdt_2_10_mean
+    label_en: "PfPR by RDT (2-10 years) - Mean"
+    label_fr: "PfPR par TDR (2-10 ans) - Moyenne"
+    label_pt: "PfPR por TDR (2-10 anos) - Média"
+  pfpr_rdt_2_10_lower:
+    snt_var_name: pfpr_rdt_2_10_lower
+    label_en: "PfPR by RDT (2-10 years) - Lower CI"
+    label_fr: "PfPR par TDR (2-10 ans) - IC inférieur"
+    label_pt: "PfPR por TDR (2-10 anos) - IC inferior"
+  pfpr_rdt_2_10_upper:
+    snt_var_name: pfpr_rdt_2_10_upper
+    label_en: "PfPR by RDT (2-10 years) - Upper CI"
+    label_fr: "PfPR par TDR (2-10 ans) - IC supérieur"
+    label_pt: "PfPR por TDR (2-10 anos) - IC superior"
+
+  pfpr_mic_2_10_mean:
+    snt_var_name: pfpr_mic_2_10_mean
+    label_en: "PfPR by microscopy (2-10 years) - Mean"
+    label_fr: "PfPR par microscopie (2-10 ans) - Moyenne"
+    label_pt: "PfPR por microscopia (2-10 anos) - Média"
+  pfpr_mic_2_10_lower:
+    snt_var_name: pfpr_mic_2_10_lower
+    label_en: "PfPR by microscopy (2-10 years) - Lower CI"
+    label_fr: "PfPR par microscopie (2-10 ans) - IC inférieur"
+    label_pt: "PfPR por microscopia (2-10 anos) - IC inferior"
+  pfpr_mic_2_10_upper:
+    snt_var_name: pfpr_mic_2_10_upper
+    label_en: "PfPR by microscopy (2-10 years) - Upper CI"
+    label_fr: "PfPR par microscopie (2-10 ans) - IC supérieur"
+    label_pt: "PfPR por microscopia (2-10 anos) - IC superior"
+
+# ── ITN - Insecticide-Treated Nets ────────────────────────────────────────────
+
+  itn_ownership_mean:
+    snt_var_name: itn_ownership_mean
+    label_en: "ITN ownership (≥1 ITN) - Mean"
+    label_fr: "Possession de MII (≥1 MII) - Moyenne"
+    label_pt: "Posse de MTI (≥1 MTI) - Média"
+  itn_ownership_lower:
+    snt_var_name: itn_ownership_lower
+    label_en: "ITN ownership (≥1 ITN) - Lower CI"
+    label_fr: "Possession de MII (≥1 MII) - IC inférieur"
+    label_pt: "Posse de MTI (≥1 MTI) - IC inferior"
+  itn_ownership_upper:
+    snt_var_name: itn_ownership_upper
+    label_en: "ITN ownership (≥1 ITN) - Upper CI"
+    label_fr: "Possession de MII (≥1 MII) - IC supérieur"
+    label_pt: "Posse de MTI (≥1 MTI) - IC superior"
+
+  itn_access_mean:
+    snt_var_name: itn_access_mean
+    label_en: "ITN access - Mean"
+    label_fr: "Accès aux MII - Moyenne"
+    label_pt: "Acesso a MTI - Média"
+  itn_access_lower:
+    snt_var_name: itn_access_lower
+    label_en: "ITN access - Lower CI"
+    label_fr: "Accès aux MII - IC inférieur"
+    label_pt: "Acesso a MTI - IC inferior"
+  itn_access_upper:
+    snt_var_name: itn_access_upper
+    label_en: "ITN access - Upper CI"
+    label_fr: "Accès aux MII - IC supérieur"
+    label_pt: "Acesso a MTI - IC superior"
+
+  itn_use_all_mean:
+    snt_var_name: itn_use_all_mean
+    label_en: "ITN use (all population) - Mean"
+    label_fr: "Utilisation des MII (toute la population) - Moyenne"
+    label_pt: "Uso de MTI (toda a população) - Média"
+  itn_use_all_lower:
+    snt_var_name: itn_use_all_lower
+    label_en: "ITN use (all population) - Lower CI"
+    label_fr: "Utilisation des MII (toute la population) - IC inférieur"
+    label_pt: "Uso de MTI (toda a população) - IC inferior"
+  itn_use_all_upper:
+    snt_var_name: itn_use_all_upper
+    label_en: "ITN use (all population) - Upper CI"
+    label_fr: "Utilisation des MII (toute la population) - IC supérieur"
+    label_pt: "Uso de MTI (toda a população) - IC superior"
+
+  itn_use_u5_mean:
+    snt_var_name: itn_use_u5_mean
+    label_en: "ITN use (under 5) - Mean"
+    label_fr: "Utilisation des MII (moins de 5 ans) - Moyenne"
+    label_pt: "Uso de MTI (menores de 5 anos) - Média"
+  itn_use_u5_lower:
+    snt_var_name: itn_use_u5_lower
+    label_en: "ITN use (under 5) - Lower CI"
+    label_fr: "Utilisation des MII (moins de 5 ans) - IC inférieur"
+    label_pt: "Uso de MTI (menores de 5 anos) - IC inferior"
+  itn_use_u5_upper:
+    snt_var_name: itn_use_u5_upper
+    label_en: "ITN use (under 5) - Upper CI"
+    label_fr: "Utilisation des MII (moins de 5 ans) - IC supérieur"
+    label_pt: "Uso de MTI (menores de 5 anos) - IC superior"
+
+  itn_use_5_9_mean:
+    snt_var_name: itn_use_5_9_mean
+    label_en: "ITN use (5-9 years) - Mean"
+    label_fr: "Utilisation des MII (5-9 ans) - Moyenne"
+    label_pt: "Uso de MTI (5-9 anos) - Média"
+  itn_use_5_9_lower:
+    snt_var_name: itn_use_5_9_lower
+    label_en: "ITN use (5-9 years) - Lower CI"
+    label_fr: "Utilisation des MII (5-9 ans) - IC inférieur"
+    label_pt: "Uso de MTI (5-9 anos) - IC inferior"
+  itn_use_5_9_upper:
+    snt_var_name: itn_use_5_9_upper
+    label_en: "ITN use (5-9 years) - Upper CI"
+    label_fr: "Utilisation des MII (5-9 ans) - IC supérieur"
+    label_pt: "Uso de MTI (5-9 anos) - IC superior"
+
+  itn_use_10_19_mean:
+    snt_var_name: itn_use_10_19_mean
+    label_en: "ITN use (10-19 years) - Mean"
+    label_fr: "Utilisation des MII (10-19 ans) - Moyenne"
+    label_pt: "Uso de MTI (10-19 anos) - Média"
+  itn_use_10_19_lower:
+    snt_var_name: itn_use_10_19_lower
+    label_en: "ITN use (10-19 years) - Lower CI"
+    label_fr: "Utilisation des MII (10-19 ans) - IC inférieur"
+    label_pt: "Uso de MTI (10-19 anos) - IC inferior"
+  itn_use_10_19_upper:
+    snt_var_name: itn_use_10_19_upper
+    label_en: "ITN use (10-19 years) - Upper CI"
+    label_fr: "Utilisation des MII (10-19 ans) - IC supérieur"
+    label_pt: "Uso de MTI (10-19 anos) - IC superior"
+
+  itn_use_20plus_mean:
+    snt_var_name: itn_use_20plus_mean
+    label_en: "ITN use (20+ years) - Mean"
+    label_fr: "Utilisation des MII (20+ ans) - Moyenne"
+    label_pt: "Uso de MTI (20+ anos) - Média"
+  itn_use_20plus_lower:
+    snt_var_name: itn_use_20plus_lower
+    label_en: "ITN use (20+ years) - Lower CI"
+    label_fr: "Utilisation des MII (20+ ans) - IC inférieur"
+    label_pt: "Uso de MTI (20+ anos) - IC inferior"
+  itn_use_20plus_upper:
+    snt_var_name: itn_use_20plus_upper
+    label_en: "ITN use (20+ years) - Upper CI"
+    label_fr: "Utilisation des MII (20+ ans) - IC supérieur"
+    label_pt: "Uso de MTI (20+ anos) - IC superior"
+
+  itn_use_pregnant_mean:
+    snt_var_name: itn_use_pregnant_mean
+    label_en: "ITN use (pregnant women) - Mean"
+    label_fr: "Utilisation des MII (femmes enceintes) - Moyenne"
+    label_pt: "Uso de MTI (mulheres grávidas) - Média"
+  itn_use_pregnant_lower:
+    snt_var_name: itn_use_pregnant_lower
+    label_en: "ITN use (pregnant women) - Lower CI"
+    label_fr: "Utilisation des MII (femmes enceintes) - IC inférieur"
+    label_pt: "Uso de MTI (mulheres grávidas) - IC inferior"
+  itn_use_pregnant_upper:
+    snt_var_name: itn_use_pregnant_upper
+    label_en: "ITN use (pregnant women) - Upper CI"
+    label_fr: "Utilisation des MII (femmes enceintes) - IC supérieur"
+    label_pt: "Uso de MTI (mulheres grávidas) - IC superior"
+
+# ── IRS - Indoor Residual Spraying ────────────────────────────────────────────
+
+  irs_coverage_mean:
+    snt_var_name: irs_coverage_mean
+    label_en: "IRS coverage - Mean"
+    label_fr: "Couverture PID - Moyenne"
+    label_pt: "Cobertura PIDOM - Média"
+  irs_coverage_lower:
+    snt_var_name: irs_coverage_lower
+    label_en: "IRS coverage - Lower CI"
+    label_fr: "Couverture PID - IC inférieur"
+    label_pt: "Cobertura PIDOM - IC inferior"
+  irs_coverage_upper:
+    snt_var_name: irs_coverage_upper
+    label_en: "IRS coverage - Upper CI"
+    label_fr: "Couverture PID - IC supérieur"
+    label_pt: "Cobertura PIDOM - IC superior"
+
+# ── ANC - Antenatal Care ──────────────────────────────────────────────────────
+
+  anc_anc1_mean:
+    snt_var_name: anc_anc1_mean
+    label_en: "ANC 1+ visits - Mean"
+    label_fr: "CPN 1+ visites - Moyenne"
+    label_pt: "CPN 1+ visitas - Média"
+  anc_anc1_lower:
+    snt_var_name: anc_anc1_lower
+    label_en: "ANC 1+ visits - Lower CI"
+    label_fr: "CPN 1+ visites - IC inférieur"
+    label_pt: "CPN 1+ visitas - IC inferior"
+  anc_anc1_upper:
+    snt_var_name: anc_anc1_upper
+    label_en: "ANC 1+ visits - Upper CI"
+    label_fr: "CPN 1+ visites - IC supérieur"
+    label_pt: "CPN 1+ visitas - IC superior"
+
+  anc_anc4_mean:
+    snt_var_name: anc_anc4_mean
+    label_en: "ANC 4+ visits - Mean"
+    label_fr: "CPN 4+ visites - Moyenne"
+    label_pt: "CPN 4+ visitas - Média"
+  anc_anc4_lower:
+    snt_var_name: anc_anc4_lower
+    label_en: "ANC 4+ visits - Lower CI"
+    label_fr: "CPN 4+ visites - IC inférieur"
+    label_pt: "CPN 4+ visitas - IC inferior"
+  anc_anc4_upper:
+    snt_var_name: anc_anc4_upper
+    label_en: "ANC 4+ visits - Upper CI"
+    label_fr: "CPN 4+ visites - IC supérieur"
+    label_pt: "CPN 4+ visitas - IC superior"
+
+  anc_anc8_mean:
+    snt_var_name: anc_anc8_mean
+    label_en: "ANC 8+ visits - Mean"
+    label_fr: "CPN 8+ visites - Moyenne"
+    label_pt: "CPN 8+ visitas - Média"
+  anc_anc8_lower:
+    snt_var_name: anc_anc8_lower
+    label_en: "ANC 8+ visits - Lower CI"
+    label_fr: "CPN 8+ visites - IC inférieur"
+    label_pt: "CPN 8+ visitas - IC inferior"
+  anc_anc8_upper:
+    snt_var_name: anc_anc8_upper
+    label_en: "ANC 8+ visits - Upper CI"
+    label_fr: "CPN 8+ visites - IC supérieur"
+    label_pt: "CPN 8+ visitas - IC superior"
+
+# ── CSB - Care-Seeking Behavior ───────────────────────────────────────────────
+
+  csb_any_mean:
+    snt_var_name: csb_any_mean
+    label_en: "Care-seeking for fever (any) - Mean"
+    label_fr: "Recherche de soins pour fièvre (tout) - Moyenne"
+    label_pt: "Busca de cuidados para febre (qualquer) - Média"
+  csb_any_lower:
+    snt_var_name: csb_any_lower
+    label_en: "Care-seeking for fever (any) - Lower CI"
+    label_fr: "Recherche de soins pour fièvre (tout) - IC inférieur"
+    label_pt: "Busca de cuidados para febre (qualquer) - IC inferior"
+  csb_any_upper:
+    snt_var_name: csb_any_upper
+    label_en: "Care-seeking for fever (any) - Upper CI"
+    label_fr: "Recherche de soins pour fièvre (tout) - IC supérieur"
+    label_pt: "Busca de cuidados para febre (qualquer) - IC superior"
+
+  csb_public_mean:
+    snt_var_name: csb_public_mean
+    label_en: "Care-seeking at public facility - Mean"
+    label_fr: "Recherche de soins en établissement public - Moyenne"
+    label_pt: "Busca de cuidados em estabelecimento público - Média"
+  csb_public_lower:
+    snt_var_name: csb_public_lower
+    label_en: "Care-seeking at public facility - Lower CI"
+    label_fr: "Recherche de soins en établissement public - IC inférieur"
+    label_pt: "Busca de cuidados em estabelecimento público - IC inferior"
+  csb_public_upper:
+    snt_var_name: csb_public_upper
+    label_en: "Care-seeking at public facility - Upper CI"
+    label_fr: "Recherche de soins en établissement public - IC supérieur"
+    label_pt: "Busca de cuidados em estabelecimento público - IC superior"
+
+  csb_private_mean:
+    snt_var_name: csb_private_mean
+    label_en: "Care-seeking at private facility - Mean"
+    label_fr: "Recherche de soins en établissement privé - Moyenne"
+    label_pt: "Busca de cuidados em estabelecimento privado - Média"
+  csb_private_lower:
+    snt_var_name: csb_private_lower
+    label_en: "Care-seeking at private facility - Lower CI"
+    label_fr: "Recherche de soins en établissement privé - IC inférieur"
+    label_pt: "Busca de cuidados em estabelecimento privado - IC inferior"
+  csb_private_upper:
+    snt_var_name: csb_private_upper
+    label_en: "Care-seeking at private facility - Upper CI"
+    label_fr: "Recherche de soins en établissement privé - IC supérieur"
+    label_pt: "Busca de cuidados em estabelecimento privado - IC superior"
+
+  csb_trained_mean:
+    snt_var_name: csb_trained_mean
+    label_en: "Care-seeking from trained provider - Mean"
+    label_fr: "Recherche de soins auprès d'un prestataire formé - Moyenne"
+    label_pt: "Busca de cuidados de provedor treinado - Média"
+  csb_trained_lower:
+    snt_var_name: csb_trained_lower
+    label_en: "Care-seeking from trained provider - Lower CI"
+    label_fr: "Recherche de soins auprès d'un prestataire formé - IC inférieur"
+    label_pt: "Busca de cuidados de provedor treinado - IC inferior"
+  csb_trained_upper:
+    snt_var_name: csb_trained_upper
+    label_en: "Care-seeking from trained provider - Upper CI"
+    label_fr: "Recherche de soins auprès d'un prestataire formé - IC supérieur"
+    label_pt: "Busca de cuidados de provedor treinado - IC superior"
+
+  csb_none_mean:
+    snt_var_name: csb_none_mean
+    label_en: "No care-seeking for fever - Mean"
+    label_fr: "Pas de recherche de soins pour fièvre - Moyenne"
+    label_pt: "Sem busca de cuidados para febre - Média"
+  csb_none_lower:
+    snt_var_name: csb_none_lower
+    label_en: "No care-seeking for fever - Lower CI"
+    label_fr: "Pas de recherche de soins pour fièvre - IC inférieur"
+    label_pt: "Sem busca de cuidados para febre - IC inferior"
+  csb_none_upper:
+    snt_var_name: csb_none_upper
+    label_en: "No care-seeking for fever - Upper CI"
+    label_fr: "Pas de recherche de soins pour fièvre - IC supérieur"
+    label_pt: "Sem busca de cuidados para febre - IC superior"
+
+  csb_act_mean:
+    snt_var_name: csb_act_mean
+    label_en: "Received ACT for fever - Mean"
+    label_fr: "A reçu CTA pour fièvre - Moyenne"
+    label_pt: "Recebeu ACT para febre - Média"
+  csb_act_lower:
+    snt_var_name: csb_act_lower
+    label_en: "Received ACT for fever - Lower CI"
+    label_fr: "A reçu CTA pour fièvre - IC inférieur"
+    label_pt: "Recebeu ACT para febre - IC inferior"
+  csb_act_upper:
+    snt_var_name: csb_act_upper
+    label_en: "Received ACT for fever - Upper CI"
+    label_fr: "A reçu CTA pour fièvre - IC supérieur"
+    label_pt: "Recebeu ACT para febre - IC superior"
+
+# ── Anemia ────────────────────────────────────────────────────────────────────
+
+  anemia_any_mean:
+    snt_var_name: anemia_any_mean
+    label_en: "Any anemia (Hb < 11 g/dL) - Mean"
+    label_fr: "Toute anémie (Hb < 11 g/dL) - Moyenne"
+    label_pt: "Qualquer anemia (Hb < 11 g/dL) - Média"
+  anemia_any_lower:
+    snt_var_name: anemia_any_lower
+    label_en: "Any anemia (Hb < 11 g/dL) - Lower CI"
+    label_fr: "Toute anémie (Hb < 11 g/dL) - IC inférieur"
+    label_pt: "Qualquer anemia (Hb < 11 g/dL) - IC inferior"
+  anemia_any_upper:
+    snt_var_name: anemia_any_upper
+    label_en: "Any anemia (Hb < 11 g/dL) - Upper CI"
+    label_fr: "Toute anémie (Hb < 11 g/dL) - IC supérieur"
+    label_pt: "Qualquer anemia (Hb < 11 g/dL) - IC superior"
+
+  anemia_moderate_plus_mean:
+    snt_var_name: anemia_moderate_plus_mean
+    label_en: "Moderate+ anemia (Hb < 10 g/dL) - Mean"
+    label_fr: "Anémie modérée+ (Hb < 10 g/dL) - Moyenne"
+    label_pt: "Anemia moderada+ (Hb < 10 g/dL) - Média"
+  anemia_moderate_plus_lower:
+    snt_var_name: anemia_moderate_plus_lower
+    label_en: "Moderate+ anemia (Hb < 10 g/dL) - Lower CI"
+    label_fr: "Anémie modérée+ (Hb < 10 g/dL) - IC inférieur"
+    label_pt: "Anemia moderada+ (Hb < 10 g/dL) - IC inferior"
+  anemia_moderate_plus_upper:
+    snt_var_name: anemia_moderate_plus_upper
+    label_en: "Moderate+ anemia (Hb < 10 g/dL) - Upper CI"
+    label_fr: "Anémie modérée+ (Hb < 10 g/dL) - IC supérieur"
+    label_pt: "Anemia moderada+ (Hb < 10 g/dL) - IC superior"
+
+  anemia_severe_mean:
+    snt_var_name: anemia_severe_mean
+    label_en: "Severe anemia (Hb < 8 g/dL) - Mean"
+    label_fr: "Anémie sévère (Hb < 8 g/dL) - Moyenne"
+    label_pt: "Anemia grave (Hb < 8 g/dL) - Média"
+  anemia_severe_lower:
+    snt_var_name: anemia_severe_lower
+    label_en: "Severe anemia (Hb < 8 g/dL) - Lower CI"
+    label_fr: "Anémie sévère (Hb < 8 g/dL) - IC inférieur"
+    label_pt: "Anemia grave (Hb < 8 g/dL) - IC inferior"
+  anemia_severe_upper:
+    snt_var_name: anemia_severe_upper
+    label_en: "Severe anemia (Hb < 8 g/dL) - Upper CI"
+    label_fr: "Anémie sévère (Hb < 8 g/dL) - IC supérieur"
+    label_pt: "Anemia grave (Hb < 8 g/dL) - IC superior"
+
+  anemia_mild_only_mean:
+    snt_var_name: anemia_mild_only_mean
+    label_en: "Mild anemia only (10 ≤ Hb < 11) - Mean"
+    label_fr: "Anémie légère seulement (10 ≤ Hb < 11) - Moyenne"
+    label_pt: "Anemia leve apenas (10 ≤ Hb < 11) - Média"
+  anemia_mild_only_lower:
+    snt_var_name: anemia_mild_only_lower
+    label_en: "Mild anemia only (10 ≤ Hb < 11) - Lower CI"
+    label_fr: "Anémie légère seulement (10 ≤ Hb < 11) - IC inférieur"
+    label_pt: "Anemia leve apenas (10 ≤ Hb < 11) - IC inferior"
+  anemia_mild_only_upper:
+    snt_var_name: anemia_mild_only_upper
+    label_en: "Mild anemia only (10 ≤ Hb < 11) - Upper CI"
+    label_fr: "Anémie légère seulement (10 ≤ Hb < 11) - IC supérieur"
+    label_pt: "Anemia leve apenas (10 ≤ Hb < 11) - IC superior"
+
+  anemia_moderate_only_mean:
+    snt_var_name: anemia_moderate_only_mean
+    label_en: "Moderate anemia only (8 ≤ Hb < 10) - Mean"
+    label_fr: "Anémie modérée seulement (8 ≤ Hb < 10) - Moyenne"
+    label_pt: "Anemia moderada apenas (8 ≤ Hb < 10) - Média"
+  anemia_moderate_only_lower:
+    snt_var_name: anemia_moderate_only_lower
+    label_en: "Moderate anemia only (8 ≤ Hb < 10) - Lower CI"
+    label_fr: "Anémie modérée seulement (8 ≤ Hb < 10) - IC inférieur"
+    label_pt: "Anemia moderada apenas (8 ≤ Hb < 10) - IC inferior"
+  anemia_moderate_only_upper:
+    snt_var_name: anemia_moderate_only_upper
+    label_en: "Moderate anemia only (8 ≤ Hb < 10) - Upper CI"
+    label_fr: "Anémie modérée seulement (8 ≤ Hb < 10) - IC supérieur"
+    label_pt: "Anemia moderada apenas (8 ≤ Hb < 10) - IC superior"
+
+  anemia_severe_only_mean:
+    snt_var_name: anemia_severe_only_mean
+    label_en: "Severe anemia only (Hb < 8) - Mean"
+    label_fr: "Anémie sévère seulement (Hb < 8) - Moyenne"
+    label_pt: "Anemia grave apenas (Hb < 8) - Média"
+  anemia_severe_only_lower:
+    snt_var_name: anemia_severe_only_lower
+    label_en: "Severe anemia only (Hb < 8) - Lower CI"
+    label_fr: "Anémie sévère seulement (Hb < 8) - IC inférieur"
+    label_pt: "Anemia grave apenas (Hb < 8) - IC inferior"
+  anemia_severe_only_upper:
+    snt_var_name: anemia_severe_only_upper
+    label_en: "Severe anemia only (Hb < 8) - Upper CI"
+    label_fr: "Anémie sévère seulement (Hb < 8) - IC supérieur"
+    label_pt: "Anemia grave apenas (Hb < 8) - IC superior"
+
+# ── IPTp - Intermittent Preventive Treatment in Pregnancy ─────────────────────
+
+  iptp_1plus_mean:
+    snt_var_name: iptp_1plus_mean
+    label_en: "IPTp 1+ doses - Mean"
+    label_fr: "TPIg 1+ doses - Moyenne"
+    label_pt: "TIPg 1+ doses - Média"
+  iptp_1plus_lower:
+    snt_var_name: iptp_1plus_lower
+    label_en: "IPTp 1+ doses - Lower CI"
+    label_fr: "TPIg 1+ doses - IC inférieur"
+    label_pt: "TIPg 1+ doses - IC inferior"
+  iptp_1plus_upper:
+    snt_var_name: iptp_1plus_upper
+    label_en: "IPTp 1+ doses - Upper CI"
+    label_fr: "TPIg 1+ doses - IC supérieur"
+    label_pt: "TIPg 1+ doses - IC superior"
+
+  iptp_2plus_mean:
+    snt_var_name: iptp_2plus_mean
+    label_en: "IPTp 2+ doses - Mean"
+    label_fr: "TPIg 2+ doses - Moyenne"
+    label_pt: "TIPg 2+ doses - Média"
+  iptp_2plus_lower:
+    snt_var_name: iptp_2plus_lower
+    label_en: "IPTp 2+ doses - Lower CI"
+    label_fr: "TPIg 2+ doses - IC inférieur"
+    label_pt: "TIPg 2+ doses - IC inferior"
+  iptp_2plus_upper:
+    snt_var_name: iptp_2plus_upper
+    label_en: "IPTp 2+ doses - Upper CI"
+    label_fr: "TPIg 2+ doses - IC supérieur"
+    label_pt: "TIPg 2+ doses - IC superior"
+
+  iptp_3plus_mean:
+    snt_var_name: iptp_3plus_mean
+    label_en: "IPTp 3+ doses - Mean"
+    label_fr: "TPIg 3+ doses - Moyenne"
+    label_pt: "TIPg 3+ doses - Média"
+  iptp_3plus_lower:
+    snt_var_name: iptp_3plus_lower
+    label_en: "IPTp 3+ doses - Lower CI"
+    label_fr: "TPIg 3+ doses - IC inférieur"
+    label_pt: "TIPg 3+ doses - IC inferior"
+  iptp_3plus_upper:
+    snt_var_name: iptp_3plus_upper
+    label_en: "IPTp 3+ doses - Upper CI"
+    label_fr: "TPIg 3+ doses - IC supérieur"
+    label_pt: "TIPg 3+ doses - IC superior"
+
+  iptp_1only_mean:
+    snt_var_name: iptp_1only_mean
+    label_en: "IPTp exactly 1 dose - Mean"
+    label_fr: "TPIg exactement 1 dose - Moyenne"
+    label_pt: "TIPg exatamente 1 dose - Média"
+  iptp_1only_lower:
+    snt_var_name: iptp_1only_lower
+    label_en: "IPTp exactly 1 dose - Lower CI"
+    label_fr: "TPIg exactement 1 dose - IC inférieur"
+    label_pt: "TIPg exatamente 1 dose - IC inferior"
+  iptp_1only_upper:
+    snt_var_name: iptp_1only_upper
+    label_en: "IPTp exactly 1 dose - Upper CI"
+    label_fr: "TPIg exactement 1 dose - IC supérieur"
+    label_pt: "TIPg exatamente 1 dose - IC superior"
+
+  iptp_2only_mean:
+    snt_var_name: iptp_2only_mean
+    label_en: "IPTp exactly 2 doses - Mean"
+    label_fr: "TPIg exactement 2 doses - Moyenne"
+    label_pt: "TIPg exatamente 2 doses - Média"
+  iptp_2only_lower:
+    snt_var_name: iptp_2only_lower
+    label_en: "IPTp exactly 2 doses - Lower CI"
+    label_fr: "TPIg exactement 2 doses - IC inférieur"
+    label_pt: "TIPg exatamente 2 doses - IC inferior"
+  iptp_2only_upper:
+    snt_var_name: iptp_2only_upper
+    label_en: "IPTp exactly 2 doses - Upper CI"
+    label_fr: "TPIg exactement 2 doses - IC supérieur"
+    label_pt: "TIPg exatamente 2 doses - IC superior"
+
+  iptp_3only_mean:
+    snt_var_name: iptp_3only_mean
+    label_en: "IPTp exactly 3 doses - Mean"
+    label_fr: "TPIg exactement 3 doses - Moyenne"
+    label_pt: "TIPg exatamente 3 doses - Média"
+  iptp_3only_lower:
+    snt_var_name: iptp_3only_lower
+    label_en: "IPTp exactly 3 doses - Lower CI"
+    label_fr: "TPIg exactement 3 doses - IC inférieur"
+    label_pt: "TIPg exatamente 3 doses - IC inferior"
+  iptp_3only_upper:
+    snt_var_name: iptp_3only_upper
+    label_en: "IPTp exactly 3 doses - Upper CI"
+    label_fr: "TPIg exactement 3 doses - IC supérieur"
+    label_pt: "TIPg exatamente 3 doses - IC superior"
+
+# ── EPI - Expanded Programme on Immunization ──────────────────────────────────
+
+  epi_bcg_mean:
+    snt_var_name: epi_bcg_mean
+    label_en: "BCG vaccination - Mean"
+    label_fr: "Vaccination BCG - Moyenne"
+    label_pt: "Vacinação BCG - Média"
+  epi_bcg_lower:
+    snt_var_name: epi_bcg_lower
+    label_en: "BCG vaccination - Lower CI"
+    label_fr: "Vaccination BCG - IC inférieur"
+    label_pt: "Vacinação BCG - IC inferior"
+  epi_bcg_upper:
+    snt_var_name: epi_bcg_upper
+    label_en: "BCG vaccination - Upper CI"
+    label_fr: "Vaccination BCG - IC supérieur"
+    label_pt: "Vacinação BCG - IC superior"
+
+  epi_dpt1_mean:
+    snt_var_name: epi_dpt1_mean
+    label_en: "DPT 1st dose - Mean"
+    label_fr: "DTC 1ère dose - Moyenne"
+    label_pt: "DPT 1ª dose - Média"
+  epi_dpt1_lower:
+    snt_var_name: epi_dpt1_lower
+    label_en: "DPT 1st dose - Lower CI"
+    label_fr: "DTC 1ère dose - IC inférieur"
+    label_pt: "DPT 1ª dose - IC inferior"
+  epi_dpt1_upper:
+    snt_var_name: epi_dpt1_upper
+    label_en: "DPT 1st dose - Upper CI"
+    label_fr: "DTC 1ère dose - IC supérieur"
+    label_pt: "DPT 1ª dose - IC superior"
+
+  epi_dpt2_mean:
+    snt_var_name: epi_dpt2_mean
+    label_en: "DPT 2nd dose - Mean"
+    label_fr: "DTC 2ème dose - Moyenne"
+    label_pt: "DPT 2ª dose - Média"
+  epi_dpt2_lower:
+    snt_var_name: epi_dpt2_lower
+    label_en: "DPT 2nd dose - Lower CI"
+    label_fr: "DTC 2ème dose - IC inférieur"
+    label_pt: "DPT 2ª dose - IC inferior"
+  epi_dpt2_upper:
+    snt_var_name: epi_dpt2_upper
+    label_en: "DPT 2nd dose - Upper CI"
+    label_fr: "DTC 2ème dose - IC supérieur"
+    label_pt: "DPT 2ª dose - IC superior"
+
+  epi_dpt3_mean:
+    snt_var_name: epi_dpt3_mean
+    label_en: "DPT 3rd dose - Mean"
+    label_fr: "DTC 3ème dose - Moyenne"
+    label_pt: "DPT 3ª dose - Média"
+  epi_dpt3_lower:
+    snt_var_name: epi_dpt3_lower
+    label_en: "DPT 3rd dose - Lower CI"
+    label_fr: "DTC 3ème dose - IC inférieur"
+    label_pt: "DPT 3ª dose - IC inferior"
+  epi_dpt3_upper:
+    snt_var_name: epi_dpt3_upper
+    label_en: "DPT 3rd dose - Upper CI"
+    label_fr: "DTC 3ème dose - IC supérieur"
+    label_pt: "DPT 3ª dose - IC superior"
+
+  epi_polio3_mean:
+    snt_var_name: epi_polio3_mean
+    label_en: "Polio 3rd dose - Mean"
+    label_fr: "Polio 3ème dose - Moyenne"
+    label_pt: "Pólio 3ª dose - Média"
+  epi_polio3_lower:
+    snt_var_name: epi_polio3_lower
+    label_en: "Polio 3rd dose - Lower CI"
+    label_fr: "Polio 3ème dose - IC inférieur"
+    label_pt: "Pólio 3ª dose - IC inferior"
+  epi_polio3_upper:
+    snt_var_name: epi_polio3_upper
+    label_en: "Polio 3rd dose - Upper CI"
+    label_fr: "Polio 3ème dose - IC supérieur"
+    label_pt: "Pólio 3ª dose - IC superior"
+
+  epi_measles1_mean:
+    snt_var_name: epi_measles1_mean
+    label_en: "Measles 1st dose - Mean"
+    label_fr: "Rougeole 1ère dose - Moyenne"
+    label_pt: "Sarampo 1ª dose - Média"
+  epi_measles1_lower:
+    snt_var_name: epi_measles1_lower
+    label_en: "Measles 1st dose - Lower CI"
+    label_fr: "Rougeole 1ère dose - IC inférieur"
+    label_pt: "Sarampo 1ª dose - IC inferior"
+  epi_measles1_upper:
+    snt_var_name: epi_measles1_upper
+    label_en: "Measles 1st dose - Upper CI"
+    label_fr: "Rougeole 1ère dose - IC supérieur"
+    label_pt: "Sarampo 1ª dose - IC superior"
+
+  epi_measles2_mean:
+    snt_var_name: epi_measles2_mean
+    label_en: "Measles 2nd dose - Mean"
+    label_fr: "Rougeole 2ème dose - Moyenne"
+    label_pt: "Sarampo 2ª dose - Média"
+  epi_measles2_lower:
+    snt_var_name: epi_measles2_lower
+    label_en: "Measles 2nd dose - Lower CI"
+    label_fr: "Rougeole 2ème dose - IC inférieur"
+    label_pt: "Sarampo 2ª dose - IC inferior"
+  epi_measles2_upper:
+    snt_var_name: epi_measles2_upper
+    label_en: "Measles 2nd dose - Upper CI"
+    label_fr: "Rougeole 2ème dose - IC supérieur"
+    label_pt: "Sarampo 2ª dose - IC superior"
+
+  epi_full_mean:
+    snt_var_name: epi_full_mean
+    label_en: "Fully vaccinated - Mean"
+    label_fr: "Entièrement vacciné - Moyenne"
+    label_pt: "Totalmente vacinado - Média"
+  epi_full_lower:
+    snt_var_name: epi_full_lower
+    label_en: "Fully vaccinated - Lower CI"
+    label_fr: "Entièrement vacciné - IC inférieur"
+    label_pt: "Totalmente vacinado - IC inferior"
+  epi_full_upper:
+    snt_var_name: epi_full_upper
+    label_en: "Fully vaccinated - Upper CI"
+    label_fr: "Entièrement vacciné - IC supérieur"
+    label_pt: "Totalmente vacinado - IC superior"
+
+  epi_malaria_mean:
+    snt_var_name: epi_malaria_mean
+    label_en: "Malaria vaccine (RTS,S) - Mean"
+    label_fr: "Vaccin antipaludique (RTS,S) - Moyenne"
+    label_pt: "Vacina contra malária (RTS,S) - Média"
+  epi_malaria_lower:
+    snt_var_name: epi_malaria_lower
+    label_en: "Malaria vaccine (RTS,S) - Lower CI"
+    label_fr: "Vaccin antipaludique (RTS,S) - IC inférieur"
+    label_pt: "Vacina contra malária (RTS,S) - IC inferior"
+  epi_malaria_upper:
+    snt_var_name: epi_malaria_upper
+    label_en: "Malaria vaccine (RTS,S) - Upper CI"
+    label_fr: "Vaccin antipaludique (RTS,S) - IC supérieur"
+    label_pt: "Vacina contra malária (RTS,S) - IC superior"
+
+# ── U5MR - Under-5 Mortality Rate ─────────────────────────────────────────────
+
+  u5mr_q_under1_mean:
+    snt_var_name: u5mr_q_under1_mean
+    label_en: "Mortality rate <1 year - Mean"
+    label_fr: "Taux de mortalité <1 an - Moyenne"
+    label_pt: "Taxa de mortalidade <1 ano - Média"
+  u5mr_q_under1_lower:
+    snt_var_name: u5mr_q_under1_lower
+    label_en: "Mortality rate <1 year - Lower CI"
+    label_fr: "Taux de mortalité <1 an - IC inférieur"
+    label_pt: "Taxa de mortalidade <1 ano - IC inferior"
+  u5mr_q_under1_upper:
+    snt_var_name: u5mr_q_under1_upper
+    label_en: "Mortality rate <1 year - Upper CI"
+    label_fr: "Taux de mortalité <1 an - IC supérieur"
+    label_pt: "Taxa de mortalidade <1 ano - IC superior"
+
+  u5mr_q_1yr_mean:
+    snt_var_name: u5mr_q_1yr_mean
+    label_en: "Mortality rate 1 year - Mean"
+    label_fr: "Taux de mortalité 1 an - Moyenne"
+    label_pt: "Taxa de mortalidade 1 ano - Média"
+  u5mr_q_1yr_lower:
+    snt_var_name: u5mr_q_1yr_lower
+    label_en: "Mortality rate 1 year - Lower CI"
+    label_fr: "Taux de mortalité 1 an - IC inférieur"
+    label_pt: "Taxa de mortalidade 1 ano - IC inferior"
+  u5mr_q_1yr_upper:
+    snt_var_name: u5mr_q_1yr_upper
+    label_en: "Mortality rate 1 year - Upper CI"
+    label_fr: "Taux de mortalité 1 an - IC supérieur"
+    label_pt: "Taxa de mortalidade 1 ano - IC superior"
+
+  u5mr_q_2yr_mean:
+    snt_var_name: u5mr_q_2yr_mean
+    label_en: "Mortality rate 2 years - Mean"
+    label_fr: "Taux de mortalité 2 ans - Moyenne"
+    label_pt: "Taxa de mortalidade 2 anos - Média"
+  u5mr_q_2yr_lower:
+    snt_var_name: u5mr_q_2yr_lower
+    label_en: "Mortality rate 2 years - Lower CI"
+    label_fr: "Taux de mortalité 2 ans - IC inférieur"
+    label_pt: "Taxa de mortalidade 2 anos - IC inferior"
+  u5mr_q_2yr_upper:
+    snt_var_name: u5mr_q_2yr_upper
+    label_en: "Mortality rate 2 years - Upper CI"
+    label_fr: "Taux de mortalité 2 ans - IC supérieur"
+    label_pt: "Taxa de mortalidade 2 anos - IC superior"
+
+  u5mr_q_3yr_mean:
+    snt_var_name: u5mr_q_3yr_mean
+    label_en: "Mortality rate 3 years - Mean"
+    label_fr: "Taux de mortalité 3 ans - Moyenne"
+    label_pt: "Taxa de mortalidade 3 anos - Média"
+  u5mr_q_3yr_lower:
+    snt_var_name: u5mr_q_3yr_lower
+    label_en: "Mortality rate 3 years - Lower CI"
+    label_fr: "Taux de mortalité 3 ans - IC inférieur"
+    label_pt: "Taxa de mortalidade 3 anos - IC inferior"
+  u5mr_q_3yr_upper:
+    snt_var_name: u5mr_q_3yr_upper
+    label_en: "Mortality rate 3 years - Upper CI"
+    label_fr: "Taux de mortalité 3 ans - IC supérieur"
+    label_pt: "Taxa de mortalidade 3 anos - IC superior"
+
+  u5mr_q_4yr_mean:
+    snt_var_name: u5mr_q_4yr_mean
+    label_en: "Mortality rate 4 years - Mean"
+    label_fr: "Taux de mortalité 4 ans - Moyenne"
+    label_pt: "Taxa de mortalidade 4 anos - Média"
+  u5mr_q_4yr_lower:
+    snt_var_name: u5mr_q_4yr_lower
+    label_en: "Mortality rate 4 years - Lower CI"
+    label_fr: "Taux de mortalité 4 ans - IC inférieur"
+    label_pt: "Taxa de mortalidade 4 anos - IC inferior"
+  u5mr_q_4yr_upper:
+    snt_var_name: u5mr_q_4yr_upper
+    label_en: "Mortality rate 4 years - Upper CI"
+    label_fr: "Taux de mortalité 4 ans - IC supérieur"
+    label_pt: "Taxa de mortalidade 4 anos - IC superior"
+
+  u5mr_combined_mean:
+    snt_var_name: u5mr_combined_mean
+    label_en: "Under-5 mortality rate (combined) - Mean"
+    label_fr: "Taux de mortalité des moins de 5 ans (combiné) - Moyenne"
+    label_pt: "Taxa de mortalidade de menores de 5 anos (combinada) - Média"
+  u5mr_combined_lower:
+    snt_var_name: u5mr_combined_lower
+    label_en: "Under-5 mortality rate (combined) - Lower CI"
+    label_fr: "Taux de mortalité des moins de 5 ans (combiné) - IC inférieur"
+    label_pt: "Taxa de mortalidade de menores de 5 anos (combinada) - IC inferior"
+  u5mr_combined_upper:
+    snt_var_name: u5mr_combined_upper
+    label_en: "Under-5 mortality rate (combined) - Upper CI"
+    label_fr: "Taux de mortalité des moins de 5 ans (combiné) - IC supérieur"
+    label_pt: "Taxa de mortalidade de menores de 5 anos (combinada) - IC superior"
+
+# ── SMC - Seasonal Malaria Chemoprevention ────────────────────────────────────
+
+  smc_receipt_mean:
+    snt_var_name: smc_receipt_mean
+    label_en: "SMC receipt - Mean"
+    label_fr: "Réception de CPS - Moyenne"
+    label_pt: "Recebimento de QSM - Média"
+  smc_receipt_lower:
+    snt_var_name: smc_receipt_lower
+    label_en: "SMC receipt - Lower CI"
+    label_fr: "Réception de CPS - IC inférieur"
+    label_pt: "Recebimento de QSM - IC inferior"
+  smc_receipt_upper:
+    snt_var_name: smc_receipt_upper
+    label_en: "SMC receipt - Upper CI"
+    label_fr: "Réception de CPS - IC supérieur"
+    label_pt: "Recebimento de QSM - IC superior"
