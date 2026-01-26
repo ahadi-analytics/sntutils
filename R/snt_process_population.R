@@ -9,6 +9,14 @@
 #' admin levels were found. By default, column types are first inferred
 #' via [auto_parse_types()] with `apply = TRUE` and `return = "data"`.
 #'
+#' @details
+#' ## Automatic proportion handling
+#' The function automatically detects which population columns contain
+#' proportions (all non-NA values <= 1) versus counts. Proportion columns
+#' are aggregated using the mean, while count columns are summed. If a
+#' column contains mixed data (some values <= 1 and some > 1), the function
+#' will abort with an error message.
+#'
 #' @param pop_data data.frame/tibble with `adm0`, optional `adm1`/`adm2`/`adm3`,
 #'   `year`, and population column(s). `year` may be integer, numeric, Date/POSIXt, factor,
 #'   or character; it is coerced to integer years when feasible.
@@ -88,15 +96,18 @@ snt_process_population <- function(
     pop_data <- .coerce_year_if_needed(pop_data)
   }
 
+  # detect which columns are proportions vs counts
+  prop_cols <- .detect_proportion_cols(pop_data, pop_cols)
+
   # detect available admin levels after any coercions
   lv_all <- c("adm0", "adm1", "adm2", "adm3")
   levels_present <- lv_all[lv_all %in% names(pop_data)]
 
   # summarise for each level that truly exists
-  pop_data_adm0 <- .summarise_by(pop_data, c("adm0"), pop_cols)
-  pop_data_adm1 <- .summarise_by(pop_data, c("adm0", "adm1"), pop_cols)
-  pop_data_adm2 <- .summarise_by(pop_data, c("adm0", "adm1", "adm2"), pop_cols)
-  pop_data_adm3 <- .summarise_by(pop_data, c("adm0", "adm1", "adm2", "adm3"), pop_cols)
+  pop_data_adm0 <- .summarise_by(pop_data, c("adm0"), pop_cols, prop_cols)
+  pop_data_adm1 <- .summarise_by(pop_data, c("adm0", "adm1"), pop_cols, prop_cols)
+  pop_data_adm2 <- .summarise_by(pop_data, c("adm0", "adm1", "adm2"), pop_cols, prop_cols)
+  pop_data_adm3 <- .summarise_by(pop_data, c("adm0", "adm1", "adm2", "adm3"), pop_cols, prop_cols)
 
   # build compact dictionary for the columns we actually expose
   dict_vars <- unique(c(levels_present, "year", pop_cols))
@@ -159,15 +170,16 @@ snt_process_population <- function(
 
 #' Grouped population summary
 #'
-#' Aggregates population by grouping columns and year.
-#' Returns `NULL` if grouping columns are missing.
+#' Aggregates population by grouping columns and year. Uses mean for proportion
+#' columns and sum for count columns.
 #'
 #' @param pop_data Data frame with population.
 #' @param group_cols Character vector of grouping columns.
 #' @param pop_cols Character vector of population column names.
+#' @param prop_cols Character vector of columns that are proportions (will be averaged).
 #' @return Data frame or NULL.
 #' @noRd
-.summarise_by <- function(pop_data, group_cols, pop_cols) {
+.summarise_by <- function(pop_data, group_cols, pop_cols, prop_cols = character(0)) {
   if (!all(group_cols %in% names(pop_data))) {
     return(NULL)
   }
@@ -176,9 +188,14 @@ snt_process_population <- function(
   }
 
   # create summarise expressions for each population column
+  # use mean for proportions, sum for counts
   summarise_exprs <- rlang::set_names(
     lapply(pop_cols, function(col) {
-      rlang::expr(sntutils::sum2(.data[[!!col]]))
+      if (col %in% prop_cols) {
+        rlang::expr(sntutils::mean2(.data[[!!col]]))
+      } else {
+        rlang::expr(sntutils::sum2(.data[[!!col]]))
+      }
     }),
     pop_cols
   )
@@ -239,6 +256,49 @@ snt_process_population <- function(
     }
   }
   invisible(TRUE)
+}
+
+#' Detect which population columns contain proportions
+#'
+#' Checks each population column to determine if it contains proportion data
+#' (all non-NA values <= 1) or count data. Aborts if a column appears to be
+#' a proportion but contains values > 1.
+#'
+#' @param pop_data data frame with population columns
+#' @param pop_cols character vector of population column names to check
+#' @return character vector of column names that are proportions
+#' @noRd
+.detect_proportion_cols <- function(pop_data, pop_cols) {
+  prop_cols <- character(0)
+
+  for (col in pop_cols) {
+    values <- pop_data[[col]]
+    non_na_values <- values[!is.na(values)]
+
+    if (length(non_na_values) == 0) {
+      next
+    }
+
+    all_lte_one <- all(non_na_values <= 1)
+    has_fraction <- any(non_na_values < 1 & non_na_values > 0)
+    has_large <- any(non_na_values > 1)
+
+    if (all_lte_one) {
+      prop_cols <- c(prop_cols, col)
+    } else if (has_fraction && has_large) {
+      max_val <- max(non_na_values, na.rm = TRUE)
+      min_val <- min(non_na_values, na.rm = TRUE)
+      cli::cli_abort(
+        c(
+          "Column `{col}` appears to contain mixed proportion and count data.",
+          "i" = "Values range from {min_val} to {max_val}.",
+          "x" = "Proportion columns must have all values <= 1."
+        )
+      )
+    }
+  }
+
+  prop_cols
 }
 
 #' Best-effort coercion of `year` to integer years

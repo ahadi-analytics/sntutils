@@ -214,3 +214,107 @@ testthat::test_that(".summarise_by returns NULL when cols missing", {
   out <- .summarise_by(df, c("adm0", "adm1"))
   testthat::expect_null(out)
 })
+
+# proportion handling -----------------------------------------------------
+
+testthat::test_that("detects and averages proportion columns", {
+  testthat::skip_if_not(has_pkg("dplyr"))
+  testthat::skip_if_not(has_pkg("sntutils"))
+  .local_stub_infer()
+
+  df <- data.frame(
+    adm0 = c("A", "A", "A"),
+    adm1 = c("X", "X", "Y"),
+    year = c(2020L, 2020L, 2020L),
+    pop_u5_prop = c(0.15, 0.20, 0.18),
+    stringsAsFactors = FALSE
+  )
+
+  out <- snt_process_population(df, pop_cols = "pop_u5_prop", translate = FALSE)
+
+  # adm0 aggregation should average the proportion
+  a0 <- out$pop_data_adm0
+  testthat::expect_true("pop_u5_prop" %in% names(a0))
+  expected_mean <- mean(c(0.15, 0.20, 0.18))
+  testthat::expect_equal(a0$pop_u5_prop[1], expected_mean, tolerance = 1e-6)
+
+  # adm1 aggregation should also average
+  a1 <- out$pop_data_adm1
+  row_x <- a1[a1$adm1 == "X", , drop = FALSE]
+  testthat::expect_equal(row_x$pop_u5_prop, mean(c(0.15, 0.20)), tolerance = 1e-6)
+})
+
+testthat::test_that("handles mixed proportion and count columns", {
+  testthat::skip_if_not(has_pkg("dplyr"))
+  testthat::skip_if_not(has_pkg("sntutils"))
+  .local_stub_infer()
+
+  df <- data.frame(
+    adm0 = c("A", "A", "B"),
+    year = c(2020L, 2020L, 2020L),
+    pop = c(100, 200, 150),
+    pop_u5_prop = c(0.15, 0.20, 0.18),
+    stringsAsFactors = FALSE
+  )
+
+  out <- snt_process_population(
+    df,
+    pop_cols = c("pop", "pop_u5_prop"),
+    translate = FALSE
+  )
+
+  a0 <- out$pop_data_adm0
+  # pop should be summed
+  row_a <- a0[a0$adm0 == "A", , drop = FALSE]
+  testthat::expect_equal(row_a$pop, 300) # 100 + 200
+  # pop_u5_prop should be averaged
+  testthat::expect_equal(row_a$pop_u5_prop, mean(c(0.15, 0.20)), tolerance = 1e-6)
+
+  row_b <- a0[a0$adm0 == "B", , drop = FALSE]
+  testthat::expect_equal(row_b$pop, 150)
+  testthat::expect_equal(row_b$pop_u5_prop, 0.18, tolerance = 1e-6)
+})
+
+testthat::test_that("errors on mixed proportion/count values in single column", {
+  testthat::skip_if_not(has_pkg("dplyr"))
+  testthat::skip_if_not(has_pkg("sntutils"))
+  .local_stub_infer()
+
+  df <- data.frame(
+    adm0 = c("A", "A", "B"),
+    year = c(2020L, 2020L, 2020L),
+    pop_bad = c(0.15, 0.20, 150),
+    stringsAsFactors = FALSE
+  )
+
+  testthat::expect_error(
+    snt_process_population(df, pop_cols = "pop_bad", translate = FALSE),
+    regexp = "mixed proportion and count data"
+  )
+})
+
+testthat::test_that("count columns still sum as before", {
+  testthat::skip_if_not(has_pkg("dplyr"))
+  testthat::skip_if_not(has_pkg("sntutils"))
+  .local_stub_infer()
+
+  df <- data.frame(
+    adm0 = c("A", "A", "B"),
+    year = c(2020L, 2020L, 2020L),
+    pop = c(100, 200, 150),
+    pop_u5 = c(15, 40, 27),
+    stringsAsFactors = FALSE
+  )
+
+  out <- snt_process_population(
+    df,
+    pop_cols = c("pop", "pop_u5"),
+    translate = FALSE
+  )
+
+  a0 <- out$pop_data_adm0
+  row_a <- a0[a0$adm0 == "A", , drop = FALSE]
+  # both should be summed since values > 1
+  testthat::expect_equal(row_a$pop, 300)
+  testthat::expect_equal(row_a$pop_u5, 55)
+})
