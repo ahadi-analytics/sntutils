@@ -79,6 +79,36 @@ metadata:
     label_fr: "Longitude de la formation sanitaire"
     label_pt: "Longitude da unidade sanitária"
 
+  hf_mfl:
+    snt_var_name: hf_mfl
+    label_en: "Health facility code (Master Facility List)"
+    label_fr: "Code de la formation sanitaire (liste maîtresse)"
+    label_pt: "Código da unidade sanitária (lista mestra)"
+
+  hf_ownership:
+    snt_var_name: hf_ownership
+    label_en: "Health facility ownership"
+    label_fr: "Propriété de la formation sanitaire"
+    label_pt: "Propriedade da unidade sanitária"
+
+  hf_opening_date:
+    snt_var_name: hf_opening_date
+    label_en: "Health facility opening date"
+    label_fr: "Date d'ouverture de la formation sanitaire"
+    label_pt: "Data de abertura da unidade sanitária"
+
+  hf_closing_date:
+    snt_var_name: hf_closing_date
+    label_en: "Health facility closing date"
+    label_fr: "Date de fermeture de la formation sanitaire"
+    label_pt: "Data de encerramento da unidade sanitária"
+
+  hf_created_date:
+    snt_var_name: hf_created_date
+    label_en: "Health facility creation date"
+    label_fr: "Date de création de la formation sanitaire"
+    label_pt: "Data de criação da unidade sanitária"
+
   # ── Temporal fields ───────────────────────────────────────────────────────────
   year:
     snt_var_name: year
@@ -267,6 +297,12 @@ population:
     label_fr: "Population âgée de moins de 5 ans"
     label_pt: "População com menos de 5 anos"
 
+  pop_u5_prop:
+    snt_var_name: pop_u5_prop
+    label_en: "Proportion of population under 5 years"
+    label_fr: "Proportion de la population de moins de 5 ans"
+    label_pt: "Proporção da população com menos de 5 anos"
+
   pop_u1:
     snt_var_name: pop_u1
     label_en: "Population under 1 year"
@@ -344,6 +380,24 @@ population:
     label_en: "Population density (per km²)"
     label_fr: "Densité de population (par km²)"
     label_pt: "Densidade populacional (por km²)"
+
+  pop_wp:
+    snt_var_name: pop_wp
+    label_en: "WorldPop population, all ages"
+    label_fr: "Population WorldPop, tous âges"
+    label_pt: "População WorldPop, todas as idades"
+
+  pop_u5_wp:
+    snt_var_name: pop_u5_wp
+    label_en: "WorldPop population under 5 years"
+    label_fr: "Population WorldPop de moins de 5 ans"
+    label_pt: "População WorldPop com menos de 5 anos"
+
+  pop_u5_prop_wp:
+    snt_var_name: pop_u5_prop_wp
+    label_en: "WorldPop proportion of population under 5 years"
+    label_fr: "Proportion WorldPop de la population de moins de 5 ans"
+    label_pt: "Proporção WorldPop da população com menos de 5 anos"
 
 routine_data:
   _description: "Routine HMIS malaria and service utilization indicators."
@@ -746,6 +800,62 @@ interventions:
       label_en: "Household coverage (%)"
       label_fr: "Couverture des ménages (%)"
       label_pt: "Cobertura dos agregados familiares (%)"
+
+  # ── LLIN mass campaign (CDM) ─────────────────────────────────────────────────
+  mc_campaign:
+    label_en: "LLIN mass campaign data"
+    label_fr: "Données de campagne de masse MILDA"
+    label_pt: "Dados de campanha de massa MILD"
+
+    # Enumeration phase
+    mc_enum_hh_enum:
+      snt_var_name: mc_enum_hh_enum
+      label_en: "Households enumerated"
+      label_fr: "Ménages dénombrés"
+      label_pt: "Agregados familiares recenseados"
+
+    mc_enum_pp_enum:
+      snt_var_name: mc_enum_pp_enum
+      label_en: "People enumerated"
+      label_fr: "Personnes dénombrées"
+      label_pt: "Pessoas recenseadas"
+
+    mc_enum_tickets:
+      snt_var_name: mc_enum_tickets
+      label_en: "Vouchers issued to households"
+      label_fr: "Bons donnés aux ménages"
+      label_pt: "Vales emitidos aos agregados"
+
+    mc_enum_llins_planed:
+      snt_var_name: mc_enum_llins_planed
+      label_en: "LLINs planned for distribution"
+      label_fr: "MILDA prévues pour distribution"
+      label_pt: "MILD previstas para distribuição"
+
+    # Distribution phase
+    mc_dist_hh_visited:
+      snt_var_name: mc_dist_hh_visited
+      label_en: "Households reached during distribution"
+      label_fr: "Ménages servis"
+      label_pt: "Agregados familiares alcançados"
+
+    mc_dist_llins_distr:
+      snt_var_name: mc_dist_llins_distr
+      label_en: "LLINs distributed"
+      label_fr: "MILDA distribuées"
+      label_pt: "MILD distribuídas"
+
+    mc_dist_tickets:
+      snt_var_name: mc_dist_tickets
+      label_en: "Vouchers redeemed"
+      label_fr: "Bons récupérés"
+      label_pt: "Vales resgatados"
+
+    mc_dist_llin_type:
+      snt_var_name: mc_dist_llin_type
+      label_en: "Type of LLIN distributed"
+      label_fr: "Type de moustiquaire"
+      label_pt: "Tipo de mosquiteiro distribuído"
 
   # ── Indoor residual spraying (IRS) ────────────────────────────────────────────
   irs_campaign:
