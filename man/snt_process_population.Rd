@@ -56,6 +56,16 @@ bilingual (EN + optional FR) data dictionary, and a record of which
 admin levels were found. By default, column types are first inferred
 via \code{\link[=auto_parse_types]{auto_parse_types()}} with \code{apply = TRUE} and \code{return = "data"}.
 }
+\details{
+\subsection{Automatic proportion handling}{
+
+The function automatically detects which population columns contain
+proportions (all non-NA values <= 1) versus counts. Proportion columns
+are aggregated using the mean, while count columns are summed. If a
+column contains mixed data (some values <= 1 and some > 1), the function
+will abort with an error message.
+}
+}
 \examples{
 \dontrun{
 # Basic usage with default "pop" column
