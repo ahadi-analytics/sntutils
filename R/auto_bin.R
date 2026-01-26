@@ -383,21 +383,36 @@ auto_bin <- function(
   result <- check_labels(label_lower, label_upper, d)
 
   # if problems, try finer rounding increments
+  # keep decimals constant unless absolutely necessary
   if (result$bad && !is.null(round_to)) {
+    original_d <- d
     for (finer in c(round_to / 2, round_to / 5, round_to / 10)) {
       label_lower <- .round_to_nearest(raw_lower, finer)
       label_upper <- .round_to_nearest(raw_upper, finer)
-      d <- d + 1
-      result <- check_labels(label_lower, label_upper, d)
-      if (!result$bad) break
+      # try with original decimals first
+      result <- check_labels(label_lower, label_upper, original_d)
+      if (!result$bad) {
+        d <- original_d
+        break
+      }
+      # only increase precision if needed and within reasonable bounds
+      if (d < decimals + 3) {
+        d <- d + 1
+        result <- check_labels(label_lower, label_upper, d)
+        if (!result$bad) break
+      }
     }
   }
 
-  # last resort: use raw values with high precision
+  # last resort: use raw values with higher precision
+  # but respect user's decimals parameter and only increase minimally
   if (result$bad) {
-    d <- max(d, 3)
+    max_d <- decimals + 3
+    if (d < decimals) {
+      d <- decimals
+    }
     result <- check_labels(raw_lower, raw_upper, d)
-    while (result$bad && d < 6) {
+    while (result$bad && d < max_d) {
       d <- d + 1
       result <- check_labels(raw_lower, raw_upper, d)
     }
