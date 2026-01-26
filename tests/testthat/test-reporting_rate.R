@@ -782,3 +782,222 @@ testthat::test_that("require_all parameter works correctly", {
   testthat::expect_s3_class(result_single, "tbl_df")
   testthat::expect_false("variable" %in% names(result_single))
 })
+
+testthat::test_that("reprate_col parameter works correctly", {
+  # create test data with pre-calculated reporting rates (decimal format)
+  test_data_decimal <- data.frame(
+    month = rep(c("Jan", "Feb", "Mar"), each = 4),
+    district = rep(c("North", "South"), each = 2, times = 3),
+    facility_id = rep(1:2, times = 6),
+    reprate = c(
+      0.8, 0.9, 0.7, 0.85,
+      0.75, 0.95, 0.6, 0.8,
+      0.9, 0.85, 0.7, 0.65
+    )
+  )
+
+  # test 1: basic usage with decimal format (0-1)
+  result1 <- prepare_plot_data(
+    data = test_data_decimal,
+    x_var = "month",
+    y_var = "district",
+    vars_of_interest = NULL,
+    by_facility = FALSE,
+    reprate_col = "reprate",
+    use_reprate = TRUE
+  )
+
+  testthat::expect_type(result1, "list")
+  testthat::expect_s3_class(result1$plot_data, "tbl_df")
+  testthat::expect_true(all(c("month", "district", "reprate", "missrate") %in%
+    names(result1$plot_data)))
+
+  # rates should be converted to percentages (0-100)
+  testthat::expect_true(all(result1$plot_data$reprate >= 0 &
+    result1$plot_data$reprate <= 100))
+  testthat::expect_true(all(result1$plot_data$reprate > 50))
+
+  # missrate should be calculated correctly
+  testthat::expect_equal(
+    result1$plot_data$reprate + result1$plot_data$missrate,
+    rep(100, nrow(result1$plot_data))
+  )
+
+  # test 2: with percentage format (0-100)
+  test_data_percentage <- test_data_decimal
+  test_data_percentage$reprate <- test_data_percentage$reprate * 100
+
+  result2 <- prepare_plot_data(
+    data = test_data_percentage,
+    x_var = "month",
+    y_var = "district",
+    vars_of_interest = NULL,
+    by_facility = FALSE,
+    reprate_col = "reprate",
+    use_reprate = TRUE
+  )
+
+  testthat::expect_s3_class(result2$plot_data, "tbl_df")
+  testthat::expect_true(all(result2$plot_data$reprate >= 0 &
+    result2$plot_data$reprate <= 100))
+
+  # test 3: without y_var (just over time)
+  result3 <- prepare_plot_data(
+    data = test_data_decimal,
+    x_var = "month",
+    y_var = NULL,
+    vars_of_interest = NULL,
+    by_facility = FALSE,
+    reprate_col = "reprate",
+    use_reprate = TRUE
+  )
+
+  testthat::expect_s3_class(result3$plot_data, "tbl_df")
+  testthat::expect_true(all(c("month", "reprate", "missrate") %in%
+    names(result3$plot_data)))
+  testthat::expect_false("district" %in% names(result3$plot_data))
+  testthat::expect_equal(nrow(result3$plot_data), 3)
+
+  # test 4: aggregation works correctly (mean of rates)
+  jan_north_data <- test_data_decimal[
+    test_data_decimal$month == "Jan" &
+      test_data_decimal$district == "North",
+  ]
+  expected_mean <- base::mean(jan_north_data$reprate) * 100
+
+  jan_north_result <- result1$plot_data[
+    result1$plot_data$month == "Jan" &
+      result1$plot_data$district == "North",
+  ]
+
+  testthat::expect_equal(jan_north_result$reprate, expected_mean)
+
+  # test 5: with hf_col for counting facilities
+  result5 <- prepare_plot_data(
+    data = test_data_decimal,
+    x_var = "month",
+    y_var = "district",
+    vars_of_interest = NULL,
+    by_facility = FALSE,
+    hf_col = "facility_id",
+    reprate_col = "reprate",
+    use_reprate = TRUE
+  )
+
+  testthat::expect_true(all(c("rep", "exp") %in% names(result5$plot_data)))
+  testthat::expect_true(all(result5$plot_data$exp >= result5$plot_data$rep))
+})
+
+testthat::test_that("reprate_col validation works correctly", {
+  test_data <- data.frame(
+    month = rep(c("Jan", "Feb"), each = 2),
+    district = rep(c("North", "South"), times = 2),
+    reprate = c(0.8, 0.9, 0.7, 0.85),
+    invalid_text = c("a", "b", "c", "d")
+  )
+
+  # test 1: missing column error
+  testthat::expect_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = "district",
+      reprate_col = "nonexistent_column",
+      use_reprate = TRUE
+    ),
+    "does not exist in data"
+  )
+
+  # test 2: non-numeric column error
+  testthat::expect_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = "district",
+      reprate_col = "invalid_text",
+      use_reprate = TRUE
+    ),
+    "must be numeric"
+  )
+
+  # test 3: values out of range error
+  test_data_invalid <- test_data
+  test_data_invalid$reprate <- c(0.8, 0.9, 150, 0.85)
+
+  testthat::expect_error(
+    reporting_rate_plot(
+      data = test_data_invalid,
+      x_var = "month",
+      y_var = "district",
+      reprate_col = "reprate",
+      use_reprate = TRUE
+    ),
+    "must be between 0 and 100"
+  )
+
+  # test 4: negative values error
+  test_data_negative <- test_data
+  test_data_negative$reprate <- c(-0.1, 0.9, 0.7, 0.85)
+
+  testthat::expect_error(
+    reporting_rate_plot(
+      data = test_data_negative,
+      x_var = "month",
+      y_var = "district",
+      reprate_col = "reprate",
+      use_reprate = TRUE
+    ),
+    "must be between 0 and 100"
+  )
+
+  # test 5: non-character reprate_col error
+  testthat::expect_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = "district",
+      reprate_col = c("reprate", "other"),
+      use_reprate = TRUE
+    ),
+    "must be a single character string"
+  )
+})
+
+testthat::test_that("reprate_col works in full reporting_rate_plot", {
+  # create test data with pre-calculated rates
+  test_data <- data.frame(
+    month = rep(seq.Date(
+      as.Date("2024-01-01"),
+      by = "month", length.out = 3
+    ), each = 4),
+    district = rep(c("North", "South"), each = 2, times = 3),
+    facility_id = rep(1:2, times = 6),
+    reporting_rate = runif(12, 0.5, 1)
+  )
+
+  # test that plot is generated successfully
+  testthat::expect_no_error({
+    plot_result <- reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = "district",
+      reprate_col = "reporting_rate",
+      hf_col = "facility_id",
+      use_reprate = TRUE,
+      show_plot = FALSE
+    )
+  })
+
+  # verify plot object is returned
+  plot_result <- reporting_rate_plot(
+    data = test_data,
+    x_var = "month",
+    y_var = "district",
+    reprate_col = "reporting_rate",
+    hf_col = "facility_id",
+    use_reprate = TRUE,
+    show_plot = FALSE
+  )
+
+  testthat::expect_s3_class(plot_result, "gg")
+})

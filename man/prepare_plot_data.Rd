@@ -11,6 +11,7 @@ prepare_plot_data(
   vars_of_interest,
   by_facility = FALSE,
   hf_col = "hf_uid",
+  reprate_col = NULL,
   use_reprate = TRUE,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,

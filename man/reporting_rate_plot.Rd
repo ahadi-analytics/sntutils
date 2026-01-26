@@ -10,6 +10,7 @@ reporting_rate_plot(
   y_var = NULL,
   vars_of_interest = NULL,
   hf_col = NULL,
+  reprate_col = NULL,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,
   nonreport_window = 6,
@@ -57,6 +58,15 @@ to be visualized in 'data'. If NULL, all variables except 'x_var' and
 containing unique health facility IDs. When provided with key_indicators,
 enables facility-level analysis and proper exclusion of inactive facilities
 from denominators, resulting in more accurate missing rates.}
+
+\item{reprate_col}{Character. Optional (defaults to NULL). Name of a column
+containing pre-calculated facility-level reporting rates. When provided, the
+function aggregates this column by x_var (and y_var if specified) instead of
+calculating reporting rates from raw indicators. The column should contain
+numeric values in decimal (0-1) or percentage (0-100) format. When using this
+parameter, vars_of_interest and calculation-related parameters (key_indicators,
+method, nonreport_window, reporting_rule, require_all, weighting, etc.) are
+ignored. The hf_col parameter can still be used for counting facilities.}
 
 \item{key_indicators}{Optional. Character vector of indicators used to define
 facility activity in scenario 1. Defaults to
@@ -212,5 +222,19 @@ reporting_rate_plot(
   key_indicators = c("malaria", "pneumonia"),  # Define activity based on these
   method = 3,  # Dynamic activation method
   nonreport_window = 6  # Facilities inactive after 6 months of non-reporting
+)
+
+# Scenario 4: Using pre-calculated reporting rates
+# When data already has facility-level reporting rates calculated
+hf_data_with_reprate <- hf_data
+hf_data_with_reprate$reporting_rate <- runif(nrow(hf_data_with_reprate), 0, 1)
+
+reporting_rate_plot(
+  data = hf_data_with_reprate,
+  x_var = "month",
+  y_var = "district",
+  reprate_col = "reporting_rate",  # Use pre-calculated rates
+  hf_col = "facility_id",
+  use_reprate = TRUE
 )
 }

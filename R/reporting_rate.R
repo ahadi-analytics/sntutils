@@ -966,6 +966,7 @@ prepare_plot_data <- function(
   vars_of_interest,
   by_facility = FALSE,
   hf_col = "hf_uid",
+  reprate_col = NULL,
   use_reprate = TRUE,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
   method = 3,
@@ -995,17 +996,21 @@ prepare_plot_data <- function(
       "i" = "Run `rlang::last_trace()` to see where the error occurred."
     ))
   }
-  if (!is.character(vars_of_interest) || length(vars_of_interest) == 0) {
-    cli::cli_abort(c(
-      "!" = "'vars_of_interest' must be a non-empty character vector",
-      "i" = "Run `rlang::last_trace()` to see where the error occurred."
-    ))
-  }
-  if (!all(vars_of_interest %in% names(data))) {
-    cli::cli_abort(c(
-      "!" = "All variables in 'vars_of_interest' must exist in data",
-      "i" = "Run `rlang::last_trace()` to see where the error occurred."
-    ))
+
+  # skip vars_of_interest validation if reprate_col is provided
+  if (is.null(reprate_col)) {
+    if (!is.character(vars_of_interest) || length(vars_of_interest) == 0) {
+      cli::cli_abort(c(
+        "!" = "'vars_of_interest' must be a non-empty character vector",
+        "i" = "Run `rlang::last_trace()` to see where the error occurred."
+      ))
+    }
+    if (!all(vars_of_interest %in% names(data))) {
+      cli::cli_abort(c(
+        "!" = "All variables in 'vars_of_interest' must exist in data",
+        "i" = "Run `rlang::last_trace()` to see where the error occurred."
+      ))
+    }
   }
   if (!is.null(y_var) && (!is.character(y_var) || !(y_var %in% names(data)))) {
     cli::cli_abort(c(
@@ -1086,42 +1091,105 @@ prepare_plot_data <- function(
   }
 
   # Create title components
-  title_vars <- if (length(vars_of_interest) <= 5) {
-    paste(paste(vars_of_interest, collapse = ", "), "by", x_var)
+  if (!is.null(reprate_col)) {
+    # when using pre-calculated rates, use simpler title
+    title_vars <- paste("reporting rate by", x_var)
   } else {
-    paste("various variables by", x_var)
+    title_vars <- if (length(vars_of_interest) <= 5) {
+      paste(paste(vars_of_interest, collapse = ", "), "by", x_var)
+    } else {
+      paste("various variables by", x_var)
+    }
   }
   title_suffix <- if (!is.null(y_var)) paste("and", y_var) else ""
 
-  # Call appropriate reporting metric scenario
-  plot_data <- calculate_reporting_metrics(
-    data = data,
-    vars_of_interest = vars_of_interest,
-    x_var = x_var,
-    y_var = y_var,
-    hf_col = if (by_facility) hf_col else NULL,
-    key_indicators = key_indicators,
-    method = method,
-    nonreport_window = nonreport_window,
-    reporting_rule = reporting_rule,
-    require_all = require_all,
-    weighting = weighting,
-    weight_var = weight_var,
-    weight_window = weight_window,
-    exclude_current_x = exclude_current_x,
-    cold_start = cold_start
-  )
+  # Use pre-calculated reporting rate or calculate from raw data
+  if (!is.null(reprate_col)) {
+    # set vars_of_interest to reprate_col for consistency in return value
+    if (is.null(vars_of_interest)) {
+      vars_of_interest <- reprate_col
+    }
 
-  # Convert rates to percentages for plotting
-  plot_data <- plot_data |>
-    dplyr::mutate(
-      reprate = reprate * 100,
-      missrate = missrate * 100,
-      dplyr::across(
-        dplyr::matches("reprate_w|missrate_w"),
-        ~ .x * 100
-      )
+    # aggregate pre-calculated reporting rate column
+    group_vars <- c(x_var, y_var)
+    group_vars <- group_vars[!is.na(group_vars) & !is.null(group_vars)]
+
+    # detect if rates are in decimal (0-1) or percentage (0-100) format
+    rate_values <- data[[reprate_col]][!is.na(data[[reprate_col]])]
+    is_percentage <- if (length(rate_values) > 0) {
+      max_val <- base::max(rate_values, na.rm = TRUE)
+      max_val > 1
+    } else {
+      FALSE
+    }
+
+    # aggregate by group variables
+    if (!is.null(hf_col) && hf_col %in% names(data)) {
+      # with hf_col: count distinct facilities with non-NA rates
+      plot_data <- data |>
+        dplyr::group_by(dplyr::across(dplyr::all_of(group_vars))) |>
+        dplyr::summarise(
+          reprate = base::mean(.data[[reprate_col]], na.rm = TRUE),
+          rep = dplyr::n_distinct(
+            .data[[hf_col]][!is.na(.data[[reprate_col]])],
+            na.rm = TRUE
+          ),
+          exp = dplyr::n_distinct(.data[[hf_col]], na.rm = TRUE),
+          .groups = "drop"
+        )
+    } else {
+      # without hf_col: count rows with non-NA rates
+      plot_data <- data |>
+        dplyr::group_by(dplyr::across(dplyr::all_of(group_vars))) |>
+        dplyr::summarise(
+          reprate = base::mean(.data[[reprate_col]], na.rm = TRUE),
+          rep = base::sum(!is.na(.data[[reprate_col]])),
+          exp = dplyr::n(),
+          .groups = "drop"
+        )
+    }
+
+    # convert to percentage if needed
+    if (!is_percentage) {
+      plot_data <- plot_data |>
+        dplyr::mutate(reprate = reprate * 100)
+    }
+
+    # calculate missing rate
+    plot_data <- plot_data |>
+      dplyr::mutate(missrate = 100 - reprate)
+
+  } else {
+    # call appropriate reporting metric scenario
+    plot_data <- calculate_reporting_metrics(
+      data = data,
+      vars_of_interest = vars_of_interest,
+      x_var = x_var,
+      y_var = y_var,
+      hf_col = if (by_facility) hf_col else NULL,
+      key_indicators = key_indicators,
+      method = method,
+      nonreport_window = nonreport_window,
+      reporting_rule = reporting_rule,
+      require_all = require_all,
+      weighting = weighting,
+      weight_var = weight_var,
+      weight_window = weight_window,
+      exclude_current_x = exclude_current_x,
+      cold_start = cold_start
     )
+
+    # convert rates to percentages for plotting
+    plot_data <- plot_data |>
+      dplyr::mutate(
+        reprate = reprate * 100,
+        missrate = missrate * 100,
+        dplyr::across(
+          dplyr::matches("reprate_w|missrate_w"),
+          ~ .x * 100
+        )
+      )
+  }
 
   list(
     plot_data = plot_data,
@@ -1157,6 +1225,14 @@ prepare_plot_data <- function(
 #'   containing unique health facility IDs. When provided with key_indicators,
 #'   enables facility-level analysis and proper exclusion of inactive facilities
 #'   from denominators, resulting in more accurate missing rates.
+#' @param reprate_col Character. Optional (defaults to NULL). Name of a column
+#'   containing pre-calculated facility-level reporting rates. When provided, the
+#'   function aggregates this column by x_var (and y_var if specified) instead of
+#'   calculating reporting rates from raw indicators. The column should contain
+#'   numeric values in decimal (0-1) or percentage (0-100) format. When using this
+#'   parameter, vars_of_interest and calculation-related parameters (key_indicators,
+#'   method, nonreport_window, reporting_rule, require_all, weighting, etc.) are
+#'   ignored. The hf_col parameter can still be used for counting facilities.
 #' @param key_indicators Optional. Character vector of indicators used to define
 #'   facility activity in scenario 1. Defaults to
 #'   `c("allout", "conf", "test", "treat", "pres")`.
@@ -1270,10 +1346,25 @@ prepare_plot_data <- function(
 #'   method = 3,  # Dynamic activation method
 #'   nonreport_window = 6  # Facilities inactive after 6 months of non-reporting
 #' )
+#'
+#' # Scenario 4: Using pre-calculated reporting rates
+#' # When data already has facility-level reporting rates calculated
+#' hf_data_with_reprate <- hf_data
+#' hf_data_with_reprate$reporting_rate <- runif(nrow(hf_data_with_reprate), 0, 1)
+#'
+#' reporting_rate_plot(
+#'   data = hf_data_with_reprate,
+#'   x_var = "month",
+#'   y_var = "district",
+#'   reprate_col = "reporting_rate",  # Use pre-calculated rates
+#'   hf_col = "facility_id",
+#'   use_reprate = TRUE
+#' )
 #' @export
 reporting_rate_plot <- function(data, x_var, y_var = NULL,
                                 vars_of_interest = NULL,
                                 hf_col = NULL,
+                                reprate_col = NULL,
                                 key_indicators = c("allout", "conf",
                                                   "test", "treat",
                                                   "pres"),
@@ -1317,6 +1408,49 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     ))
   }
 
+  # validate reprate_col if provided
+  if (!is.null(reprate_col)) {
+    if (!is.character(reprate_col) || length(reprate_col) != 1) {
+      cli::cli_abort(c(
+        "!" = "'reprate_col' must be a single character string.",
+        "i" = "Run `rlang::last_trace()` to see where the error occurred."
+      ))
+    }
+    if (!reprate_col %in% names(data)) {
+      cli::cli_abort(c(
+        "!" = paste0(
+          "Column '", reprate_col, "' specified in 'reprate_col' does not ",
+          "exist in data."
+        ),
+        "i" = "Run `rlang::last_trace()` to see where the error occurred."
+      ))
+    }
+    if (!is.numeric(data[[reprate_col]])) {
+      cli::cli_abort(c(
+        "!" = paste0(
+          "Column '", reprate_col, "' must be numeric, not ",
+          class(data[[reprate_col]])[1], "."
+        ),
+        "i" = "Run `rlang::last_trace()` to see where the error occurred."
+      ))
+    }
+    # check that values are in reasonable range
+    rate_values <- data[[reprate_col]][!is.na(data[[reprate_col]])]
+    if (length(rate_values) > 0) {
+      min_val <- base::min(rate_values, na.rm = TRUE)
+      max_val <- base::max(rate_values, na.rm = TRUE)
+      if (min_val < 0 || max_val > 100) {
+        cli::cli_abort(c(
+          "!" = paste0(
+            "Values in '", reprate_col, "' must be between 0 and 100 ",
+            "(found range: ", round(min_val, 2), " to ", round(max_val, 2), ")."
+          ),
+          "i" = "Reporting rates should be decimal (0-1) or percentage (0-100).",
+          "i" = "Run `rlang::last_trace()` to see where the error occurred."
+        ))
+      }
+    }
+  }
 
   # Determine the scenario based on input parameters
   scenario <- if (!is.null(hf_col)) {
@@ -1509,6 +1643,7 @@ reporting_rate_plot <- function(data, x_var, y_var = NULL,
     vars_of_interest = vars_of_interest,
     by_facility = scenario == "facility",
     hf_col = hf_col,
+    reprate_col = reprate_col,
     use_reprate = use_reprate,
     key_indicators = key_indicators,
     method = method,
