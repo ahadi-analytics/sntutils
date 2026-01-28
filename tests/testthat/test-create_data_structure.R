@@ -50,7 +50,8 @@ get_expected_data_structure <- function() {
     simple_domains = c(
       "1.4_drug_efficacy_resistance",
       "1.7_entomology",
-      "1.8_commodities"
+      "1.8_commodities",
+      "1.9_finance"
     ),
     environment = c(
       "1.5a_climate",
@@ -84,7 +85,9 @@ testthat::test_that("create_data_structure creates correct folder hierarchy", {
     "1.5_environment",
     "1.6_health_systems",
     "1.7_entomology",
-    "1.8_commodities"
+    "1.8_commodities",
+    "1.9_finance",
+    "1.10_final"
   )
 
   for (domain in expected_domains) {
@@ -149,7 +152,8 @@ testthat::test_that("create_data_structure creates raw and processed folders", {
   simple_domains <- c(
     "1.4_drug_efficacy_resistance",
     "1.7_entomology",
-    "1.8_commodities"
+    "1.8_commodities",
+    "1.9_finance"
   )
 
   for (domain in simple_domains) {
@@ -203,6 +207,36 @@ testthat::test_that("create_data_structure creates raw and processed folders", {
       info = glue::glue("{complex_path}/processed should exist")
     )
   }
+
+  cleanup_test_dir(test_dir)
+})
+
+testthat::test_that("create_data_structure creates final folder without subfolders", {
+  test_dir <- create_temp_test_dir()
+
+  create_data_structure(base_path = test_dir)
+
+  data_dir <- fs::path(test_dir, "01_data")
+  final_path <- fs::path(data_dir, "1.10_final")
+
+  # check that 1.10_final folder exists
+  testthat::expect_true(
+    fs::dir_exists(final_path),
+    info = "1.10_final folder should exist"
+  )
+
+  # check that raw and processed subfolders do NOT exist
+  raw_path <- fs::path(final_path, "raw")
+  processed_path <- fs::path(final_path, "processed")
+
+  testthat::expect_false(
+    fs::dir_exists(raw_path),
+    info = "1.10_final should NOT have raw subfolder"
+  )
+  testthat::expect_false(
+    fs::dir_exists(processed_path),
+    info = "1.10_final should NOT have processed subfolder"
+  )
 
   cleanup_test_dir(test_dir)
 })
@@ -501,7 +535,11 @@ testthat::test_that("folder structure matches ahadi project standards", {
     "01_data/1.6_health_systems/1.6a_dhs",
     # consistent raw/processed structure
     "01_data/1.7_entomology/raw",
-    "01_data/1.8_commodities/processed"
+    "01_data/1.8_commodities/processed",
+    "01_data/1.9_finance/raw",
+    "01_data/1.9_finance/processed",
+    # final folder without subfolders
+    "01_data/1.10_final"
   )
 
   for (path in ahadi_specific_paths) {
