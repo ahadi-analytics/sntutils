@@ -436,3 +436,42 @@ test_that("outlier label uses same decimal precision as regular bins", {
 
   expect_equal(regular_precision, outlier_precision)
 })
+
+test_that("outlier threshold handles all values correctly without NAs", {
+  set.seed(123)
+  # mix of values below and above threshold
+  tpr <- c(0.74, 0.64, 0.92, 0.88, 0.94, 0.74, 0.76, 0.8, 0.76, 1.05, 1.15)
+
+  result <- auto_bin(
+    tpr,
+    palette = "rdbu",
+    bin = 6,
+    outlier_threshold = 1.0
+  )
+
+  # no bins should be NA
+  expect_equal(sum(is.na(result$bins)), 0)
+
+  # values > 1.0 should be in outlier bin
+  expect_equal(sum(result$bins == ">1.00", na.rm = TRUE), 2)
+
+  # values <= 1.0 should be in regular bins
+  expect_equal(sum(result$bins != ">1.00", na.rm = TRUE), 9)
+})
+
+test_that("outlier threshold works with NA values in input", {
+  tpr <- c(0.5, NA, 0.8, 1.2, NA, 0.9)
+
+  result <- auto_bin(
+    tpr,
+    palette = "rdbu",
+    bin = 5,
+    outlier_threshold = 1.0
+  )
+
+  # only original NAs should be NA in output
+  expect_equal(sum(is.na(result$bins)), 2)
+
+  # outlier should be binned
+  expect_equal(sum(result$bins == ">1.00", na.rm = TRUE), 1)
+})
