@@ -226,3 +226,213 @@ test_that("custom labels diagnostics include prop_zero", {
   expect_true(is.na(result$diagnostics$skew_ratio))
   expect_true(is.na(result$diagnostics$tail_share))
 })
+
+test_that("custom labels work with decimal reporting rates", {
+  # simulate reporting rates (proportions from 0 to 1)
+  reprate <- c(0.5, 0.65, 0.75, 0.85, 0.92, 0.97, 0.99, 1.0)
+  custom_labels <- c(
+    "0.00\u20130.70",
+    "0.70\u20130.80",
+    "0.80\u20130.95",
+    "0.95\u20130.99",
+    "1.00"
+  )
+
+  result <- auto_bin(
+    x = reprate,
+    palette = "rdbu",
+    labels = custom_labels
+  )
+
+  expect_equal(result$method, "custom")
+  expect_equal(length(result$colors), 5)
+  # labels should be preserved as-is for decimal data (not reformatted)
+  expect_equal(names(result$colors), custom_labels)
+  expect_true(all(levels(result$bins) == custom_labels))
+
+  # verify no duplicate labels
+  expect_equal(anyDuplicated(names(result$colors)), 0)
+})
+
+test_that("custom labels with hyphen format work for decimal data", {
+  reprate <- c(0.5, 0.75, 0.85, 0.97)
+  custom_labels <- c("0.00-0.70", "0.70-0.80", "0.80-0.95", "0.95-1.00")
+
+  result <- auto_bin(
+    x = reprate,
+    palette = "blues",
+    labels = custom_labels
+  )
+
+  expect_equal(result$method, "custom")
+  expect_equal(length(result$colors), 4)
+  # labels should be preserved for decimal data
+  expect_equal(names(result$colors), custom_labels)
+})
+
+test_that("custom labels preserve precision for rates with 3 decimals", {
+  rate <- c(0.123, 0.456, 0.789)
+  custom_labels <- c("0.000-0.250", "0.250-0.500", "0.500-1.000")
+
+  result <- auto_bin(
+    x = rate,
+    palette = "greens",
+    labels = custom_labels
+  )
+
+  expect_equal(result$method, "custom")
+  # labels should be preserved for decimal data
+  expect_equal(names(result$colors), custom_labels)
+})
+
+test_that("custom labels still apply K/M formatting for large numbers", {
+  incidence <- c(500, 1500, 5000, 15000)
+  custom_labels <- c("0-1000", "1000-3000", "3000-10000", ">10000")
+
+  result <- auto_bin(
+    x = incidence,
+    palette = "byor",
+    labels = custom_labels
+  )
+
+  # should be reformatted with K/M suffixes for large numbers
+  expected_formatted <- c("0\u20131K", "1K\u20133K", "3K\u201310K", ">10K")
+
+  expect_equal(result$method, "custom")
+  expect_equal(names(result$colors), expected_formatted)
+})
+
+test_that("outlier threshold creates separate bin for values above threshold", {
+  set.seed(123)
+  tpr <- c(runif(80, 0.5, 0.95), runif(20, 1.05, 1.3))
+
+  result <- auto_bin(
+    tpr,
+    palette = "rdbu",
+    bin = 5,
+    outlier_threshold = 1.0
+  )
+
+  expect_s3_class(result$bins, "factor")
+  expect_equal(length(levels(result$bins)), 5)
+  expect_true(">1.00" %in% levels(result$bins))
+  expect_equal(sum(result$bins == ">1.00", na.rm = TRUE), 20)
+})
+
+test_that("outlier threshold uses custom color for outlier bin", {
+  set.seed(123)
+  tpr <- c(runif(80, 0.5, 0.95), runif(20, 1.05, 1.3))
+
+  result <- auto_bin(
+    tpr,
+    palette = "rdbu",
+    bin = 5,
+    outlier_threshold = 1.0,
+    outlier_color = "#636363"
+  )
+
+  expect_equal(result$colors[">1.00"], c(">1.00" = "#636363"))
+  expect_equal(length(result$colors), 5)
+})
+
+test_that("outlier threshold bins normal data automatically", {
+  set.seed(123)
+  tpr <- c(runif(80, 0.5, 0.95), runif(20, 1.05, 1.3))
+
+  result <- auto_bin(
+    tpr,
+    palette = "rdbu",
+    bin = 5,
+    outlier_threshold = 1.0
+  )
+
+  # 4 automatic bins + 1 outlier bin = 5 total
+  expect_equal(length(result$colors), 5)
+  # all bins except outlier should use rdbu palette (4 bins interpolated)
+  rdbu_colors <- sntutils::get_palette("rdbu", n = 4)
+  expect_equal(length(unname(result$colors[1:4])), 4)
+  # last color should be grey
+  expect_equal(unname(result$colors[5]), "#636363")
+})
+
+test_that("outlier threshold errors when combined with custom labels", {
+  tpr <- c(0.5, 0.75, 0.95, 1.1)
+
+  expect_error(
+    auto_bin(
+      tpr,
+      labels = c("0.0-0.8", "0.8-1.0", ">1.0"),
+      outlier_threshold = 1.0
+    ),
+    "Cannot use both.*outlier_threshold.*and.*labels"
+  )
+})
+
+test_that("outlier threshold handles case with no outliers", {
+  tpr <- c(0.5, 0.6, 0.7, 0.8, 0.9)
+
+  result <- auto_bin(
+    tpr,
+    palette = "rdbu",
+    bin = 5,
+    outlier_threshold = 1.0
+  )
+
+  # should work normally, no outlier bin created
+  expect_s3_class(result$bins, "factor")
+  expect_false(">1.00" %in% levels(result$bins))
+})
+
+test_that("outlier threshold preserves method from automatic binning", {
+  set.seed(123)
+  tpr <- c(runif(80, 0.5, 0.95), runif(20, 1.05, 1.3))
+
+  result <- auto_bin(
+    tpr,
+    palette = "rdbu",
+    bin = 5,
+    outlier_threshold = 1.0
+  )
+
+  expect_true(result$method %in% c("headtail", "hybrid", "quantile"))
+})
+
+test_that("outlier threshold returns correct counts", {
+  set.seed(123)
+  tpr <- c(runif(80, 0.5, 0.95), runif(20, 1.05, 1.3))
+
+  result <- auto_bin(
+    tpr,
+    palette = "rdbu",
+    bin = 5,
+    outlier_threshold = 1.0
+  )
+
+  expect_s3_class(result$counts, "data.frame")
+  expect_equal(sum(result$counts$n), 100)
+  expect_equal(nrow(result$counts), 5)
+
+  outlier_count <- result$counts$n[result$counts$bin == ">1.00"]
+  expect_equal(outlier_count, 20)
+})
+
+test_that("outlier label uses same decimal precision as regular bins", {
+  set.seed(123)
+  tpr <- c(runif(80, 0.5, 0.95), runif(20, 1.05, 1.3))
+
+  result <- auto_bin(
+    tpr,
+    palette = "rdbu",
+    bin = 6,
+    decimals = 2,
+    outlier_threshold = 1.0
+  )
+
+  regular_label <- as.character(levels(result$bins)[1])
+  outlier_label <- as.character(levels(result$bins)[length(levels(result$bins))])
+
+  regular_precision <- sntutils:::.detect_label_precision(regular_label)
+  outlier_precision <- sntutils:::.detect_label_precision(outlier_label)
+
+  expect_equal(regular_precision, outlier_precision)
+})

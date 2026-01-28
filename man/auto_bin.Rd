@@ -11,7 +11,9 @@ auto_bin(
   decimals = 2,
   round_to = 50,
   reverse = FALSE,
-  labels = NULL
+  labels = NULL,
+  outlier_threshold = NULL,
+  outlier_color = "#636363"
 )
 }
 \arguments{
@@ -33,6 +35,13 @@ Set to NULL for raw values (useful for decimal data like rates).}
 skips automatic binning and uses these labels with breaks parsed from
 label strings. Supports formats: "0–50", "50-100", ">1000". Example:
 c("0–50", "50–100", "100–250", "250–450", "450–700", "700–1000", ">1000")}
+
+\item{outlier_threshold}{Numeric. Optional threshold to create a separate
+outlier bin for values above this threshold. Useful for metrics like TPR
+where values >1 are unusual. Default is NULL (no outlier handling).}
+
+\item{outlier_color}{Character. Hex color for the outlier bin. Only used
+when outlier_threshold is specified. Default is "#636363" (dark grey).}
 }
 \value{
 A list with:
@@ -85,5 +94,12 @@ custom_labels <- c("0–50", "50–100", "100–250", "250–450",
 result <- auto_bin(incidence * 10, palette = "byor", labels = custom_labels)
 table(result$bins)
 result$method  # Returns "custom"
+
+# Handle outliers above threshold (useful for TPR)
+set.seed(123)
+tpr <- c(runif(80, 0.5, 0.95), runif(20, 1.05, 1.3))
+result <- auto_bin(tpr, palette = "rdbu", bin = 5, outlier_threshold = 1.0)
+table(result$bins)
+result$colors  # Last bin (>1.00) will be grey
 
 }
