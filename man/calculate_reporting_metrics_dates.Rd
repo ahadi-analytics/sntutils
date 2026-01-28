@@ -2,30 +2,99 @@
 % Please edit documentation in R/reporting_rate.R
 \name{calculate_reporting_metrics_dates}
 \alias{calculate_reporting_metrics_dates}
-\title{Calculate reporting rate and active status for health facilities}
+\title{Calculate reporting metrics based on facility date ranges}
 \usage{
 calculate_reporting_metrics_dates(
   data,
   start_col,
   end_col,
-  var,
-  ref_date = Sys.Date()
+  record_col = "date",
+  group_cols = "adm2",
+  ref_date = NULL
 )
 }
 \arguments{
-\item{data}{Data frame with facility data}
+\item{data}{Data frame with facility records}
 
-\item{start_col}{Name of column with facility opening date}
+\item{start_col}{Character. Name of column with facility
+opening/start dates}
 
-\item{end_col}{Name of column with facility closing/end date}
+\item{end_col}{Character. Name of column with facility
+closing/end dates}
 
-\item{var}{Name of column with actual report count}
+\item{record_col}{Character. Name of column with record
+dates (default: "date")}
 
-\item{ref_date}{Reference date to check active status (default: today)}
+\item{group_cols}{Character vector. Column names to group
+by when aggregating (default: "adm2"). Can include
+administrative levels (adm0, adm1, adm2) or custom columns}
+
+\item{ref_date}{Date. Optional reference date (currently
+unused, reserved for future functionality)}
 }
 \value{
-Data frame with reprate and active_status columns
+Data frame with original columns plus:
+\item{activity_status}{Character. "Active" or "Inactive"
+for each facility-record}
+\item{reprate}{Numeric. Proportion of active facilities
+in each group-record combination (0-1 scale)}
 }
 \description{
-Calculate reporting rate and active status for health facilities
+Calculates reporting rates by determining if facilities were
+active during each record period based on opening and closing
+dates. Facilities are considered active if the record date
+falls within their operating window.
+}
+\details{
+Activity classification:
+\itemize{
+\item Active: record date is between start_col and end_col
+\item Inactive: record date is before start or after end
+\item NA: missing start or end date
+}
+
+The reporting rate is calculated as the proportion of
+facilities that are active in each group-record combination.
+}
+\examples{
+# Sample facility data with operating dates
+facilities <- data.frame(
+  hf_uid = rep(1:10, each = 12),
+  date = rep(seq.Date(
+    as.Date("2024-01-01"),
+    by = "month",
+    length.out = 12
+  ), times = 10),
+  district = rep(c("North", "South"), each = 60),
+  opening_date = as.Date("2023-01-01"),
+  closing_date = as.Date("2024-12-31")
+)
+
+# Calculate with default grouping (adm2)
+facilities$adm2 <- facilities$district
+result <- calculate_reporting_metrics_dates(
+  data = facilities,
+  start_col = "opening_date",
+  end_col = "closing_date"
+)
+
+# Calculate with multiple grouping levels
+facilities$country <- "Example"
+result2 <- calculate_reporting_metrics_dates(
+  data = facilities,
+  start_col = "opening_date",
+  end_col = "closing_date",
+  group_cols = c("country", "district")
+)
+
+# Use custom record column
+facilities$report_period <- facilities$date
+result3 <- calculate_reporting_metrics_dates(
+  data = facilities,
+  start_col = "opening_date",
+  end_col = "closing_date",
+  record_col = "report_period",
+  group_cols = "district"
+)
+
 }
