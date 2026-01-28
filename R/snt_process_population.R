@@ -10,6 +10,12 @@
 #' via [auto_parse_types()] with `apply = TRUE` and `return = "data"`.
 #'
 #' @details
+#' ## Data uniqueness requirement
+#' Input data must have unique rows per admin-year at the finest level present.
+#' If your data contains sex, age, or residence strata, aggregate these upstream
+#' before passing to this function. The function will error if duplicates are
+#' detected to prevent silent double counting.
+#'
 #' ## Automatic proportion handling
 #' The function automatically detects which population columns contain
 #' proportions (all non-NA values <= 1) versus counts. Proportion columns
@@ -103,6 +109,9 @@ snt_process_population <- function(
   lv_all <- c("adm0", "adm1", "adm2", "adm3")
   levels_present <- lv_all[lv_all %in% names(pop_data)]
 
+  # check for duplicates at the finest granularity level in input data
+  .check_uniqueness(pop_data, levels_present)
+
   # summarise for each level that truly exists
   pop_data_adm0 <- .summarise_by(pop_data, c("adm0"), pop_cols, prop_cols)
   pop_data_adm1 <- .summarise_by(pop_data, c("adm0", "adm1"), pop_cols, prop_cols)
@@ -165,6 +174,51 @@ snt_process_population <- function(
   ) {
     cli::cli_alert_info(text)
   }
+  invisible(NULL)
+}
+
+#' Check for duplicate rows at finest admin level
+#'
+#' Ensures population data has unique rows per admin-year at the finest
+#' granularity level present. Aborts if duplicates are found.
+#'
+#' @param pop_data Data frame with population.
+#' @param levels_present Character vector of admin levels in data.
+#' @noRd
+.check_uniqueness <- function(pop_data, levels_present) {
+  if (length(levels_present) == 0 || !requireNamespace("dplyr", quietly = TRUE)) {
+    return(invisible(NULL))
+  }
+
+  # identify finest admin level (last in hierarchy)
+  finest_level <- levels_present[length(levels_present)]
+  check_cols <- c(levels_present, "year")
+
+  # count rows per admin-year combination at finest level
+  dup <- pop_data |>
+    dplyr::count(
+      dplyr::across(dplyr::all_of(check_cols))
+    ) |>
+    dplyr::filter(.data$n > 1)
+
+  if (nrow(dup) > 0) {
+    example_key <- paste(
+      names(dup)[1:(ncol(dup) - 1)],
+      unlist(dup[1, 1:(ncol(dup) - 1)]),
+      sep = "=",
+      collapse = ", "
+    )
+    cli::cli_abort(
+      c(
+        "Population data has multiple rows per admin-year combination at {finest_level} level.",
+        "i" = "Example duplicate: {example_key} (n={dup$n[1]} rows)",
+        "x" = "This causes populations to be summed incorrectly.",
+        ">" = "Common causes: sex disaggregation, age groups, residence strata.",
+        ">" = "Ensure data is unique per admin-year at {finest_level} level or aggregate upstream."
+      )
+    )
+  }
+
   invisible(NULL)
 }
 
@@ -296,6 +350,14 @@ snt_process_population <- function(
         )
       )
     }
+  }
+
+  # log which columns are treated as proportions
+  if (length(prop_cols) > 0) {
+    .msg(paste0(
+      "detected proportion columns (will use mean): ",
+      toString(prop_cols)
+    ))
   }
 
   prop_cols
