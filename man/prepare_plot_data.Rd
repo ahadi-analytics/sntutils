@@ -39,6 +39,10 @@ prepare_plot_data(
 \item{hf_col}{Character. Name of health facility ID column (required
 if by_facility)}
 
+\item{reprate_col}{Character. Optional name of column containing pre-calculated
+reporting rates. If provided, these values will be used instead of
+calculating reporting rates. Default is NULL.}
+
 \item{use_reprate}{Logical. If TRUE, return reporting rate. Else, missing
 rate}
 
