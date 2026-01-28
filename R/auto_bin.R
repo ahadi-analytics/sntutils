@@ -8,6 +8,23 @@
   round(x / to) * to
 }
 
+#' Detect decimal precision from formatted label
+#'
+#' @param label Character. A bin label like "0.790–0.850" or ">1.000".
+#' @return Integer. Number of decimal places detected.
+#' @noRd
+.detect_label_precision <- function(label) {
+  num_str <- stringr::str_extract(label, "[0-9]+\\.[0-9]+")
+  if (is.na(num_str)) {
+    return(0)
+  }
+  decimal_part <- stringr::str_extract(num_str, "\\.[0-9]+")
+  if (is.na(decimal_part)) {
+    return(0)
+  }
+  nchar(decimal_part) - 1
+}
+
 #' Format number with K/M suffix for large values
 #'
 #' @param x Numeric vector.
@@ -268,6 +285,11 @@ if (is.null(n)) {
 #'   skips automatic binning and uses these labels with breaks parsed from
 #'   label strings. Supports formats: "0–50", "50-100", ">1000". Example:
 #'   c("0–50", "50–100", "100–250", "250–450", "450–700", "700–1000", ">1000")
+#' @param outlier_threshold Numeric. Optional threshold to create a separate
+#'   outlier bin for values above this threshold. Useful for metrics like TPR
+#'   where values >1 are unusual. Default is NULL (no outlier handling).
+#' @param outlier_color Character. Hex color for the outlier bin. Only used
+#'   when outlier_threshold is specified. Default is "#636363" (dark grey).
 #'
 #' @return A list with:
 #'   \item{bins}{Ordered factor of bin labels for each value in `x`}
@@ -312,6 +334,13 @@ if (is.null(n)) {
 #' table(result$bins)
 #' result$method  # Returns "custom"
 #'
+#' # Handle outliers above threshold (useful for TPR)
+#' set.seed(123)
+#' tpr <- c(runif(80, 0.5, 0.95), runif(20, 1.05, 1.3))
+#' result <- auto_bin(tpr, palette = "rdbu", bin = 5, outlier_threshold = 1.0)
+#' table(result$bins)
+#' result$colors  # Last bin (>1.00) will be grey
+#'
 #' @export
 auto_bin <- function(
     x,
@@ -320,7 +349,9 @@ auto_bin <- function(
     decimals = 2,
     round_to = 50,
     reverse = FALSE,
-    labels = NULL) {
+    labels = NULL,
+    outlier_threshold = NULL,
+    outlier_color = "#636363") {
 
   if (!is.numeric(x)) {
     cli::cli_abort("{.arg x} must be numeric.")
@@ -330,6 +361,78 @@ auto_bin <- function(
 
   if (length(x_clean) == 0) {
     cli::cli_abort("No positive non-NA values in {.arg x}.")
+  }
+
+  # ---- handle outlier threshold ----
+  if (!is.null(outlier_threshold)) {
+    if (!is.null(labels)) {
+      cli::cli_abort(
+        "Cannot use both {.arg outlier_threshold} and {.arg labels}."
+      )
+    }
+
+    has_outliers <- any(x > outlier_threshold, na.rm = TRUE)
+
+    if (has_outliers) {
+      # split data at threshold
+      x_normal <- x[x <= outlier_threshold | is.na(x)]
+      x_clean_normal <- x_normal[!is.na(x_normal) & x_normal > 0]
+
+      if (length(x_clean_normal) == 0) {
+        cli::cli_abort(
+          "No values below {.arg outlier_threshold} = {outlier_threshold}."
+        )
+      }
+
+      # recursively bin the normal data (without outlier params to avoid loop)
+      # note: auto_bin typically creates bin+1 bins in quantile mode, so we
+      # pass bin-2 to get bin-1 bins for normal data, plus 1 outlier = bin total
+      result_normal <- auto_bin(
+        x_normal,
+        palette = palette,
+        bin = bin - 2,
+        decimals = decimals,
+        round_to = round_to,
+        reverse = reverse,
+        labels = NULL,
+        outlier_threshold = NULL
+      )
+
+      # detect actual precision from regular bins
+      sample_label <- as.character(levels(result_normal$bins)[1])
+      detected_precision <- .detect_label_precision(sample_label)
+
+      # create outlier label with same precision as regular bins
+      outlier_label <- paste0(">", formatC(outlier_threshold,
+                                          format = "f",
+                                          digits = detected_precision))
+
+      # combine normal bins with outlier bin
+      all_labels <- c(levels(result_normal$bins), outlier_label)
+
+      # assign outlier bin to values above threshold
+      bins_combined <- as.character(result_normal$bins)
+      bins_combined[x > outlier_threshold] <- outlier_label
+      bins_combined <- factor(bins_combined, levels = all_labels, ordered = TRUE)
+
+      # combine colors
+      colors_combined <- c(result_normal$colors, outlier_color)
+      names(colors_combined) <- all_labels
+
+      # count observations per bin
+      counts <- as.data.frame(table(bins_combined, dnn = "bin"))
+      names(counts) <- c("bin", "n")
+
+      return(
+        list(
+          bins = bins_combined,
+          colors = colors_combined,
+          counts = counts,
+          method = result_normal$method,
+          diagnostics = result_normal$diagnostics
+        )
+      )
+    }
   }
 
   # ---- handle custom labels ----
@@ -353,17 +456,30 @@ auto_bin <- function(
     raw_lower <- c(0, breaks[-length(breaks)])
     raw_upper <- breaks
 
-    # format labels with K/M suffixes
-    formatted_labels <- character(length(raw_lower))
-    for (i in seq_along(raw_lower)) {
-      if (is.infinite(raw_upper[i])) {
-        formatted_labels[i] <- paste0(">", .format_number(raw_lower[i], digits = 0))
-      } else {
-        formatted_labels[i] <- paste0(
-          .format_number(raw_lower[i], digits = 0),
-          "\u2013",
-          .format_number(raw_upper[i], digits = 0)
-        )
+    # detect if data is decimal (max break < 10 suggests rates/proportions)
+    # examples: reporting rates (0.0-1.0), small indices, proportions
+    max_break <- max(breaks[!is.infinite(breaks)])
+    is_decimal_data <- max_break < 10
+
+    # for decimal data, preserve original labels to avoid rounding issues
+    # formatting with digits=0 would turn 0.70, 0.80, 0.95 into "1", causing
+    # duplicate labels like "1–1"
+    # for large numbers (>= 10), apply K/M formatting for readability
+    if (is_decimal_data) {
+      formatted_labels <- labels
+    } else {
+      # format labels with K/M suffixes for large numbers
+      formatted_labels <- character(length(raw_lower))
+      for (i in seq_along(raw_lower)) {
+        if (is.infinite(raw_upper[i])) {
+          formatted_labels[i] <- paste0(">", .format_number(raw_lower[i], digits = 0))
+        } else {
+          formatted_labels[i] <- paste0(
+            .format_number(raw_lower[i], digits = 0),
+            "\u2013",
+            .format_number(raw_upper[i], digits = 0)
+          )
+        }
       }
     }
 
