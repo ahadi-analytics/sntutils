@@ -57,6 +57,14 @@ admin levels were found. By default, column types are first inferred
 via \code{\link[=auto_parse_types]{auto_parse_types()}} with \code{apply = TRUE} and \code{return = "data"}.
 }
 \details{
+\subsection{Data uniqueness requirement}{
+
+Input data must have unique rows per admin-year at the finest level present.
+If your data contains sex, age, or residence strata, aggregate these upstream
+before passing to this function. The function will error if duplicates are
+detected to prevent silent double counting.
+}
+
 \subsection{Automatic proportion handling}{
 
 The function automatically detects which population columns contain
