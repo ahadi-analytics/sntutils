@@ -13,6 +13,7 @@
 #'   core, admin_shp, physical_feat, hf, chw, pop_national,
 #'   pop_worldpop, cache, dhis2, pfpr_est, mortality_est, interventions,
 #'   drug_eff, climate, accessibility, land_use, dhs, ento, commodities,
+#'   finance, final_data,
 #'   val, interm, final,
 #'   val_fig, val_tbl, interm_fig, interm_tbl, final_fig, final_tbl.
 #'
@@ -106,6 +107,10 @@ setup_project_paths <- function(base_path = NULL, quiet = FALSE) {
     ento = jp("01_data", "1.7_entomology"),
     # 1.8_commodities
     commodities = jp("01_data", "1.8_commodities"),
+    # 1.9_finance
+    finance = jp("01_data", "1.9_finance"),
+    # 1.10_final
+    final_data = jp("01_data", "1.10_final"),
     # outputs - parent directories
     val = jp("03_outputs", "3.1_validation"),
     interm = jp("03_outputs", "3.2_intermediate_products"),

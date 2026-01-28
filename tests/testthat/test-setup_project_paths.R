@@ -32,6 +32,10 @@ exp_names <- c(
   "ento",
   # 1.8_commodities
   "commodities",
+  # 1.9_finance
+  "finance",
+  # 1.10_final
+  "final_data",
   # outputs - parent directories
   "val",
   "interm",

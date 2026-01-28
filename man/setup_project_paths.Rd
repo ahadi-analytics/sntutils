@@ -17,6 +17,7 @@ Named list of absolute paths:
 core, admin_shp, physical_feat, hf, chw, pop_national,
 pop_worldpop, cache, dhis2, pfpr_est, mortality_est, interventions,
 drug_eff, climate, accessibility, land_use, dhs, ento, commodities,
+finance, final_data,
 val, interm, final,
 val_fig, val_tbl, interm_fig, interm_tbl, final_fig, final_tbl.
 }

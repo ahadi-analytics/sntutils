@@ -57,7 +57,9 @@ create_data_structure <- function(base_path = ".") {
       "1.6a_dhs"
     ),
     "1.7_entomology" = ".",
-    "1.8_commodities" = "."
+    "1.8_commodities" = ".",
+    "1.9_finance" = ".",
+    "1.10_final" = FALSE
   )
 
   base_data <- fs::path(base_path, "01_data")
@@ -66,7 +68,10 @@ create_data_structure <- function(base_path = ".") {
     domain_path <- fs::path(base_data, domain)
     entries <- data_structure[[domain]]
 
-    if (identical(entries, ".")) {
+    if (identical(entries, FALSE)) {
+      # create domain folder only, no subfolders
+      fs::dir_create(domain_path)
+    } else if (identical(entries, ".")) {
       fs::dir_create(fs::path(domain_path, "raw"))
       fs::dir_create(fs::path(domain_path, "processed"))
     } else {
