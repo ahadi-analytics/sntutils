@@ -374,8 +374,10 @@ auto_bin <- function(
     has_outliers <- any(x > outlier_threshold, na.rm = TRUE)
 
     if (has_outliers) {
-      # split data at threshold
-      x_normal <- x[x <= outlier_threshold | is.na(x)]
+      # split data at threshold and track indices
+      idx_normal <- which(x <= outlier_threshold | is.na(x))
+      idx_outlier <- which(x > outlier_threshold)
+      x_normal <- x[idx_normal]
       x_clean_normal <- x_normal[!is.na(x_normal) & x_normal > 0]
 
       if (length(x_clean_normal) == 0) {
@@ -411,8 +413,9 @@ auto_bin <- function(
       all_labels <- c(levels(result_normal$bins), outlier_label)
 
       # assign outlier bin to values above threshold
-      bins_combined <- as.character(result_normal$bins)
-      bins_combined[x > outlier_threshold] <- outlier_label
+      bins_combined <- rep(NA, length(x))
+      bins_combined[idx_normal] <- as.character(result_normal$bins)
+      bins_combined[idx_outlier] <- outlier_label
       bins_combined <- factor(bins_combined, levels = all_labels, ordered = TRUE)
 
       # combine colors
@@ -461,25 +464,45 @@ auto_bin <- function(
     max_break <- max(breaks[!is.infinite(breaks)])
     is_decimal_data <- max_break < 10
 
-    # for decimal data, preserve original labels to avoid rounding issues
+    # for decimal data (max < 10), preserve original labels to avoid rounding
     # formatting with digits=0 would turn 0.70, 0.80, 0.95 into "1", causing
     # duplicate labels like "1–1"
-    # for large numbers (>= 10), apply K/M formatting for readability
+    # for large numbers (max >= 10), apply K/M formatting for readability
     if (is_decimal_data) {
       formatted_labels <- labels
     } else {
-      # format labels with K/M suffixes for large numbers
+      # try K/M formatting with increasing precision until no duplicates
+      # only apply precision to K/M values, keep raw numbers clean
+      k_digits <- 0
       formatted_labels <- character(length(raw_lower))
-      for (i in seq_along(raw_lower)) {
-        if (is.infinite(raw_upper[i])) {
-          formatted_labels[i] <- paste0(">", .format_number(raw_lower[i], digits = 0))
-        } else {
-          formatted_labels[i] <- paste0(
-            .format_number(raw_lower[i], digits = 0),
-            "\u2013",
-            .format_number(raw_upper[i], digits = 0)
-          )
+
+      for (attempt in 0:2) {
+        for (i in seq_along(raw_lower)) {
+          # determine precision: use k_digits for K/M, 0 for raw numbers
+          lower_needs_k <- !is.na(raw_lower[i]) && raw_lower[i] >= 1000
+          upper_needs_k <- !is.na(raw_upper[i]) && !is.infinite(raw_upper[i]) && raw_upper[i] >= 1000
+
+          lower_digits <- if (lower_needs_k) k_digits else 0
+          upper_digits <- if (upper_needs_k) k_digits else 0
+
+          if (is.infinite(raw_upper[i])) {
+            formatted_labels[i] <- paste0(">", .format_number(raw_lower[i], digits = lower_digits))
+          } else {
+            formatted_labels[i] <- paste0(
+              .format_number(raw_lower[i], digits = lower_digits),
+              "\u2013",
+              .format_number(raw_upper[i], digits = upper_digits)
+            )
+          }
         }
+
+        # if no duplicates, we're done
+        if (!any(duplicated(formatted_labels))) {
+          break
+        }
+
+        # try with higher precision for K/M values
+        k_digits <- k_digits + 1
       }
     }
 
@@ -583,7 +606,7 @@ auto_bin <- function(
   raw_upper <- breaks
 
   # auto-detect decimal vs integer data
-  is_decimal_data <- max(x_clean, na.rm = TRUE) < 1
+  is_decimal_data <- max(x_clean, na.rm = TRUE) <= 1
 
   # auto-adjust round_to for decimal data
   if (is_decimal_data && round_to == 50) {
