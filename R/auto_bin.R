@@ -23,6 +23,50 @@
   )
 }
 
+#' Parse custom labels to numeric breaks
+#'
+#' @param labels Character vector of labels in formats like "0–50",
+#'   "50-100", or ">1000".
+#' @return Numeric vector of break points including Inf for open-ended ranges.
+#' @noRd
+.parse_labels_to_breaks <- function(labels) {
+  # extract all numeric values from labels
+  numbers <- lapply(labels, function(label) {
+    # handle en-dash (U+2013), hyphen, and > symbols
+    nums <- stringr::str_extract_all(label, "[0-9]+\\.?[0-9]*")[[1]]
+    as.numeric(nums)
+  })
+
+  # build breaks from boundaries
+  breaks <- numeric()
+  for (i in seq_along(labels)) {
+    nums <- numbers[[i]]
+    if (length(nums) == 2) {
+      # range format: "0–50" or "50-100"
+      breaks <- c(breaks, nums[2])
+    } else if (length(nums) == 1 && grepl("^>", labels[i])) {
+      # open-ended format: ">1000"
+      breaks <- c(breaks, Inf)
+    } else if (length(nums) == 1) {
+      # single number, treat as upper bound
+      breaks <- c(breaks, nums[1])
+    } else {
+      cli::cli_abort(
+        "Could not parse label {i}: {.val {labels[i]}}. Expected format like '0\u20131' or '>1000'"
+      )
+    }
+  }
+
+  # validate monotonically increasing
+  if (any(diff(breaks[!is.infinite(breaks)]) <= 0)) {
+    cli::cli_abort(
+      "Parsed breaks are not monotonically increasing: {.val {breaks}}"
+    )
+  }
+
+  breaks
+}
+
 #' List available palette names
 #'
 #' @return Character vector of available palette names.
@@ -220,13 +264,17 @@ if (is.null(n)) {
 #' @param round_to Numeric. Round break points to this increment. Default is 50.
 #'   Set to NULL for raw values (useful for decimal data like rates).
 #' @param reverse Logical. Reverse the color order? Default is FALSE.
+#' @param labels Character vector. Optional custom bin labels. When provided,
+#'   skips automatic binning and uses these labels with breaks parsed from
+#'   label strings. Supports formats: "0–50", "50-100", ">1000". Example:
+#'   c("0–50", "50–100", "100–250", "250–450", "450–700", "700–1000", ">1000")
 #'
 #' @return A list with:
 #'   \item{bins}{Ordered factor of bin labels for each value in `x`}
 #'   \item{colors}{Named character vector mapping labels to colors}
 #'   \item{counts}{Data frame with bin labels and counts (n)}
 #'   \item{method}{Character. The binning method used: "headtail", "hybrid",
-#'     or "quantile"}
+#'     "quantile", or "custom"}
 #'   \item{diagnostics}{List with prop_zero, skew_ratio, and tail_share}
 #'
 #' @details
@@ -234,6 +282,7 @@ if (is.null(n)) {
 #' - **headtail**: prop_zero > 0.1, skew_ratio > 4, or tail_share > 0.4
 #' - **hybrid**: skew_ratio > 2
 #' - **quantile**: otherwise
+#' - **custom**: when labels parameter is provided
 #'
 #' Use `list_palettes()` to see all available palette names.
 #'
@@ -256,6 +305,13 @@ if (is.null(n)) {
 #' # Reverse colors (high = light, low = dark)
 #' auto_bin(incidence, reverse = TRUE)$colors
 #'
+#' # Use custom labels
+#' custom_labels <- c("0–50", "50–100", "100–250", "250–450",
+#'                    "450–700", "700–1000", ">1000")
+#' result <- auto_bin(incidence * 10, palette = "byor", labels = custom_labels)
+#' table(result$bins)
+#' result$method  # Returns "custom"
+#'
 #' @export
 auto_bin <- function(
     x,
@@ -263,7 +319,8 @@ auto_bin <- function(
     bin = 6,
     decimals = 2,
     round_to = 50,
-    reverse = FALSE) {
+    reverse = FALSE,
+    labels = NULL) {
 
   if (!is.numeric(x)) {
     cli::cli_abort("{.arg x} must be numeric.")
@@ -273,6 +330,75 @@ auto_bin <- function(
 
   if (length(x_clean) == 0) {
     cli::cli_abort("No positive non-NA values in {.arg x}.")
+  }
+
+  # ---- handle custom labels ----
+  if (!is.null(labels)) {
+    if (!is.character(labels)) {
+      cli::cli_abort("{.arg labels} must be a character vector.")
+    }
+
+    # warn if user provided non-default parameters that will be ignored
+    if (bin != 6 || round_to != 50 || decimals != 2) {
+      cli::cli_warn(
+        "Custom {.arg labels} provided. Parameters {.arg bin}, {.arg round_to}, and {.arg decimals} will be ignored."
+      )
+    }
+
+    # parse breaks from labels
+    breaks <- .parse_labels_to_breaks(labels)
+    method <- "custom"
+
+    # build formatted labels using parsed breaks
+    raw_lower <- c(0, breaks[-length(breaks)])
+    raw_upper <- breaks
+
+    # format labels with K/M suffixes
+    formatted_labels <- character(length(raw_lower))
+    for (i in seq_along(raw_lower)) {
+      if (is.infinite(raw_upper[i])) {
+        formatted_labels[i] <- paste0(">", .format_number(raw_lower[i], digits = 0))
+      } else {
+        formatted_labels[i] <- paste0(
+          .format_number(raw_lower[i], digits = 0),
+          "\u2013",
+          .format_number(raw_upper[i], digits = 0)
+        )
+      }
+    }
+
+    # cut data using formatted labels
+    bin_result <- cut(
+      x,
+      breaks = c(-Inf, breaks),
+      labels = formatted_labels,
+      include.lowest = TRUE,
+      right = TRUE
+    )
+    bin_result <- factor(bin_result, levels = formatted_labels, ordered = TRUE)
+
+    # build color map
+    colors <- get_palette(palette, n = length(formatted_labels))
+    if (reverse) colors <- rev(colors)
+    names(colors) <- formatted_labels
+
+    # count observations per bin
+    counts <- as.data.frame(table(bin_result, dnn = "bin"))
+    names(counts) <- c("bin", "n")
+
+    return(
+      list(
+        bins = bin_result,
+        colors = colors,
+        counts = counts,
+        method = method,
+        diagnostics = list(
+          prop_zero = mean(x == 0, na.rm = TRUE),
+          skew_ratio = NA_real_,
+          tail_share = NA_real_
+        )
+      )
+    )
   }
 
   # ---- diagnostics ----

@@ -10,7 +10,8 @@ auto_bin(
   bin = 6,
   decimals = 2,
   round_to = 50,
-  reverse = FALSE
+  reverse = FALSE,
+  labels = NULL
 )
 }
 \arguments{
@@ -27,6 +28,11 @@ of hex colors. Use \code{list_palettes()} to see available presets.}
 Set to NULL for raw values (useful for decimal data like rates).}
 
 \item{reverse}{Logical. Reverse the color order? Default is FALSE.}
+
+\item{labels}{Character vector. Optional custom bin labels. When provided,
+skips automatic binning and uses these labels with breaks parsed from
+label strings. Supports formats: "0–50", "50-100", ">1000". Example:
+c("0–50", "50–100", "100–250", "250–450", "450–700", "700–1000", ">1000")}
 }
 \value{
 A list with:
@@ -34,7 +40,7 @@ A list with:
 \item{colors}{Named character vector mapping labels to colors}
 \item{counts}{Data frame with bin labels and counts (n)}
 \item{method}{Character. The binning method used: "headtail", "hybrid",
-or "quantile"}
+"quantile", or "custom"}
 \item{diagnostics}{List with prop_zero, skew_ratio, and tail_share}
 }
 \description{
@@ -49,6 +55,7 @@ Method selection logic:
 \item \strong{headtail}: prop_zero > 0.1, skew_ratio > 4, or tail_share > 0.4
 \item \strong{hybrid}: skew_ratio > 2
 \item \strong{quantile}: otherwise
+\item \strong{custom}: when labels parameter is provided
 }
 
 Use \code{list_palettes()} to see all available palette names.
@@ -71,5 +78,12 @@ auto_bin(incidence, palette = c("#ffffcc", "#a1dab4", "#41b6c4", "#225ea8"))
 
 # Reverse colors (high = light, low = dark)
 auto_bin(incidence, reverse = TRUE)$colors
+
+# Use custom labels
+custom_labels <- c("0–50", "50–100", "100–250", "250–450",
+                   "450–700", "700–1000", ">1000")
+result <- auto_bin(incidence * 10, palette = "byor", labels = custom_labels)
+table(result$bins)
+result$method  # Returns "custom"
 
 }
