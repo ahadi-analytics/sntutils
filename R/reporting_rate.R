@@ -994,6 +994,9 @@ calculate_reporting_metrics_dates <- function(
 #' @param by_facility Logical. If TRUE, compute by facility
 #' @param hf_col Character. Name of health facility ID column (required
 #'    if by_facility)
+#' @param reprate_col Character. Optional name of column containing pre-calculated
+#'    reporting rates. If provided, these values will be used instead of
+#'    calculating reporting rates. Default is NULL.
 #' @param use_reprate Logical. If TRUE, return reporting rate. Else, missing
 #'    rate
 #' @param key_indicators Optional. Character vector of indicators used to define
