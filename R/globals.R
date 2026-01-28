@@ -234,6 +234,7 @@ globalVariables(
     ".x",
     ".y",
     "new_episode",
+    ".flag_inactive",
     "outlier_value",
     "outlier_var",
     "output_variable",
