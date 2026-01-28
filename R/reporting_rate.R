@@ -784,57 +784,172 @@ calculate_reporting_metrics <- function(
   result
 }
 
-#' Calculate reporting rate and active status for health facilities
-  #'
-  #' @param data Data frame with facility data
-  #' @param start_col Name of column with facility opening date
-  #' @param end_col Name of column with facility closing/end date
-  #' @param var Name of column with actual report count
-  #' @param ref_date Reference date to check active status (default: today)
-  #' @return Data frame with reprate and active_status columns
-  #' @export
-  calculate_reporting_metrics_dates <- function(
-    data,
-    start_col,
-    end_col,
-    var,
-    ref_date = Sys.Date()
-  ) {
-    required_cols <- c(start_col, end_col, var)
-    missing_cols <- setdiff(required_cols, names(data))
-    if (length(missing_cols) > 0) {
-      cli::cli_abort("Column(s) not found: {.val {missing_cols}}")
-    }
-
-    if (nrow(data) == 0) {
-      data[["reprate"]] <- numeric(0)
-      data[["active_status"]] <- character(0)
-      return(data)
-    }
-
-    ref_date <- as.Date(ref_date)
-
-    data |>
-      dplyr::mutate(
-        .start = as.Date(.data[[start_col]]),
-        .end = as.Date(.data[[end_col]]),
-        .months_open = as.numeric((.end - .start) / 30.44),
-        .months_open = dplyr::case_when(
-          is.na(.months_open) ~ NA_real_,
-          .months_open <= 0 ~ NA_real_,
-          TRUE ~ .months_open
-        ),
-        reprate = .data[[var]] / .months_open,
-        reprate = pmin(reprate, 1) |> round(2),
-        activity_status = dplyr::case_when(
-          is.na(.start) | is.na(.end) ~ NA_character_,
-          .start > ref_date ~ "Inactive",
-          .end < ref_date ~ "Inactive",
-          TRUE ~ "Active"
-        )
-      ) |>
-      dplyr::select(-".start", -".end", -".months_open")
+#' Calculate reporting metrics based on facility date ranges
+#'
+#' Calculates reporting rates by determining if facilities were
+#' active during each record period based on opening and closing
+#' dates. Facilities are considered active if the record date
+#' falls within their operating window.
+#'
+#' @param data Data frame with facility records
+#' @param start_col Character. Name of column with facility
+#'   opening/start dates
+#' @param end_col Character. Name of column with facility
+#'   closing/end dates
+#' @param record_col Character. Name of column with record
+#'   dates (default: "date")
+#' @param group_cols Character vector. Column names to group
+#'   by when aggregating (default: "adm2"). Can include
+#'   administrative levels (adm0, adm1, adm2) or custom columns
+#' @param ref_date Date. Optional reference date (currently
+#'   unused, reserved for future functionality)
+#'
+#' @return Data frame with original columns plus:
+#'   \item{activity_status}{Character. "Active" or "Inactive"
+#'     for each facility-record}
+#'   \item{reprate}{Numeric. Proportion of active facilities
+#'     in each group-record combination (0-1 scale)}
+#'
+#' @details
+#' Activity classification:
+#' - Active: record date is between start_col and end_col
+#' - Inactive: record date is before start or after end
+#' - NA: missing start or end date
+#'
+#' The reporting rate is calculated as the proportion of
+#' facilities that are active in each group-record combination.
+#'
+#' @examples
+#' # Sample facility data with operating dates
+#' facilities <- data.frame(
+#'   hf_uid = rep(1:10, each = 12),
+#'   date = rep(seq.Date(
+#'     as.Date("2024-01-01"),
+#'     by = "month",
+#'     length.out = 12
+#'   ), times = 10),
+#'   district = rep(c("North", "South"), each = 60),
+#'   opening_date = as.Date("2023-01-01"),
+#'   closing_date = as.Date("2024-12-31")
+#' )
+#'
+#' # Calculate with default grouping (adm2)
+#' facilities$adm2 <- facilities$district
+#' result <- calculate_reporting_metrics_dates(
+#'   data = facilities,
+#'   start_col = "opening_date",
+#'   end_col = "closing_date"
+#' )
+#'
+#' # Calculate with multiple grouping levels
+#' facilities$country <- "Example"
+#' result2 <- calculate_reporting_metrics_dates(
+#'   data = facilities,
+#'   start_col = "opening_date",
+#'   end_col = "closing_date",
+#'   group_cols = c("country", "district")
+#' )
+#'
+#' # Use custom record column
+#' facilities$report_period <- facilities$date
+#' result3 <- calculate_reporting_metrics_dates(
+#'   data = facilities,
+#'   start_col = "opening_date",
+#'   end_col = "closing_date",
+#'   record_col = "report_period",
+#'   group_cols = "district"
+#' )
+#'
+#' @export
+calculate_reporting_metrics_dates <- function(
+  data,
+  start_col,
+  end_col,
+  record_col = "date",
+  group_cols = "adm2",
+  ref_date = NULL
+) {
+  # check for required columns
+  required_cols <- c(start_col, end_col, record_col)
+  missing_cols <- setdiff(required_cols, names(data))
+  if (length(missing_cols) > 0) {
+    cli::cli_abort(
+      "Column(s) not found: {.val {missing_cols}}"
+    )
   }
+
+  # validate group_cols exist
+  missing_group <- setdiff(group_cols, names(data))
+  if (length(missing_group) > 0) {
+    cli::cli_abort(
+      "Grouping column(s) not found: {.val {missing_group}}"
+    )
+  }
+
+  # handle empty data
+  if (nrow(data) == 0) {
+    data[["reprate"]] <- numeric(0)
+    data[["activity_status"]] <- character(0)
+    return(data)
+  }
+
+  # validate columns can be converted to dates
+  for (col in c(start_col, end_col, record_col)) {
+    tryCatch(
+      as.Date(data[[col]]),
+      error = function(e) {
+        cli::cli_abort(
+          "Cannot convert '{col}' to Date: {e$message}"
+        )
+      }
+    )
+  }
+
+  # classify facility-record as active/inactive based on dates
+  data_with_status <- data |>
+    dplyr::mutate(
+      .start = as.Date(.data[[start_col]]),
+      .end = as.Date(.data[[end_col]]),
+      .record = as.Date(.data[[record_col]]),
+      activity_status = dplyr::case_when(
+        is.na(.start) | is.na(.end) ~ NA_character_,
+        .record < .start ~ "Inactive",
+        .record > .end ~ "Inactive",
+        TRUE ~ "Active"
+      ),
+      .flag_inactive = activity_status != "Active"
+    )
+
+  # calculate reporting rate by group and record period
+  group_vars <- c(group_cols, record_col)
+
+  reprate_by_group <- data_with_status |>
+    dplyr::group_by(
+      dplyr::across(dplyr::all_of(group_vars))
+    ) |>
+    dplyr::summarise(
+      n_total = dplyr::n(),
+      n_active = sum(!.flag_inactive, na.rm = TRUE),
+      reprate = n_active / n_total,
+      .groups = "drop"
+    )
+
+  # join reporting rate back to original data
+  join_cols <- c(group_cols, record_col)
+
+  data_with_status |>
+    dplyr::left_join(
+      reprate_by_group |>
+        dplyr::select(dplyr::all_of(c(join_cols, "reprate"))),
+      by = join_cols
+    ) |>
+    dplyr::select(
+      -".start",
+      -".end",
+      -".record",
+      -".flag_inactive"
+    )
+}
 
 # Internal helper to normalize method parameter
 #' @noRd
