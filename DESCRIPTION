@@ -37,7 +37,9 @@ Imports:
     arrow,
     duckdb,
     DBI,
-    nasapower
+    qs2,
+    nasapower,
+    openxlsx
 Suggests:
     archive,
     crayon,
