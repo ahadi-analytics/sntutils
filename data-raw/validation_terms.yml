@@ -317,11 +317,11 @@ indic_spec:
   en: "Indicator definition. For rates: N0–N4 rate of change. For trends: N0–N4 incidence adjustment type."
   fr: "Définition de l'indicateur. Pour les taux: taux de variation N0–N4. Pour les tendances: type d'ajustement d'incidence N0–N4."
   pt: "Definição do indicador. Para taxas: taxa de mudança N0–N4. Para tendências: tipo de ajuste de incidência N0–N4."
-rate:
+incid_rate:
   en: "Percentage change in incidence between first and last available year for the given indicator."
   fr: "Variation en pourcentage de l'incidence entre la première et la dernière année disponible pour l'indicateur donné."
   pt: "Mudança percentual na incidência entre o primeiro e o último ano disponível para o indicador fornecido."
-rate_cat:
+incid_rate_cat:
   en: "Categorical bin of rate based on predefined percentage thresholds."
   fr: "Catégorie de taux basée sur des seuils de pourcentage prédéfinis."
   pt: "Categoria de taxa baseada em limites percentuais predefinidos."
