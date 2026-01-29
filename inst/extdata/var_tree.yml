@@ -3474,3 +3474,499 @@ schema:
     label_en: "SMC receipt - Upper CI"
     label_fr: "Réception de CPS - IC supérieur"
     label_pt: "Recebimento de QSM - IC superior"
+
+validation_utility:
+  _description: "Common validation and utility terms for data dictionaries, validation reports, and analysis outputs."
+
+  # ── Summary and reporting terms ───────────────────────────────────────────────
+  check:
+    snt_var_name: check
+    label_en: "Check"
+    label_fr: "Vérification"
+    label_pt: "Verificação"
+
+  issues_found:
+    snt_var_name: issues_found
+    label_en: "Issues Found"
+    label_fr: "Problèmes Trouvés"
+    label_pt: "Problemas Encontrados"
+
+  total_records:
+    snt_var_name: total_records
+    label_en: "Total Records"
+    label_fr: "Total des Enregistrements"
+    label_pt: "Total de Registros"
+
+  percent:
+    snt_var_name: percent
+    label_en: "Percent"
+    label_fr: "Pourcentage"
+    label_pt: "Porcentagem"
+
+  variable:
+    snt_var_name: variable
+    label_en: "Variable"
+    label_fr: "Variable"
+    label_pt: "Variável"
+
+  n_missing:
+    snt_var_name: n_missing
+    label_en: "N Missing"
+    label_fr: "N Manquants"
+    label_pt: "N Ausentes"
+
+  total:
+    snt_var_name: total
+    label_en: "Total"
+    label_fr: "Total"
+    label_pt: "Total"
+
+  percent_missing:
+    snt_var_name: percent_missing
+    label_en: "Percent Missing"
+    label_fr: "Pourcentage Manquant"
+    label_pt: "Porcentagem Ausente"
+
+  column_type:
+    snt_var_name: column_type
+    label_en: "Column Type"
+    label_fr: "Type de Colonne"
+    label_pt: "Tipo de Coluna"
+
+  n_total:
+    snt_var_name: n_total
+    label_en: "Total Records"
+    label_fr: "Total des Enregistrements"
+    label_pt: "Total de Registros"
+
+  prop_missing:
+    snt_var_name: prop_missing
+    label_en: "Proportion Missing"
+    label_fr: "Proportion Manquante"
+    label_pt: "Proporção Ausente"
+
+  # ── Consistency terms ─────────────────────────────────────────────────────────
+  input_indicator:
+    snt_var_name: input_indicator
+    label_en: "Input Indicator"
+    label_fr: "Indicateur d'Entrée"
+    label_pt: "Indicador de Entrada"
+
+  output_indicator:
+    snt_var_name: output_indicator
+    label_en: "Output Indicator"
+    label_fr: "Indicateur de Sortie"
+    label_pt: "Indicador de Saída"
+
+  input_value:
+    snt_var_name: input_value
+    label_en: "Input Value"
+    label_fr: "Valeur d'Entrée"
+    label_pt: "Valor de Entrada"
+
+  output_value:
+    snt_var_name: output_value
+    label_en: "Output Value"
+    label_fr: "Valeur de Sortie"
+    label_pt: "Valor de Saída"
+
+  difference:
+    snt_var_name: difference
+    label_en: "Difference"
+    label_fr: "Différence"
+    label_pt: "Diferença"
+
+  difference_prop:
+    snt_var_name: difference_prop
+    label_en: "Difference (%)"
+    label_fr: "Différence (%)"
+    label_pt: "Diferença (%)"
+
+  difference_sd:
+    snt_var_name: difference_sd
+    label_en: "Difference (SD)"
+    label_fr: "Différence (ET)"
+    label_pt: "Diferença (DP)"
+
+  # ── Facility activeness terms ─────────────────────────────────────────────────
+  activity_status:
+    snt_var_name: activity_status
+    label_en: "Activity Status"
+    label_fr: "Statut d'Activité"
+    label_pt: "Status de Atividade"
+
+  activeness_category:
+    snt_var_name: activeness_category
+    label_en: "Activeness Category"
+    label_fr: "Catégorie d'Activité"
+    label_pt: "Categoria de Atividade"
+
+  total_periods:
+    snt_var_name: total_periods
+    label_en: "Total Periods"
+    label_fr: "Périodes Totales"
+    label_pt: "Períodos Totais"
+
+  periods_active:
+    snt_var_name: periods_active
+    label_en: "Periods Active"
+    label_fr: "Périodes Actives"
+    label_pt: "Períodos Ativos"
+
+  first_reported:
+    snt_var_name: first_reported
+    label_en: "First Reported"
+    label_fr: "Premier Rapport"
+    label_pt: "Primeiro Relatado"
+
+  last_reported:
+    snt_var_name: last_reported
+    label_en: "Last Reported"
+    label_fr: "Dernier Rapport"
+    label_pt: "Último Relatado"
+
+  # ── Outlier terms ─────────────────────────────────────────────────────────────
+  value:
+    snt_var_name: value
+    label_en: "Value"
+    label_fr: "Valeur"
+    label_pt: "Valor"
+
+  indicator_source:
+    snt_var_name: indicator_source
+    label_en: "Indicator Source"
+    label_fr: "Source de l'Indicateur"
+    label_pt: "Fonte do Indicador"
+
+  outlier_flag_iqr:
+    snt_var_name: outlier_flag_iqr
+    label_en: "Outlier Flag (IQR)"
+    label_fr: "Indicateur de Valeur Aberrante (IQR)"
+    label_pt: "Sinalizador de Outlier (IQR)"
+
+  outlier_flag_median:
+    snt_var_name: outlier_flag_median
+    label_en: "Outlier Flag (Median)"
+    label_fr: "Indicateur de Valeur Aberrante (Médiane)"
+    label_pt: "Sinalizador de Outlier (Mediana)"
+
+  outlier_flag_mean:
+    snt_var_name: outlier_flag_mean
+    label_en: "Outlier Flag (Mean)"
+    label_fr: "Indicateur de Valeur Aberrante (Moyenne)"
+    label_pt: "Sinalizador de Outlier (Média)"
+
+  outlier_var:
+    snt_var_name: outlier_var
+    label_en: "Outlier Variable"
+    label_fr: "Variable aberrante"
+    label_pt: "Variável de outlier"
+
+  outlier_value:
+    snt_var_name: outlier_value
+    label_en: "Outlier Value"
+    label_fr: "Valeur aberrante"
+    label_pt: "Valor de outlier"
+
+  median_neighbour_value:
+    snt_var_name: median_neighbour_value
+    label_en: "Median Neighbour Value"
+    label_fr: "Valeur médiane des voisins"
+    label_pt: "Valor mediano dos vizinhos"
+
+  consistency_var:
+    snt_var_name: consistency_var
+    label_en: "Consistency Variable"
+    label_fr: "Variable de cohérence"
+    label_pt: "Variável de consistência"
+
+  consistency_value:
+    snt_var_name: consistency_value
+    label_en: "Consistency Value"
+    label_fr: "Valeur de cohérence"
+    label_pt: "Valor de consistência"
+
+  corrected_value:
+    snt_var_name: corrected_value
+    label_en: "Corrected Value"
+    label_fr: "Valeur corrigée"
+    label_pt: "Valor corrigido"
+
+  correction_flag:
+    snt_var_name: correction_flag
+    label_en: "Correction Flag"
+    label_fr: "Indicateur de correction"
+    label_pt: "Sinalizador de correção"
+
+  failed_reason:
+    snt_var_name: failed_reason
+    label_en: "Failed Reason"
+    label_fr: "Raison de l'échec"
+    label_pt: "Motivo da falha"
+
+  prop_outliers:
+    snt_var_name: prop_outliers
+    label_en: "Proportion Outliers"
+    label_fr: "Proportion de valeurs aberrantes"
+    label_pt: "Proporção de outliers"
+
+  prop_corrected:
+    snt_var_name: prop_corrected
+    label_en: "Proportion Corrected"
+    label_fr: "Proportion corrigée"
+    label_pt: "Proporção corrigida"
+
+  prop_inconsistent:
+    snt_var_name: prop_inconsistent
+    label_en: "Proportion Inconsistent"
+    label_fr: "Proportion incohérente"
+    label_pt: "Proporção inconsistente"
+
+  prop_missing_after:
+    snt_var_name: prop_missing_after
+    label_en: "Proportion Missing After"
+    label_fr: "Proportion manquante après"
+    label_pt: "Proporção ausente após"
+
+  # ── Tab and report sheet names ────────────────────────────────────────────────
+  data_dictionary:
+    snt_var_name: data_dictionary
+    label_en: "Data dictionary"
+    label_fr: "Dictionnaire de données"
+    label_pt: "Dicionário de dados"
+
+  summary:
+    snt_var_name: summary
+    label_en: "Summary"
+    label_fr: "Résumé"
+    label_pt: "Resumo"
+
+  missing_values:
+    snt_var_name: missing_values
+    label_en: "Missing values"
+    label_fr: "Valeurs manquantes"
+    label_pt: "Valores ausentes"
+
+  missing_values_detail:
+    snt_var_name: missing_values_detail
+    label_en: "Missing values detail"
+    label_fr: "Détail des valeurs manquantes"
+    label_pt: "Detalhe de valores ausentes"
+
+  duplicate_records:
+    snt_var_name: duplicate_records
+    label_en: "Duplicate records"
+    label_fr: "Enregistrements en double"
+    label_pt: "Registros duplicados"
+
+  future_dates:
+    snt_var_name: future_dates
+    label_en: "Future dates"
+    label_fr: "Dates futures"
+    label_pt: "Datas futuras"
+
+  consistency_failures:
+    snt_var_name: consistency_failures
+    label_en: "Consistency failures"
+    label_fr: "Échecs de cohérence"
+    label_pt: "Falhas de consistência"
+
+  consistency_summary:
+    snt_var_name: consistency_summary
+    label_en: "Consistency summary"
+    label_fr: "Résumé de cohérence"
+    label_pt: "Resumo de consistência"
+
+  consistency_details:
+    snt_var_name: consistency_details
+    label_en: "Consistency details"
+    label_fr: "Détails de cohérence"
+    label_pt: "Detalhes de consistência"
+
+  outliers:
+    snt_var_name: outliers
+    label_en: "Outliers"
+    label_fr: "Valeurs aberrantes"
+    label_pt: "Outliers"
+
+  outlier_summary:
+    snt_var_name: outlier_summary
+    label_en: "Outlier summary"
+    label_fr: "Résumé des valeurs aberrantes"
+    label_pt: "Resumo de outliers"
+
+  outlier_detailed:
+    snt_var_name: outlier_detailed
+    label_en: "Outlier detailed"
+    label_fr: "Détails des valeurs aberrantes"
+    label_pt: "Detalhes de outliers"
+
+  hf_activeness_summary:
+    snt_var_name: hf_activeness_summary
+    label_en: "HF activeness summary"
+    label_fr: "Résumé de l'activité des FOSA"
+    label_pt: "Resumo de atividade da unidade de saúde"
+
+  hf_activeness_episodes:
+    snt_var_name: hf_activeness_episodes
+    label_en: "HF activeness episodes"
+    label_fr: "Épisodes d'activité des établissements"
+    label_pt: "Episódios de atividade da unidade de saúde"
+
+  # ── Utility columns ───────────────────────────────────────────────────────────
+  appears_in_tabs:
+    snt_var_name: appears_in_tabs
+    label_en: "Appears in Tabs"
+    label_fr: "Apparaît dans les Onglets"
+    label_pt: "Aparece nas Abas"
+
+  record_id:
+    snt_var_name: record_id
+    label_en: "Record ID"
+    label_fr: "ID d'Enregistrement"
+    label_pt: "ID de Registro"
+
+  yearmon:
+    snt_var_name: yearmon
+    label_en: "Year-Month"
+    label_fr: "Année-Mois"
+    label_pt: "Ano-Mês"
+
+  start_date:
+    snt_var_name: start_date
+    label_en: "Start Date"
+    label_fr: "Date de début"
+    label_pt: "Data de início"
+
+  end_date:
+    snt_var_name: end_date
+    label_en: "End Date"
+    label_fr: "Date de fin"
+    label_pt: "Data de término"
+
+  # ── Rate and trend analysis terms ─────────────────────────────────────────────
+  indic_spec:
+    snt_var_name: indic_spec
+    label_en: "Indicator definition. For rates: N0–N4 rate of change. For trends: N0–N4 incidence adjustment type."
+    label_fr: "Définition de l'indicateur. Pour les taux: taux de variation N0–N4. Pour les tendances: type d'ajustement d'incidence N0–N4."
+    label_pt: "Definição do indicador. Para taxas: taxa de mudança N0–N4. Para tendências: tipo de ajuste de incidência N0–N4."
+
+  incid_rate:
+    snt_var_name: incid_rate
+    label_en: "Percentage change in incidence between first and last available year for the given indicator."
+    label_fr: "Variation en pourcentage de l'incidence entre la première et la dernière année disponible pour l'indicateur donné."
+    label_pt: "Mudança percentual na incidência entre o primeiro e o último ano disponível para o indicador fornecido."
+
+  incid_rate_cat:
+    snt_var_name: incid_rate_cat
+    label_en: "Categorical bin of rate based on predefined percentage thresholds."
+    label_fr: "Catégorie de taux basée sur des seuils de pourcentage prédéfinis."
+    label_pt: "Categoria de taxa baseada em limites percentuais predefinidos."
+
+  first_n0:
+    snt_var_name: first_n0
+    label_en: "Incidence value for N0 in the first available year."
+    label_fr: "Valeur d'incidence pour N0 dans la première année disponible."
+    label_pt: "Valor de incidência para N0 no primeiro ano disponível."
+
+  last_n0:
+    snt_var_name: last_n0
+    label_en: "Incidence value for N0 in the last available year."
+    label_fr: "Valeur d'incidence pour N0 dans la dernière année disponible."
+    label_pt: "Valor de incidência para N0 no último ano disponível."
+
+  first_n1:
+    snt_var_name: first_n1
+    label_en: "Incidence value for N1 in the first available year."
+    label_fr: "Valeur d'incidence pour N1 dans la première année disponible."
+    label_pt: "Valor de incidência para N1 no primeiro ano disponível."
+
+  last_n1:
+    snt_var_name: last_n1
+    label_en: "Incidence value for N1 in the last available year."
+    label_fr: "Valeur d'incidence pour N1 dans la dernière année disponible."
+    label_pt: "Valor de incidência para N1 no último ano disponível."
+
+  first_n2:
+    snt_var_name: first_n2
+    label_en: "Incidence value for N2 in the first available year."
+    label_fr: "Valeur d'incidence pour N2 dans la première année disponible."
+    label_pt: "Valor de incidência para N2 no primeiro ano disponível."
+
+  last_n2:
+    snt_var_name: last_n2
+    label_en: "Incidence value for N2 in the last available year."
+    label_fr: "Valeur d'incidence pour N2 dans la dernière année disponible."
+    label_pt: "Valor de incidência para N2 no último ano disponível."
+
+  first_n3:
+    snt_var_name: first_n3
+    label_en: "Incidence value for N3 in the first available year."
+    label_fr: "Valeur d'incidence pour N3 dans la première année disponible."
+    label_pt: "Valor de incidência para N3 no primeiro ano disponível."
+
+  last_n3:
+    snt_var_name: last_n3
+    label_en: "Incidence value for N3 in the last available year."
+    label_fr: "Valeur d'incidence pour N3 dans la dernière année disponible."
+    label_pt: "Valor de incidência para N3 no último ano disponível."
+
+  first_n4:
+    snt_var_name: first_n4
+    label_en: "Incidence value for N4 in the first available year."
+    label_fr: "Valeur d'incidence pour N4 dans la première année disponible."
+    label_pt: "Valor de incidência para N4 no primeiro ano disponível."
+
+  last_n4:
+    snt_var_name: last_n4
+    label_en: "Incidence value for N4 in the last available year."
+    label_fr: "Valeur d'incidence pour N4 dans la dernière année disponible."
+    label_pt: "Valor de incidência para N4 no último ano disponível."
+
+  rate_n1:
+    snt_var_name: rate_n1
+    label_en: "Percentage change in N1 incidence between first and last year."
+    label_fr: "Variation en pourcentage de l'incidence N1 entre la première et la dernière année."
+    label_pt: "Mudança percentual na incidência N1 entre o primeiro e o último ano."
+
+  rate_n2:
+    snt_var_name: rate_n2
+    label_en: "Percentage change in N2 incidence between first and last year."
+    label_fr: "Variation en pourcentage de l'incidence N2 entre la première et la dernière année."
+    label_pt: "Mudança percentual na incidência N2 entre o primeiro e o último ano."
+
+  rate_n3:
+    snt_var_name: rate_n3
+    label_en: "Percentage change in N3 incidence between first and last year."
+    label_fr: "Variation en pourcentage de l'incidence N3 entre la première et la dernière année."
+    label_pt: "Mudança percentual na incidência N3 entre o primeiro e o último ano."
+
+  rate_n4:
+    snt_var_name: rate_n4
+    label_en: "Percentage change in N4 incidence between first and last year."
+    label_fr: "Variation en pourcentage de l'incidence N4 entre la première et la dernière année."
+    label_pt: "Mudança percentual na incidência N4 entre o primeiro e o último ano."
+
+  mk_p:
+    snt_var_name: mk_p
+    label_en: "Mann–Kendall test p-value for monotonic trend in monthly incidence time series."
+    label_fr: "Valeur p du test de Mann–Kendall pour la tendance monotone dans les séries chronologiques mensuelles d'incidence."
+    label_pt: "Valor p do teste de Mann–Kendall para tendência monotônica em séries temporais mensais de incidência."
+
+  sens_slope:
+    snt_var_name: sens_slope
+    label_en: "Sen's slope estimate for the incidence trend. Direction and magnitude."
+    label_fr: "Estimation de la pente de Sen pour la tendance de l'incidence. Direction et magnitude."
+    label_pt: "Estimativa da inclinação de Sen para a tendência de incidência. Direção e magnitude."
+
+  plotting_sens_slope:
+    snt_var_name: plotting_sens_slope
+    label_en: "Sen's slope retained only when mk_p ≤ 0.05; otherwise set to NA. Used for plotting."
+    label_fr: "Pente de Sen conservée uniquement lorsque mk_p ≤ 0,05 ; sinon définie sur NA. Utilisée pour les graphiques."
+    label_pt: "Inclinação de Sen retida apenas quando mk_p ≤ 0,05; caso contrário, definida como NA. Usada para plotagem."
+
+  slope:
+    snt_var_name: slope
+    label_en: "Categorical trend direction derived from plotting_sens_slope: Increase, Decrease, Not significant."
+    label_fr: "Direction de tendance catégorique dérivée de plotting_sens_slope : Augmentation, Diminution, Non significatif."
+    label_pt: "Direção de tendência categórica derivada de plotting_sens_slope: Aumento, Diminuição, Não significativo."

@@ -14,6 +14,7 @@ A named list with the following top-level elements:
 \item{interventions}{Malaria intervention coverage variables}
 \item{stock_management}{Stock and supply chain management variables}
 \item{anemia}{Anemia-related health indicators}
+\item{validation_utility}{Validation and utility terms for data dictionaries, validation reports, and analysis outputs (rate/trend analysis, outliers, consistency checks)}
 \item{schema}{Schema definitions for variable components including:
 \itemize{
 \item test_types: Diagnostic test type codes and labels
