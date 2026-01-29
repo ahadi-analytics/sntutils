@@ -32,7 +32,7 @@ This dictionary covers:
 \item Outlier terms (outlier_flag_iqr, outlier_flag_median)
 \item Common ID columns (record_id, hf_uid, date, yearmon)
 \item Admin columns (adm0, adm1, adm2, adm3)
-\item Rate and trend analysis terms (indic_spec, rate, rate_cat, first_n0-last_n4, rate_n1-rate_n4, mk_p, sens_slope, plotting_sens_slope, slope)
+\item Rate and trend analysis terms (indic_spec, incid_rate, incid_rate_cat, first_n0-last_n4, rate_n1-rate_n4, mk_p, sens_slope, plotting_sens_slope, slope)
 }
 
 For malaria-specific indicator names (conf, test, maldth, etc.), use
