@@ -311,3 +311,89 @@ adm3:
   en: "Sub-district"
   fr: "Sous-district"
   pt: "Subdistrito"
+
+# Rate and trend analysis terms
+indic_spec:
+  en: "Indicator definition. For rates: N0–N4 rate of change. For trends: N0–N4 incidence adjustment type."
+  fr: "Définition de l'indicateur. Pour les taux: taux de variation N0–N4. Pour les tendances: type d'ajustement d'incidence N0–N4."
+  pt: "Definição do indicador. Para taxas: taxa de mudança N0–N4. Para tendências: tipo de ajuste de incidência N0–N4."
+rate:
+  en: "Percentage change in incidence between first and last available year for the given indicator."
+  fr: "Variation en pourcentage de l'incidence entre la première et la dernière année disponible pour l'indicateur donné."
+  pt: "Mudança percentual na incidência entre o primeiro e o último ano disponível para o indicador fornecido."
+rate_cat:
+  en: "Categorical bin of rate based on predefined percentage thresholds."
+  fr: "Catégorie de taux basée sur des seuils de pourcentage prédéfinis."
+  pt: "Categoria de taxa baseada em limites percentuais predefinidos."
+first_n0:
+  en: "Incidence value for N0 in the first available year."
+  fr: "Valeur d'incidence pour N0 dans la première année disponible."
+  pt: "Valor de incidência para N0 no primeiro ano disponível."
+last_n0:
+  en: "Incidence value for N0 in the last available year."
+  fr: "Valeur d'incidence pour N0 dans la dernière année disponible."
+  pt: "Valor de incidência para N0 no último ano disponível."
+first_n1:
+  en: "Incidence value for N1 in the first available year."
+  fr: "Valeur d'incidence pour N1 dans la première année disponible."
+  pt: "Valor de incidência para N1 no primeiro ano disponível."
+last_n1:
+  en: "Incidence value for N1 in the last available year."
+  fr: "Valeur d'incidence pour N1 dans la dernière année disponible."
+  pt: "Valor de incidência para N1 no último ano disponível."
+first_n2:
+  en: "Incidence value for N2 in the first available year."
+  fr: "Valeur d'incidence pour N2 dans la première année disponible."
+  pt: "Valor de incidência para N2 no primeiro ano disponível."
+last_n2:
+  en: "Incidence value for N2 in the last available year."
+  fr: "Valeur d'incidence pour N2 dans la dernière année disponible."
+  pt: "Valor de incidência para N2 no último ano disponível."
+first_n3:
+  en: "Incidence value for N3 in the first available year."
+  fr: "Valeur d'incidence pour N3 dans la première année disponible."
+  pt: "Valor de incidência para N3 no primeiro ano disponível."
+last_n3:
+  en: "Incidence value for N3 in the last available year."
+  fr: "Valeur d'incidence pour N3 dans la dernière année disponible."
+  pt: "Valor de incidência para N3 no último ano disponível."
+first_n4:
+  en: "Incidence value for N4 in the first available year."
+  fr: "Valeur d'incidence pour N4 dans la première année disponible."
+  pt: "Valor de incidência para N4 no primeiro ano disponível."
+last_n4:
+  en: "Incidence value for N4 in the last available year."
+  fr: "Valeur d'incidence pour N4 dans la dernière année disponible."
+  pt: "Valor de incidência para N4 no último ano disponível."
+rate_n1:
+  en: "Percentage change in N1 incidence between first and last year."
+  fr: "Variation en pourcentage de l'incidence N1 entre la première et la dernière année."
+  pt: "Mudança percentual na incidência N1 entre o primeiro e o último ano."
+rate_n2:
+  en: "Percentage change in N2 incidence between first and last year."
+  fr: "Variation en pourcentage de l'incidence N2 entre la première et la dernière année."
+  pt: "Mudança percentual na incidência N2 entre o primeiro e o último ano."
+rate_n3:
+  en: "Percentage change in N3 incidence between first and last year."
+  fr: "Variation en pourcentage de l'incidence N3 entre la première et la dernière année."
+  pt: "Mudança percentual na incidência N3 entre o primeiro e o último ano."
+rate_n4:
+  en: "Percentage change in N4 incidence between first and last year."
+  fr: "Variation en pourcentage de l'incidence N4 entre la première et la dernière année."
+  pt: "Mudança percentual na incidência N4 entre o primeiro e o último ano."
+mk_p:
+  en: "Mann–Kendall test p-value for monotonic trend in monthly incidence time series."
+  fr: "Valeur p du test de Mann–Kendall pour la tendance monotone dans les séries chronologiques mensuelles d'incidence."
+  pt: "Valor p do teste de Mann–Kendall para tendência monotônica em séries temporais mensais de incidência."
+sens_slope:
+  en: "Sen's slope estimate for the incidence trend. Direction and magnitude."
+  fr: "Estimation de la pente de Sen pour la tendance de l'incidence. Direction et magnitude."
+  pt: "Estimativa da inclinação de Sen para a tendência de incidência. Direção e magnitude."
+plotting_sens_slope:
+  en: "Sen's slope retained only when mk_p ≤ 0.05; otherwise set to NA. Used for plotting."
+  fr: "Pente de Sen conservée uniquement lorsque mk_p ≤ 0,05 ; sinon définie sur NA. Utilisée pour les graphiques."
+  pt: "Inclinação de Sen retida apenas quando mk_p ≤ 0,05; caso contrário, definida como NA. Usada para plotagem."
+slope:
+  en: "Categorical trend direction derived from plotting_sens_slope: Increase, Decrease, Not significant."
+  fr: "Direction de tendance catégorique dérivée de plotting_sens_slope : Augmentation, Diminution, Non significatif."
+  pt: "Direção de tendência categórica derivada de plotting_sens_slope: Aumento, Diminuição, Não significativo."
