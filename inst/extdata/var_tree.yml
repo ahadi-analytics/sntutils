@@ -3923,29 +3923,41 @@ validation_utility:
     label_fr: "Valeur d'incidence pour N4 dans la dernière année disponible."
     label_pt: "Valor de incidência para N4 no último ano disponível."
 
-  rate_n1:
-    snt_var_name: rate_n1
-    label_en: "Percentage change in N1 incidence between first and last year."
-    label_fr: "Variation en pourcentage de l'incidence N1 entre la première et la dernière année."
-    label_pt: "Mudança percentual na incidência N1 entre o primeiro e o último ano."
+  rate_ratio:
+    snt_var_name: rate_ratio
+    label_en: "Ratio of incidence between last and first year."
+    label_fr: "Ratio d'incidence entre la dernière et la première année."
+    label_pt: "Razão de incidência entre o último e o primeiro ano."
 
-  rate_n2:
-    snt_var_name: rate_n2
-    label_en: "Percentage change in N2 incidence between first and last year."
-    label_fr: "Variation en pourcentage de l'incidence N2 entre la première et la dernière année."
-    label_pt: "Mudança percentual na incidência N2 entre o primeiro e o último ano."
+  rate_ratio_n0:
+    snt_var_name: rate_ratio_n0
+    label_en: "Ratio of N0 incidence between last and first year."
+    label_fr: "Ratio d'incidence N0 entre la dernière et la première année."
+    label_pt: "Razão de incidência N0 entre o último e o primeiro ano."
 
-  rate_n3:
-    snt_var_name: rate_n3
-    label_en: "Percentage change in N3 incidence between first and last year."
-    label_fr: "Variation en pourcentage de l'incidence N3 entre la première et la dernière année."
-    label_pt: "Mudança percentual na incidência N3 entre o primeiro e o último ano."
+  rate_ratio_n1:
+    snt_var_name: rate_ratio_n1
+    label_en: "Ratio of N1 incidence between last and first year."
+    label_fr: "Ratio d'incidence N1 entre la dernière et la première année."
+    label_pt: "Razão de incidência N1 entre o último e o primeiro ano."
 
-  rate_n4:
-    snt_var_name: rate_n4
-    label_en: "Percentage change in N4 incidence between first and last year."
-    label_fr: "Variation en pourcentage de l'incidence N4 entre la première et la dernière année."
-    label_pt: "Mudança percentual na incidência N4 entre o primeiro e o último ano."
+  rate_ratio_n2:
+    snt_var_name: rate_ratio_n2
+    label_en: "Ratio of N2 incidence between last and first year."
+    label_fr: "Ratio d'incidence N2 entre la dernière et la première année."
+    label_pt: "Razão de incidência N2 entre o último e o primeiro ano."
+
+  rate_ratio_n3:
+    snt_var_name: rate_ratio_n3
+    label_en: "Ratio of N3 incidence between last and first year."
+    label_fr: "Ratio d'incidence N3 entre la dernière et la première année."
+    label_pt: "Razão de incidência N3 entre o último e o primeiro ano."
+
+  rate_ratio_n4:
+    snt_var_name: rate_ratio_n4
+    label_en: "Ratio of N4 incidence between last and first year."
+    label_fr: "Ratio d'incidence N4 entre la dernière et la première année."
+    label_pt: "Razão de incidência N4 entre o último e o primeiro ano."
 
   mk_p:
     snt_var_name: mk_p
@@ -3953,17 +3965,83 @@ validation_utility:
     label_fr: "Valeur p du test de Mann–Kendall pour la tendance monotone dans les séries chronologiques mensuelles d'incidence."
     label_pt: "Valor p do teste de Mann–Kendall para tendência monotônica em séries temporais mensais de incidência."
 
+  mk_p_n0:
+    snt_var_name: mk_p_n0
+    label_en: "Mann–Kendall p-value for N0 incidence trend."
+    label_fr: "Valeur p de Mann–Kendall pour la tendance d'incidence N0."
+    label_pt: "Valor p de Mann–Kendall para tendência de incidência N0."
+
+  mk_p_n1:
+    snt_var_name: mk_p_n1
+    label_en: "Mann–Kendall p-value for N1 incidence trend."
+    label_fr: "Valeur p de Mann–Kendall pour la tendance d'incidence N1."
+    label_pt: "Valor p de Mann–Kendall para tendência de incidência N1."
+
+  mk_p_n2:
+    snt_var_name: mk_p_n2
+    label_en: "Mann–Kendall p-value for N2 incidence trend."
+    label_fr: "Valeur p de Mann–Kendall pour la tendance d'incidence N2."
+    label_pt: "Valor p de Mann–Kendall para tendência de incidência N2."
+
+  mk_p_n3:
+    snt_var_name: mk_p_n3
+    label_en: "Mann–Kendall p-value for N3 incidence trend."
+    label_fr: "Valeur p de Mann–Kendall pour la tendance d'incidence N3."
+    label_pt: "Valor p de Mann–Kendall para tendência de incidência N3."
+
+  mk_p_n4:
+    snt_var_name: mk_p_n4
+    label_en: "Mann–Kendall p-value for N4 incidence trend."
+    label_fr: "Valeur p de Mann–Kendall pour la tendance d'incidence N4."
+    label_pt: "Valor p de Mann–Kendall para tendência de incidência N4."
+
   sens_slope:
     snt_var_name: sens_slope
     label_en: "Sen's slope estimate for the incidence trend. Direction and magnitude."
     label_fr: "Estimation de la pente de Sen pour la tendance de l'incidence. Direction et magnitude."
     label_pt: "Estimativa da inclinação de Sen para a tendência de incidência. Direção e magnitude."
 
+  sens_slope_n0:
+    snt_var_name: sens_slope_n0
+    label_en: "Sen's slope estimate for N0 incidence trend."
+    label_fr: "Estimation de la pente de Sen pour la tendance d'incidence N0."
+    label_pt: "Estimativa da inclinação de Sen para tendência de incidência N0."
+
+  sens_slope_n1:
+    snt_var_name: sens_slope_n1
+    label_en: "Sen's slope estimate for N1 incidence trend."
+    label_fr: "Estimation de la pente de Sen pour la tendance d'incidence N1."
+    label_pt: "Estimativa da inclinação de Sen para tendência de incidência N1."
+
+  sens_slope_n2:
+    snt_var_name: sens_slope_n2
+    label_en: "Sen's slope estimate for N2 incidence trend."
+    label_fr: "Estimation de la pente de Sen pour la tendance d'incidence N2."
+    label_pt: "Estimativa da inclinação de Sen para tendência de incidência N2."
+
+  sens_slope_n3:
+    snt_var_name: sens_slope_n3
+    label_en: "Sen's slope estimate for N3 incidence trend."
+    label_fr: "Estimation de la pente de Sen pour la tendance d'incidence N3."
+    label_pt: "Estimativa da inclinação de Sen para tendência de incidência N3."
+
+  sens_slope_n4:
+    snt_var_name: sens_slope_n4
+    label_en: "Sen's slope estimate for N4 incidence trend."
+    label_fr: "Estimation de la pente de Sen pour la tendance d'incidence N4."
+    label_pt: "Estimativa da inclinação de Sen para tendência de incidência N4."
+
   plotting_sens_slope:
     snt_var_name: plotting_sens_slope
     label_en: "Sen's slope retained only when mk_p ≤ 0.05; otherwise set to NA. Used for plotting."
     label_fr: "Pente de Sen conservée uniquement lorsque mk_p ≤ 0,05 ; sinon définie sur NA. Utilisée pour les graphiques."
     label_pt: "Inclinação de Sen retida apenas quando mk_p ≤ 0,05; caso contrário, definida como NA. Usada para plotagem."
+
+  sens_slope_bin:
+    snt_var_name: sens_slope_bin
+    label_en: "Categorised Sen's slope: binned magnitude of the incidence trend."
+    label_fr: "Pente de Sen catégorisée : magnitude de la tendance de l'incidence en classes."
+    label_pt: "Inclinação de Sen categorizada: magnitude da tendência de incidência em classes."
 
   slope:
     snt_var_name: slope
