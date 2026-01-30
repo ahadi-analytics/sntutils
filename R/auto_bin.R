@@ -646,12 +646,17 @@ auto_bin <- function(
   }
 
   # helper to build labels
+  # use " to " separator when negative numbers are present to avoid
+
+  # confusing labels like "-0.40–-0.20"
   make_labels <- function(lower, upper, digits) {
     fmt <- function(x) .format_number(x, digits = digits)
+    has_negative <- any(lower < 0, na.rm = TRUE) | any(upper < 0, na.rm = TRUE)
+    sep <- if (has_negative) " to " else "\u2013"
     ifelse(
       is.infinite(upper),
       paste0(">", fmt(lower)),
-      paste0(fmt(lower), "\u2013", fmt(upper))
+      paste0(fmt(lower), sep, fmt(upper))
     )
   }
 
