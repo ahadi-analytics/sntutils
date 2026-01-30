@@ -357,11 +357,17 @@ auto_bin <- function(
     cli::cli_abort("{.arg x} must be numeric.")
   }
 
-  x_clean <- x[!is.na(x) & x > 0]
+  # keep non-NA values for analysis (zeros excluded for skewness diagnostics)
+  x_nonzero <- x[!is.na(x) & x != 0]
+  x_finite <- x[!is.na(x)]
 
-  if (length(x_clean) == 0) {
-    cli::cli_abort("No positive non-NA values in {.arg x}.")
+  if (length(x_finite) == 0) {
+    cli::cli_abort("No non-NA values in {.arg x}.")
   }
+
+  # for compatibility: x_clean used throughout
+  # use x_finite as fallback if all values are zero
+  x_clean <- if (length(x_nonzero) > 0) x_nonzero else x_finite
 
   # ---- handle outlier threshold ----
   if (!is.null(outlier_threshold)) {
@@ -543,10 +549,23 @@ auto_bin <- function(
   # ---- diagnostics ----
   q50 <- stats::quantile(x_clean, 0.5)
   q90 <- stats::quantile(x_clean, 0.9)
-
-  skew_ratio <- q90 / q50
-  tail_share <- sum(x_clean[x_clean > q90]) / sum(x_clean)
   prop_zero <- mean(x == 0, na.rm = TRUE)
+
+  # skew_ratio only meaningful for positive data
+  # for mixed/negative data, use quantile method (safest default)
+  has_negative <- any(x_clean < 0)
+  if (has_negative || q50 <= 0) {
+    skew_ratio <- 1
+    tail_share <- 0
+  } else {
+    skew_ratio <- q90 / q50
+    total_sum <- sum(x_clean)
+    tail_share <- if (total_sum > 0) {
+      sum(x_clean[x_clean > q90]) / total_sum
+    } else {
+      0
+    }
+  }
 
   # ---- choose method ----
   method <- dplyr::case_when(
@@ -602,11 +621,13 @@ auto_bin <- function(
   breaks <- unique(breaks)
 
   # ---- build labels ----
-  raw_lower <- c(0, breaks[-length(breaks)])
+  data_min <- min(x_finite, na.rm = TRUE)
+  raw_lower <- c(data_min, breaks[-length(breaks)])
   raw_upper <- breaks
 
-  # auto-detect decimal vs integer data
-  is_decimal_data <- max(x_clean, na.rm = TRUE) <= 1
+  # auto-detect decimal vs integer data based on range
+  data_range <- max(x_finite, na.rm = TRUE) - data_min
+  is_decimal_data <- data_range <= 2
 
   # auto-adjust round_to for decimal data
   if (is_decimal_data && round_to == 50) {
