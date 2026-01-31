@@ -727,8 +727,9 @@ validate_process_spatial <- function(
     on.exit(suppressMessages(sf::sf_use_s2(s2_was_on)), add = TRUE)
 
     # Spatial join: get country for each feature using centroid
-    shp_centroids <- suppressWarnings(sf::st_centroid(shp))
-    joined <- sf::st_join(shp_centroids, countries, left = TRUE)
+    # Suppress planar geometry messages
+    shp_centroids <- suppressMessages(suppressWarnings(sf::st_centroid(shp)))
+    joined <- suppressMessages(sf::st_join(shp_centroids, countries, left = TRUE))
 
     # Extract iso codes
     shp$iso3_code <- joined$iso_a3

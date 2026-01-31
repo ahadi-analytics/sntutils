@@ -37,6 +37,54 @@ metadata:
     label_fr: "Niveau administratif 3 (aire de santé)"
     label_pt: "Nível administrativo 3 (área sanitária)"
 
+  iso3_code:
+    snt_var_name: iso3_code
+    label_en: "ISO 3166-1 alpha-3 country code"
+    label_fr: "Code pays ISO 3166-1 alpha-3"
+    label_pt: "Código de país ISO 3166-1 alfa-3"
+
+  iso2_code:
+    snt_var_name: iso2_code
+    label_en: "ISO 3166-1 alpha-2 country code"
+    label_fr: "Code pays ISO 3166-1 alpha-2"
+    label_pt: "Código de país ISO 3166-1 alfa-2"
+
+  dhs_code:
+    snt_var_name: dhs_code
+    label_en: "DHS country code"
+    label_fr: "Code pays DHS"
+    label_pt: "Código de país DHS"
+
+  adm0_guid:
+    snt_var_name: adm0_guid
+    label_en: "Administrative level 0 unique identifier"
+    label_fr: "Identifiant unique niveau administratif 0"
+    label_pt: "Identificador único nível administrativo 0"
+
+  adm1_guid:
+    snt_var_name: adm1_guid
+    label_en: "Administrative level 1 unique identifier"
+    label_fr: "Identifiant unique niveau administratif 1"
+    label_pt: "Identificador único nível administrativo 1"
+
+  adm2_guid:
+    snt_var_name: adm2_guid
+    label_en: "Administrative level 2 unique identifier"
+    label_fr: "Identifiant unique niveau administratif 2"
+    label_pt: "Identificador único nível administrativo 2"
+
+  adm3_guid:
+    snt_var_name: adm3_guid
+    label_en: "Administrative level 3 unique identifier"
+    label_fr: "Identifiant unique niveau administratif 3"
+    label_pt: "Identificador único nível administrativo 3"
+
+  geometry_hash:
+    snt_var_name: geometry_hash
+    label_en: "Geometry unique identifier (xxhash64)"
+    label_fr: "Identifiant unique de la géométrie (xxhash64)"
+    label_pt: "Identificador único da geometria (xxhash64)"
+
   location:
     snt_var_name: location
     label_en: "Location (adm1 and adm2 combined)"
