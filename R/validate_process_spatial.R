@@ -700,62 +700,58 @@ validate_process_spatial <- function(
   shp_clean
 }
 
-# Add ISO3, ISO2, and DHS country codes via spatial join with Natural Earth
-# @param shp sf object with geometry
+# Add ISO3, ISO2, and DHS country codes using countrycode package
+# Uses adm0 column (country name) for lookup - more reliable than spatial join
+# Tries multiple matching methods: exact, then regex for unusual spellings
+# @param shp sf object with geometry and adm0 column
 # @return sf object with iso3_code, iso2_code, dhs_code columns prepended
 # @noRd
 .add_country_codes <- function(shp) {
-  # Try to get Natural Earth countries (scale 110 uses built-in data)
-  # Silently skip if packages not available or any error occurs
-  result <- tryCatch({
-    countries <- suppressMessages(
-      rnaturalearth::ne_countries(scale = 110, returnclass = "sf")
+  # Require countrycode package for name-based lookup
+  if (!rlang::is_installed("countrycode")) {
+    return(shp)
+  }
+
+  # Need adm0 column for country name lookup
+  if (!"adm0" %in% names(shp)) {
+    return(shp)
+  }
+
+  # First try exact country.name match
+  shp$iso3_code <- countrycode::countrycode(
+    shp$adm0,
+    origin = "country.name",
+    destination = "iso3c",
+    warn = FALSE
+  )
+
+  # For any NAs, try regex matching (handles unusual spellings)
+  na_idx <- which(is.na(shp$iso3_code))
+  if (length(na_idx) > 0) {
+    shp$iso3_code[na_idx] <- countrycode::countrycode(
+      shp$adm0[na_idx],
+      origin = "country.name.en.regex",
+      destination = "iso3c",
+      warn = FALSE
     )
+  }
 
-    # Select only the columns we need
-    countries <- countries |>
-      dplyr::select(iso_a3, iso_a2, geometry)
+  # Get iso2 and dhs from iso3 (more reliable than name lookup)
+  shp$iso2_code <- countrycode::countrycode(
+    shp$iso3_code,
+    origin = "iso3c",
+    destination = "iso2c",
+    warn = FALSE
+  )
 
-    # Ensure same CRS
-    if (!identical(sf::st_crs(shp), sf::st_crs(countries))) {
-      countries <- sf::st_transform(countries, sf::st_crs(shp))
-    }
+  shp$dhs_code <- countrycode::countrycode(
+    shp$iso3_code,
+    origin = "iso3c",
+    destination = "dhs",
+    warn = FALSE
+  )
 
-    # Temporarily disable s2 for spatial operations
-    s2_was_on <- sf::sf_use_s2()
-    suppressMessages(sf::sf_use_s2(FALSE))
-    on.exit(suppressMessages(sf::sf_use_s2(s2_was_on)), add = TRUE)
-
-    # Spatial join: get country for each feature
-    # Use st_point_on_surface (guaranteed inside polygon) instead of centroid
-    shp_points <- suppressMessages(suppressWarnings(
-      sf::st_point_on_surface(shp)
-    ))
-    joined <- suppressMessages(sf::st_join(shp_points, countries, left = TRUE))
-
-    # Extract iso codes
-    shp$iso3_code <- joined$iso_a3
-    shp$iso2_code <- joined$iso_a2
-
-    # Add DHS country code using countrycode package
-    if (rlang::is_installed("countrycode")) {
-      shp$dhs_code <- countrycode::countrycode(
-        shp$iso3_code,
-        origin = "iso3c",
-        destination = "dhs",
-        warn = FALSE
-      )
-    } else {
-      shp$dhs_code <- NA_character_
-    }
-
-    shp
-  }, error = function(e) {
-    # Silently return original shp if any error occurs
-    shp
-  })
-
-  result
+  shp
 }
 
 # Create geometry hashes and admin GUIDs
