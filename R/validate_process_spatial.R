@@ -693,7 +693,79 @@ validate_process_spatial <- function(
     }
   }
 
+  # Add country codes (iso3, iso2, dhs) via spatial join
+
+  shp_clean <- .add_country_codes(shp_clean)
+
   shp_clean
+}
+
+# Add ISO3, ISO2, and DHS country codes via spatial join with Natural Earth
+# @param shp sf object with geometry
+# @return sf object with iso3, iso2, dhs columns prepended
+# @noRd
+.add_country_codes <- function(shp) {
+  if (!rlang::is_installed("rnaturalearth")) {
+    cli::cli_warn(
+
+      c(
+        "Package 'rnaturalearth' not installed.",
+        "i" = "Country codes (iso3, iso2, dhs) will not be added.",
+        "i" = "Install with: install.packages('rnaturalearth')"
+      )
+    )
+    return(shp)
+  }
+
+  # Get Natural Earth countries
+
+  countries <- tryCatch(
+    rnaturalearth::ne_countries(scale = "medium", returnclass = "sf"),
+    error = function(e) NULL
+  )
+
+  if (is.null(countries)) {
+    cli::cli_warn("Failed to load Natural Earth countries. Skipping.")
+    return(shp)
+  }
+
+  # Select only the columns we need
+  countries <- countries |>
+    dplyr::select(iso_a3, iso_a2, geometry)
+
+  # Ensure same CRS
+  if (!identical(sf::st_crs(shp), sf::st_crs(countries))) {
+    countries <- sf::st_transform(countries, sf::st_crs(shp))
+  }
+
+  # Spatial join: get country for each feature using centroid
+  shp_centroids <- sf::st_centroid(shp)
+  joined <- sf::st_join(shp_centroids, countries, left = TRUE)
+
+  # Extract iso codes
+  shp$iso3_code <- joined$iso_a3
+  shp$iso2_code <- joined$iso_a2
+
+  # Add DHS country code using countrycode package
+  if (rlang::is_installed("countrycode")) {
+    shp$dhs_code <- countrycode::countrycode(
+      shp$iso3_code,
+      origin = "iso3c",
+      destination = "dhs",
+      warn = FALSE
+    )
+  } else {
+    cli::cli_warn(
+      c(
+        "Package 'countrycode' not installed.",
+        "i" = "DHS country codes will not be added.",
+        "i" = "Install with: install.packages('countrycode')"
+      )
+    )
+    shp$dhs_code <- NA_character_
+  }
+
+  shp
 }
 
 # Create geometry hashes and admin GUIDs
@@ -738,7 +810,7 @@ validate_process_spatial <- function(
     }
   }
 
-  # Ensure proper column ordering
+  # Ensure proper column ordering: iso3, iso2, dhs first, then admin levels
   admin_cols_ordered <- c()
   for (admin_level in c("adm0", "adm1", "adm2", "adm3")) {
     if (admin_level %in% names(shp)) {
@@ -752,6 +824,7 @@ validate_process_spatial <- function(
 
   shp |>
     dplyr::select(
+      dplyr::any_of(c("iso3_code", "iso2_code", "dhs_code")),
       dplyr::any_of(admin_cols_ordered),
       geometry_hash,
       geometry
@@ -767,6 +840,11 @@ validate_process_spatial <- function(
   if (!quiet) {
     cli::cli_progress_step("Creating admin level aggregations...")
   }
+
+  # Temporarily disable s2 to avoid edge-crossing errors in st_union
+  s2_was_on <- sf::sf_use_s2()
+  sf::sf_use_s2(FALSE)
+  on.exit(sf::sf_use_s2(s2_was_on), add = TRUE)
 
   spat_vec <- list()
 
@@ -798,14 +876,21 @@ validate_process_spatial <- function(
         guid_cols <- paste0(group_cols, "_guid")
         guid_cols <- guid_cols[guid_cols %in% names(shp)]
 
+        # Include country codes in grouping (iso3, iso2, dhs)
+        country_cols <- c("iso3_code", "iso2_code", "dhs_code")
+        country_cols <- country_cols[country_cols %in% names(shp)]
+
         # Create aggregation
-        all_group_cols <- c(group_cols, guid_cols)
+        all_group_cols <- c(country_cols, group_cols, guid_cols)
 
         # Ensure geometries are valid before aggregation
         shp_valid <- shp
         if (any(!sf::st_is_valid(shp_valid))) {
           shp_valid <- sf::st_make_valid(shp_valid)
         }
+
+        # Apply zero-width buffer to fix edge-crossing issues
+        shp_valid <- sf::st_buffer(shp_valid, 0)
 
         agg_shp <- shp_valid |>
           dplyr::group_by(dplyr::across(dplyr::all_of(all_group_cols))) |>
@@ -828,7 +913,7 @@ validate_process_spatial <- function(
             geometry_hash = sntutils::vdigest(geometry, algo = "xxhash64")
           )
 
-        # Ensure proper column ordering
+        # Ensure proper column ordering: iso3, iso2, dhs first
         level_admin_cols <- c()
         for (admin_level in paste0("adm", 0:level)) {
           if (admin_level %in% names(agg_shp)) {
@@ -842,6 +927,7 @@ validate_process_spatial <- function(
 
         agg_shp <- agg_shp |>
           dplyr::select(
+            dplyr::any_of(c("iso3_code", "iso2_code", "dhs_code")),
             dplyr::any_of(level_admin_cols),
             geometry_hash,
             geometry
@@ -892,7 +978,13 @@ validate_process_spatial <- function(
     levels_str <- paste(sort(levels_with_col), collapse = ", ")
 
     # Create description
-    description <- if (stringr::str_detect(col_name, "^adm\\d$")) {
+    description <- if (col_name == "iso3_code") {
+      "ISO 3166-1 alpha-3 country code"
+    } else if (col_name == "iso2_code") {
+      "ISO 3166-1 alpha-2 country code"
+    } else if (col_name == "dhs_code") {
+      "DHS country code"
+    } else if (stringr::str_detect(col_name, "^adm\\d$")) {
       paste(
         "Administrative level",
         stringr::str_extract(col_name, "\\d"),
@@ -923,8 +1015,11 @@ validate_process_spatial <- function(
   # Combine and sort by column hierarchy
   result <- do.call(rbind, dict_rows)
 
-  # Custom sort to put admin columns in order
+  # Custom sort to put country codes first, then admin columns in order
   col_order <- c(
+    "iso3_code",
+    "iso2_code",
+    "dhs_code",
     "adm0",
     "adm0_guid",
     "adm1",
