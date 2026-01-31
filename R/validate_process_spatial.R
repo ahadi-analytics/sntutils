@@ -705,22 +705,22 @@ validate_process_spatial <- function(
 # @return sf object with iso3, iso2, dhs columns prepended
 # @noRd
 .add_country_codes <- function(shp) {
-  if (!rlang::is_installed("rnaturalearth")) {
+  # Check for both rnaturalearth and rnaturalearthdata packages
+  if (!rlang::is_installed("rnaturalearth") ||
+      !rlang::is_installed("rnaturalearthdata")) {
     cli::cli_warn(
-
       c(
-        "Package 'rnaturalearth' not installed.",
-        "i" = "Country codes (iso3, iso2, dhs) will not be added.",
-        "i" = "Install with: install.packages('rnaturalearth')"
+        "Packages 'rnaturalearth' and 'rnaturalearthdata' required.",
+        "i" = "Country codes (iso3_code, iso2_code, dhs_code) will not be added.",
+        "i" = "Install with: install.packages(c('rnaturalearth', 'rnaturalearthdata'))"
       )
     )
     return(shp)
   }
 
-  # Get Natural Earth countries
-
+  # Get Natural Earth countries (scale 110 uses built-in data, no download)
   countries <- tryCatch(
-    rnaturalearth::ne_countries(scale = "medium", returnclass = "sf"),
+    rnaturalearth::ne_countries(scale = 110, returnclass = "sf"),
     error = function(e) NULL
   )
 
@@ -890,21 +890,24 @@ validate_process_spatial <- function(
         }
 
         # Apply zero-width buffer to fix edge-crossing issues
-        shp_valid <- sf::st_buffer(shp_valid, 0)
+        # Suppress warnings about planar geometry (expected when s2 is off)
+        shp_valid <- suppressWarnings(sf::st_buffer(shp_valid, 0))
 
-        agg_shp <- shp_valid |>
-          dplyr::group_by(dplyr::across(dplyr::all_of(all_group_cols))) |>
-          dplyr::summarise(
-            geometry = sf::st_union(geometry),
-            .groups = "drop"
-          )
+        agg_shp <- suppressWarnings(
+          shp_valid |>
+            dplyr::group_by(dplyr::across(dplyr::all_of(all_group_cols))) |>
+            dplyr::summarise(
+              geometry = sf::st_union(geometry),
+              .groups = "drop"
+            )
+        )
 
         # clean aggregated geometries: make valid and remove interior holes
         if (any(!sf::st_is_valid(agg_shp))) {
           agg_shp <- sf::st_make_valid(agg_shp)
         }
         if (rlang::is_installed("nngeo")) {
-          agg_shp <- nngeo::st_remove_holes(agg_shp)
+          agg_shp <- suppressWarnings(nngeo::st_remove_holes(agg_shp))
         }
 
         # recompute geometry hash after cleaning
