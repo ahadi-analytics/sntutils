@@ -39,16 +39,17 @@ Imports:
     DBI,
     qs2,
     nasapower,
-    openxlsx
+    openxlsx,
+    zoo,
+    ggtext,
+    archive
 Suggests:
-    archive,
     crayon,
     curl,
     ecmwfr,
     filelock,
     forcats,
     foreach,
-    ggtext,
     glue,
     gtranslate,
     here,
@@ -82,7 +83,6 @@ Suggests:
     wesanderson,
     withr,
     xml2,
-    zoo,
     yaml,
     patchwork,
     data.table,
