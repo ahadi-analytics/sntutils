@@ -34,7 +34,6 @@ Imports:
     readr,
     lubridate,
     digest,
-    arrow,
     duckdb,
     DBI,
     qs2,
@@ -44,6 +43,7 @@ Imports:
     ggtext,
     archive
 Suggests:
+    arrow,
     crayon,
     curl,
     ecmwfr,
