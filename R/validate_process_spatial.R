@@ -702,70 +702,57 @@ validate_process_spatial <- function(
 
 # Add ISO3, ISO2, and DHS country codes via spatial join with Natural Earth
 # @param shp sf object with geometry
-# @return sf object with iso3, iso2, dhs columns prepended
+# @return sf object with iso3_code, iso2_code, dhs_code columns prepended
 # @noRd
 .add_country_codes <- function(shp) {
-  # Check for both rnaturalearth and rnaturalearthdata packages
-  if (!rlang::is_installed("rnaturalearth") ||
-      !rlang::is_installed("rnaturalearthdata")) {
-    cli::cli_warn(
-      c(
-        "Packages 'rnaturalearth' and 'rnaturalearthdata' required.",
-        "i" = "Country codes (iso3_code, iso2_code, dhs_code) will not be added.",
-        "i" = "Install with: install.packages(c('rnaturalearth', 'rnaturalearthdata'))"
+  # Try to get Natural Earth countries (scale 110 uses built-in data)
+  # Silently skip if packages not available or any error occurs
+  result <- tryCatch({
+    countries <- suppressMessages(
+      rnaturalearth::ne_countries(scale = 110, returnclass = "sf")
+    )
+
+    # Select only the columns we need
+    countries <- countries |>
+      dplyr::select(iso_a3, iso_a2, geometry)
+
+    # Ensure same CRS
+    if (!identical(sf::st_crs(shp), sf::st_crs(countries))) {
+      countries <- sf::st_transform(countries, sf::st_crs(shp))
+    }
+
+    # Temporarily disable s2 for spatial operations
+    s2_was_on <- sf::sf_use_s2()
+    suppressMessages(sf::sf_use_s2(FALSE))
+    on.exit(suppressMessages(sf::sf_use_s2(s2_was_on)), add = TRUE)
+
+    # Spatial join: get country for each feature using centroid
+    shp_centroids <- suppressWarnings(sf::st_centroid(shp))
+    joined <- sf::st_join(shp_centroids, countries, left = TRUE)
+
+    # Extract iso codes
+    shp$iso3_code <- joined$iso_a3
+    shp$iso2_code <- joined$iso_a2
+
+    # Add DHS country code using countrycode package
+    if (rlang::is_installed("countrycode")) {
+      shp$dhs_code <- countrycode::countrycode(
+        shp$iso3_code,
+        origin = "iso3c",
+        destination = "dhs",
+        warn = FALSE
       )
-    )
-    return(shp)
-  }
+    } else {
+      shp$dhs_code <- NA_character_
+    }
 
-  # Get Natural Earth countries (scale 110 uses built-in data, no download)
-  countries <- tryCatch(
-    rnaturalearth::ne_countries(scale = 110, returnclass = "sf"),
-    error = function(e) NULL
-  )
+    shp
+  }, error = function(e) {
+    # Silently return original shp if any error occurs
+    shp
+  })
 
-  if (is.null(countries)) {
-    cli::cli_warn("Failed to load Natural Earth countries. Skipping.")
-    return(shp)
-  }
-
-  # Select only the columns we need
-  countries <- countries |>
-    dplyr::select(iso_a3, iso_a2, geometry)
-
-  # Ensure same CRS
-  if (!identical(sf::st_crs(shp), sf::st_crs(countries))) {
-    countries <- sf::st_transform(countries, sf::st_crs(shp))
-  }
-
-  # Spatial join: get country for each feature using centroid
-  shp_centroids <- sf::st_centroid(shp)
-  joined <- sf::st_join(shp_centroids, countries, left = TRUE)
-
-  # Extract iso codes
-  shp$iso3_code <- joined$iso_a3
-  shp$iso2_code <- joined$iso_a2
-
-  # Add DHS country code using countrycode package
-  if (rlang::is_installed("countrycode")) {
-    shp$dhs_code <- countrycode::countrycode(
-      shp$iso3_code,
-      origin = "iso3c",
-      destination = "dhs",
-      warn = FALSE
-    )
-  } else {
-    cli::cli_warn(
-      c(
-        "Package 'countrycode' not installed.",
-        "i" = "DHS country codes will not be added.",
-        "i" = "Install with: install.packages('countrycode')"
-      )
-    )
-    shp$dhs_code <- NA_character_
-  }
-
-  shp
+  result
 }
 
 # Create geometry hashes and admin GUIDs
@@ -841,10 +828,11 @@ validate_process_spatial <- function(
     cli::cli_progress_step("Creating admin level aggregations...")
   }
 
+
   # Temporarily disable s2 to avoid edge-crossing errors in st_union
   s2_was_on <- sf::sf_use_s2()
-  sf::sf_use_s2(FALSE)
-  on.exit(sf::sf_use_s2(s2_was_on), add = TRUE)
+  suppressMessages(sf::sf_use_s2(FALSE))
+  on.exit(suppressMessages(sf::sf_use_s2(s2_was_on)), add = TRUE)
 
   spat_vec <- list()
 
@@ -863,8 +851,8 @@ validate_process_spatial <- function(
   spat_vec[[base_level_name]] <- shp
 
   # Create higher-level aggregations
-  # Suppress planar geometry messages (expected when s2 is off)
-  suppressMessages({
+  # Suppress planar geometry messages and warnings (expected when s2 is off)
+  suppressWarnings(suppressMessages({
     for (level in (highest_level - 1):0) {
       level_name <- paste0("adm", level)
 
@@ -940,7 +928,7 @@ validate_process_spatial <- function(
         }
       }
     }
-  })
+  }))
 
   if (!quiet) {
     cli::cli_progress_done()
