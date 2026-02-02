@@ -40,13 +40,16 @@ exp_names <- c(
   "val",
   "interm",
   "final",
+  "model",
   # outputs - figures and tables
   "val_fig",
   "val_tbl",
   "interm_fig",
   "interm_tbl",
   "final_fig",
-  "final_tbl"
+  "final_tbl",
+  "model_fig",
+  "model_tbl"
 )
 
 testthat::test_that("returns list with expected names and absolute paths", {
