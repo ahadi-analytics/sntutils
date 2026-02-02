@@ -2835,37 +2835,37 @@ schema:
     label_fr: "Utilisation des MII (moins de 5 ans) - IC supérieur"
     label_pt: "Uso de MTI (menores de 5 anos) - IC superior"
 
-  itn_use_5_9_mean:
-    snt_var_name: itn_use_5_9_mean
-    label_en: "ITN use (5-9 years) - Mean"
-    label_fr: "Utilisation des MII (5-9 ans) - Moyenne"
-    label_pt: "Uso de MTI (5-9 anos) - Média"
-  itn_use_5_9_lower:
-    snt_var_name: itn_use_5_9_lower
-    label_en: "ITN use (5-9 years) - Lower CI"
-    label_fr: "Utilisation des MII (5-9 ans) - IC inférieur"
-    label_pt: "Uso de MTI (5-9 anos) - IC inferior"
-  itn_use_5_9_upper:
-    snt_var_name: itn_use_5_9_upper
-    label_en: "ITN use (5-9 years) - Upper CI"
-    label_fr: "Utilisation des MII (5-9 ans) - IC supérieur"
-    label_pt: "Uso de MTI (5-9 anos) - IC superior"
+  itn_use_5_10_mean:
+    snt_var_name: itn_use_5_10_mean
+    label_en: "ITN use (5-10 years) - Mean"
+    label_fr: "Utilisation des MII (5-10 ans) - Moyenne"
+    label_pt: "Uso de MTI (5-10 anos) - Média"
+  itn_use_5_10_lower:
+    snt_var_name: itn_use_5_10_lower
+    label_en: "ITN use (5-10 years) - Lower CI"
+    label_fr: "Utilisation des MII (5-10 ans) - IC inférieur"
+    label_pt: "Uso de MTI (5-10 anos) - IC inferior"
+  itn_use_5_10_upper:
+    snt_var_name: itn_use_5_10_upper
+    label_en: "ITN use (5-10 years) - Upper CI"
+    label_fr: "Utilisation des MII (5-10 ans) - IC supérieur"
+    label_pt: "Uso de MTI (5-10 anos) - IC superior"
 
-  itn_use_10_19_mean:
-    snt_var_name: itn_use_10_19_mean
-    label_en: "ITN use (10-19 years) - Mean"
-    label_fr: "Utilisation des MII (10-19 ans) - Moyenne"
-    label_pt: "Uso de MTI (10-19 anos) - Média"
-  itn_use_10_19_lower:
-    snt_var_name: itn_use_10_19_lower
-    label_en: "ITN use (10-19 years) - Lower CI"
-    label_fr: "Utilisation des MII (10-19 ans) - IC inférieur"
-    label_pt: "Uso de MTI (10-19 anos) - IC inferior"
-  itn_use_10_19_upper:
-    snt_var_name: itn_use_10_19_upper
-    label_en: "ITN use (10-19 years) - Upper CI"
-    label_fr: "Utilisation des MII (10-19 ans) - IC supérieur"
-    label_pt: "Uso de MTI (10-19 anos) - IC superior"
+  itn_use_10_20_mean:
+    snt_var_name: itn_use_10_20_mean
+    label_en: "ITN use (10-20 years) - Mean"
+    label_fr: "Utilisation des MII (10-20 ans) - Moyenne"
+    label_pt: "Uso de MTI (10-20 anos) - Média"
+  itn_use_10_20_lower:
+    snt_var_name: itn_use_10_20_lower
+    label_en: "ITN use (10-20 years) - Lower CI"
+    label_fr: "Utilisation des MII (10-20 ans) - IC inférieur"
+    label_pt: "Uso de MTI (10-20 anos) - IC inferior"
+  itn_use_10_20_upper:
+    snt_var_name: itn_use_10_20_upper
+    label_en: "ITN use (10-20 years) - Upper CI"
+    label_fr: "Utilisation des MII (10-20 ans) - IC supérieur"
+    label_pt: "Uso de MTI (10-20 anos) - IC superior"
 
   itn_use_20plus_mean:
     snt_var_name: itn_use_20plus_mean
@@ -2898,6 +2898,22 @@ schema:
     label_en: "ITN use (pregnant women) - Upper CI"
     label_fr: "Utilisation des MII (femmes enceintes) - IC supérieur"
     label_pt: "Uso de MTI (mulheres grávidas) - IC superior"
+
+  itn_use_if_access_mean:
+    snt_var_name: itn_use_if_access_mean
+    label_en: "ITN use among those with access - Mean"
+    label_fr: "Utilisation des MII parmi ceux ayant accès - Moyenne"
+    label_pt: "Uso de MTI entre aqueles com acesso - Média"
+  itn_use_if_access_lower:
+    snt_var_name: itn_use_if_access_lower
+    label_en: "ITN use among those with access - Lower CI"
+    label_fr: "Utilisation des MII parmi ceux ayant accès - IC inférieur"
+    label_pt: "Uso de MTI entre aqueles com acesso - IC inferior"
+  itn_use_if_access_upper:
+    snt_var_name: itn_use_if_access_upper
+    label_en: "ITN use among those with access - Upper CI"
+    label_fr: "Utilisation des MII parmi ceux ayant accès - IC supérieur"
+    label_pt: "Uso de MTI entre aqueles com acesso - IC superior"
 
 # ── IRS - Indoor Residual Spraying ────────────────────────────────────────────
 
