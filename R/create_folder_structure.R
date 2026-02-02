@@ -14,8 +14,8 @@
 #' This function sets up a clean, hierarchical folder system for Ahadi projects:
 #' - 01_data/ with nested numbered folders and raw/processed subfolders
 #' - 02_scripts/
-#' - 03_outputs/ with 3.1_validation/,
-#'         3.2_intermediate_products/, 3.3_final_snt_outputs/
+#' - 03_outputs/ with 3.1_validation/, 3.2_intermediate_products/,
+#'         3.3_final_snt_outputs/, 3.4_model/ (each with figures/ and tables/)
 #' - 04_reports/, 05_metadata_docs/
 #'
 #' @param base_path Character. base_path project directory
@@ -111,6 +111,8 @@ create_data_structure <- function(base_path = ".") {
     "3.3_final_snt_outputs",
     "tables"
   ))
+  fs::dir_create(fs::path(base_path, "03_outputs", "3.4_model", "figures"))
+  fs::dir_create(fs::path(base_path, "03_outputs", "3.4_model", "tables"))
   fs::dir_create(fs::path(base_path, "04_reports"))
   fs::dir_create(fs::path(base_path, "05_metadata_docs"))
 
@@ -122,8 +124,8 @@ create_data_structure <- function(base_path = ".") {
 #' Sets up a clean Ahadi-style project hierarchy:
 #' - 01_data/ with numbered domain folders
 #' - 02_scripts/
-#' - 03_outputs/ with 3.1_validation/,
-#'        3.2_intermediate_products/, 3.3_final_snt_outputs/
+#' - 03_outputs/ with 3.1_validation/, 3.2_intermediate_products/,
+#'        3.3_final_snt_outputs/, 3.4_model/ (each with figures/ and tables/)
 #' - 04_reports/, 05_metadata_docs/
 #'
 #' @param base_path Character. Project root directory (default ".").
@@ -166,6 +168,8 @@ initialize_project_structure <- function(base_path = ".") {
     "3.3_final_snt_outputs",
     "tables"
   ))
+  fs::dir_create(fs::path(base_path, "03_outputs", "3.4_model", "figures"))
+  fs::dir_create(fs::path(base_path, "03_outputs", "3.4_model", "tables"))
   fs::dir_create(fs::path(base_path, "04_reports"))
   fs::dir_create(fs::path(base_path, "05_metadata_docs"))
 

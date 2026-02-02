@@ -14,8 +14,9 @@
 #'   pop_worldpop, cache, dhis2, pfpr_est, mortality_est, interventions,
 #'   drug_eff, climate, accessibility, land_use, dhs, ento, commodities,
 #'   finance, final_data,
-#'   val, interm, final,
-#'   val_fig, val_tbl, interm_fig, interm_tbl, final_fig, final_tbl.
+#'   val, interm, final, model,
+#'   val_fig, val_tbl, interm_fig, interm_tbl, final_fig, final_tbl,
+#'   model_fig, model_tbl.
 #'
 #' @examples
 #' tmp <- tempdir()
@@ -115,13 +116,16 @@ setup_project_paths <- function(base_path = NULL, quiet = FALSE) {
     val = jp("03_outputs", "3.1_validation"),
     interm = jp("03_outputs", "3.2_intermediate_products"),
     final = jp("03_outputs", "3.3_final_snt_outputs"),
+    model = jp("03_outputs", "3.4_model"),
     # outputs - figures and tables
     val_fig = jp("03_outputs", "3.1_validation", "figures"),
     val_tbl = jp("03_outputs", "3.1_validation", "tables"),
     interm_fig = jp("03_outputs", "3.2_intermediate_products", "figures"),
     interm_tbl = jp("03_outputs", "3.2_intermediate_products", "tables"),
     final_fig = jp("03_outputs", "3.3_final_snt_outputs", "figures"),
-    final_tbl = jp("03_outputs", "3.3_final_snt_outputs", "tables")
+    final_tbl = jp("03_outputs", "3.3_final_snt_outputs", "tables"),
+    model_fig = jp("03_outputs", "3.4_model", "figures"),
+    model_tbl = jp("03_outputs", "3.4_model", "tables")
   )
 
   # check directories exist and warn if not

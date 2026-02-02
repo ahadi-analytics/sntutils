@@ -1647,13 +1647,28 @@ prep_geonames <- function(
           level == "settlements" ~ "level4",
           TRUE ~ level
         ),
+        level0_prepped = if ("level0_prepped" %in% names(saved_cache_df)) {
+          as.character(level0_prepped)
+        } else {
+          NA_character_
+        },
+        level1_prepped = if ("level1_prepped" %in% names(saved_cache_df)) {
+          as.character(level1_prepped)
+        } else {
+          NA_character_
+        },
+        level2_prepped = if ("level2_prepped" %in% names(saved_cache_df)) {
+          as.character(level2_prepped)
+        } else {
+          NA_character_
+        },
         level3_prepped = if ("level3_prepped" %in% names(saved_cache_df)) {
-          level3_prepped
+          as.character(level3_prepped)
         } else {
           NA_character_
         },
         level4_prepped = if ("level4_prepped" %in% names(saved_cache_df)) {
-          level4_prepped
+          as.character(level4_prepped)
         } else {
           NA_character_
         },
