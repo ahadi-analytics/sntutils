@@ -22,8 +22,9 @@
 #'   polygon fill. This column should be a factor or character vector with
 #'   levels matching `fill_colors`.
 #'
-#' @param facet_col Character scalar. Name of the column used for faceting
-#'   columns, typically a time variable such as `year`.
+#' @param facet_col Optional character scalar. Name of the column used for
+#'   faceting columns, typically a time variable such as `year`. When `NULL`,
+#'   no faceting is applied and a single map is produced. Default is `NULL`.
 #'
 #' @param facet_row Optional character scalar. Name of the column used for
 #'   faceting rows. When provided, the function uses `facet_grid(row ~ col)`
@@ -105,7 +106,7 @@
 facetted_map_bins <- function(
   data,
   fill_col,
-  facet_col,
+  facet_col = NULL,
   facet_row = NULL,
   adm1_shp = NULL,
   fill_colors,
@@ -160,21 +161,24 @@ facetted_map_bins <- function(
       )
     )
 
-  if (!is.null(facet_row)) {
-    plot_obj <-
-      plot_obj +
-      ggplot2::facet_grid(
-        rows = ggplot2::vars(.data[[facet_row]]),
-        cols = ggplot2::vars(.data[[facet_col]]),
-        drop = FALSE
-      )
-  } else {
-    plot_obj <-
-      plot_obj +
-      ggplot2::facet_wrap(
-        stats::as.formula(paste0("~", facet_col)),
-        ncol = ncol
-      )
+  # apply faceting only when facet_col is provided
+  if (!is.null(facet_col)) {
+    if (!is.null(facet_row)) {
+      plot_obj <-
+        plot_obj +
+        ggplot2::facet_grid(
+          rows = ggplot2::vars(.data[[facet_row]]),
+          cols = ggplot2::vars(.data[[facet_col]]),
+          drop = FALSE
+        )
+    } else {
+      plot_obj <-
+        plot_obj +
+        ggplot2::facet_wrap(
+          stats::as.formula(paste0("~", facet_col)),
+          ncol = ncol
+        )
+    }
   }
 
   plot_obj <-
