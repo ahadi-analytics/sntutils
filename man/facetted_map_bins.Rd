@@ -7,7 +7,7 @@
 facetted_map_bins(
   data,
   fill_col,
-  facet_col,
+  facet_col = NULL,
   facet_row = NULL,
   adm1_shp = NULL,
   fill_colors,
@@ -30,8 +30,9 @@ Must include the columns specified in \code{fill_col} and \code{facet_col}.}
 polygon fill. This column should be a factor or character vector with
 levels matching \code{fill_colors}.}
 
-\item{facet_col}{Character scalar. Name of the column used for faceting
-columns, typically a time variable such as \code{year}.}
+\item{facet_col}{Optional character scalar. Name of the column used for
+faceting columns, typically a time variable such as \code{year}. When \code{NULL},
+no faceting is applied and a single map is produced. Default is \code{NULL}.}
 
 \item{facet_row}{Optional character scalar. Name of the column used for
 faceting rows. When provided, the function uses \code{facet_grid(row ~ col)}
