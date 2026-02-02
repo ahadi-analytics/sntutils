@@ -62,3 +62,26 @@
 #' @source Subnational Tailoring Initiative for Malaria Interventions
 #' @keywords datasets
 "snt_var_tree"
+
+#' Validation Terms Dictionary
+#'
+#' Multilingual labels for validation-related column names used in
+#' `validate_routine_hf_data()` output.
+#'
+#' @format A named list where each element is a variable name containing
+#'   a list of language codes (en, fr, pt) mapping to translated labels:
+#'   \describe{
+#'     \item{check}{Label for validation check type}
+#'     \item{issues_found}{Label for number of issues found}
+#'     \item{total_records}{Label for total record count}
+#'     \item{percent}{Label for percentage}
+#'   }
+#'
+#' @examples
+#' data(validation_terms)
+#' validation_terms$check$en
+#' validation_terms$check$fr
+#'
+#' @seealso \code{\link{validate_routine_hf_data}}
+#' @keywords datasets
+"validation_terms"
