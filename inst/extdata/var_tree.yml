@@ -2673,37 +2673,37 @@ schema:
     label_fr: "PfPR par microscopie (6-59 mois) - IC supérieur"
     label_pt: "PfPR por microscopia (6-59 meses) - IC superior"
 
-  pfpr_rdt_5_9_mean:
-    snt_var_name: pfpr_rdt_5_9_mean
-    label_en: "PfPR by RDT (5-9 years) - Mean"
-    label_fr: "PfPR par TDR (5-9 ans) - Moyenne"
-    label_pt: "PfPR por TDR (5-9 anos) - Média"
-  pfpr_rdt_5_9_lower:
-    snt_var_name: pfpr_rdt_5_9_lower
-    label_en: "PfPR by RDT (5-9 years) - Lower CI"
-    label_fr: "PfPR par TDR (5-9 ans) - IC inférieur"
-    label_pt: "PfPR por TDR (5-9 anos) - IC inferior"
-  pfpr_rdt_5_9_upper:
-    snt_var_name: pfpr_rdt_5_9_upper
-    label_en: "PfPR by RDT (5-9 years) - Upper CI"
-    label_fr: "PfPR par TDR (5-9 ans) - IC supérieur"
-    label_pt: "PfPR por TDR (5-9 anos) - IC superior"
+  pfpr_rdt_5_10_mean:
+    snt_var_name: pfpr_rdt_5_10_mean
+    label_en: "PfPR by RDT (5-10 years) - Mean"
+    label_fr: "PfPR par TDR (5-10 ans) - Moyenne"
+    label_pt: "PfPR por TDR (5-10 anos) - Média"
+  pfpr_rdt_5_10_lower:
+    snt_var_name: pfpr_rdt_5_10_lower
+    label_en: "PfPR by RDT (5-10 years) - Lower CI"
+    label_fr: "PfPR par TDR (5-10 ans) - IC inférieur"
+    label_pt: "PfPR por TDR (5-10 anos) - IC inferior"
+  pfpr_rdt_5_10_upper:
+    snt_var_name: pfpr_rdt_5_10_upper
+    label_en: "PfPR by RDT (5-10 years) - Upper CI"
+    label_fr: "PfPR par TDR (5-10 ans) - IC supérieur"
+    label_pt: "PfPR por TDR (5-10 anos) - IC superior"
 
-  pfpr_mic_5_9_mean:
-    snt_var_name: pfpr_mic_5_9_mean
-    label_en: "PfPR by microscopy (5-9 years) - Mean"
-    label_fr: "PfPR par microscopie (5-9 ans) - Moyenne"
-    label_pt: "PfPR por microscopia (5-9 anos) - Média"
-  pfpr_mic_5_9_lower:
-    snt_var_name: pfpr_mic_5_9_lower
-    label_en: "PfPR by microscopy (5-9 years) - Lower CI"
-    label_fr: "PfPR par microscopie (5-9 ans) - IC inférieur"
-    label_pt: "PfPR por microscopia (5-9 anos) - IC inferior"
-  pfpr_mic_5_9_upper:
-    snt_var_name: pfpr_mic_5_9_upper
-    label_en: "PfPR by microscopy (5-9 years) - Upper CI"
-    label_fr: "PfPR par microscopie (5-9 ans) - IC supérieur"
-    label_pt: "PfPR por microscopia (5-9 anos) - IC superior"
+  pfpr_mic_5_10_mean:
+    snt_var_name: pfpr_mic_5_10_mean
+    label_en: "PfPR by microscopy (5-10 years) - Mean"
+    label_fr: "PfPR par microscopie (5-10 ans) - Moyenne"
+    label_pt: "PfPR por microscopia (5-10 anos) - Média"
+  pfpr_mic_5_10_lower:
+    snt_var_name: pfpr_mic_5_10_lower
+    label_en: "PfPR by microscopy (5-10 years) - Lower CI"
+    label_fr: "PfPR par microscopie (5-10 ans) - IC inférieur"
+    label_pt: "PfPR por microscopia (5-10 anos) - IC inferior"
+  pfpr_mic_5_10_upper:
+    snt_var_name: pfpr_mic_5_10_upper
+    label_en: "PfPR by microscopy (5-10 years) - Upper CI"
+    label_fr: "PfPR par microscopie (5-10 ans) - IC supérieur"
+    label_pt: "PfPR por microscopia (5-10 anos) - IC superior"
 
   pfpr_rdt_u10_mean:
     snt_var_name: pfpr_rdt_u10_mean
