@@ -2102,6 +2102,200 @@ dhs_anemia:
     label_fr: "Nombre d'enfants de 6-59 mois atteints d'anémie sévère (Hb <8,0 g/dL) (numérateur pour dhs_severe_anemia)"
     label_pt: "Número de crianças de 6-59 meses com anemia grave (Hb <8,0 g/dL) (numerador para dhs_severe_anemia)"
 
+mbg_indicators:
+  _description: "Model-Based Geostatistics (MBG) spatially smoothed estimates from DHS survey data."
+  label_en: "MBG spatial model outputs"
+  label_fr: "Sorties du modèle spatial MBG"
+  label_pt: "Saídas do modelo espacial MBG"
+
+  # ── MBG PfPR indicators ─────────────────────────────────────────────────────
+
+  pfpr_rdt_u5_mean:
+    snt_var_name: pfpr_rdt_u5_mean
+    label_en: "MBG-smoothed PfPR by RDT, children 6-59 months - mean estimate (%)"
+    label_fr: "PfPR lissé MBG par TDR, enfants 6-59 mois - estimation moyenne (%)"
+    label_pt: "PfPR suavizado MBG por TDR, crianças 6-59 meses - estimativa média (%)"
+
+  pfpr_rdt_u5_lower:
+    snt_var_name: pfpr_rdt_u5_lower
+    label_en: "MBG-smoothed PfPR by RDT, children 6-59 months - lower 95% CI (%)"
+    label_fr: "PfPR lissé MBG par TDR, enfants 6-59 mois - IC 95% inférieur (%)"
+    label_pt: "PfPR suavizado MBG por TDR, crianças 6-59 meses - IC 95% inferior (%)"
+
+  pfpr_rdt_u5_upper:
+    snt_var_name: pfpr_rdt_u5_upper
+    label_en: "MBG-smoothed PfPR by RDT, children 6-59 months - upper 95% CI (%)"
+    label_fr: "PfPR lissé MBG par TDR, enfants 6-59 mois - IC 95% supérieur (%)"
+    label_pt: "PfPR suavizado MBG por TDR, crianças 6-59 meses - IC 95% superior (%)"
+
+  pfpr_mic_u5_mean:
+    snt_var_name: pfpr_mic_u5_mean
+    label_en: "MBG-smoothed PfPR by microscopy, children 6-59 months - mean estimate (%)"
+    label_fr: "PfPR lissé MBG par microscopie, enfants 6-59 mois - estimation moyenne (%)"
+    label_pt: "PfPR suavizado MBG por microscopia, crianças 6-59 meses - estimativa média (%)"
+
+  pfpr_mic_u5_lower:
+    snt_var_name: pfpr_mic_u5_lower
+    label_en: "MBG-smoothed PfPR by microscopy, children 6-59 months - lower 95% CI (%)"
+    label_fr: "PfPR lissé MBG par microscopie, enfants 6-59 mois - IC 95% inférieur (%)"
+    label_pt: "PfPR suavizado MBG por microscopia, crianças 6-59 meses - IC 95% inferior (%)"
+
+  pfpr_mic_u5_upper:
+    snt_var_name: pfpr_mic_u5_upper
+    label_en: "MBG-smoothed PfPR by microscopy, children 6-59 months - upper 95% CI (%)"
+    label_fr: "PfPR lissé MBG par microscopie, enfants 6-59 mois - IC 95% supérieur (%)"
+    label_pt: "PfPR suavizado MBG por microscopia, crianças 6-59 meses - IC 95% superior (%)"
+
+  # ── MBG ITN indicators ──────────────────────────────────────────────────────
+
+  itn_access_mean:
+    snt_var_name: itn_access_mean
+    label_en: "MBG-smoothed ITN access - mean estimate (%)"
+    label_fr: "Accès aux MII lissé MBG - estimation moyenne (%)"
+    label_pt: "Acesso a MILDA suavizado MBG - estimativa média (%)"
+
+  itn_access_lower:
+    snt_var_name: itn_access_lower
+    label_en: "MBG-smoothed ITN access - lower 95% CI (%)"
+    label_fr: "Accès aux MII lissé MBG - IC 95% inférieur (%)"
+    label_pt: "Acesso a MILDA suavizado MBG - IC 95% inferior (%)"
+
+  itn_access_upper:
+    snt_var_name: itn_access_upper
+    label_en: "MBG-smoothed ITN access - upper 95% CI (%)"
+    label_fr: "Accès aux MII lissé MBG - IC 95% supérieur (%)"
+    label_pt: "Acesso a MILDA suavizado MBG - IC 95% superior (%)"
+
+  itn_ownership_mean:
+    snt_var_name: itn_ownership_mean
+    label_en: "MBG-smoothed household ITN ownership - mean estimate (%)"
+    label_fr: "Possession de MII par les ménages lissée MBG - estimation moyenne (%)"
+    label_pt: "Posse de MILDA pelos agregados suavizada MBG - estimativa média (%)"
+
+  itn_ownership_lower:
+    snt_var_name: itn_ownership_lower
+    label_en: "MBG-smoothed household ITN ownership - lower 95% CI (%)"
+    label_fr: "Possession de MII par les ménages lissée MBG - IC 95% inférieur (%)"
+    label_pt: "Posse de MILDA pelos agregados suavizada MBG - IC 95% inferior (%)"
+
+  itn_ownership_upper:
+    snt_var_name: itn_ownership_upper
+    label_en: "MBG-smoothed household ITN ownership - upper 95% CI (%)"
+    label_fr: "Possession de MII par les ménages lissée MBG - IC 95% supérieur (%)"
+    label_pt: "Posse de MILDA pelos agregados suavizada MBG - IC 95% superior (%)"
+
+  itn_use_u5_mean:
+    snt_var_name: itn_use_u5_mean
+    label_en: "MBG-smoothed ITN use among children under 5 - mean estimate (%)"
+    label_fr: "Utilisation des MII chez les enfants <5 ans lissée MBG - estimation moyenne (%)"
+    label_pt: "Uso de MILDA em crianças <5 anos suavizado MBG - estimativa média (%)"
+
+  itn_use_u5_lower:
+    snt_var_name: itn_use_u5_lower
+    label_en: "MBG-smoothed ITN use among children under 5 - lower 95% CI (%)"
+    label_fr: "Utilisation des MII chez les enfants <5 ans lissée MBG - IC 95% inférieur (%)"
+    label_pt: "Uso de MILDA em crianças <5 anos suavizado MBG - IC 95% inferior (%)"
+
+  itn_use_u5_upper:
+    snt_var_name: itn_use_u5_upper
+    label_en: "MBG-smoothed ITN use among children under 5 - upper 95% CI (%)"
+    label_fr: "Utilisation des MII chez les enfants <5 ans lissée MBG - IC 95% supérieur (%)"
+    label_pt: "Uso de MILDA em crianças <5 anos suavizado MBG - IC 95% superior (%)"
+
+  # ── MBG aggregated cluster statistics ───────────────────────────────────────
+  # These are raw DHS statistics aggregated from cluster data to admin level
+
+  _dynamic_mbg_patterns:
+    _note: "Variables with dynamic indicator names are auto-recognized. Pattern: dhs_n_tested_{indicator}, dhs_n_pos_{indicator}, dhs_n_clusters_{indicator}, dhs_{indicator}_raw"
+    _supported_prefixes:
+      - "dhs_n_tested_"
+      - "dhs_n_pos_"
+      - "dhs_n_clusters_"
+    _supported_suffixes:
+      - "_raw"
+    _indicator_names:
+      - "pfpr_rdt_u5, pfpr_mic_u5, pfpr_rdt_5_10, pfpr_mic_5_10"
+      - "itn_access, itn_ownership, itn_use_all, itn_use_u5, itn_use_5_10"
+      - "irs_coverage"
+      - "anc1, anc4"
+      - "csb_public, csb_private, csb_none"
+      - "anemia_any, anemia_moderate_plus, anemia_severe"
+      - "iptp_1plus, iptp_2plus, iptp_3plus"
+
+  # Generic cluster statistics (applicable to all indicators)
+  dhs_n_tested_generic:
+    snt_var_name: dhs_n_tested_{indicator}
+    label_en: "Number tested for {indicator} (aggregated from DHS clusters)"
+    label_fr: "Nombre testé pour {indicator} (agrégé des grappes DHS)"
+    label_pt: "Número testado para {indicator} (agregado dos clusters DHS)"
+
+  dhs_n_pos_generic:
+    snt_var_name: dhs_n_pos_{indicator}
+    label_en: "Number positive for {indicator} (aggregated from DHS clusters)"
+    label_fr: "Nombre positif pour {indicator} (agrégé des grappes DHS)"
+    label_pt: "Número positivo para {indicator} (agregado dos clusters DHS)"
+
+  dhs_n_clusters_generic:
+    snt_var_name: dhs_n_clusters_{indicator}
+    label_en: "Number of DHS clusters contributing to {indicator} estimate"
+    label_fr: "Nombre de grappes DHS contribuant à l'estimation de {indicator}"
+    label_pt: "Número de clusters DHS contribuindo para a estimativa de {indicator}"
+
+  dhs_indicator_raw_generic:
+    snt_var_name: dhs_{indicator}_raw
+    label_en: "Raw DHS proportion for {indicator} (%) - unsmoothed, aggregated from clusters"
+    label_fr: "Proportion DHS brute pour {indicator} (%) - non lissée, agrégée des grappes"
+    label_pt: "Proporção DHS bruta para {indicator} (%) - não suavizada, agregada dos clusters"
+
+  # Specific commonly used cluster statistics
+  dhs_n_tested_pfpr_rdt_u5:
+    snt_var_name: dhs_n_tested_pfpr_rdt_u5
+    label_en: "Number of children 6-59 months tested by RDT (aggregated from DHS clusters)"
+    label_fr: "Nombre d'enfants de 6-59 mois testés par TDR (agrégé des grappes DHS)"
+    label_pt: "Número de crianças de 6-59 meses testadas por TDR (agregado dos clusters DHS)"
+
+  dhs_n_pos_pfpr_rdt_u5:
+    snt_var_name: dhs_n_pos_pfpr_rdt_u5
+    label_en: "Number of children 6-59 months RDT positive (aggregated from DHS clusters)"
+    label_fr: "Nombre d'enfants de 6-59 mois positifs par TDR (agrégé des grappes DHS)"
+    label_pt: "Número de crianças de 6-59 meses positivas por TDR (agregado dos clusters DHS)"
+
+  dhs_n_clusters_pfpr_rdt_u5:
+    snt_var_name: dhs_n_clusters_pfpr_rdt_u5
+    label_en: "Number of DHS clusters with PfPR RDT data for children 6-59 months"
+    label_fr: "Nombre de grappes DHS avec données PfPR TDR pour enfants 6-59 mois"
+    label_pt: "Número de clusters DHS com dados PfPR TDR para crianças 6-59 meses"
+
+  dhs_pfpr_rdt_u5_raw:
+    snt_var_name: dhs_pfpr_rdt_u5_raw
+    label_en: "Raw DHS PfPR by RDT, children 6-59 months (%) - unsmoothed proportion"
+    label_fr: "PfPR DHS brut par TDR, enfants 6-59 mois (%) - proportion non lissée"
+    label_pt: "PfPR DHS bruto por TDR, crianças 6-59 meses (%) - proporção não suavizada"
+
+  dhs_n_tested_itn_access:
+    snt_var_name: dhs_n_tested_itn_access
+    label_en: "Number of individuals assessed for ITN access (aggregated from DHS clusters)"
+    label_fr: "Nombre d'individus évalués pour l'accès aux MII (agrégé des grappes DHS)"
+    label_pt: "Número de indivíduos avaliados para acesso a MILDA (agregado dos clusters DHS)"
+
+  dhs_n_pos_itn_access:
+    snt_var_name: dhs_n_pos_itn_access
+    label_en: "Number of individuals with ITN access (aggregated from DHS clusters)"
+    label_fr: "Nombre d'individus avec accès aux MII (agrégé des grappes DHS)"
+    label_pt: "Número de indivíduos com acesso a MILDA (agregado dos clusters DHS)"
+
+  dhs_n_clusters_itn_access:
+    snt_var_name: dhs_n_clusters_itn_access
+    label_en: "Number of DHS clusters with ITN access data"
+    label_fr: "Nombre de grappes DHS avec données d'accès aux MII"
+    label_pt: "Número de clusters DHS com dados de acesso a MILDA"
+
+  dhs_itn_access_raw:
+    snt_var_name: dhs_itn_access_raw
+    label_en: "Raw DHS ITN access (%) - unsmoothed proportion from cluster data"
+    label_fr: "Accès aux MII DHS brut (%) - proportion non lissée des données de grappe"
+    label_pt: "Acesso a MILDA DHS bruto (%) - proporção não suavizada dos dados de cluster"
+
 schema:
   _description: "Standardized disaggregation schema used across indicators."
   label_en: "Standard disaggregation schema"
@@ -4112,3 +4306,462 @@ validation_utility:
     label_en: "Categorical trend direction derived from plotting_sens_slope: Increase, Decrease, Not significant."
     label_fr: "Direction de tendance catégorique dérivée de plotting_sens_slope : Augmentation, Diminution, Non significatif."
     label_pt: "Direção de tendência categórica derivada de plotting_sens_slope: Aumento, Diminuição, Não significativo."
+
+# ══════════════════════════════════════════════════════════════════════════════
+# Survey indicators (simplified names)
+# ══════════════════════════════════════════════════════════════════════════════
+survey_indicators:
+  _description: "Generic survey indicator names (simplified, without source prefix). For use with aggregated survey data."
+  label_en: "Survey indicators"
+  label_fr: "Indicateurs d'enquête"
+  label_pt: "Indicadores de inquérito"
+
+  # ── PfPR (Microscopy) ────────────────────────────────────────────────────────
+  n_tested_mic:
+    snt_var_name: n_tested_mic
+    label_en: "Number tested by microscopy"
+    label_fr: "Nombre testé par microscopie"
+    label_pt: "Número testado por microscopia"
+
+  n_pos_mic:
+    snt_var_name: n_pos_mic
+    label_en: "Number positive by microscopy"
+    label_fr: "Nombre positif par microscopie"
+    label_pt: "Número positivo por microscopia"
+
+  pfpr_mic:
+    snt_var_name: pfpr_mic
+    label_en: "PfPR estimate (microscopy)"
+    label_fr: "Estimation PfPR (microscopie)"
+    label_pt: "Estimativa PfPR (microscopia)"
+
+  pfpr_mic_low:
+    snt_var_name: pfpr_mic_low
+    label_en: "Lower 95% CI for PfPR (microscopy)"
+    label_fr: "IC inférieur à 95% pour PfPR (microscopie)"
+    label_pt: "IC inferior de 95% para PfPR (microscopia)"
+
+  pfpr_mic_upp:
+    snt_var_name: pfpr_mic_upp
+    label_en: "Upper 95% CI for PfPR (microscopy)"
+    label_fr: "IC supérieur à 95% pour PfPR (microscopie)"
+    label_pt: "IC superior de 95% para PfPR (microscopia)"
+
+  pfpr_mic_se:
+    snt_var_name: pfpr_mic_se
+    label_en: "Standard error for PfPR (microscopy)"
+    label_fr: "Erreur standard pour PfPR (microscopie)"
+    label_pt: "Erro padrão para PfPR (microscopia)"
+
+  # ── PfPR (RDT) ───────────────────────────────────────────────────────────────
+  n_tested_rdt:
+    snt_var_name: n_tested_rdt
+    label_en: "Number tested by RDT"
+    label_fr: "Nombre testé par TDR"
+    label_pt: "Número testado por TDR"
+
+  n_pos_rdt:
+    snt_var_name: n_pos_rdt
+    label_en: "Number positive by RDT"
+    label_fr: "Nombre positif par TDR"
+    label_pt: "Número positivo por TDR"
+
+  pfpr_rdt:
+    snt_var_name: pfpr_rdt
+    label_en: "PfPR estimate (RDT)"
+    label_fr: "Estimation PfPR (TDR)"
+    label_pt: "Estimativa PfPR (TDR)"
+
+  pfpr_rdt_low:
+    snt_var_name: pfpr_rdt_low
+    label_en: "Lower 95% CI for PfPR (RDT)"
+    label_fr: "IC inférieur à 95% pour PfPR (TDR)"
+    label_pt: "IC inferior de 95% para PfPR (TDR)"
+
+  pfpr_rdt_upp:
+    snt_var_name: pfpr_rdt_upp
+    label_en: "Upper 95% CI for PfPR (RDT)"
+    label_fr: "IC supérieur à 95% pour PfPR (TDR)"
+    label_pt: "IC superior de 95% para PfPR (TDR)"
+
+  pfpr_rdt_se:
+    snt_var_name: pfpr_rdt_se
+    label_en: "Standard error for PfPR (RDT)"
+    label_fr: "Erreur standard pour PfPR (TDR)"
+    label_pt: "Erro padrão para PfPR (TDR)"
+
+  # ── Under-5 Mortality ────────────────────────────────────────────────────────
+  n_births:
+    snt_var_name: n_births
+    label_en: "Number of births"
+    label_fr: "Nombre de naissances"
+    label_pt: "Número de nascimentos"
+
+  n_deaths:
+    snt_var_name: n_deaths
+    label_en: "Number of deaths"
+    label_fr: "Nombre de décès"
+    label_pt: "Número de óbitos"
+
+  u5mr:
+    snt_var_name: u5mr
+    label_en: "Under-5 mortality rate"
+    label_fr: "Taux de mortalité des moins de 5 ans"
+    label_pt: "Taxa de mortalidade de menores de 5 anos"
+
+  u5mr_low:
+    snt_var_name: u5mr_low
+    label_en: "Lower 95% CI for under-5 mortality rate"
+    label_fr: "IC inférieur à 95% pour taux de mortalité des moins de 5 ans"
+    label_pt: "IC inferior de 95% para taxa de mortalidade de menores de 5 anos"
+
+  u5mr_upp:
+    snt_var_name: u5mr_upp
+    label_en: "Upper 95% CI for under-5 mortality rate"
+    label_fr: "IC supérieur à 95% pour taux de mortalité des moins de 5 ans"
+    label_pt: "IC superior de 95% para taxa de mortalidade de menores de 5 anos"
+
+  # ── IPTp ─────────────────────────────────────────────────────────────────────
+  n_women:
+    snt_var_name: n_women
+    label_en: "Number of women"
+    label_fr: "Nombre de femmes"
+    label_pt: "Número de mulheres"
+
+  n_recent_births:
+    snt_var_name: n_recent_births
+    label_en: "Number of recent births"
+    label_fr: "Nombre de naissances récentes"
+    label_pt: "Número de nascimentos recentes"
+
+  iptp_1:
+    snt_var_name: iptp_1
+    label_en: "IPTp coverage (1+ doses)"
+    label_fr: "Couverture IPTp (1+ doses)"
+    label_pt: "Cobertura IPTp (1+ doses)"
+
+  iptp_2:
+    snt_var_name: iptp_2
+    label_en: "IPTp coverage (2+ doses)"
+    label_fr: "Couverture IPTp (2+ doses)"
+    label_pt: "Cobertura IPTp (2+ doses)"
+
+  iptp_3:
+    snt_var_name: iptp_3
+    label_en: "IPTp coverage (3+ doses)"
+    label_fr: "Couverture IPTp (3+ doses)"
+    label_pt: "Cobertura IPTp (3+ doses)"
+
+  n_iptp_1plus:
+    snt_var_name: n_iptp_1plus
+    label_en: "Number receiving 1+ IPTp doses"
+    label_fr: "Nombre recevant 1+ doses IPTp"
+    label_pt: "Número recebendo 1+ doses IPTp"
+
+  n_iptp_2plus:
+    snt_var_name: n_iptp_2plus
+    label_en: "Number receiving 2+ IPTp doses"
+    label_fr: "Nombre recevant 2+ doses IPTp"
+    label_pt: "Número recebendo 2+ doses IPTp"
+
+  n_iptp_3plus:
+    snt_var_name: n_iptp_3plus
+    label_en: "Number receiving 3+ IPTp doses"
+    label_fr: "Nombre recevant 3+ doses IPTp"
+    label_pt: "Número recebendo 3+ doses IPTp"
+
+  # ── Anemia ───────────────────────────────────────────────────────────────────
+  n_tested_hb:
+    snt_var_name: n_tested_hb
+    label_en: "Number tested for hemoglobin"
+    label_fr: "Nombre testé pour l'hémoglobine"
+    label_pt: "Número testado para hemoglobina"
+
+  n_severe_anemia:
+    snt_var_name: n_severe_anemia
+    label_en: "Number with severe anemia"
+    label_fr: "Nombre avec anémie sévère"
+    label_pt: "Número com anemia grave"
+
+  severe_anemia:
+    snt_var_name: severe_anemia
+    label_en: "Severe anemia prevalence"
+    label_fr: "Prévalence de l'anémie sévère"
+    label_pt: "Prevalência de anemia grave"
+
+  # ── Care-seeking ─────────────────────────────────────────────────────────────
+  n_fever:
+    snt_var_name: n_fever
+    label_en: "Number with fever"
+    label_fr: "Nombre avec fièvre"
+    label_pt: "Número com febre"
+
+  n_public:
+    snt_var_name: n_public
+    label_en: "Number seeking care from public sector"
+    label_fr: "Nombre consultant le secteur public"
+    label_pt: "Número que procurou setor público"
+
+  n_private:
+    snt_var_name: n_private
+    label_en: "Number seeking care from private sector"
+    label_fr: "Nombre consultant le secteur privé"
+    label_pt: "Número que procurou setor privado"
+
+  n_none:
+    snt_var_name: n_none
+    label_en: "Number not seeking care"
+    label_fr: "Nombre n'ayant pas consulté"
+    label_pt: "Número que não procurou cuidados"
+
+  n_trained:
+    snt_var_name: n_trained
+    label_en: "Number seeking care from trained provider"
+    label_fr: "Nombre consultant un prestataire formé"
+    label_pt: "Número que procurou prestador treinado"
+
+  csb_public:
+    snt_var_name: csb_public
+    label_en: "Care-seeking proportion (public sector)"
+    label_fr: "Proportion de recours aux soins (secteur public)"
+    label_pt: "Proporção de procura de cuidados (setor público)"
+
+  csb_private:
+    snt_var_name: csb_private
+    label_en: "Care-seeking proportion (private sector)"
+    label_fr: "Proportion de recours aux soins (secteur privé)"
+    label_pt: "Proporção de procura de cuidados (setor privado)"
+
+  csb_none:
+    snt_var_name: csb_none
+    label_en: "Proportion not seeking care"
+    label_fr: "Proportion n'ayant pas consulté"
+    label_pt: "Proporção que não procurou cuidados"
+
+  csb_trained:
+    snt_var_name: csb_trained
+    label_en: "Care-seeking proportion (trained provider)"
+    label_fr: "Proportion de recours aux soins (prestataire formé)"
+    label_pt: "Proporção de procura de cuidados (prestador treinado)"
+
+  # ── Wealth ───────────────────────────────────────────────────────────────────
+  n_households:
+    snt_var_name: n_households
+    label_en: "Number of households"
+    label_fr: "Nombre de ménages"
+    label_pt: "Número de agregados"
+
+  gini:
+    snt_var_name: gini
+    label_en: "Gini coefficient"
+    label_fr: "Coefficient de Gini"
+    label_pt: "Coeficiente de Gini"
+
+  prop_poorest:
+    snt_var_name: prop_poorest
+    label_en: "Proportion in poorest quintile"
+    label_fr: "Proportion dans le quintile le plus pauvre"
+    label_pt: "Proporção no quintil mais pobre"
+
+  prop_poorer:
+    snt_var_name: prop_poorer
+    label_en: "Proportion in poorer quintile"
+    label_fr: "Proportion dans le quintile pauvre"
+    label_pt: "Proporção no quintil pobre"
+
+  prop_middle:
+    snt_var_name: prop_middle
+    label_en: "Proportion in middle quintile"
+    label_fr: "Proportion dans le quintile moyen"
+    label_pt: "Proporção no quintil médio"
+
+  prop_richer:
+    snt_var_name: prop_richer
+    label_en: "Proportion in richer quintile"
+    label_fr: "Proportion dans le quintile riche"
+    label_pt: "Proporção no quintil rico"
+
+  prop_richest:
+    snt_var_name: prop_richest
+    label_en: "Proportion in richest quintile"
+    label_fr: "Proportion dans le quintile le plus riche"
+    label_pt: "Proporção no quintil mais rico"
+
+  # ── ITN ──────────────────────────────────────────────────────────────────────
+  itn_access:
+    snt_var_name: itn_access
+    label_en: "ITN access proportion"
+    label_fr: "Proportion d'accès aux MILDA"
+    label_pt: "Proporção de acesso a MILDA"
+
+  itn_used_preg:
+    snt_var_name: itn_used_preg
+    label_en: "ITN use among pregnant women"
+    label_fr: "Utilisation de MILDA chez les femmes enceintes"
+    label_pt: "Uso de MILDA entre mulheres grávidas"
+
+  itn_used_u5:
+    snt_var_name: itn_used_u5
+    label_en: "ITN use among children under 5"
+    label_fr: "Utilisation de MILDA chez les enfants de moins de 5 ans"
+    label_pt: "Uso de MILDA entre crianças menores de 5 anos"
+
+  # ── General ──────────────────────────────────────────────────────────────────
+  n_clusters:
+    snt_var_name: n_clusters
+    label_en: "Number of clusters"
+    label_fr: "Nombre de grappes"
+    label_pt: "Número de conglomerados"
+
+  # ── MBG Base Columns ─────────────────────────────────────────────────────────
+  cluster_id:
+    snt_var_name: cluster_id
+    label_en: "DHS cluster identifier"
+    label_fr: "Identifiant de grappe DHS"
+    label_pt: "Identificador de conglomerado DHS"
+
+  indicator:
+    snt_var_name: indicator
+    label_en: "Generic numerator count (for MBG compatibility)"
+    label_fr: "Comptage générique du numérateur (pour compatibilité MBG)"
+    label_pt: "Contagem genérica do numerador (para compatibilidade MBG)"
+
+  samplesize:
+    snt_var_name: samplesize
+    label_en: "Generic denominator count (for MBG compatibility)"
+    label_fr: "Comptage générique du dénominateur (pour compatibilité MBG)"
+    label_pt: "Contagem genérica do denominador (para compatibilidade MBG)"
+
+  x:
+    snt_var_name: x
+    label_en: "Longitude"
+    label_fr: "Longitude"
+    label_pt: "Longitude"
+
+  y:
+    snt_var_name: y
+    label_en: "Latitude"
+    label_fr: "Latitude"
+    label_pt: "Latitude"
+
+  prop_raw:
+    snt_var_name: prop_raw
+    label_en: "Raw proportion (indicator / samplesize)"
+    label_fr: "Proportion brute (indicateur / taille de l'échantillon)"
+    label_pt: "Proporção bruta (indicador / tamanho da amostra)"
+
+  # ── MBG Alias Columns (numerators) ───────────────────────────────────────────
+  n_positive:
+    snt_var_name: n_positive
+    label_en: "Number positive (numerator alias for pfpr_*)"
+    label_fr: "Nombre de positifs (alias numérateur pour pfpr_*)"
+    label_pt: "Número de positivos (alias numerador para pfpr_*)"
+
+  n_hh_with_itn:
+    snt_var_name: n_hh_with_itn
+    label_en: "Number of households with ITN (numerator alias for itn_ownership)"
+    label_fr: "Nombre de ménages avec MILDA (alias numérateur pour itn_ownership)"
+    label_pt: "Número de agregados com MILDA (alias numerador para itn_ownership)"
+
+  n_with_access:
+    snt_var_name: n_with_access
+    label_en: "Number with ITN access (numerator alias for itn_access)"
+    label_fr: "Nombre avec accès aux MILDA (alias numérateur pour itn_access)"
+    label_pt: "Número com acesso a MILDA (alias numerador para itn_access)"
+
+  n_used_itn:
+    snt_var_name: n_used_itn
+    label_en: "Number who used ITN (numerator alias for itn_use*)"
+    label_fr: "Nombre ayant utilisé une MILDA (alias numérateur pour itn_use*)"
+    label_pt: "Número que usou MILDA (alias numerador para itn_use*)"
+
+  n_exposed:
+    snt_var_name: n_exposed
+    label_en: "Number exposed (denominator alias for u5mr*)"
+    label_fr: "Nombre exposés (alias dénominateur pour u5mr*)"
+    label_pt: "Número expostos (alias denominador para u5mr*)"
+
+  n_with_visits:
+    snt_var_name: n_with_visits
+    label_en: "Number with ANC visits (numerator alias for anc*)"
+    label_fr: "Nombre avec visites CPN (alias numérateur pour anc*)"
+    label_pt: "Número com visitas CPN (alias numerador para anc*)"
+
+  n_sought_care:
+    snt_var_name: n_sought_care
+    label_en: "Number who sought care (numerator alias for csb_*)"
+    label_fr: "Nombre ayant consulté (alias numérateur pour csb_*)"
+    label_pt: "Número que procurou cuidados (alias numerador para csb_*)"
+
+  n_anemic:
+    snt_var_name: n_anemic
+    label_en: "Number with anemia (numerator alias for anemia*)"
+    label_fr: "Nombre avec anémie (alias numérateur pour anemia*)"
+    label_pt: "Número com anemia (alias numerador para anemia*)"
+
+  n_received_sp:
+    snt_var_name: n_received_sp
+    label_en: "Number who received SP (numerator alias for iptp*)"
+    label_fr: "Nombre ayant reçu SP (alias numérateur pour iptp*)"
+    label_pt: "Número que recebeu SP (alias numerador para iptp*)"
+
+  n_sprayed:
+    snt_var_name: n_sprayed
+    label_en: "Number of households sprayed (numerator alias for irs*)"
+    label_fr: "Nombre de ménages pulvérisés (alias numérateur pour irs*)"
+    label_pt: "Número de agregados pulverizados (alias numerador para irs*)"
+
+  n_vaccinated:
+    snt_var_name: n_vaccinated
+    label_en: "Number vaccinated (numerator alias for epi_*, bcg*, dpt*, measles*, polio*)"
+    label_fr: "Nombre vaccinés (alias numérateur pour epi_*, bcg*, dpt*, measles*, polio*)"
+    label_pt: "Número vacinados (alias numerador para epi_*, bcg*, dpt*, measles*, polio*)"
+
+  n_received_smc:
+    snt_var_name: n_received_smc
+    label_en: "Number who received SMC (numerator alias for smc*)"
+    label_fr: "Nombre ayant reçu CPS (alias numérateur pour smc*)"
+    label_pt: "Número que recebeu QSM (alias numerador para smc*)"
+
+  numerator:
+    snt_var_name: numerator
+    label_en: "Generic numerator (fallback for unknown indicators)"
+    label_fr: "Numérateur générique (repli pour indicateurs inconnus)"
+    label_pt: "Numerador genérico (fallback para indicadores desconhecidos)"
+
+  # ── MBG Alias Columns (denominators) ─────────────────────────────────────────
+  n_tested:
+    snt_var_name: n_tested
+    label_en: "Number tested (denominator alias for pfpr_*)"
+    label_fr: "Nombre testés (alias dénominateur pour pfpr_*)"
+    label_pt: "Número testados (alias denominador para pfpr_*)"
+
+  n_individuals:
+    snt_var_name: n_individuals
+    label_en: "Number of individuals (denominator alias for itn_access)"
+    label_fr: "Nombre d'individus (alias dénominateur pour itn_access)"
+    label_pt: "Número de indivíduos (alias denominador para itn_access)"
+
+  n_eligible:
+    snt_var_name: n_eligible
+    label_en: "Number eligible (denominator alias for itn_use*)"
+    label_fr: "Nombre éligibles (alias dénominateur pour itn_use*)"
+    label_pt: "Número elegíveis (alias denominador para itn_use*)"
+
+  n_febrile:
+    snt_var_name: n_febrile
+    label_en: "Number with fever (denominator alias for csb_*)"
+    label_fr: "Nombre avec fièvre (alias dénominateur pour csb_*)"
+    label_pt: "Número com febre (alias denominador para csb_*)"
+
+  n_children:
+    snt_var_name: n_children
+    label_en: "Number of children (denominator alias for vaccination/smc indicators)"
+    label_fr: "Nombre d'enfants (alias dénominateur pour indicateurs vaccination/cps)"
+    label_pt: "Número de crianças (alias denominador para indicadores vacinação/qsm)"
+
+  denominator:
+    snt_var_name: denominator
+    label_en: "Generic denominator (fallback for unknown indicators)"
+    label_fr: "Dénominateur générique (repli pour indicateurs inconnus)"
+    label_pt: "Denominador genérico (fallback para indicadores desconhecidos)"

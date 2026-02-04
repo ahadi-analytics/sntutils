@@ -19,7 +19,8 @@ facetted_map_bins(
   width = 7,
   height = 10,
   dpi = 300,
-  scale = 1
+  scale = 1,
+  compress_image = TRUE
 )
 }
 \arguments{
@@ -67,6 +68,9 @@ Default is \code{300}.}
 \item{scale}{Numeric. Scaling factor for the plot. Values greater than 1
 make text and elements relatively smaller; values less than 1 make them
 larger. Default is \code{1}.}
+
+\item{compress_image}{Logical. Compress PNG using \code{compress_png()} after
+saving. Defaults to TRUE.}
 }
 \value{
 A \code{ggplot} object. If \code{output_file} is provided, the plot is also written
