@@ -60,6 +60,9 @@
 #'   make text and elements relatively smaller; values less than 1 make them
 #'   larger. Default is `1`.
 #'
+#' @param compress_image Logical. Compress PNG using `compress_png()` after
+#'   saving. Defaults to TRUE.
+#'
 #' @return
 #' A `ggplot` object. If `output_file` is provided, the plot is also written
 #' to disk using `ggsave()`.
@@ -118,7 +121,8 @@ facetted_map_bins <- function(
   width = 7,
   height = 10,
   dpi = 300,
-  scale = 1
+  scale = 1,
+  compress_image = TRUE
 ) {
   plot_obj <-
     ggplot2::ggplot(data) +
@@ -191,9 +195,14 @@ facetted_map_bins <- function(
     ggplot2::theme_void() +
     ggplot2::theme(
       legend.position = "bottom",
-      strip.text = ggplot2::element_text(face = "bold", size = 10),
+      strip.text = ggplot2::element_text(
+        face = "bold",
+        size = 10,
+        margin = ggplot2::margin(t = 2, b = 6, l = 4, r = 4)
+      ),
       strip.text.y = ggplot2::element_text(angle = -90),
-      panel.spacing = ggplot2::unit(1, "lines"),
+      panel.spacing = grid::unit(4, "pt"),
+      legend.box.margin = ggplot2::margin(t = 8),
       plot.title = ggplot2::element_text(
         margin = ggplot2::margin(b = 8)
       ),
@@ -202,7 +211,8 @@ facetted_map_bins <- function(
       ),
       legend.title = ggplot2::element_text(
         margin = ggplot2::margin(b = 6)
-      )
+      ),
+      plot.margin = ggplot2::margin(t = 5, r = 5, b = 5, l = 5)
     )
 
   if (!is.null(output_file)) {
@@ -214,6 +224,10 @@ facetted_map_bins <- function(
       dpi = dpi,
       scale = scale
     )
+
+    if (compress_image && grepl("\\.png$", output_file, ignore.case = TRUE)) {
+      compress_png(path = output_file)
+    }
   }
 
   plot_obj
