@@ -1765,24 +1765,138 @@ dhs_itn:
     label_fr: "Intervalle de confiance supérieur à 95% pour les individus âgés de 5-14 ans ayant dormi sous une MILDA si accès (%)"
     label_pt: "Intervalo de confiança superior de 95% para indivíduos de 5-14 anos que dormiram sob uma MILDA se acesso (%)"
 
-  # ── ITN use if access (ages 15+) ─────────────────────────────────────────────
-  dhs_itn_use_if_access_15plus:
-    snt_var_name: dhs_itn_use_if_access_15plus
-    label_en: "Individuals aged 15+ who slept under an ITN the previous night given that they have access to an ITN (%). Numerator: individuals 15+ who slept under an ITN. Denominator: individuals 15+ with access to an ITN."
-    label_fr: "Individus âgés de 15+ ans ayant dormi sous une MILDA la nuit précédente sachant qu'ils ont accès à une MILDA (%). Numérateur: individus 15+ ans ayant dormi sous une MILDA. Dénominateur: individus 15+ ans ayant accès à une MILDA."
-    label_pt: "Indivíduos de 15+ anos que dormiram sob uma MILDA na noite anterior dado que têm acesso a uma MILDA (%). Numerador: indivíduos 15+ anos que dormiram sob uma MILDA. Denominador: indivíduos 15+ anos com acesso a uma MILDA."
+  # ── ITN use if access (ages 15 and above) ────────────────────────────────────
+  dhs_itn_use_if_access_ov15:
+    snt_var_name: dhs_itn_use_if_access_ov15
+    label_en: "Individuals aged 15 years and above who slept under an ITN the previous night given that they have access to an ITN (%). Numerator: individuals 15+ who slept under an ITN. Denominator: individuals 15+ with access to an ITN."
+    label_fr: "Individus âgés de 15 ans et plus ayant dormi sous une MILDA la nuit précédente sachant qu'ils ont accès à une MILDA (%). Numérateur: individus 15+ ans ayant dormi sous une MILDA. Dénominateur: individus 15+ ans ayant accès à une MILDA."
+    label_pt: "Indivíduos de 15 anos e mais que dormiram sob uma MILDA na noite anterior dado que têm acesso a uma MILDA (%). Numerador: indivíduos 15+ anos que dormiram sob uma MILDA. Denominador: indivíduos 15+ anos com acesso a uma MILDA."
 
-  dhs_itn_use_if_access_15plus_low:
-    snt_var_name: dhs_itn_use_if_access_15plus_low
-    label_en: "Lower 95% confidence interval for individuals aged 15+ who slept under an ITN if access (%)"
-    label_fr: "Intervalle de confiance inférieur à 95% pour les individus âgés de 15+ ans ayant dormi sous une MILDA si accès (%)"
-    label_pt: "Intervalo de confiança inferior de 95% para indivíduos de 15+ anos que dormiram sob uma MILDA se acesso (%)"
+  dhs_itn_use_if_access_ov15_low:
+    snt_var_name: dhs_itn_use_if_access_ov15_low
+    label_en: "Lower 95% confidence interval for individuals aged 15 years and above who slept under an ITN if access (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour les individus âgés de 15 ans et plus ayant dormi sous une MILDA si accès (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para indivíduos de 15 anos e mais que dormiram sob uma MILDA se acesso (%)"
 
-  dhs_itn_use_if_access_15plus_upp:
-    snt_var_name: dhs_itn_use_if_access_15plus_upp
-    label_en: "Upper 95% confidence interval for individuals aged 15+ who slept under an ITN if access (%)"
-    label_fr: "Intervalle de confiance supérieur à 95% pour les individus âgés de 15+ ans ayant dormi sous une MILDA si accès (%)"
-    label_pt: "Intervalo de confiança superior de 95% para indivíduos de 15+ anos que dormiram sob uma MILDA se acesso (%)"
+  dhs_itn_use_if_access_ov15_upp:
+    snt_var_name: dhs_itn_use_if_access_ov15_upp
+    label_en: "Upper 95% confidence interval for individuals aged 15 years and above who slept under an ITN if access (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour les individus âgés de 15 ans et plus ayant dormi sous une MILDA si accès (%)"
+    label_pt: "Intervalo de confiança superior de 95% para indivíduos de 15 anos e mais que dormiram sob uma MILDA se acesso (%)"
+
+  # ── ITN use if access (all ages) ─────────────────────────────────────────────
+  dhs_itn_use_if_access_all:
+    snt_var_name: dhs_itn_use_if_access_all
+    label_en: "All individuals who slept under an ITN the previous night given that they have access to an ITN (%). Numerator: individuals who slept under an ITN. Denominator: individuals with access to an ITN."
+    label_fr: "Tous les individus ayant dormi sous une MILDA la nuit précédente sachant qu'ils ont accès à une MILDA (%). Numérateur: individus ayant dormi sous une MILDA. Dénominateur: individus ayant accès à une MILDA."
+    label_pt: "Todos os indivíduos que dormiram sob uma MILDA na noite anterior dado que têm acesso a uma MILDA (%). Numerador: indivíduos que dormiram sob uma MILDA. Denominador: indivíduos com acesso a uma MILDA."
+
+  dhs_itn_use_if_access_all_low:
+    snt_var_name: dhs_itn_use_if_access_all_low
+    label_en: "Lower 95% confidence interval for all individuals who slept under an ITN if access (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour tous les individus ayant dormi sous une MILDA si accès (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para todos os indivíduos que dormiram sob uma MILDA se acesso (%)"
+
+  dhs_itn_use_if_access_all_upp:
+    snt_var_name: dhs_itn_use_if_access_all_upp
+    label_en: "Upper 95% confidence interval for all individuals who slept under an ITN if access (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour tous les individus ayant dormi sous une MILDA si accès (%)"
+    label_pt: "Intervalo de confiança superior de 95% para todos os indivíduos que dormiram sob uma MILDA se acesso (%)"
+
+  # ── ITN access (children under 5) ────────────────────────────────────────────
+  dhs_itn_access_u5:
+    snt_var_name: dhs_itn_access_u5
+    label_en: "Children under 5 who could have slept under an ITN if each ITN in the household was used by 2 persons (%). Numerator: children <5 with access. Denominator: children <5 who spent the night in the household."
+    label_fr: "Enfants de moins de 5 ans qui auraient pu dormir sous une MILDA si chaque MILDA du ménage était utilisée par 2 personnes (%). Numérateur: enfants <5 ans avec accès. Dénominateur: enfants <5 ans ayant passé la nuit dans le ménage."
+    label_pt: "Crianças menores de 5 anos que poderiam ter dormido sob uma MILDA se cada MILDA no agregado fosse usada por 2 pessoas (%). Numerador: crianças <5 anos com acesso. Denominador: crianças <5 anos que passaram a noite no agregado."
+
+  dhs_itn_access_u5_low:
+    snt_var_name: dhs_itn_access_u5_low
+    label_en: "Lower 95% confidence interval for children <5 with access to ITN (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour les enfants <5 ans avec accès à MILDA (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para crianças <5 anos com acesso a MILDA (%)"
+
+  dhs_itn_access_u5_upp:
+    snt_var_name: dhs_itn_access_u5_upp
+    label_en: "Upper 95% confidence interval for children <5 with access to ITN (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour les enfants <5 ans avec accès à MILDA (%)"
+    label_pt: "Intervalo de confiança superior de 95% para crianças <5 anos com acesso a MILDA (%)"
+
+  # ── ITN access (ages 5-14) ───────────────────────────────────────────────────
+  dhs_itn_access_5_14:
+    snt_var_name: dhs_itn_access_5_14
+    label_en: "Individuals aged 5-14 who could have slept under an ITN if each ITN in the household was used by 2 persons (%). Numerator: individuals 5-14 with access. Denominator: individuals 5-14 who spent the night in the household."
+    label_fr: "Individus âgés de 5-14 ans qui auraient pu dormir sous une MILDA si chaque MILDA du ménage était utilisée par 2 personnes (%). Numérateur: individus 5-14 ans avec accès. Dénominateur: individus 5-14 ans ayant passé la nuit dans le ménage."
+    label_pt: "Indivíduos de 5-14 anos que poderiam ter dormido sob uma MILDA se cada MILDA no agregado fosse usada por 2 pessoas (%). Numerador: indivíduos 5-14 anos com acesso. Denominador: indivíduos 5-14 anos que passaram a noite no agregado."
+
+  dhs_itn_access_5_14_low:
+    snt_var_name: dhs_itn_access_5_14_low
+    label_en: "Lower 95% confidence interval for individuals aged 5-14 with access to ITN (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour les individus âgés de 5-14 ans avec accès à MILDA (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para indivíduos de 5-14 anos com acesso a MILDA (%)"
+
+  dhs_itn_access_5_14_upp:
+    snt_var_name: dhs_itn_access_5_14_upp
+    label_en: "Upper 95% confidence interval for individuals aged 5-14 with access to ITN (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour les individus âgés de 5-14 ans avec accès à MILDA (%)"
+    label_pt: "Intervalo de confiança superior de 95% para indivíduos de 5-14 anos com acesso a MILDA (%)"
+
+  # ── ITN access (ages 15 and above) ───────────────────────────────────────────
+  dhs_itn_access_ov15:
+    snt_var_name: dhs_itn_access_ov15
+    label_en: "Individuals aged 15 years and above who could have slept under an ITN if each ITN in the household was used by 2 persons (%). Numerator: individuals 15+ with access. Denominator: individuals 15+ who spent the night in the household."
+    label_fr: "Individus âgés de 15 ans et plus qui auraient pu dormir sous une MILDA si chaque MILDA du ménage était utilisée par 2 personnes (%). Numérateur: individus 15+ ans avec accès. Dénominateur: individus 15+ ans ayant passé la nuit dans le ménage."
+    label_pt: "Indivíduos de 15 anos e mais que poderiam ter dormido sob uma MILDA se cada MILDA no agregado fosse usada por 2 pessoas (%). Numerador: indivíduos 15+ anos com acesso. Denominador: indivíduos 15+ anos que passaram a noite no agregado."
+
+  dhs_itn_access_ov15_low:
+    snt_var_name: dhs_itn_access_ov15_low
+    label_en: "Lower 95% confidence interval for individuals aged 15 years and above with access to ITN (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour les individus âgés de 15 ans et plus avec accès à MILDA (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para indivíduos de 15 anos e mais com acesso a MILDA (%)"
+
+  dhs_itn_access_ov15_upp:
+    snt_var_name: dhs_itn_access_ov15_upp
+    label_en: "Upper 95% confidence interval for individuals aged 15 years and above with access to ITN (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour les individus âgés de 15 ans et plus avec accès à MILDA (%)"
+    label_pt: "Intervalo de confiança superior de 95% para indivíduos de 15 anos e mais com acesso a MILDA (%)"
+
+  # ── ITN use (ages 5-14) ──────────────────────────────────────────────────────
+  dhs_itn_use_5_14:
+    snt_var_name: dhs_itn_use_5_14
+    label_en: "Individuals aged 5-14 who slept under an ITN the previous night (%). Numerator: individuals 5-14 who slept under an ITN. Denominator: individuals 5-14 who spent the night in the household."
+    label_fr: "Individus âgés de 5-14 ans ayant dormi sous une MILDA la nuit précédente (%). Numérateur: individus 5-14 ans ayant dormi sous une MILDA. Dénominateur: individus 5-14 ans ayant passé la nuit dans le ménage."
+    label_pt: "Indivíduos de 5-14 anos que dormiram sob uma MILDA na noite anterior (%). Numerador: indivíduos 5-14 anos que dormiram sob uma MILDA. Denominador: indivíduos 5-14 anos que passaram a noite no agregado."
+
+  dhs_itn_use_5_14_low:
+    snt_var_name: dhs_itn_use_5_14_low
+    label_en: "Lower 95% confidence interval for individuals aged 5-14 who slept under an ITN (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour les individus âgés de 5-14 ans ayant dormi sous une MILDA (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para indivíduos de 5-14 anos que dormiram sob uma MILDA (%)"
+
+  dhs_itn_use_5_14_upp:
+    snt_var_name: dhs_itn_use_5_14_upp
+    label_en: "Upper 95% confidence interval for individuals aged 5-14 who slept under an ITN (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour les individus âgés de 5-14 ans ayant dormi sous une MILDA (%)"
+    label_pt: "Intervalo de confiança superior de 95% para indivíduos de 5-14 anos que dormiram sob uma MILDA (%)"
+
+  # ── ITN use (ages 15 and above) ──────────────────────────────────────────────
+  dhs_itn_use_ov15:
+    snt_var_name: dhs_itn_use_ov15
+    label_en: "Individuals aged 15 years and above who slept under an ITN the previous night (%). Numerator: individuals 15+ who slept under an ITN. Denominator: individuals 15+ who spent the night in the household."
+    label_fr: "Individus âgés de 15 ans et plus ayant dormi sous une MILDA la nuit précédente (%). Numérateur: individus 15+ ans ayant dormi sous une MILDA. Dénominateur: individus 15+ ans ayant passé la nuit dans le ménage."
+    label_pt: "Indivíduos de 15 anos e mais que dormiram sob uma MILDA na noite anterior (%). Numerador: indivíduos 15+ anos que dormiram sob uma MILDA. Denominador: indivíduos 15+ anos que passaram a noite no agregado."
+
+  dhs_itn_use_ov15_low:
+    snt_var_name: dhs_itn_use_ov15_low
+    label_en: "Lower 95% confidence interval for individuals aged 15 years and above who slept under an ITN (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour les individus âgés de 15 ans et plus ayant dormi sous une MILDA (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para indivíduos de 15 anos e mais que dormiram sob uma MILDA (%)"
+
+  dhs_itn_use_ov15_upp:
+    snt_var_name: dhs_itn_use_ov15_upp
+    label_en: "Upper 95% confidence interval for individuals aged 15 years and above who slept under an ITN (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour les individus âgés de 15 ans et plus ayant dormi sous une MILDA (%)"
+    label_pt: "Intervalo de confiança superior de 95% para indivíduos de 15 anos e mais que dormiram sob uma MILDA (%)"
 
   # ── ITN use (pregnant women) ─────────────────────────────────────────────────
   dhs_itn_use_preg:
@@ -1863,6 +1977,63 @@ dhs_itn:
     label_en: "Number of pregnant women aged 15-49 who slept under an ITN the previous night (numerator for dhs_itn_use_preg)"
     label_fr: "Nombre de femmes enceintes de 15-49 ans ayant dormi sous une MILDA la nuit précédente (numérateur pour dhs_itn_use_preg)"
     label_pt: "Número de mulheres grávidas de 15-49 anos que dormiram sob uma MILDA na noite anterior (numerador para dhs_itn_use_preg)"
+
+  # ── Age-stratified sample sizes (under 5) ────────────────────────────────────
+  dhs_n_individuals_u5:
+    snt_var_name: dhs_n_individuals_u5
+    label_en: "Number of individuals aged 0-4 years who spent the previous night in the household (denominator for dhs_itn_use_u5 and dhs_itn_access_u5)"
+    label_fr: "Nombre d'individus âgés de 0-4 ans ayant passé la nuit précédente dans le ménage (dénominateur pour dhs_itn_use_u5 et dhs_itn_access_u5)"
+    label_pt: "Número de indivíduos de 0-4 anos que passaram a noite anterior no agregado (denominador para dhs_itn_use_u5 e dhs_itn_access_u5)"
+
+  dhs_n_used_itn_u5:
+    snt_var_name: dhs_n_used_itn_u5
+    label_en: "Number of individuals aged 0-4 years who slept under an ITN the previous night (numerator for dhs_itn_use_u5)"
+    label_fr: "Nombre d'individus âgés de 0-4 ans ayant dormi sous une MILDA la nuit précédente (numérateur pour dhs_itn_use_u5)"
+    label_pt: "Número de indivíduos de 0-4 anos que dormiram sob uma MILDA na noite anterior (numerador para dhs_itn_use_u5)"
+
+  dhs_n_with_access_u5:
+    snt_var_name: dhs_n_with_access_u5
+    label_en: "Number of individuals aged 0-4 years with access to an ITN within their household (numerator for dhs_itn_access_u5)"
+    label_fr: "Nombre d'individus âgés de 0-4 ans ayant accès à une MILDA dans leur ménage (numérateur pour dhs_itn_access_u5)"
+    label_pt: "Número de indivíduos de 0-4 anos com acesso a uma MILDA em seu agregado (numerador para dhs_itn_access_u5)"
+
+  # ── Age-stratified sample sizes (5-14) ───────────────────────────────────────
+  dhs_n_individuals_5_14:
+    snt_var_name: dhs_n_individuals_5_14
+    label_en: "Number of individuals aged 5-14 years who spent the previous night in the household (denominator for dhs_itn_use_5_14 and dhs_itn_access_5_14)"
+    label_fr: "Nombre d'individus âgés de 5-14 ans ayant passé la nuit précédente dans le ménage (dénominateur pour dhs_itn_use_5_14 et dhs_itn_access_5_14)"
+    label_pt: "Número de indivíduos de 5-14 anos que passaram a noite anterior no agregado (denominador para dhs_itn_use_5_14 e dhs_itn_access_5_14)"
+
+  dhs_n_used_itn_5_14:
+    snt_var_name: dhs_n_used_itn_5_14
+    label_en: "Number of individuals aged 5-14 years who slept under an ITN the previous night (numerator for dhs_itn_use_5_14)"
+    label_fr: "Nombre d'individus âgés de 5-14 ans ayant dormi sous une MILDA la nuit précédente (numérateur pour dhs_itn_use_5_14)"
+    label_pt: "Número de indivíduos de 5-14 anos que dormiram sob uma MILDA na noite anterior (numerador para dhs_itn_use_5_14)"
+
+  dhs_n_with_access_5_14:
+    snt_var_name: dhs_n_with_access_5_14
+    label_en: "Number of individuals aged 5-14 years with access to an ITN within their household (numerator for dhs_itn_access_5_14)"
+    label_fr: "Nombre d'individus âgés de 5-14 ans ayant accès à une MILDA dans leur ménage (numérateur pour dhs_itn_access_5_14)"
+    label_pt: "Número de indivíduos de 5-14 anos com acesso a uma MILDA em seu agregado (numerador para dhs_itn_access_5_14)"
+
+  # ── Age-stratified sample sizes (15+) ────────────────────────────────────────
+  dhs_n_individuals_ov15:
+    snt_var_name: dhs_n_individuals_ov15
+    label_en: "Number of individuals aged 15 years and above who spent the previous night in the household (denominator for dhs_itn_use_ov15 and dhs_itn_access_ov15)"
+    label_fr: "Nombre d'individus âgés de 15 ans et plus ayant passé la nuit précédente dans le ménage (dénominateur pour dhs_itn_use_ov15 et dhs_itn_access_ov15)"
+    label_pt: "Número de indivíduos de 15 anos e mais que passaram a noite anterior no agregado (denominador para dhs_itn_use_ov15 e dhs_itn_access_ov15)"
+
+  dhs_n_used_itn_ov15:
+    snt_var_name: dhs_n_used_itn_ov15
+    label_en: "Number of individuals aged 15 years and above who slept under an ITN the previous night (numerator for dhs_itn_use_ov15)"
+    label_fr: "Nombre d'individus âgés de 15 ans et plus ayant dormi sous une MILDA la nuit précédente (numérateur pour dhs_itn_use_ov15)"
+    label_pt: "Número de indivíduos de 15 anos e mais que dormiram sob uma MILDA na noite anterior (numerador para dhs_itn_use_ov15)"
+
+  dhs_n_with_access_ov15:
+    snt_var_name: dhs_n_with_access_ov15
+    label_en: "Number of individuals aged 15 years and above with access to an ITN within their household (numerator for dhs_itn_access_ov15)"
+    label_fr: "Nombre d'individus âgés de 15 ans et plus ayant accès à une MILDA dans leur ménage (numérateur pour dhs_itn_access_ov15)"
+    label_pt: "Número de indivíduos de 15 anos e mais com acesso a uma MILDA em seu agregado (numerador para dhs_itn_access_ov15)"
 
 dhs_wealth:
   _description: "DHS wealth quintile distribution and inequality indicators."
