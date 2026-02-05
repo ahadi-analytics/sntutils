@@ -270,6 +270,88 @@ snt_data_dict <- function(
   return(NULL)
 }
 
+# internal helper: detect year-based variable patterns
+# handles: pfpr_weighted_YYYY, n2_incidence_YYYY, sens_slope_n2_YYYY,
+#          rate_ratio_n2_YYYY1_YYYY2
+.detect_year_pattern <- function(var_name) {
+  # pattern: pfpr_weighted_YYYY
+  if (base::grepl("^pfpr_weighted_\\d{4}$", var_name)) {
+    year <- base::sub("^pfpr_weighted_(\\d{4})$", "\\1", var_name)
+    return(list(
+      base_var = "pfpr_weighted",
+      year = year,
+      year2 = NA_character_,
+      label_template_en = "Population-weighted PfPR for {year}",
+      label_template_fr = "PfPR pond\u00e9r\u00e9 par la population pour {year}",
+      label_template_pt = "PfPR ponderado pela popula\u00e7\u00e3o para {year}"
+    ))
+  }
+
+  # pattern: n2_incidence_YYYY
+  if (base::grepl("^n2_incidence_\\d{4}$", var_name)) {
+    year <- base::sub("^n2_incidence_(\\d{4})$", "\\1", var_name)
+    return(list(
+      base_var = "n2_incidence",
+      year = year,
+      year2 = NA_character_,
+      label_template_en = "N2 incidence rate for {year}",
+      label_template_fr = "Taux d'incidence N2 pour {year}",
+      label_template_pt = "Taxa de incid\u00eancia N2 para {year}"
+    ))
+  }
+
+  # pattern: sens_slope_n2_YYYY
+  if (base::grepl("^sens_slope_n2_\\d{4}$", var_name)) {
+    year <- base::sub("^sens_slope_n2_(\\d{4})$", "\\1", var_name)
+    return(list(
+      base_var = "sens_slope_n2",
+      year = year,
+      year2 = NA_character_,
+      label_template_en = "Sen's slope for N2 incidence trend ending {year}",
+      label_template_fr = "Pente de Sen pour la tendance d'incidence N2 se terminant en {year}",
+      label_template_pt = "Inclina\u00e7\u00e3o de Sen para tend\u00eancia de incid\u00eancia N2 terminando em {year}"
+    ))
+  }
+
+  # pattern: rate_ratio_n2_YYYY1_YYYY2
+  if (base::grepl("^rate_ratio_n2_\\d{4}_\\d{4}$", var_name)) {
+    matches <- base::regmatches(
+      var_name,
+      base::regexec("^rate_ratio_n2_(\\d{4})_(\\d{4})$", var_name)
+    )[[1]]
+    return(list(
+      base_var = "rate_ratio_n2",
+      year = matches[2],
+      year2 = matches[3],
+      label_template_en = "N2 incidence rate ratio comparing {year} to {year2}",
+      label_template_fr = "Ratio de taux d'incidence N2 comparant {year} \u00e0 {year2}",
+      label_template_pt = "Raz\u00e3o de taxa de incid\u00eancia N2 comparando {year} a {year2}"
+    ))
+  }
+
+  # no match
+  return(NULL)
+}
+
+# internal helper: build label from year pattern
+.build_year_pattern_label <- function(pattern_info, language = "en") {
+  template_col <- base::paste0("label_template_", language)
+  template <- pattern_info[[template_col]]
+
+  if (base::is.null(template)) {
+    template <- pattern_info$label_template_en
+  }
+
+  # substitute year placeholders
+
+  label <- base::gsub("\\{year\\}", pattern_info$year, template)
+  if (!base::is.na(pattern_info$year2)) {
+    label <- base::gsub("\\{year2\\}", pattern_info$year2, label)
+  }
+
+  label
+}
+
 # internal helper: format age suffix to readable label
 .format_dhs_itn_age_label <- function(age_suffix, language = "en") {
   # parse age suffix
@@ -503,61 +585,76 @@ check_snt_var <- function(
 
         # skip fuzzy matching since we found a dynamic match
       } else {
-        # no dynamic match, proceed with fuzzy matching
-        # normalize both the input and tree names (remove underscores, lowercase)
-        normalized_input <- base::tolower(base::gsub("_", "", var_name))
-      flat_tree_normalized <- flat_tree |>
-        dplyr::mutate(
-          normalized = base::tolower(base::gsub("_", "", .data$snt_var_name))
-        )
+        # try year-based pattern detection
+        year_pattern <- .detect_year_pattern(var_name)
 
-      # compute string distances on normalized names
-      distances <- utils::adist(
-        normalized_input,
-        flat_tree_normalized$normalized
-      )[1, ]
+        if (!is.null(year_pattern)) {
+          # generate labels for all three languages
+          label_en <- .build_year_pattern_label(year_pattern, "en")
+          label_fr <- .build_year_pattern_label(year_pattern, "fr")
+          label_pt <- .build_year_pattern_label(year_pattern, "pt")
 
-      # find minimum distance
-      min_dist <- base::min(distances)
+          # set domain component
+          components$domain <- "survey_indicators"
 
-      # accept fuzzy matches with distance <= 1 on normalized names
-      # (handles underscore variations and single-character typos)
-      if (min_dist <= 1) {
-        best_idx <- base::which.min(distances)
-        match_row <- flat_tree_normalized[best_idx, ]
-        matched_var_name <- match_row$snt_var_name
+          # skip fuzzy matching since we found a year pattern match
+        } else {
+          # no dynamic match, proceed with fuzzy matching
+          # normalize both the input and tree names (remove underscores, lowercase)
+          normalized_input <- base::tolower(base::gsub("_", "", var_name))
+          flat_tree_normalized <- flat_tree |>
+            dplyr::mutate(
+              normalized = base::tolower(base::gsub("_", "", .data$snt_var_name))
+            )
 
-        if (verbose) {
-          cli::cli_alert_info(
-            "No exact match for {.val {var_name}}; using fuzzy match: {.val {matched_var_name}}"
-          )
-        }
+          # compute string distances on normalized names
+          distances <- utils::adist(
+            normalized_input,
+            flat_tree_normalized$normalized
+          )[1, ]
 
-        # re-tokenize using the matched variable name
-        tokens <- unlist(strsplit(matched_var_name, "_"))
-        components <- list(
-          domain = tokens[[1]],
-          test_type = NA_character_,
-          service_level = NA_character_,
-          age_group = NA_character_,
-          population_group = NA_character_,
-          sector = NA_character_
-        )
+          # find minimum distance
+          min_dist <- base::min(distances)
 
-        for (t in tokens[-1]) {
-          if (t %in% test_types) {
-            components$test_type <- t
-          } else if (t %in% service_levels) {
-            components$service_level <- t
-          } else if (t %in% age_groups) {
-            components$age_group <- t
-          } else if (t %in% pop_groups) {
-            components$population_group <- t
-          } else if (t %in% sectors) {
-            components$sector <- t
+          # accept fuzzy matches with distance <= 1 on normalized names
+          # (handles underscore variations and single-character typos)
+          if (min_dist <= 1) {
+            best_idx <- base::which.min(distances)
+            match_row <- flat_tree_normalized[best_idx, ]
+            matched_var_name <- match_row$snt_var_name
+
+            if (verbose) {
+              cli::cli_alert_info(
+                "No exact match for {.val {var_name}}; using fuzzy match: {.val {matched_var_name}}"
+              )
+            }
+
+            # re-tokenize using the matched variable name
+            tokens <- unlist(strsplit(matched_var_name, "_"))
+            components <- list(
+              domain = tokens[[1]],
+              test_type = NA_character_,
+              service_level = NA_character_,
+              age_group = NA_character_,
+              population_group = NA_character_,
+              sector = NA_character_
+            )
+
+            for (t in tokens[-1]) {
+              if (t %in% test_types) {
+                components$test_type <- t
+              } else if (t %in% service_levels) {
+                components$service_level <- t
+              } else if (t %in% age_groups) {
+                components$age_group <- t
+              } else if (t %in% pop_groups) {
+                components$population_group <- t
+              } else if (t %in% sectors) {
+                components$sector <- t
+              }
+            }
           }
         }
-      }
       }
     }
 
