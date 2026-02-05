@@ -1727,6 +1727,63 @@ dhs_itn:
     label_fr: "Intervalle de confiance supérieur à 95% pour les enfants <5 ans ayant dormi sous une MILDA (%)"
     label_pt: "Intervalo de confiança superior de 95% para crianças <5 anos que dormiram sob uma MILDA (%)"
 
+  # ── ITN use if access (children under 5) ─────────────────────────────────────
+  dhs_itn_use_if_access_u5:
+    snt_var_name: dhs_itn_use_if_access_u5
+    label_en: "Children under 5 who slept under an ITN the previous night given that they have access to an ITN (%). Numerator: children <5 who slept under an ITN. Denominator: children <5 with access to an ITN."
+    label_fr: "Enfants de moins de 5 ans ayant dormi sous une MILDA la nuit précédente sachant qu'ils ont accès à une MILDA (%). Numérateur: enfants <5 ans ayant dormi sous une MILDA. Dénominateur: enfants <5 ans ayant accès à une MILDA."
+    label_pt: "Crianças menores de 5 anos que dormiram sob uma MILDA na noite anterior dado que têm acesso a uma MILDA (%). Numerador: crianças <5 anos que dormiram sob uma MILDA. Denominador: crianças <5 anos com acesso a uma MILDA."
+
+  dhs_itn_use_if_access_u5_low:
+    snt_var_name: dhs_itn_use_if_access_u5_low
+    label_en: "Lower 95% confidence interval for children <5 who slept under an ITN if access (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour les enfants <5 ans ayant dormi sous une MILDA si accès (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para crianças <5 anos que dormiram sob uma MILDA se acesso (%)"
+
+  dhs_itn_use_if_access_u5_upp:
+    snt_var_name: dhs_itn_use_if_access_u5_upp
+    label_en: "Upper 95% confidence interval for children <5 who slept under an ITN if access (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour les enfants <5 ans ayant dormi sous une MILDA si accès (%)"
+    label_pt: "Intervalo de confiança superior de 95% para crianças <5 anos que dormiram sob uma MILDA se acesso (%)"
+
+  # ── ITN use if access (ages 5-14) ────────────────────────────────────────────
+  dhs_itn_use_if_access_5_14:
+    snt_var_name: dhs_itn_use_if_access_5_14
+    label_en: "Individuals aged 5-14 who slept under an ITN the previous night given that they have access to an ITN (%). Numerator: individuals 5-14 who slept under an ITN. Denominator: individuals 5-14 with access to an ITN."
+    label_fr: "Individus âgés de 5-14 ans ayant dormi sous une MILDA la nuit précédente sachant qu'ils ont accès à une MILDA (%). Numérateur: individus 5-14 ans ayant dormi sous une MILDA. Dénominateur: individus 5-14 ans ayant accès à une MILDA."
+    label_pt: "Indivíduos de 5-14 anos que dormiram sob uma MILDA na noite anterior dado que têm acesso a uma MILDA (%). Numerador: indivíduos 5-14 anos que dormiram sob uma MILDA. Denominador: indivíduos 5-14 anos com acesso a uma MILDA."
+
+  dhs_itn_use_if_access_5_14_low:
+    snt_var_name: dhs_itn_use_if_access_5_14_low
+    label_en: "Lower 95% confidence interval for individuals aged 5-14 who slept under an ITN if access (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour les individus âgés de 5-14 ans ayant dormi sous une MILDA si accès (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para indivíduos de 5-14 anos que dormiram sob uma MILDA se acesso (%)"
+
+  dhs_itn_use_if_access_5_14_upp:
+    snt_var_name: dhs_itn_use_if_access_5_14_upp
+    label_en: "Upper 95% confidence interval for individuals aged 5-14 who slept under an ITN if access (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour les individus âgés de 5-14 ans ayant dormi sous une MILDA si accès (%)"
+    label_pt: "Intervalo de confiança superior de 95% para indivíduos de 5-14 anos que dormiram sob uma MILDA se acesso (%)"
+
+  # ── ITN use if access (ages 15+) ─────────────────────────────────────────────
+  dhs_itn_use_if_access_15plus:
+    snt_var_name: dhs_itn_use_if_access_15plus
+    label_en: "Individuals aged 15+ who slept under an ITN the previous night given that they have access to an ITN (%). Numerator: individuals 15+ who slept under an ITN. Denominator: individuals 15+ with access to an ITN."
+    label_fr: "Individus âgés de 15+ ans ayant dormi sous une MILDA la nuit précédente sachant qu'ils ont accès à une MILDA (%). Numérateur: individus 15+ ans ayant dormi sous une MILDA. Dénominateur: individus 15+ ans ayant accès à une MILDA."
+    label_pt: "Indivíduos de 15+ anos que dormiram sob uma MILDA na noite anterior dado que têm acesso a uma MILDA (%). Numerador: indivíduos 15+ anos que dormiram sob uma MILDA. Denominador: indivíduos 15+ anos com acesso a uma MILDA."
+
+  dhs_itn_use_if_access_15plus_low:
+    snt_var_name: dhs_itn_use_if_access_15plus_low
+    label_en: "Lower 95% confidence interval for individuals aged 15+ who slept under an ITN if access (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour les individus âgés de 15+ ans ayant dormi sous une MILDA si accès (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para indivíduos de 15+ anos que dormiram sob uma MILDA se acesso (%)"
+
+  dhs_itn_use_if_access_15plus_upp:
+    snt_var_name: dhs_itn_use_if_access_15plus_upp
+    label_en: "Upper 95% confidence interval for individuals aged 15+ who slept under an ITN if access (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour les individus âgés de 15+ ans ayant dormi sous une MILDA si accès (%)"
+    label_pt: "Intervalo de confiança superior de 95% para indivíduos de 15+ anos que dormiram sob uma MILDA se acesso (%)"
+
   # ── ITN use (pregnant women) ─────────────────────────────────────────────────
   dhs_itn_use_preg:
     snt_var_name: dhs_itn_use_preg
@@ -2202,6 +2259,116 @@ mbg_indicators:
     label_fr: "Utilisation des MII chez les enfants <5 ans lissée MBG - IC 95% supérieur (%)"
     label_pt: "Uso de MILDA em crianças <5 anos suavizado MBG - IC 95% superior (%)"
 
+  itn_use_all_mean:
+    snt_var_name: itn_use_all_mean
+    label_en: "MBG-estimated proportion of all individuals who slept under an ITN last night (%)"
+    label_fr: "Proportion estimée MBG de tous les individus ayant dormi sous une MILDA la nuit dernière (%)"
+    label_pt: "Proporção estimada MBG de todos os indivíduos que dormiram sob uma MILDA na noite passada (%)"
+
+  itn_use_all_lower:
+    snt_var_name: itn_use_all_lower
+    label_en: "Lower bound of 95% credible interval for ITN use, all ages (%)"
+    label_fr: "Borne inférieure de l'intervalle de crédibilité de 95% pour l'utilisation de MILDA, tous âges (%)"
+    label_pt: "Limite inferior do intervalo de credibilidade de 95% para uso de MILDA, todas as idades (%)"
+
+  itn_use_all_upper:
+    snt_var_name: itn_use_all_upper
+    label_en: "Upper bound of 95% credible interval for ITN use, all ages (%)"
+    label_fr: "Borne supérieure de l'intervalle de crédibilité de 95% pour l'utilisation de MILDA, tous âges (%)"
+    label_pt: "Limite superior do intervalo de credibilidade de 95% para uso de MILDA, todas as idades (%)"
+
+  itn_use_5_10_mean:
+    snt_var_name: itn_use_5_10_mean
+    label_en: "MBG-estimated proportion of children 5-10 years who slept under an ITN last night (%)"
+    label_fr: "Proportion estimée MBG d'enfants de 5-10 ans ayant dormi sous une MILDA la nuit dernière (%)"
+    label_pt: "Proporção estimada MBG de crianças de 5-10 anos que dormiram sob uma MILDA na noite passada (%)"
+
+  itn_use_5_10_lower:
+    snt_var_name: itn_use_5_10_lower
+    label_en: "Lower bound of 95% credible interval for ITN use, ages 5-10 (%)"
+    label_fr: "Borne inférieure de l'intervalle de crédibilité de 95% pour l'utilisation de MILDA, âges 5-10 (%)"
+    label_pt: "Limite inferior do intervalo de credibilidade de 95% para uso de MILDA, idades 5-10 (%)"
+
+  itn_use_5_10_upper:
+    snt_var_name: itn_use_5_10_upper
+    label_en: "Upper bound of 95% credible interval for ITN use, ages 5-10 (%)"
+    label_fr: "Borne supérieure de l'intervalle de crédibilité de 95% pour l'utilisation de MILDA, âges 5-10 (%)"
+    label_pt: "Limite superior do intervalo de credibilidade de 95% para uso de MILDA, idades 5-10 (%)"
+
+  itn_use_10_20_mean:
+    snt_var_name: itn_use_10_20_mean
+    label_en: "MBG-estimated proportion of individuals 10-20 years who slept under an ITN last night (%)"
+    label_fr: "Proportion estimée MBG d'individus de 10-20 ans ayant dormi sous une MILDA la nuit dernière (%)"
+    label_pt: "Proporção estimada MBG de indivíduos de 10-20 anos que dormiram sob uma MILDA na noite passada (%)"
+
+  itn_use_10_20_lower:
+    snt_var_name: itn_use_10_20_lower
+    label_en: "Lower bound of 95% credible interval for ITN use, ages 10-20 (%)"
+    label_fr: "Borne inférieure de l'intervalle de crédibilité de 95% pour l'utilisation de MILDA, âges 10-20 (%)"
+    label_pt: "Limite inferior do intervalo de credibilidade de 95% para uso de MILDA, idades 10-20 (%)"
+
+  itn_use_10_20_upper:
+    snt_var_name: itn_use_10_20_upper
+    label_en: "Upper bound of 95% credible interval for ITN use, ages 10-20 (%)"
+    label_fr: "Borne supérieure de l'intervalle de crédibilité de 95% pour l'utilisation de MILDA, âges 10-20 (%)"
+    label_pt: "Limite superior do intervalo de credibilidade de 95% para uso de MILDA, idades 10-20 (%)"
+
+  itn_use_20plus_mean:
+    snt_var_name: itn_use_20plus_mean
+    label_en: "MBG-estimated proportion of individuals 20+ years who slept under an ITN last night (%)"
+    label_fr: "Proportion estimée MBG d'individus de 20+ ans ayant dormi sous une MILDA la nuit dernière (%)"
+    label_pt: "Proporção estimada MBG de indivíduos de 20+ anos que dormiram sob uma MILDA na noite passada (%)"
+
+  itn_use_20plus_lower:
+    snt_var_name: itn_use_20plus_lower
+    label_en: "Lower bound of 95% credible interval for ITN use, ages 20+ (%)"
+    label_fr: "Borne inférieure de l'intervalle de crédibilité de 95% pour l'utilisation de MILDA, âges 20+ (%)"
+    label_pt: "Limite inferior do intervalo de credibilidade de 95% para uso de MILDA, idades 20+ (%)"
+
+  itn_use_20plus_upper:
+    snt_var_name: itn_use_20plus_upper
+    label_en: "Upper bound of 95% credible interval for ITN use, ages 20+ (%)"
+    label_fr: "Borne supérieure de l'intervalle de crédibilité de 95% pour l'utilisation de MILDA, âges 20+ (%)"
+    label_pt: "Limite superior do intervalo de credibilidade de 95% para uso de MILDA, idades 20+ (%)"
+
+  itn_use_if_access_mean:
+    snt_var_name: itn_use_if_access_mean
+    label_en: "MBG-estimated proportion of individuals with access to an ITN who actually used it - use:access gap indicator (%)"
+    label_fr: "Proportion estimée MBG d'individus ayant accès à une MILDA qui l'ont réellement utilisée - indicateur d'écart utilisation:accès (%)"
+    label_pt: "Proporção estimada MBG de indivíduos com acesso a uma MILDA que realmente a usaram - indicador de lacuna uso:acesso (%)"
+
+  itn_use_if_access_lower:
+    snt_var_name: itn_use_if_access_lower
+    label_en: "Lower bound of 95% credible interval for use:access gap (%)"
+    label_fr: "Borne inférieure de l'intervalle de crédibilité de 95% pour l'écart utilisation:accès (%)"
+    label_pt: "Limite inferior do intervalo de credibilidade de 95% para lacuna uso:acesso (%)"
+
+  itn_use_if_access_upper:
+    snt_var_name: itn_use_if_access_upper
+    label_en: "Upper bound of 95% credible interval for use:access gap (%)"
+    label_fr: "Borne supérieure de l'intervalle de crédibilité de 95% pour l'écart utilisation:accès (%)"
+    label_pt: "Limite superior do intervalo de credibilidade de 95% para lacuna uso:acesso (%)"
+
+  # ── MBG U5MR indicators ─────────────────────────────────────────────────────
+
+  u5mr_mean:
+    snt_var_name: u5mr_mean
+    label_en: "MBG-estimated under-5 mortality rate (deaths per 1,000 live births)"
+    label_fr: "Taux de mortalité des moins de 5 ans estimé MBG (décès pour 1 000 naissances vivantes)"
+    label_pt: "Taxa de mortalidade de menores de 5 anos estimada MBG (mortes por 1.000 nascidos vivos)"
+
+  u5mr_lower:
+    snt_var_name: u5mr_lower
+    label_en: "Lower bound of 95% credible interval for U5MR (per 1,000)"
+    label_fr: "Borne inférieure de l'intervalle de crédibilité de 95% pour le TMM5 (pour 1 000)"
+    label_pt: "Limite inferior do intervalo de credibilidade de 95% para TMM5 (por 1.000)"
+
+  u5mr_upper:
+    snt_var_name: u5mr_upper
+    label_en: "Upper bound of 95% credible interval for U5MR (per 1,000)"
+    label_fr: "Borne supérieure de l'intervalle de crédibilité de 95% pour le TMM5 (pour 1 000)"
+    label_pt: "Limite superior do intervalo de credibilidade de 95% para TMM5 (por 1.000)"
+
   # ── MBG aggregated cluster statistics ───────────────────────────────────────
   # These are raw DHS statistics aggregated from cluster data to admin level
 
@@ -2295,6 +2462,281 @@ mbg_indicators:
     label_en: "Raw DHS ITN access (%) - unsmoothed proportion from cluster data"
     label_fr: "Accès aux MII DHS brut (%) - proportion non lissée des données de grappe"
     label_pt: "Acesso a MILDA DHS bruto (%) - proporção não suavizada dos dados de cluster"
+
+  # ITN ownership cluster statistics
+  n_tested_itn_ownership:
+    snt_var_name: n_tested_itn_ownership
+    label_en: "Total number of households surveyed (denominator for itn_ownership)"
+    label_fr: "Nombre total de ménages enquêtés (dénominateur pour itn_ownership)"
+    label_pt: "Número total de agregados familiares pesquisados (denominador para itn_ownership)"
+
+  n_pos_itn_ownership:
+    snt_var_name: n_pos_itn_ownership
+    label_en: "Number of households owning at least one ITN (numerator for itn_ownership)"
+    label_fr: "Nombre de ménages possédant au moins une MILDA (numérateur pour itn_ownership)"
+    label_pt: "Número de agregados familiares com pelo menos uma MILDA (numerador para itn_ownership)"
+
+  n_clusters_itn_ownership:
+    snt_var_name: n_clusters_itn_ownership
+    label_en: "Number of DHS survey clusters with ITN ownership data"
+    label_fr: "Nombre de grappes d'enquête DHS avec données de possession de MILDA"
+    label_pt: "Número de clusters de pesquisa DHS com dados de posse de MILDA"
+
+  itn_ownership_raw:
+    snt_var_name: itn_ownership_raw
+    label_en: "Raw (unmodeled) proportion of households with ITN ownership (%)"
+    label_fr: "Proportion brute (non modélisée) de ménages avec possession de MILDA (%)"
+    label_pt: "Proporção bruta (não modelada) de agregados familiares com posse de MILDA (%)"
+
+  # ITN access cluster statistics
+  n_tested_itn_access:
+    snt_var_name: n_tested_itn_access
+    label_en: "Total number of individuals surveyed (denominator for itn_access)"
+    label_fr: "Nombre total d'individus enquêtés (dénominateur pour itn_access)"
+    label_pt: "Número total de indivíduos pesquisados (denominador para itn_access)"
+
+  n_pos_itn_access:
+    snt_var_name: n_pos_itn_access
+    label_en: "Number of individuals with access to an ITN (numerator for itn_access)"
+    label_fr: "Nombre d'individus ayant accès à une MILDA (numérateur pour itn_access)"
+    label_pt: "Número de indivíduos com acesso a uma MILDA (numerador para itn_access)"
+
+  n_clusters_itn_access:
+    snt_var_name: n_clusters_itn_access
+    label_en: "Number of DHS survey clusters with ITN access data"
+    label_fr: "Nombre de grappes d'enquête DHS avec données d'accès aux MILDA"
+    label_pt: "Número de clusters de pesquisa DHS com dados de acesso a MILDA"
+
+  itn_access_raw:
+    snt_var_name: itn_access_raw
+    label_en: "Raw (unmodeled) proportion with ITN access (%)"
+    label_fr: "Proportion brute (non modélisée) avec accès aux MILDA (%)"
+    label_pt: "Proporção bruta (não modelada) com acesso a MILDA (%)"
+
+  # ITN use all ages cluster statistics
+  n_tested_itn_use_all:
+    snt_var_name: n_tested_itn_use_all
+    label_en: "Total number of individuals surveyed (denominator for itn_use_all)"
+    label_fr: "Nombre total d'individus enquêtés (dénominateur pour itn_use_all)"
+    label_pt: "Número total de indivíduos pesquisados (denominador para itn_use_all)"
+
+  n_pos_itn_use_all:
+    snt_var_name: n_pos_itn_use_all
+    label_en: "Number of individuals who used an ITN (numerator for itn_use_all)"
+    label_fr: "Nombre d'individus ayant utilisé une MILDA (numérateur pour itn_use_all)"
+    label_pt: "Número de indivíduos que usaram uma MILDA (numerador para itn_use_all)"
+
+  n_clusters_itn_use_all:
+    snt_var_name: n_clusters_itn_use_all
+    label_en: "Number of DHS survey clusters with ITN use data (all ages)"
+    label_fr: "Nombre de grappes d'enquête DHS avec données d'utilisation de MILDA (tous âges)"
+    label_pt: "Número de clusters de pesquisa DHS com dados de uso de MILDA (todas as idades)"
+
+  itn_use_all_raw:
+    snt_var_name: itn_use_all_raw
+    label_en: "Raw proportion of ITN use, all ages (%)"
+    label_fr: "Proportion brute d'utilisation de MILDA, tous âges (%)"
+    label_pt: "Proporção bruta de uso de MILDA, todas as idades (%)"
+
+  # ITN use under 5 cluster statistics
+  n_tested_itn_use_u5:
+    snt_var_name: n_tested_itn_use_u5
+    label_en: "Total number of children <5 years surveyed (denominator for itn_use_u5)"
+    label_fr: "Nombre total d'enfants <5 ans enquêtés (dénominateur pour itn_use_u5)"
+    label_pt: "Número total de crianças <5 anos pesquisadas (denominador para itn_use_u5)"
+
+  n_pos_itn_use_u5:
+    snt_var_name: n_pos_itn_use_u5
+    label_en: "Number of children <5 who used an ITN (numerator for itn_use_u5)"
+    label_fr: "Nombre d'enfants <5 ans ayant utilisé une MILDA (numérateur pour itn_use_u5)"
+    label_pt: "Número de crianças <5 anos que usaram uma MILDA (numerador para itn_use_u5)"
+
+  n_clusters_itn_use_u5:
+    snt_var_name: n_clusters_itn_use_u5
+    label_en: "Number of DHS survey clusters with ITN use data (children <5)"
+    label_fr: "Nombre de grappes d'enquête DHS avec données d'utilisation de MILDA (enfants <5 ans)"
+    label_pt: "Número de clusters de pesquisa DHS com dados de uso de MILDA (crianças <5 anos)"
+
+  itn_use_u5_raw:
+    snt_var_name: itn_use_u5_raw
+    label_en: "Raw proportion of ITN use, children <5 (%)"
+    label_fr: "Proportion brute d'utilisation de MILDA, enfants <5 ans (%)"
+    label_pt: "Proporção bruta de uso de MILDA, crianças <5 anos (%)"
+
+  # ITN use ages 5-10 cluster statistics
+  n_tested_itn_use_5_10:
+    snt_var_name: n_tested_itn_use_5_10
+    label_en: "Total number of children 5-10 years surveyed (denominator for itn_use_5_10)"
+    label_fr: "Nombre total d'enfants 5-10 ans enquêtés (dénominateur pour itn_use_5_10)"
+    label_pt: "Número total de crianças 5-10 anos pesquisadas (denominador para itn_use_5_10)"
+
+  n_pos_itn_use_5_10:
+    snt_var_name: n_pos_itn_use_5_10
+    label_en: "Number of children 5-10 who used an ITN (numerator for itn_use_5_10)"
+    label_fr: "Nombre d'enfants 5-10 ans ayant utilisé une MILDA (numérateur pour itn_use_5_10)"
+    label_pt: "Número de crianças 5-10 anos que usaram uma MILDA (numerador para itn_use_5_10)"
+
+  n_clusters_itn_use_5_10:
+    snt_var_name: n_clusters_itn_use_5_10
+    label_en: "Number of DHS survey clusters with ITN use data (ages 5-10)"
+    label_fr: "Nombre de grappes d'enquête DHS avec données d'utilisation de MILDA (âges 5-10)"
+    label_pt: "Número de clusters de pesquisa DHS com dados de uso de MILDA (idades 5-10)"
+
+  itn_use_5_10_raw:
+    snt_var_name: itn_use_5_10_raw
+    label_en: "Raw proportion of ITN use, ages 5-10 (%)"
+    label_fr: "Proportion brute d'utilisation de MILDA, âges 5-10 (%)"
+    label_pt: "Proporção bruta de uso de MILDA, idades 5-10 (%)"
+
+  # ITN use ages 10-20 cluster statistics
+  n_tested_itn_use_10_20:
+    snt_var_name: n_tested_itn_use_10_20
+    label_en: "Total number of individuals 10-20 years surveyed (denominator for itn_use_10_20)"
+    label_fr: "Nombre total d'individus 10-20 ans enquêtés (dénominateur pour itn_use_10_20)"
+    label_pt: "Número total de indivíduos 10-20 anos pesquisados (denominador para itn_use_10_20)"
+
+  n_pos_itn_use_10_20:
+    snt_var_name: n_pos_itn_use_10_20
+    label_en: "Number of individuals 10-20 who used an ITN (numerator for itn_use_10_20)"
+    label_fr: "Nombre d'individus 10-20 ans ayant utilisé une MILDA (numérateur pour itn_use_10_20)"
+    label_pt: "Número de indivíduos 10-20 anos que usaram uma MILDA (numerador para itn_use_10_20)"
+
+  n_clusters_itn_use_10_20:
+    snt_var_name: n_clusters_itn_use_10_20
+    label_en: "Number of DHS survey clusters with ITN use data (ages 10-20)"
+    label_fr: "Nombre de grappes d'enquête DHS avec données d'utilisation de MILDA (âges 10-20)"
+    label_pt: "Número de clusters de pesquisa DHS com dados de uso de MILDA (idades 10-20)"
+
+  itn_use_10_20_raw:
+    snt_var_name: itn_use_10_20_raw
+    label_en: "Raw proportion of ITN use, ages 10-20 (%)"
+    label_fr: "Proportion brute d'utilisation de MILDA, âges 10-20 (%)"
+    label_pt: "Proporção bruta de uso de MILDA, idades 10-20 (%)"
+
+  # ITN use ages 20+ cluster statistics
+  n_tested_itn_use_20plus:
+    snt_var_name: n_tested_itn_use_20plus
+    label_en: "Total number of individuals 20+ years surveyed (denominator for itn_use_20plus)"
+    label_fr: "Nombre total d'individus 20+ ans enquêtés (dénominateur pour itn_use_20plus)"
+    label_pt: "Número total de indivíduos 20+ anos pesquisados (denominador para itn_use_20plus)"
+
+  n_pos_itn_use_20plus:
+    snt_var_name: n_pos_itn_use_20plus
+    label_en: "Number of individuals 20+ who used an ITN (numerator for itn_use_20plus)"
+    label_fr: "Nombre d'individus 20+ ans ayant utilisé une MILDA (numérateur pour itn_use_20plus)"
+    label_pt: "Número de indivíduos 20+ anos que usaram uma MILDA (numerador para itn_use_20plus)"
+
+  n_clusters_itn_use_20plus:
+    snt_var_name: n_clusters_itn_use_20plus
+    label_en: "Number of DHS survey clusters with ITN use data (ages 20+)"
+    label_fr: "Nombre de grappes d'enquête DHS avec données d'utilisation de MILDA (âges 20+)"
+    label_pt: "Número de clusters de pesquisa DHS com dados de uso de MILDA (idades 20+)"
+
+  itn_use_20plus_raw:
+    snt_var_name: itn_use_20plus_raw
+    label_en: "Raw proportion of ITN use, ages 20+ (%)"
+    label_fr: "Proportion brute d'utilisation de MILDA, âges 20+ (%)"
+    label_pt: "Proporção bruta de uso de MILDA, idades 20+ (%)"
+
+  # ITN use if access cluster statistics
+  n_tested_itn_use_if_access:
+    snt_var_name: n_tested_itn_use_if_access
+    label_en: "Number of individuals with access to an ITN (denominator for itn_use_if_access)"
+    label_fr: "Nombre d'individus ayant accès à une MILDA (dénominateur pour itn_use_if_access)"
+    label_pt: "Número de indivíduos com acesso a uma MILDA (denominador para itn_use_if_access)"
+
+  n_pos_itn_use_if_access:
+    snt_var_name: n_pos_itn_use_if_access
+    label_en: "Number who had access AND used an ITN (numerator for itn_use_if_access)"
+    label_fr: "Nombre ayant eu accès ET utilisé une MILDA (numérateur pour itn_use_if_access)"
+    label_pt: "Número que teve acesso E usou uma MILDA (numerador para itn_use_if_access)"
+
+  n_clusters_itn_use_if_access:
+    snt_var_name: n_clusters_itn_use_if_access
+    label_en: "Number of DHS survey clusters with use:access gap data"
+    label_fr: "Nombre de grappes d'enquête DHS avec données d'écart utilisation:accès"
+    label_pt: "Número de clusters de pesquisa DHS com dados de lacuna uso:acesso"
+
+  itn_use_if_access_raw:
+    snt_var_name: itn_use_if_access_raw
+    label_en: "Raw proportion of use among those with access (%)"
+    label_fr: "Proportion brute d'utilisation parmi ceux ayant accès (%)"
+    label_pt: "Proporção bruta de uso entre aqueles com acesso (%)"
+
+  # U5MR cluster statistics
+  n_tested_u5mr:
+    snt_var_name: n_tested_u5mr
+    label_en: "Total person-years of exposure (birth to age 5) (denominator for u5mr)"
+    label_fr: "Total personnes-années d'exposition (naissance à 5 ans) (dénominateur pour u5mr)"
+    label_pt: "Total pessoas-anos de exposição (nascimento até 5 anos) (denominador para u5mr)"
+
+  n_pos_u5mr:
+    snt_var_name: n_pos_u5mr
+    label_en: "Total number of deaths observed in children <5 (numerator for u5mr)"
+    label_fr: "Nombre total de décès observés chez les enfants <5 ans (numérateur pour u5mr)"
+    label_pt: "Número total de mortes observadas em crianças <5 anos (numerador para u5mr)"
+
+  n_clusters_u5mr:
+    snt_var_name: n_clusters_u5mr
+    label_en: "Number of DHS survey clusters with U5MR data"
+    label_fr: "Nombre de grappes d'enquête DHS avec données de TMM5"
+    label_pt: "Número de clusters de pesquisa DHS com dados de TMM5"
+
+  u5mr_raw:
+    snt_var_name: u5mr_raw
+    label_en: "Raw (unmodeled) U5MR from DHS clusters (per 1,000)"
+    label_fr: "TMM5 brut (non modélisé) des grappes DHS (pour 1 000)"
+    label_pt: "TMM5 bruto (não modelado) dos clusters DHS (por 1.000)"
+
+  # PfPR RDT under 5 cluster statistics
+  n_tested_pfpr_rdt_u5:
+    snt_var_name: n_tested_pfpr_rdt_u5
+    label_en: "Total number of children <5 years tested by RDT (denominator for pfpr_rdt_u5)"
+    label_fr: "Nombre total d'enfants <5 ans testés par TDR (dénominateur pour pfpr_rdt_u5)"
+    label_pt: "Número total de crianças <5 anos testadas por TDR (denominador para pfpr_rdt_u5)"
+
+  n_pos_pfpr_rdt_u5:
+    snt_var_name: n_pos_pfpr_rdt_u5
+    label_en: "Number of RDT-positive children <5 (numerator for pfpr_rdt_u5)"
+    label_fr: "Nombre d'enfants <5 ans positifs au TDR (numérateur pour pfpr_rdt_u5)"
+    label_pt: "Número de crianças <5 anos positivas ao TDR (numerador para pfpr_rdt_u5)"
+
+  n_clusters_pfpr_rdt_u5:
+    snt_var_name: n_clusters_pfpr_rdt_u5
+    label_en: "Number of DHS survey clusters with RDT data (children <5)"
+    label_fr: "Nombre de grappes d'enquête DHS avec données TDR (enfants <5 ans)"
+    label_pt: "Número de clusters de pesquisa DHS com dados TDR (crianças <5 anos)"
+
+  pfpr_rdt_u5_raw:
+    snt_var_name: pfpr_rdt_u5_raw
+    label_en: "Raw (unmodeled) RDT positivity rate, children <5 (%)"
+    label_fr: "Taux de positivité TDR brut (non modélisé), enfants <5 ans (%)"
+    label_pt: "Taxa de positividade TDR bruta (não modelada), crianças <5 anos (%)"
+
+  # PfPR microscopy under 5 cluster statistics
+  n_tested_pfpr_mic_u5:
+    snt_var_name: n_tested_pfpr_mic_u5
+    label_en: "Total number of children <5 years tested by microscopy (denominator for pfpr_mic_u5)"
+    label_fr: "Nombre total d'enfants <5 ans testés par microscopie (dénominateur pour pfpr_mic_u5)"
+    label_pt: "Número total de crianças <5 anos testadas por microscopia (denominador para pfpr_mic_u5)"
+
+  n_pos_pfpr_mic_u5:
+    snt_var_name: n_pos_pfpr_mic_u5
+    label_en: "Number of microscopy-positive children <5 (numerator for pfpr_mic_u5)"
+    label_fr: "Nombre d'enfants <5 ans positifs à la microscopie (numérateur pour pfpr_mic_u5)"
+    label_pt: "Número de crianças <5 anos positivas à microscopia (numerador para pfpr_mic_u5)"
+
+  n_clusters_pfpr_mic_u5:
+    snt_var_name: n_clusters_pfpr_mic_u5
+    label_en: "Number of DHS survey clusters with microscopy data (children <5)"
+    label_fr: "Nombre de grappes d'enquête DHS avec données de microscopie (enfants <5 ans)"
+    label_pt: "Número de clusters de pesquisa DHS com dados de microscopia (crianças <5 anos)"
+
+  pfpr_mic_u5_raw:
+    snt_var_name: pfpr_mic_u5_raw
+    label_en: "Raw (unmodeled) microscopy positivity rate, children <5 (%)"
+    label_fr: "Taux de positivité microscopie brut (non modélisé), enfants <5 ans (%)"
+    label_pt: "Taxa de positividade microscopia bruta (não modelada), crianças <5 anos (%)"
 
 schema:
   _description: "Standardized disaggregation schema used across indicators."
@@ -4632,14 +5074,14 @@ survey_indicators:
     label_fr: "Comptage générique du dénominateur (pour compatibilité MBG)"
     label_pt: "Contagem genérica do denominador (para compatibilidade MBG)"
 
-  x:
-    snt_var_name: x
+  "x":
+    snt_var_name: "x"
     label_en: "Longitude"
     label_fr: "Longitude"
     label_pt: "Longitude"
 
-  y:
-    snt_var_name: y
+  "y":
+    snt_var_name: "y"
     label_en: "Latitude"
     label_fr: "Latitude"
     label_pt: "Latitude"
@@ -4765,3 +5207,238 @@ survey_indicators:
     label_en: "Generic denominator (fallback for unknown indicators)"
     label_fr: "Dénominateur générique (repli pour indicateurs inconnus)"
     label_pt: "Denominador genérico (fallback para indicadores desconhecidos)"
+
+  # ── ITN Ownership ────────────────────────────────────────────────────────────
+  n_tested_itn_ownership:
+    snt_var_name: n_tested_itn_ownership
+    label_en: "Number tested for ITN ownership indicator"
+    label_fr: "Nombre testé pour l'indicateur de possession de MILDA"
+    label_pt: "Número testado para indicador de posse de MILDA"
+
+  n_pos_itn_ownership:
+    snt_var_name: n_pos_itn_ownership
+    label_en: "Number positive for ITN ownership indicator"
+    label_fr: "Nombre positif pour l'indicateur de possession de MILDA"
+    label_pt: "Número positivo para indicador de posse de MILDA"
+
+  n_clusters_itn_ownership:
+    snt_var_name: n_clusters_itn_ownership
+    label_en: "Number of clusters for ITN ownership indicator"
+    label_fr: "Nombre de grappes pour l'indicateur de possession de MILDA"
+    label_pt: "Número de conglomerados para indicador de posse de MILDA"
+
+  itn_ownership_raw:
+    snt_var_name: itn_ownership_raw
+    label_en: "Raw ITN ownership proportion"
+    label_fr: "Proportion brute de possession de MILDA"
+    label_pt: "Proporção bruta de posse de MILDA"
+
+  # ── ITN Access ───────────────────────────────────────────────────────────────
+  n_tested_itn_access:
+    snt_var_name: n_tested_itn_access
+    label_en: "Number tested for ITN access indicator"
+    label_fr: "Nombre testé pour l'indicateur d'accès aux MILDA"
+    label_pt: "Número testado para indicador de acesso a MILDA"
+
+  n_pos_itn_access:
+    snt_var_name: n_pos_itn_access
+    label_en: "Number positive for ITN access indicator"
+    label_fr: "Nombre positif pour l'indicateur d'accès aux MILDA"
+    label_pt: "Número positivo para indicador de acesso a MILDA"
+
+  n_clusters_itn_access:
+    snt_var_name: n_clusters_itn_access
+    label_en: "Number of clusters for ITN access indicator"
+    label_fr: "Nombre de grappes pour l'indicateur d'accès aux MILDA"
+    label_pt: "Número de conglomerados para indicador de acesso a MILDA"
+
+  itn_access_raw:
+    snt_var_name: itn_access_raw
+    label_en: "Raw ITN access proportion"
+    label_fr: "Proportion brute d'accès aux MILDA"
+    label_pt: "Proporção bruta de acesso a MILDA"
+
+  # ── ITN Use (All) ────────────────────────────────────────────────────────────
+  n_tested_itn_use_all:
+    snt_var_name: n_tested_itn_use_all
+    label_en: "Number tested for ITN use (all population)"
+    label_fr: "Nombre testé pour l'utilisation de MILDA (toute population)"
+    label_pt: "Número testado para uso de MILDA (toda população)"
+
+  n_pos_itn_use_all:
+    snt_var_name: n_pos_itn_use_all
+    label_en: "Number positive for ITN use (all population)"
+    label_fr: "Nombre positif pour l'utilisation de MILDA (toute population)"
+    label_pt: "Número positivo para uso de MILDA (toda população)"
+
+  n_clusters_itn_use_all:
+    snt_var_name: n_clusters_itn_use_all
+    label_en: "Number of clusters for ITN use (all population)"
+    label_fr: "Nombre de grappes pour l'utilisation de MILDA (toute population)"
+    label_pt: "Número de conglomerados para uso de MILDA (toda população)"
+
+  itn_use_all_raw:
+    snt_var_name: itn_use_all_raw
+    label_en: "Raw ITN use proportion (all population)"
+    label_fr: "Proportion brute d'utilisation de MILDA (toute population)"
+    label_pt: "Proporção bruta de uso de MILDA (toda população)"
+
+  # ── ITN Use (Under 5) ────────────────────────────────────────────────────────
+  n_tested_itn_use_u5:
+    snt_var_name: n_tested_itn_use_u5
+    label_en: "Number tested for ITN use (children under 5)"
+    label_fr: "Nombre testé pour l'utilisation de MILDA (enfants de moins de 5 ans)"
+    label_pt: "Número testado para uso de MILDA (crianças menores de 5 anos)"
+
+  n_pos_itn_use_u5:
+    snt_var_name: n_pos_itn_use_u5
+    label_en: "Number positive for ITN use (children under 5)"
+    label_fr: "Nombre positif pour l'utilisation de MILDA (enfants de moins de 5 ans)"
+    label_pt: "Número positivo para uso de MILDA (crianças menores de 5 anos)"
+
+  n_clusters_itn_use_u5:
+    snt_var_name: n_clusters_itn_use_u5
+    label_en: "Number of clusters for ITN use (children under 5)"
+    label_fr: "Nombre de grappes pour l'utilisation de MILDA (enfants de moins de 5 ans)"
+    label_pt: "Número de conglomerados para uso de MILDA (crianças menores de 5 anos)"
+
+  itn_use_u5_raw:
+    snt_var_name: itn_use_u5_raw
+    label_en: "Raw ITN use proportion (children under 5)"
+    label_fr: "Proportion brute d'utilisation de MILDA (enfants de moins de 5 ans)"
+    label_pt: "Proporção bruta de uso de MILDA (crianças menores de 5 anos)"
+
+  # ── ITN Use (5-10 years) ─────────────────────────────────────────────────────
+  n_tested_itn_use_5_10:
+    snt_var_name: n_tested_itn_use_5_10
+    label_en: "Number tested for ITN use (children 5-10 years)"
+    label_fr: "Nombre testé pour l'utilisation de MILDA (enfants de 5-10 ans)"
+    label_pt: "Número testado para uso de MILDA (crianças de 5-10 anos)"
+
+  n_pos_itn_use_5_10:
+    snt_var_name: n_pos_itn_use_5_10
+    label_en: "Number positive for ITN use (children 5-10 years)"
+    label_fr: "Nombre positif pour l'utilisation de MILDA (enfants de 5-10 ans)"
+    label_pt: "Número positivo para uso de MILDA (crianças de 5-10 anos)"
+
+  n_clusters_itn_use_5_10:
+    snt_var_name: n_clusters_itn_use_5_10
+    label_en: "Number of clusters for ITN use (children 5-10 years)"
+    label_fr: "Nombre de grappes pour l'utilisation de MILDA (enfants de 5-10 ans)"
+    label_pt: "Número de conglomerados para uso de MILDA (crianças de 5-10 anos)"
+
+  itn_use_5_10_raw:
+    snt_var_name: itn_use_5_10_raw
+    label_en: "Raw ITN use proportion (children 5-10 years)"
+    label_fr: "Proportion brute d'utilisation de MILDA (enfants de 5-10 ans)"
+    label_pt: "Proporção bruta de uso de MILDA (crianças de 5-10 anos)"
+
+  # ── ITN Use (10-20 years) ────────────────────────────────────────────────────
+  n_tested_itn_use_10_20:
+    snt_var_name: n_tested_itn_use_10_20
+    label_en: "Number tested for ITN use (10-20 years)"
+    label_fr: "Nombre testé pour l'utilisation de MILDA (10-20 ans)"
+    label_pt: "Número testado para uso de MILDA (10-20 anos)"
+
+  n_pos_itn_use_10_20:
+    snt_var_name: n_pos_itn_use_10_20
+    label_en: "Number positive for ITN use (10-20 years)"
+    label_fr: "Nombre positif pour l'utilisation de MILDA (10-20 ans)"
+    label_pt: "Número positivo para uso de MILDA (10-20 anos)"
+
+  n_clusters_itn_use_10_20:
+    snt_var_name: n_clusters_itn_use_10_20
+    label_en: "Number of clusters for ITN use (10-20 years)"
+    label_fr: "Nombre de grappes pour l'utilisation de MILDA (10-20 ans)"
+    label_pt: "Número de conglomerados para uso de MILDA (10-20 anos)"
+
+  itn_use_10_20_raw:
+    snt_var_name: itn_use_10_20_raw
+    label_en: "Raw ITN use proportion (10-20 years)"
+    label_fr: "Proportion brute d'utilisation de MILDA (10-20 ans)"
+    label_pt: "Proporção bruta de uso de MILDA (10-20 anos)"
+
+  # ── ITN Use (20+ years) ──────────────────────────────────────────────────────
+  n_tested_itn_use_20plus:
+    snt_var_name: n_tested_itn_use_20plus
+    label_en: "Number tested for ITN use (20+ years)"
+    label_fr: "Nombre testé pour l'utilisation de MILDA (20+ ans)"
+    label_pt: "Número testado para uso de MILDA (20+ anos)"
+
+  n_pos_itn_use_20plus:
+    snt_var_name: n_pos_itn_use_20plus
+    label_en: "Number positive for ITN use (20+ years)"
+    label_fr: "Nombre positif pour l'utilisation de MILDA (20+ ans)"
+    label_pt: "Número positivo para uso de MILDA (20+ anos)"
+
+  n_clusters_itn_use_20plus:
+    snt_var_name: n_clusters_itn_use_20plus
+    label_en: "Number of clusters for ITN use (20+ years)"
+    label_fr: "Nombre de grappes pour l'utilisation de MILDA (20+ ans)"
+    label_pt: "Número de conglomerados para uso de MILDA (20+ anos)"
+
+  itn_use_20plus_raw:
+    snt_var_name: itn_use_20plus_raw
+    label_en: "Raw ITN use proportion (20+ years)"
+    label_fr: "Proportion brute d'utilisation de MILDA (20+ ans)"
+    label_pt: "Proporção bruta de uso de MILDA (20+ anos)"
+
+  # ── ITN Use If Access ────────────────────────────────────────────────────────
+  n_tested_itn_use_if_access:
+    snt_var_name: n_tested_itn_use_if_access
+    label_en: "Number tested for ITN use given access"
+    label_fr: "Nombre testé pour l'utilisation de MILDA si accès"
+    label_pt: "Número testado para uso de MILDA dado acesso"
+
+  n_pos_itn_use_if_access:
+    snt_var_name: n_pos_itn_use_if_access
+    label_en: "Number positive for ITN use given access"
+    label_fr: "Nombre positif pour l'utilisation de MILDA si accès"
+    label_pt: "Número positivo para uso de MILDA dado acesso"
+
+  n_clusters_itn_use_if_access:
+    snt_var_name: n_clusters_itn_use_if_access
+    label_en: "Number of clusters for ITN use given access"
+    label_fr: "Nombre de grappes pour l'utilisation de MILDA si accès"
+    label_pt: "Número de conglomerados para uso de MILDA dado acesso"
+
+  itn_use_if_access_raw:
+    snt_var_name: itn_use_if_access_raw
+    label_en: "Raw ITN use proportion given access"
+    label_fr: "Proportion brute d'utilisation de MILDA si accès"
+    label_pt: "Proporção bruta de uso de MILDA dado acesso"
+
+  # ── Annual Time-Series Variables (Pattern-Based) ─────────────────────────────
+  # These variables use _YYYY suffix pattern: variable_YYYY
+  # Examples: pfpr_weighted_2020, n2_incidence_2023, sens_slope_n2_2024
+
+  "pfpr_weighted_YYYY":
+    snt_var_name: "pfpr_weighted_YYYY"
+    pattern: "^pfpr_weighted_\\d{4}$"
+    label_en: "Population-weighted PfPR for year YYYY"
+    label_fr: "PfPR pondéré par la population pour l'année YYYY"
+    label_pt: "PfPR ponderado pela população para o ano YYYY"
+
+  "n2_incidence_YYYY":
+    snt_var_name: "n2_incidence_YYYY"
+    pattern: "^n2_incidence_\\d{4}$"
+    label_en: "N2 incidence rate for year YYYY"
+    label_fr: "Taux d'incidence N2 pour l'année YYYY"
+    label_pt: "Taxa de incidência N2 para o ano YYYY"
+
+  "sens_slope_n2_YYYY":
+    snt_var_name: "sens_slope_n2_YYYY"
+    pattern: "^sens_slope_n2_\\d{4}$"
+    label_en: "Sen's slope for N2 incidence trend ending year YYYY"
+    label_fr: "Pente de Sen pour la tendance d'incidence N2 se terminant l'année YYYY"
+    label_pt: "Inclinação de Sen para tendência de incidência N2 terminando no ano YYYY"
+
+  # Rate ratios use _YYYY1_YYYY2 suffix pattern: rate_ratio_n2_YYYY1_YYYY2
+  # Example: rate_ratio_n2_2024_2020 compares 2024 to 2020
+
+  "rate_ratio_n2_YYYY1_YYYY2":
+    snt_var_name: "rate_ratio_n2_YYYY1_YYYY2"
+    pattern: "^rate_ratio_n2_\\d{4}_\\d{4}$"
+    label_en: "N2 incidence rate ratio comparing year YYYY1 to year YYYY2"
+    label_fr: "Ratio de taux d'incidence N2 comparant l'année YYYY1 à l'année YYYY2"
+    label_pt: "Razão de taxa de incidência N2 comparando o ano YYYY1 ao ano YYYY2"
