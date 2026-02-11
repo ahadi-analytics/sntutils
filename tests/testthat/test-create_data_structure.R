@@ -32,6 +32,7 @@ get_expected_data_structure <- function() {
       "1.1d_community_health_workers",
       "1.1e_population/1.1ei_national",
       "1.1e_population/1.1eii_worldpop_rasters",
+      "1.1e_population/1.1eiii_displaced_pop",
       "1.1f_cache_files"
     ),
     epidemiology = c(
@@ -128,7 +129,11 @@ testthat::test_that("create_data_structure creates foundational subfolders", {
 
   # check nested population folders
   pop_base <- fs::path(foundational_base, "1.1e_population")
-  nested_folders <- c("1.1ei_national", "1.1eii_worldpop_rasters")
+  nested_folders <- c(
+    "1.1ei_national",
+    "1.1eii_worldpop_rasters",
+    "1.1eiii_displaced_pop"
+  )
 
   for (nested in nested_folders) {
     nested_path <- fs::path(pop_base, nested)
@@ -180,6 +185,7 @@ testthat::test_that("create_data_structure creates raw and processed folders", {
     "1.1_foundational/1.1d_community_health_workers",
     "1.1_foundational/1.1e_population/1.1ei_national",
     "1.1_foundational/1.1e_population/1.1eii_worldpop_rasters",
+    "1.1_foundational/1.1e_population/1.1eiii_displaced_pop",
     "1.1_foundational/1.1f_cache_files",
     "1.2_epidemiology/1.2a_routine_surveillance",
     "1.3_interventions/1.3a_itns",
@@ -529,6 +535,7 @@ testthat::test_that("folder structure matches ahadi project standards", {
     "01_data/1.1_foundational/1.1d_community_health_workers",
     "01_data/1.1_foundational/1.1e_population/1.1ei_national",
     "01_data/1.1_foundational/1.1e_population/1.1eii_worldpop_rasters",
+    "01_data/1.1_foundational/1.1e_population/1.1eiii_displaced_pop",
     # domain-specific organization
     "01_data/1.2_epidemiology/1.2a_routine_surveillance",
     "01_data/1.5_environment/1.5b_accessibility",
