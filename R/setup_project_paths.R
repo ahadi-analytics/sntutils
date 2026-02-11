@@ -11,7 +11,7 @@
 #'
 #' @return Named list of absolute paths:
 #'   core, admin_shp, physical_feat, hf, chw, pop_national,
-#'   pop_worldpop, cache, dhis2, pfpr_est, mortality_est, interventions,
+#'   pop_worldpop, pop_displaced, cache, dhis2, pfpr_est, mortality_est, interventions,
 #'   drug_eff, climate, accessibility, land_use, dhs, ento, commodities,
 #'   finance, final_data,
 #'   val, interm, final, model,
@@ -84,6 +84,12 @@ setup_project_paths <- function(base_path = NULL, quiet = FALSE) {
       "1.1_foundational",
       "1.1e_population",
       "1.1eii_worldpop_rasters"
+    ),
+    pop_displaced = jp(
+      "01_data",
+      "1.1_foundational",
+      "1.1e_population",
+      "1.1eiii_displaced_pop"
     ),
     cache = jp("01_data", "1.1_foundational", "1.1f_cache_files"),
     # 1.2_epidemiology
