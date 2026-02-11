@@ -989,7 +989,7 @@ handle_user_interaction <- function(input_data, levels, level,
   x |>
     stringi::stri_enc_toutf8(validate = FALSE) |>
     stringi::stri_replace_all_regex(
-      "[^\\p{L}\\p{N}\\s\\-\\_]",
+      "[^\\p{L}\\p{N}\\s\\-\\_']",
       ""
     )
 }
