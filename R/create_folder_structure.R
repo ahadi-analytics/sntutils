@@ -32,6 +32,7 @@ create_data_structure <- function(base_path = ".") {
       "1.1d_community_health_workers",
       "1.1e_population/1.1ei_national",
       "1.1e_population/1.1eii_worldpop_rasters",
+      "1.1e_population/1.1eiii_displaced_pop",
       "1.1f_cache_files/."
     ),
     "1.2_epidemiology" = c(
