@@ -13,6 +13,7 @@ exp_names <- c(
   "chw",
   "pop_national",
   "pop_worldpop",
+  "pop_displaced",
   "cache",
   # 1.2_epidemiology
   "dhis2",
