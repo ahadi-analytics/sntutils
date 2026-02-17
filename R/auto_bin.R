@@ -502,8 +502,17 @@ auto_bin <- function(
           }
         }
 
-        # if no duplicates, we're done
-        if (!any(duplicated(formatted_labels))) {
+        # check for same-bounds labels like "2K–2K"
+        has_same_bounds <- any(vapply(
+          formatted_labels, function(lab) {
+            if (grepl("^>", lab)) return(FALSE)
+            parts <- strsplit(lab, "\u2013")[[1]]
+            length(parts) == 2 && parts[1] == parts[2]
+          }, logical(1)
+        ))
+
+        # if no duplicates and no same-bounds, we're done
+        if (!any(duplicated(formatted_labels)) && !has_same_bounds) {
           break
         }
 
@@ -662,8 +671,9 @@ auto_bin <- function(
 
   # check for problems and increase precision if needed
   check_labels <- function(lower, upper, digits) {
-    fmt_l <- formatC(lower, format = "f", digits = digits)
-    fmt_u <- formatC(upper, format = "f", digits = digits)
+    # use .format_number (not formatC) so K/M collisions are caught
+    fmt_l <- .format_number(lower, digits = digits)
+    fmt_u <- .format_number(upper, digits = digits)
     labs <- make_labels(lower, upper, digits)
     has_dups <- anyDuplicated(labs) > 0
     has_same <- any(fmt_l == fmt_u & !is.infinite(upper))
