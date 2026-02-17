@@ -459,6 +459,37 @@ test_that("outlier threshold handles all values correctly without NAs", {
   expect_equal(sum(result$bins != ">1.00", na.rm = TRUE), 9)
 })
 
+test_that("custom labels avoid same-K labels like 2K-2K", {
+  # 1500 and 2000 both round to "2K" with digits=0, so the label
+
+  # "1500-2000" would become "2K–2K" without the same-bounds check
+  set.seed(99)
+  incidence <- c(
+    runif(20, 0, 100),
+    runif(20, 100, 700),
+    runif(20, 700, 1500),
+    runif(20, 1500, 2000),
+    runif(10, 2000, 3000)
+  )
+  inc_bins <- c(
+    "<100", "100-250", "250-400", "400-700",
+    "700-1000", "1000-1500", "1500-2000", ">2000"
+  )
+
+  result <- auto_bin(incidence, labels = inc_bins)
+
+  # no label should have identical lower and upper
+  labs <- levels(result$bins)
+  range_labs <- labs[!grepl("^>", labs)]
+  for (lab in range_labs) {
+    parts <- strsplit(lab, "\u2013")[[1]]
+    expect_false(
+      parts[1] == parts[2],
+      info = paste0("duplicate bounds in label: ", lab)
+    )
+  }
+})
+
 test_that("outlier threshold works with NA values in input", {
   tpr <- c(0.5, NA, 0.8, 1.2, NA, 0.9)
 
