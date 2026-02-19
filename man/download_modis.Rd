@@ -14,7 +14,7 @@ download_modis(
   username = NULL,
   password = NULL,
   version = "061",
-  scale_factor = 1e-04,
+  scale_factor = "auto",
   keep_hdf = FALSE,
   overwrite = FALSE
 )
@@ -47,9 +47,10 @@ Falls back to \code{Sys.getenv("EARTHDATA_PASSWORD")}.}
 \item{version}{Character. MODIS collection version (default
 \code{"061"}).}
 
-\item{scale_factor}{Numeric or \code{NULL}. Multiply raw values by
-this before saving. Default \code{0.0001} (correct for NDVI/EVI).
-\code{NULL} skips scaling.}
+\item{scale_factor}{\code{"auto"}, numeric, or \code{NULL}. When \code{"auto"}
+(default), the scale factor is looked up from a built-in table
+of known MODIS bands (e.g. 0.0001 for EVI/NDVI, 0.02 for
+LST). Pass a number to override, or \code{NULL} to skip scaling.}
 
 \item{keep_hdf}{Logical. Keep raw HDF files after processing?
 Default \code{FALSE} (deletes them). When \code{TRUE}, saved to
