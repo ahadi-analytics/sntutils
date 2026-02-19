@@ -107,6 +107,7 @@ detect_time_pattern <- function(filenames) {
   patterns <- list(
     daily = "\\d{4}[._-]\\d{2}[._-]\\d{2}",
     monthly_iso = "\\d{4}[._-]\\d{2}", # YYYY-MM
+    monthly_compact = "(?<!\\d)\\d{6}(?!\\d)", # YYYYMM
     monthly_euro = "\\d{2}[._-]\\d{4}", # MM-YYYY
     yearly = "\\d{4}"
   )
@@ -114,7 +115,8 @@ detect_time_pattern <- function(filenames) {
   # Check patterns in order of specificity
   if (any(grepl(patterns$daily, b))) {
     pattern <- "daily"
-  } else if (any(grepl(patterns$monthly_iso, b)) ||
+  } else if (any(grepl(patterns$monthly_iso, b, perl = TRUE)) ||
+             any(grepl(patterns$monthly_compact, b, perl = TRUE)) ||
              any(grepl(patterns$monthly_euro, b))) {
     pattern <- "monthly"
   } else if (any(grepl(patterns$yearly, b))) {
@@ -179,12 +181,22 @@ extract_time_components <- function(filename, info) {
       year <- stringr::str_extract(euro_match, "\\d{4}$")
       ds <- paste(year, month, sep = "-")
     } else {
-      # Try ISO format
+      # Try ISO format (YYYY-MM)
       iso_match <- stringr::str_extract(
         basename(filename),
         "(\\d{4})[._-](\\d{2})"
       )
-      ds <- iso_match
+      if (!is.na(iso_match)) {
+        ds <- iso_match
+      } else {
+        # Try compact format (YYYYMM)
+        compact <- stringr::str_extract(
+          basename(filename), "\\d{6}"
+        )
+        ds <- paste0(
+          substr(compact, 1, 4), "-", substr(compact, 5, 6)
+        )
+      }
     }
   } else {
     ds <- stringr::str_extract(
