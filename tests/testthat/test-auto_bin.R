@@ -506,3 +506,48 @@ test_that("outlier threshold works with NA values in input", {
   # outlier should be binned
   expect_equal(sum(result$bins == ">1.00", na.rm = TRUE), 1)
 })
+
+test_that("outlier_label correctly overrides auto-generated label", {
+  set.seed(123)
+  tpr <- c(runif(10, 0.5, 0.9), 1.2, 1.3)
+  custom_lab <- "Suspect Values (>1.0)"
+  
+  result <- auto_bin(
+    tpr, 
+    outlier_threshold = 1.0, 
+    outlier_label = custom_lab
+  )
+  
+  # Check that the custom label is present in factor levels
+  expect_true(custom_lab %in% levels(result$bins))
+  
+  # Check that the specific values are assigned to that label
+  expect_equal(sum(result$bins == custom_lab, na.rm = TRUE), 2)
+  
+  # Check that the color mapping uses the custom label as a name
+  expect_true(custom_lab %in% names(result$colors))
+  expect_equal(result$colors[[custom_lab]], "#636363")
+})
+
+test_that("outlier_label works with custom outlier_color", {
+  tpr <- c(0.5, 1.5)
+  result <- auto_bin(
+    tpr, 
+    outlier_threshold = 1.0, 
+    outlier_label = "High", 
+    outlier_color = "purple"
+  )
+  
+  expect_equal(result$colors[["High"]], "purple")
+})
+
+test_that("outlier_label is ignored if no outliers are present", {
+  tpr <- c(0.5, 0.6, 0.7)
+  result <- auto_bin(
+    tpr, 
+    outlier_threshold = 1.0, 
+    outlier_label = "Should Not Appear"
+  )
+  
+  expect_false("Should Not Appear" %in% levels(result$bins))
+})

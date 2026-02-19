@@ -290,6 +290,8 @@ if (is.null(n)) {
 #'   where values >1 are unusual. Default is NULL (no outlier handling).
 #' @param outlier_color Character. Hex color for the outlier bin. Only used
 #'   when outlier_threshold is specified. Default is "#636363" (dark grey).
+#' @param outlier_label Character. Optional custom label for the outlier bin.
+#'   when NULL (default), uses the auto-generated format.
 #'
 #' @return A list with:
 #'   \item{bins}{Ordered factor of bin labels for each value in `x`}
@@ -328,8 +330,7 @@ if (is.null(n)) {
 #' auto_bin(incidence, reverse = TRUE)$colors
 #'
 #' # Use custom labels
-#' custom_labels <- c("0–50", "50–100", "100–250", "250–450",
-#'                    "450–700", "700–1000", ">1000")
+#' custom_labels <- c("0–50", "50–100", "100–250", "250–450", "450–700", "700–1000", ">1000")
 #' result <- auto_bin(incidence * 10, palette = "byor", labels = custom_labels)
 #' table(result$bins)
 #' result$method  # Returns "custom"
@@ -339,6 +340,8 @@ if (is.null(n)) {
 #' tpr <- c(runif(80, 0.5, 0.95), runif(20, 1.05, 1.3))
 #' result <- auto_bin(tpr, palette = "rdbu", bin = 5, outlier_threshold = 1.0)
 #' table(result$bins)
+#' # Custom outlier label for data validation
+#' result <- auto_bin(tpr, outlier_threshold = 1.0, outlier_label = "Suspect Values")
 #' result$colors  # Last bin (>1.00) will be grey
 #'
 #' @export
@@ -351,7 +354,8 @@ auto_bin <- function(
     reverse = FALSE,
     labels = NULL,
     outlier_threshold = NULL,
-    outlier_color = "#636363") {
+    outlier_color = "#636363",
+    outlier_label = NULL) {
 
   if (!is.numeric(x)) {
     cli::cli_abort("{.arg x} must be numeric.")
@@ -411,17 +415,18 @@ auto_bin <- function(
       detected_precision <- .detect_label_precision(sample_label)
 
       # create outlier label with same precision as regular bins
-      outlier_label <- paste0(">", formatC(outlier_threshold,
+      auto_outlier_label <- paste0(">", formatC(outlier_threshold,
                                           format = "f",
                                           digits = detected_precision))
+      effective_outlier_label <- if (!is.null(outlier_label)) outlier_label else auto_outlier_label
 
       # combine normal bins with outlier bin
-      all_labels <- c(levels(result_normal$bins), outlier_label)
+      all_labels <- c(levels(result_normal$bins), effective_outlier_label)
 
       # assign outlier bin to values above threshold
       bins_combined <- rep(NA, length(x))
       bins_combined[idx_normal] <- as.character(result_normal$bins)
-      bins_combined[idx_outlier] <- outlier_label
+      bins_combined[idx_outlier] <- effective_outlier_label
       bins_combined <- factor(bins_combined, levels = all_labels, ordered = TRUE)
 
       # combine colors

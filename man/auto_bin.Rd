@@ -13,7 +13,8 @@ auto_bin(
   reverse = FALSE,
   labels = NULL,
   outlier_threshold = NULL,
-  outlier_color = "#636363"
+  outlier_color = "#636363",
+  outlier_label = NULL
 )
 }
 \arguments{
@@ -42,6 +43,9 @@ where values >1 are unusual. Default is NULL (no outlier handling).}
 
 \item{outlier_color}{Character. Hex color for the outlier bin. Only used
 when outlier_threshold is specified. Default is "#636363" (dark grey).}
+
+\item{outlier_label}{Character. Optional custom label for the outlier bin.
+when NULL (default), uses the auto-generated format.}
 }
 \value{
 A list with:
@@ -89,8 +93,7 @@ auto_bin(incidence, palette = c("#ffffcc", "#a1dab4", "#41b6c4", "#225ea8"))
 auto_bin(incidence, reverse = TRUE)$colors
 
 # Use custom labels
-custom_labels <- c("0–50", "50–100", "100–250", "250–450",
-                   "450–700", "700–1000", ">1000")
+custom_labels <- c("0–50", "50–100", "100–250", "250–450", "450–700", "700–1000", ">1000")
 result <- auto_bin(incidence * 10, palette = "byor", labels = custom_labels)
 table(result$bins)
 result$method  # Returns "custom"
@@ -100,6 +103,8 @@ set.seed(123)
 tpr <- c(runif(80, 0.5, 0.95), runif(20, 1.05, 1.3))
 result <- auto_bin(tpr, palette = "rdbu", bin = 5, outlier_threshold = 1.0)
 table(result$bins)
+# Custom outlier label for data validation
+result <- auto_bin(tpr, outlier_threshold = 1.0, outlier_label = "Suspect Values")
 result$colors  # Last bin (>1.00) will be grey
 
 }
