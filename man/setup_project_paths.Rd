@@ -15,7 +15,7 @@ a root (here::here(), then rprojroot); fallback to getwd().}
 \value{
 Named list of absolute paths:
 core, admin_shp, physical_feat, hf, chw, pop_national,
-pop_worldpop, cache, dhis2, pfpr_est, mortality_est, interventions,
+pop_worldpop, pop_displaced, cache, dhis2, pfpr_est, mortality_est, interventions,
 drug_eff, climate, accessibility, land_use, dhs, ento, commodities,
 finance, final_data,
 val, interm, final, model,
