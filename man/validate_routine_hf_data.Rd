@@ -9,7 +9,7 @@ outlier checks, compiles a summary, and optionally translates and saves.}
 validate_routine_hf_data(
   data,
   id_col = "record_id",
-  facility_col = "hf_id",
+  facility_col = "hf_uid",
   date_col = "date",
   yearmon_col = "yearmon",
   year_col = "year",
@@ -18,25 +18,34 @@ validate_routine_hf_data(
   admin_guid_cols = c("adm0_guid", "adm1_guid", "adm2_guid", "adm3_guid"),
   core_id_cols = NULL,
   indicators = NULL,
+  missing_vars = NULL,
   consistency_pairs = NULL,
+  outlier_pairs = NULL,
   check_future_dates = TRUE,
   check_duplicates = TRUE,
   check_outliers = TRUE,
   check_facility_activeness = TRUE,
   hf_name_col = "hf",
-  hf_uid_col = "hf_uid",
   key_indicators = NULL,
+  nonreport_window = 6,
+  reporting_rule = "any_non_na",
   min_reporting_rate = 0.5,
-  outlier_methods = c("iqr", "median", "mean"),
-  iqr_multiplier = 1.5,
-  save_results = FALSE,
+  outlier_methods = c("iqr", "median", "mean", "consensus"),
+  time_mode = "across_time",
+  outlier_strictness = "balanced",
+  sd_multiplier = 3,
+  mad_constant = 1.4826,
+  mad_multiplier = 9,
+  iqr_multiplier = 2,
+  min_n = 8,
+  consensus_rule = 1,
+  n_neighbour_impute = 5,
   output_path = NULL,
   output_name = "validation_of_hf_routine_data",
   output_formats = c("xlsx", "rds"),
+  build_dictionary = FALSE,
   verbose = TRUE,
-  target_language = "en",
-  source_language = "en",
-  lang_cache_path = base::tempdir()
+  language = "en"
 )
 }
 \arguments{
@@ -44,7 +53,7 @@ validate_routine_hf_data(
 
 \item{id_col}{character. Unique record id. Default "record_id".}
 
-\item{facility_col}{character. Facility id. Default "hf_id".}
+\item{facility_col}{character. Facility id. Default "hf_uid".}
 
 \item{date_col}{character. Date column. Default "date".}
 
@@ -65,8 +74,21 @@ c("adm0_guid","adm1_guid","adm2_guid","adm3_guid").}
 \item{indicators}{character|NULL. Numeric indicators to validate. If NULL,
 auto-detect from numeric columns after excluding core ids.}
 
+\item{missing_vars}{character|NULL. Additional variables to check for missing data
+beyond core_id_cols. Core ID columns are always checked. If NULL, checks both
+core_id_cols and indicators (default behavior). Use this to limit missing data
+checks to specific indicators while always including core IDs.}
+
 \item{consistency_pairs}{list|NULL. Each element is list(input=, output=).
 If NULL, defaults generated from common malaria cascade rules.}
+
+\item{outlier_pairs}{list|NULL. Pairs for outlier detection and correction.
+Structure: list(input = c("test"), output = c("conf")).
+Uses same format as consistency_pairs. The cascade rule is: input >= output.
+Both directions are checked automatically:
+(1) output outliers validated as output <= input,
+(2) input outliers validated as input >= output.
+Corrections use neighbor median. If NULL, defaults from malaria cascade.}
 
 \item{check_future_dates}{logical. Default TRUE.}
 
@@ -78,20 +100,41 @@ If NULL, defaults generated from common malaria cascade rules.}
 
 \item{hf_name_col}{character. Facility name column. Default "hf".}
 
-\item{hf_uid_col}{character. Facility UID column. Default "hf_uid".}
-
 \item{key_indicators}{character|NULL. Key indicators for activeness check.
 If NULL, uses all indicators. Default NULL.}
+
+\item{nonreport_window}{integer. Minimum number of consecutive non-reporting
+months to classify a facility as inactive in method 3. Defaults to 6.}
+
+\item{reporting_rule}{character. Defines what counts as reporting for activeness:
+"any_non_na" (default, counts NA as non-reporting, 0 counts as reported)
+or "positive_only" (requires >0 value to count as reported).}
 
 \item{min_reporting_rate}{numeric. Minimum reporting rate threshold. Default 0.5.}
 
 \item{outlier_methods}{character. Any of c("iqr","median","mean").}
 
-\item{iqr_multiplier}{numeric. Default 1.5.}
+\item{time_mode}{character. Time mode for outlier detection: "across_time",
+"within_year", or "seasonal". Seasonal compares same month across years.
+Default "across_time".}
 
-\item{save_results}{logical. Save outputs. Default FALSE.}
+\item{outlier_strictness}{character. Outlier detection strictness: "balanced", "lenient", "strict", "advanced". Default "balanced".}
 
-\item{output_path}{character|NULL. Required if save_results.}
+\item{sd_multiplier}{numeric. Standard deviation multiplier for outlier detection. Default 3.}
+
+\item{mad_constant}{numeric. MAD constant for outlier detection. Default 1.4826.}
+
+\item{mad_multiplier}{numeric. MAD multiplier for outlier detection. Default 9.}
+
+\item{iqr_multiplier}{numeric. IQR multiplier for outlier detection. Default 2.}
+
+\item{min_n}{numeric. Minimum sample size for outlier detection. Default 8.}
+
+\item{consensus_rule}{numeric. Number of methods that must agree for consensus outlier flag. Default 1.}
+
+\item{n_neighbour_impute}{integer. Number of neighboring time periods (before and after) to use for computing the imputation median. Default 5 (uses 5 before + 5 after = 10 values).}
+
+\item{output_path}{character|NULL. If provided, results are saved to this path.}
 
 \item{output_name}{character. Base output name. Default
 "validation_routine_data_results".}
@@ -99,20 +142,18 @@ If NULL, uses all indicators. Default NULL.}
 \item{output_formats}{character. Any of c("xlsx","rds"). Default
 c("xlsx","rds").}
 
+\item{build_dictionary}{logical. Build data dictionary. Default TRUE.}
+
 \item{verbose}{logical. CLI messages. Default TRUE.}
 
-\item{target_language}{character. ISO-639-1. Default "en".}
-
-\item{source_language}{character. ISO-639-1. Default "en".}
-
-\item{lang_cache_path}{character. Path for translation cache. Default
-base::tempdir().}
+\item{language}{character. ISO-639-1 language code for output labels ("en", "fr", "pt"). Default "en".}
 }
 \value{
 invisible named list with elements:
-Summary, Missing values, Duplicate records, Future dates,
-Consistency failures, Consistency details, Outliers,
-Facility activeness over time, Facility activeness summary
+Summary, Missing values, Missing values detail, Duplicate records, Future dates,
+Consistency summary, Consistency details,
+Outlier summary, Outlier detailed,
+HF activeness summary, HF activeness episodes, Data dictionary
 }
 \description{
 Orchestrates a suite of validation checks on routine HF data. It standardizes

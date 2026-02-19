@@ -60,7 +60,7 @@ standardize_names <- function(
     sort_tokens = sort_tokens
   )
 
-  bad_flag <- purrr::keep(flags, \(v) !(is.logical(v) && length(v) == 1L))
+  bad_flag <- Filter(\(v) !(is.logical(v) && length(v) == 1L), flags)
   if (length(bad_flag) > 0L) {
     bad_names <- paste(names(bad_flag), collapse = ", ")
     cli::cli_abort(
@@ -88,7 +88,7 @@ standardize_names <- function(
 
   # helper: sort tokens letters first, numbers last
   sort_tokens_fun <- function(x) {
-    purrr::map_chr(
+    vapply(
       x,
       \(s) {
         # split on one-or-more spaces
@@ -102,11 +102,12 @@ standardize_names <- function(
 
         # rejoin
         paste(ordered, collapse = " ")
-      }
+      },
+      character(1)
     )
   }
 
-  name_vec |>
+  standardized <- name_vec |>
     # ensure character
     as.character() |>
     # uppercase for consistent comparison
@@ -153,4 +154,8 @@ standardize_names <- function(
     })() |>
     # sort tokens with letters first, numbers last
     (\(x) apply_if(x, sort_tokens, sort_tokens_fun))()
+
+  # drop auto-generated names introduced by vapply
+  names(standardized) <- NULL
+  standardized
 }

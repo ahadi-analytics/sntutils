@@ -15,8 +15,8 @@ read_snt_data <- function(path, data_name, file_formats = NULL, quiet = TRUE) {
   if (is.null(path) || !nzchar(path) || !fs::dir_exists(path)) {
     cli::cli_abort("Invalid or missing directory: {path}.")
   }
-  if (!grepl("^[A-Za-z0-9._-]+$", data_name)) {
-    cli::cli_abort("`data_name` contains illegal characters.")
+  if (!nzchar(data_name) || grepl("[/\\\\:*?\"<>|]", data_name)) {
+    cli::cli_abort("`data_name` is empty or contains illegal characters.")
   }
 
   all_ok <- c("rds", "csv", "tsv", "xlsx", "parquet", "feather", "qs2", "geojson")
@@ -29,7 +29,7 @@ read_snt_data <- function(path, data_name, file_formats = NULL, quiet = TRUE) {
     ))
   }
 
-  # Versioned candidates (<name>_v*.*) in allowed formats
+  # First look for versioned files (<name>_v*.*) in allowed formats
   ver_files <- .list_versions(path, data_name)
   if (length(ver_files)) {
     ver_files <- ver_files[
@@ -37,14 +37,15 @@ read_snt_data <- function(path, data_name, file_formats = NULL, quiet = TRUE) {
     ]
   }
 
-  # Unversioned fallbacks (<name>.<ext>)
+  # Then look for unversioned files (<name>.<ext>) as fallback
   unv_files <- fs::path(path, paste0(data_name, ".", fmts))
   unv_files <- unv_files[fs::file_exists(unv_files)]
 
-  cand <- unique(c(ver_files, unv_files))
+  # Prioritize versioned files if they exist, otherwise use unversioned
+  cand <- if (length(ver_files) > 0) ver_files else unv_files
   if (length(cand) == 0) {
     cli::cli_abort(c(
-      "No files found for '{data_name}' in {fs::path_abs(path)}.",
+      "No files found for '{data_name}' in {normalizePath(path, winslash = '/', mustWork = FALSE)}.",
       "i" = if (is.null(file_formats)) {
         "Tried any supported format."
       } else {
@@ -61,12 +62,13 @@ read_snt_data <- function(path, data_name, file_formats = NULL, quiet = TRUE) {
     cli::cli_inform("Reading {fs::path_file(chosen)} (latest by mtime).")
   }
 
-  obj <- .read_back(chosen, fmt)
-  if (is.null(obj)) {
+  obj <- tryCatch({
+    read(chosen)
+  }, error = function(e) {
     cli::cli_abort(
-      "Failed to read '{fs::path_file(chosen)}' (format: {fmt})."
+      "Failed to read '{fs::path_file(chosen)}': {conditionMessage(e)}"
     )
-  }
+  })
 
   # ensure sf's vctrs methods are available whenever sf/sfc appears anywhere
   needs_sf <- (function(x) {

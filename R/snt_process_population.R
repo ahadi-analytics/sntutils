@@ -9,9 +9,25 @@
 #' admin levels were found. By default, column types are first inferred
 #' via [auto_parse_types()] with `apply = TRUE` and `return = "data"`.
 #'
+#' @details
+#' ## Data uniqueness requirement
+#' Input data must have unique rows per admin-year at the finest level present.
+#' If your data contains sex, age, or residence strata, aggregate these upstream
+#' before passing to this function. The function will error if duplicates are
+#' detected to prevent silent double counting.
+#'
+#' ## Automatic proportion handling
+#' The function automatically detects which population columns contain
+#' proportions (all non-NA values <= 1) versus counts. Proportion columns
+#' are aggregated using the mean, while count columns are summed. If a
+#' column contains mixed data (some values <= 1 and some > 1), the function
+#' will abort with an error message.
+#'
 #' @param pop_data data.frame/tibble with `adm0`, optional `adm1`/`adm2`/`adm3`,
-#'   `year`, and `pop`. `year` may be integer, numeric, Date/POSIXt, factor,
+#'   `year`, and population column(s). `year` may be integer, numeric, Date/POSIXt, factor,
 #'   or character; it is coerced to integer years when feasible.
+#' @param pop_cols character vector of population column names to process.
+#'   Default is "pop" for backward compatibility.
 #' @param translate logical; when TRUE, add a translated label column
 #'   (default FR unless `language` is provided) using the translation cache.
 #' @param language Optional ISO code (e.g., "fr"). When provided, a
@@ -31,6 +47,8 @@
 #' - `levels_present` (character vector of admin levels detected)
 #'
 #' @examples
+#' \dontrun{
+#' # Basic usage with default "pop" column
 #' example_pop <- tibble::tibble(
 #'   adm0 = c("A", "A", "B"),
 #'   adm1 = c("X", "X", "Y"),
@@ -42,9 +60,24 @@
 #' names(out)
 #' out$levels_present
 #'
+#' # Using custom population column names
+#' example_multi_pop <- tibble::tibble(
+#'   adm0 = c("A", "A", "B"),
+#'   adm1 = c("X", "X", "Y"),
+#'   year = c(2020L, 2020L, 2021L),
+#'   total_pop = c(100, 50, 70),
+#'   under5_pop = c(20, 10, 15)
+#' )
+#' out_multi <- snt_process_population(
+#'   example_multi_pop,
+#'   pop_cols = c("total_pop", "under5_pop")
+#' )
+#' names(out_multi)
+#'}
 #' @export
 snt_process_population <- function(
   pop_data,
+  pop_cols = "pop",
   translate = TRUE,
   language = NULL,
   trans_cache_path = if (requireNamespace("here", quietly = TRUE)) {
@@ -55,7 +88,7 @@ snt_process_population <- function(
   infer_types = TRUE
 ) {
   # validate input shape early
-  .validate_pop_input(pop_data)
+  .validate_pop_input(pop_data, pop_cols)
 
   # optionally coerce types using the shared engine (preferred)
   if (isTRUE(infer_types)) {
@@ -69,18 +102,24 @@ snt_process_population <- function(
     pop_data <- .coerce_year_if_needed(pop_data)
   }
 
+  # detect which columns are proportions vs counts
+  prop_cols <- .detect_proportion_cols(pop_data, pop_cols)
+
   # detect available admin levels after any coercions
   lv_all <- c("adm0", "adm1", "adm2", "adm3")
   levels_present <- lv_all[lv_all %in% names(pop_data)]
 
+  # check for duplicates at the finest granularity level in input data
+  .check_uniqueness(pop_data, levels_present)
+
   # summarise for each level that truly exists
-  pop_data_adm0 <- .summarise_by(pop_data, c("adm0"))
-  pop_data_adm1 <- .summarise_by(pop_data, c("adm0", "adm1"))
-  pop_data_adm2 <- .summarise_by(pop_data, c("adm0", "adm1", "adm2"))
-  pop_data_adm3 <- .summarise_by(pop_data, c("adm0", "adm1", "adm2", "adm3"))
+  pop_data_adm0 <- .summarise_by(pop_data, c("adm0"), pop_cols, prop_cols)
+  pop_data_adm1 <- .summarise_by(pop_data, c("adm0", "adm1"), pop_cols, prop_cols)
+  pop_data_adm2 <- .summarise_by(pop_data, c("adm0", "adm1", "adm2"), pop_cols, prop_cols)
+  pop_data_adm3 <- .summarise_by(pop_data, c("adm0", "adm1", "adm2", "adm3"), pop_cols, prop_cols)
 
   # build compact dictionary for the columns we actually expose
-  dict_vars <- unique(c(levels_present, "year", "pop"))
+  dict_vars <- unique(c(levels_present, "year", pop_cols))
   keep_cols <- intersect(names(pop_data), dict_vars)
 
   # determine target language: explicit `language` wins; otherwise use FR when
@@ -138,28 +177,89 @@ snt_process_population <- function(
   invisible(NULL)
 }
 
+#' Check for duplicate rows at finest admin level
+#'
+#' Ensures population data has unique rows per admin-year at the finest
+#' granularity level present. Aborts if duplicates are found.
+#'
+#' @param pop_data Data frame with population.
+#' @param levels_present Character vector of admin levels in data.
+#' @noRd
+.check_uniqueness <- function(pop_data, levels_present) {
+  if (length(levels_present) == 0 || !requireNamespace("dplyr", quietly = TRUE)) {
+    return(invisible(NULL))
+  }
+
+  # identify finest admin level (last in hierarchy)
+  finest_level <- levels_present[length(levels_present)]
+  check_cols <- c(levels_present, "year")
+
+  # count rows per admin-year combination at finest level
+  dup <- pop_data |>
+    dplyr::count(
+      dplyr::across(dplyr::all_of(check_cols))
+    ) |>
+    dplyr::filter(.data$n > 1)
+
+  if (nrow(dup) > 0) {
+    example_key <- paste(
+      names(dup)[1:(ncol(dup) - 1)],
+      unlist(dup[1, 1:(ncol(dup) - 1)]),
+      sep = "=",
+      collapse = ", "
+    )
+    cli::cli_abort(
+      c(
+        "Population data has multiple rows per admin-year combination at {finest_level} level.",
+        "i" = "Example duplicate: {example_key} (n={dup$n[1]} rows)",
+        "x" = "This causes populations to be summed incorrectly.",
+        ">" = "Common causes: sex disaggregation, age groups, residence strata.",
+        ">" = "Ensure data is unique per admin-year at {finest_level} level or aggregate upstream."
+      )
+    )
+  }
+
+  invisible(NULL)
+}
+
 #' Grouped population summary
 #'
-#' Aggregates population by grouping columns and year.
-#' Returns `NULL` if grouping columns are missing.
+#' Aggregates population by grouping columns and year. Uses mean for proportion
+#' columns and sum for count columns.
 #'
 #' @param pop_data Data frame with population.
 #' @param group_cols Character vector of grouping columns.
+#' @param pop_cols Character vector of population column names.
+#' @param prop_cols Character vector of columns that are proportions (will be averaged).
 #' @return Data frame or NULL.
 #' @noRd
-.summarise_by <- function(pop_data, group_cols) {
+.summarise_by <- function(pop_data, group_cols, pop_cols, prop_cols = character(0)) {
   if (!all(group_cols %in% names(pop_data))) {
     return(NULL)
   }
   if (!requireNamespace("dplyr", quietly = TRUE)) {
     cli::cli_abort("Package 'dplyr' is required for summarising.")
   }
+
+  # create summarise expressions for each population column
+  # use mean for proportions, sum for counts
+  summarise_exprs <- rlang::set_names(
+    lapply(pop_cols, function(col) {
+      if (col %in% prop_cols) {
+        rlang::expr(sntutils::mean2(.data[[!!col]]))
+      } else {
+        rlang::expr(sntutils::sum2(.data[[!!col]]))
+      }
+    }),
+    pop_cols
+  )
+
   dplyr::group_by(
     pop_data,
     dplyr::across(dplyr::all_of(group_cols)),
     .data$year
   ) |>
-    dplyr::summarise(pop = sntutils::sum2(.data$pop), .groups = "drop")
+    dplyr::summarise(!!!summarise_exprs, .groups = "drop")
 }
 
 #' Cached translator factory
@@ -189,22 +289,78 @@ snt_process_population <- function(
 
 #' Validate minimal shape of population input
 #'
-#' Ensures required columns exist and `pop` is numeric. Leaves `year`
+#' Ensures required columns exist and population columns are numeric. Leaves `year`
 #' validation/coercion to later steps.
+#' @param pop_data data frame to validate
+#' @param pop_cols character vector of population column names
 #' @noRd
-.validate_pop_input <- function(pop_data) {
+.validate_pop_input <- function(pop_data, pop_cols) {
   if (!is.data.frame(pop_data)) {
     cli::cli_abort("`pop_data` must be a data.frame or tibble.")
   }
-  req <- c("adm0", "year", "pop")
+  req <- c("adm0", "year", pop_cols)
   miss <- setdiff(req, names(pop_data))
   if (length(miss)) {
     cli::cli_abort("missing required columns: {toString(miss)}")
   }
-  if (!is.numeric(pop_data$pop)) {
-    cli::cli_abort("`pop` must be numeric.")
+  # check that all population columns are numeric
+  for (col in pop_cols) {
+    if (!is.numeric(pop_data[[col]])) {
+      cli::cli_abort("`{col}` must be numeric.")
+    }
   }
   invisible(TRUE)
+}
+
+#' Detect which population columns contain proportions
+#'
+#' Checks each population column to determine if it contains proportion data
+#' (all non-NA values <= 1) or count data. Aborts if a column appears to be
+#' a proportion but contains values > 1.
+#'
+#' @param pop_data data frame with population columns
+#' @param pop_cols character vector of population column names to check
+#' @return character vector of column names that are proportions
+#' @noRd
+.detect_proportion_cols <- function(pop_data, pop_cols) {
+  prop_cols <- character(0)
+
+  for (col in pop_cols) {
+    values <- pop_data[[col]]
+    non_na_values <- values[!is.na(values)]
+
+    if (length(non_na_values) == 0) {
+      next
+    }
+
+    all_lte_one <- all(non_na_values <= 1)
+    has_fraction <- any(non_na_values < 1 & non_na_values > 0)
+    has_large <- any(non_na_values > 1)
+
+    if (all_lte_one) {
+      prop_cols <- c(prop_cols, col)
+    } else if (has_fraction && has_large) {
+      max_val <- max(non_na_values, na.rm = TRUE)
+      min_val <- min(non_na_values, na.rm = TRUE)
+      cli::cli_abort(
+        c(
+          "Column `{col}` appears to contain mixed proportion and count data.",
+          "i" = "Values range from {min_val} to {max_val}.",
+          "x" = "Proportion columns must have all values <= 1."
+        )
+      )
+    }
+  }
+
+  # log which columns are treated as proportions
+  if (length(prop_cols) > 0) {
+    .msg(paste0(
+      "detected proportion columns (will use mean): ",
+      toString(prop_cols)
+    ))
+  }
+
+  prop_cols
 }
 
 #' Best-effort coercion of `year` to integer years

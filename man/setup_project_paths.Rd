@@ -2,32 +2,36 @@
 % Please edit documentation in R/setup_project_paths.R
 \name{setup_project_paths}
 \alias{setup_project_paths}
-\title{Setup project paths and environment for Burundi SNT analysis}
+\title{Setup project paths and environment for SNT pipeline}
 \usage{
-setup_project_paths(base_path = NULL, create = TRUE, quiet = TRUE)
+setup_project_paths(base_path = NULL, quiet = FALSE)
 }
 \arguments{
 \item{base_path}{Character path to project root. If NULL, try to detect
 a root (here::here(), then rprojroot); fallback to getwd().}
 
-\item{create}{Logical; create any missing directories. Default TRUE.}
-
-\item{quiet}{Logical; suppress creation messages. Default TRUE.}
+\item{quiet}{Logical; suppress warning messages. Default FALSE.}
 }
 \value{
 Named list of absolute paths:
-core, admin_shp, hf, pop_national, pop_worldpop, cache,
-dhis2, pfpr_est, mortality_est, interventions, drug_eff,
-climate, accessibility, land_use, dhs, ento, commodities,
-validation_plots, validation_tables.
+core, admin_shp, physical_feat, hf, chw, pop_national,
+pop_worldpop, pop_displaced, cache, dhis2, pfpr_est, mortality_est, interventions,
+drug_eff, climate, accessibility, land_use, dhs, ento, commodities,
+finance, final_data,
+val, interm, final, model,
+val_fig, val_tbl, interm_fig, interm_tbl, final_fig, final_tbl,
+model_fig, model_tbl.
 }
 \description{
-Creates a list of standardized paths for the Burundi SNT 2025 project.
+Creates a list of standardized paths for the SNT pipelines
 Detects a project root automatically and constructs all data/cache/output
-paths with short, memorable names. Optionally creates missing folders.
+paths with short, memorable names. Validates that folders exist and alerts
+if they don't. Use initialize_project_structure() to create the folders.
 }
 \examples{
 tmp <- tempdir()
-paths <- setup_project_paths(base_path = tmp, create = FALSE)
+paths <- setup_project_paths(base_path = tmp, quiet = TRUE)
 paths$admin_shp
+paths$val_fig
+paths$interm_tbl
 }

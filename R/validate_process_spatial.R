@@ -647,21 +647,9 @@ validate_process_spatial <- function(
   )
   results$spatial_extent <- sf::st_bbox(shp_std)
 
-  # Create admin level aggregations
+  # Create admin level aggregations (includes hole removal and validation)
   results$final_spat_vec <-
     .create_admin_aggregations(shp_std, admin_mapping, quiet)
-
-  # remove holes across all admin levels when detected earlier
-  if (
-    !is.null(results$checks) &&
-      !is.null(results$checks$geometries_with_holes) &&
-      nrow(results$checks$geometries_with_holes) > 0
-  ) {
-    results$final_spat_vec <- lapply(
-      results$final_spat_vec,
-      nngeo::st_remove_holes
-    )
-  }
 
   # Create column dictionary
   results$column_dictionary <- .create_spatial_column_dictionary(
@@ -705,7 +693,65 @@ validate_process_spatial <- function(
     }
   }
 
+  # Add country codes (iso3, iso2, dhs) via spatial join
+
+  shp_clean <- .add_country_codes(shp_clean)
+
   shp_clean
+}
+
+# Add ISO3, ISO2, and DHS country codes using countrycode package
+# Uses adm0 column (country name) for lookup - more reliable than spatial join
+# Tries multiple matching methods: exact, then regex for unusual spellings
+# @param shp sf object with geometry and adm0 column
+# @return sf object with iso3_code, iso2_code, dhs_code columns prepended
+# @noRd
+.add_country_codes <- function(shp) {
+  # Require countrycode package for name-based lookup
+  if (!rlang::is_installed("countrycode")) {
+    return(shp)
+  }
+
+  # Need adm0 column for country name lookup
+  if (!"adm0" %in% names(shp)) {
+    return(shp)
+  }
+
+  # First try exact country.name match
+  shp$iso3_code <- countrycode::countrycode(
+    shp$adm0,
+    origin = "country.name",
+    destination = "iso3c",
+    warn = FALSE
+  )
+
+  # For any NAs, try regex matching (handles unusual spellings)
+  na_idx <- which(is.na(shp$iso3_code))
+  if (length(na_idx) > 0) {
+    shp$iso3_code[na_idx] <- countrycode::countrycode(
+      shp$adm0[na_idx],
+      origin = "country.name.en.regex",
+      destination = "iso3c",
+      warn = FALSE
+    )
+  }
+
+  # Get iso2 and dhs from iso3 (more reliable than name lookup)
+  shp$iso2_code <- countrycode::countrycode(
+    shp$iso3_code,
+    origin = "iso3c",
+    destination = "iso2c",
+    warn = FALSE
+  )
+
+  shp$dhs_code <- countrycode::countrycode(
+    shp$iso3_code,
+    origin = "iso3c",
+    destination = "dhs",
+    warn = FALSE
+  )
+
+  shp
 }
 
 # Create geometry hashes and admin GUIDs
@@ -725,9 +771,9 @@ validate_process_spatial <- function(
     )
 
   # Create admin-level GUIDs for each available admin level
-  available_admin_levels <- names(admin_mapping)
+  available_admin_level <- names(admin_mapping)
 
-  for (admin_level in available_admin_levels) {
+  for (admin_level in available_admin_level) {
     guid_col <- paste0(admin_level, "_guid")
 
     if (admin_level %in% names(shp)) {
@@ -750,7 +796,7 @@ validate_process_spatial <- function(
     }
   }
 
-  # Ensure proper column ordering
+  # Ensure proper column ordering: iso3, iso2, dhs first, then admin levels
   admin_cols_ordered <- c()
   for (admin_level in c("adm0", "adm1", "adm2", "adm3")) {
     if (admin_level %in% names(shp)) {
@@ -764,6 +810,7 @@ validate_process_spatial <- function(
 
   shp |>
     dplyr::select(
+      dplyr::any_of(c("iso3_code", "iso2_code", "dhs_code")),
       dplyr::any_of(admin_cols_ordered),
       geometry_hash,
       geometry
@@ -779,6 +826,12 @@ validate_process_spatial <- function(
   if (!quiet) {
     cli::cli_progress_step("Creating admin level aggregations...")
   }
+
+
+  # Temporarily disable s2 to avoid edge-crossing errors in st_union
+  s2_was_on <- sf::sf_use_s2()
+  suppressMessages(sf::sf_use_s2(FALSE))
+  on.exit(suppressMessages(sf::sf_use_s2(s2_was_on)), add = TRUE)
 
   spat_vec <- list()
 
@@ -797,62 +850,84 @@ validate_process_spatial <- function(
   spat_vec[[base_level_name]] <- shp
 
   # Create higher-level aggregations
-  for (level in (highest_level - 1):0) {
-    level_name <- paste0("adm", level)
+  # Suppress planar geometry messages and warnings (expected when s2 is off)
+  suppressWarnings(suppressMessages({
+    for (level in (highest_level - 1):0) {
+      level_name <- paste0("adm", level)
 
-    if (level_name %in% names(admin_mapping)) {
-      # Get grouping columns
-      group_cols <- paste0("adm", 0:level)
-      group_cols <- group_cols[group_cols %in% names(shp)]
+      if (level_name %in% names(admin_mapping)) {
+        # Get grouping columns
+        group_cols <- paste0("adm", 0:level)
+        group_cols <- group_cols[group_cols %in% names(shp)]
 
-      if (length(group_cols) > 0) {
-        # Get corresponding GUID columns
-        guid_cols <- paste0(group_cols, "_guid")
-        guid_cols <- guid_cols[guid_cols %in% names(shp)]
+        if (length(group_cols) > 0) {
+          # Get corresponding GUID columns
+          guid_cols <- paste0(group_cols, "_guid")
+          guid_cols <- guid_cols[guid_cols %in% names(shp)]
 
-        # Create aggregation
-        all_group_cols <- c(group_cols, guid_cols)
+          # Include country codes in grouping (iso3, iso2, dhs)
+          country_cols <- c("iso3_code", "iso2_code", "dhs_code")
+          country_cols <- country_cols[country_cols %in% names(shp)]
 
-        # Ensure geometries are valid before aggregation
-        shp_valid <- shp
-        if (any(!sf::st_is_valid(shp_valid))) {
-          shp_valid <- sf::st_make_valid(shp_valid)
-        }
+          # Create aggregation
+          all_group_cols <- c(country_cols, group_cols, guid_cols)
 
-        agg_shp <- shp_valid |>
-          dplyr::group_by(dplyr::across(dplyr::all_of(all_group_cols))) |>
-          dplyr::summarise(
-            geometry = sf::st_union(geometry),
-            .groups = "drop"
-          ) |>
-          dplyr::mutate(
-            geometry_hash = sntutils::vdigest(geometry, algo = "xxhash64")
-          )
+          # Ensure geometries are valid before aggregation
+          shp_valid <- shp
+          if (any(!sf::st_is_valid(shp_valid))) {
+            shp_valid <- sf::st_make_valid(shp_valid)
+          }
 
-        # Ensure proper column ordering
-        level_admin_cols <- c()
-        for (admin_level in paste0("adm", 0:level)) {
-          if (admin_level %in% names(agg_shp)) {
-            level_admin_cols <- c(level_admin_cols, admin_level)
-            guid_col <- paste0(admin_level, "_guid")
-            if (guid_col %in% names(agg_shp)) {
-              level_admin_cols <- c(level_admin_cols, guid_col)
+          # Apply zero-width buffer to fix edge-crossing issues
+          shp_valid <- sf::st_buffer(shp_valid, 0)
+
+          agg_shp <- shp_valid |>
+            dplyr::group_by(dplyr::across(dplyr::all_of(all_group_cols))) |>
+            dplyr::summarise(
+              geometry = sf::st_union(geometry),
+              .groups = "drop"
+            )
+
+          # clean aggregated geometries: make valid and remove interior holes
+          if (any(!sf::st_is_valid(agg_shp))) {
+            agg_shp <- sf::st_make_valid(agg_shp)
+          }
+          if (rlang::is_installed("nngeo")) {
+            agg_shp <- nngeo::st_remove_holes(agg_shp)
+          }
+
+          # recompute geometry hash after cleaning
+          agg_shp <- agg_shp |>
+            dplyr::mutate(
+              geometry_hash = sntutils::vdigest(geometry, algo = "xxhash64")
+            )
+
+          # Ensure proper column ordering: iso3, iso2, dhs first
+          level_admin_cols <- c()
+          for (admin_level in paste0("adm", 0:level)) {
+            if (admin_level %in% names(agg_shp)) {
+              level_admin_cols <- c(level_admin_cols, admin_level)
+              guid_col <- paste0(admin_level, "_guid")
+              if (guid_col %in% names(agg_shp)) {
+                level_admin_cols <- c(level_admin_cols, guid_col)
+              }
             }
           }
+
+          agg_shp <- agg_shp |>
+            dplyr::select(
+              dplyr::any_of(c("iso3_code", "iso2_code", "dhs_code")),
+              dplyr::any_of(level_admin_cols),
+              geometry_hash,
+              geometry
+            ) |>
+            sf::st_sf()
+
+          spat_vec[[level_name]] <- agg_shp
         }
-
-        agg_shp <- agg_shp |>
-          dplyr::select(
-            dplyr::any_of(level_admin_cols),
-            geometry_hash,
-            geometry
-          ) |>
-          sf::st_sf()
-
-        spat_vec[[level_name]] <- agg_shp
       }
     }
-  }
+  }))
 
   if (!quiet) {
     cli::cli_progress_done()
@@ -893,7 +968,13 @@ validate_process_spatial <- function(
     levels_str <- paste(sort(levels_with_col), collapse = ", ")
 
     # Create description
-    description <- if (stringr::str_detect(col_name, "^adm\\d$")) {
+    description <- if (col_name == "iso3_code") {
+      "ISO 3166-1 alpha-3 country code"
+    } else if (col_name == "iso2_code") {
+      "ISO 3166-1 alpha-2 country code"
+    } else if (col_name == "dhs_code") {
+      "DHS country code"
+    } else if (stringr::str_detect(col_name, "^adm\\d$")) {
       paste(
         "Administrative level",
         stringr::str_extract(col_name, "\\d"),
@@ -924,8 +1005,11 @@ validate_process_spatial <- function(
   # Combine and sort by column hierarchy
   result <- do.call(rbind, dict_rows)
 
-  # Custom sort to put admin columns in order
+  # Custom sort to put country codes first, then admin columns in order
   col_order <- c(
+    "iso3_code",
+    "iso2_code",
+    "dhs_code",
     "adm0",
     "adm0_guid",
     "adm1",

@@ -2,13 +2,14 @@ Package: sntutils
 Type: Package
 Title: Utility Functions for Data Preparation and Analysis in Subnational
     Tailoring of Malaria Interventions (SNT)
-Version: 1.8.0
+Version: 1.12.4
 Authors@R: c(
     person("Mohamed A.", "Yusuf",
            role = c("aut", "cre"),
-           email = "moyusuf@who.who",
+           email = "myusuf@appliedhealthanalytics.org",
            comment = c(ORCID = "0000-0002-9339-4613",
                       second_email = "mohamedayusuf87@gmail.com")))
+Maintainer: Mohamed A. Yusuf <myusuf@appliedhealthanalytics.org>
 Description: A helper package for the Subnational Tailoring (SNT) process which includes a number of utility functions to help users with data cleaning, management, visualization, and analysis.
 License: CC BY 4.0
 URL: https://github.com/ahadi-analytics/sntutils
@@ -17,69 +18,78 @@ Depends:
     R (>= 4.2.0)
 Imports:
     cli,
-    foreach,
+    countrycode,
+    dplyr,
+    ggplot2,
     rio,
     rlang,
     sf,
-    crayon,
-    dplyr,
-    filelock,
-    glue,
-    lubridate,
-    purrr,
-    stringdist,
+    stringi,
     stringr,
-    tidyr,
-    ggplot2,
-    digest,
-    exactextractr,
-    terra,
     tibble,
-    matrixStats,
+    tidyr,
+    units,
+    terra,
+    exactextractr,
     tools,
     fs,
     readr,
-    forcats
-Suggests:
-    ggtext,
-    scales,
-    testthat,
-    withr,
-    wesanderson,
-    mockery,
-    gtranslate,
-    progress,
-    readxl,
-    curl,
-    stringi,
+    lubridate,
+    digest,
+    duckdb,
+    DBI,
+    nasapower,
+    openxlsx,
     zoo,
-    R.utils,
-    rvest,
-    xml2,
+    ggtext,
+    archive
+Suggests:
+    arrow,
+    crayon,
+    curl,
+    ecmwfr,
+    filelock,
+    forcats,
+    foreach,
+    glue,
+    gtranslate,
     here,
     httr2,
-    raster,
     jsonlite,
-    qs2,
-    shadowtext,
-    slider,
-    archive,
-    parzer,
-    openxlsx,
-    arrow,
-    data.table,
-    vctrs,
+    lifecycle,
+    matrixStats,
     memoise,
-    nngeo,
-    rprojroot,
-    ecmwfr,
+    mockery,
     ncdf4,
+    nngeo,
+    parzer,
+    progress,
+    purrr,
+    qs2,
+    R.utils,
+    raster,
+    readxl,
     rnaturalearth,
+    rprojroot,
     rstudioapi,
-    lifecycle
+    rvest,
+    scales,
+    ggrepel,
+    slider,
+    stringdist,
+    testthat,
+    vctrs,
+    wesanderson,
+    withr,
+    xml2,
+    yaml,
+    patchwork,
+    data.table,
+    ggnewscale,
+    geojsonsf
 Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 LazyDataCompression: xz

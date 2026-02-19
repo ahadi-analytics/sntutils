@@ -45,8 +45,7 @@
 #'   If `dest_path` is provided, the data is also saved to that location.
 #' @examples
 #'
-#' \donttest{
-#'
+#' \dontrun{
 #' tf <- file.path(tempdir(), "test_env")
 #'
 #' # Download latest ADM2 boundaries without saving to disk
