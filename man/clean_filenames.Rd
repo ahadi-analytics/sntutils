@@ -4,34 +4,22 @@
 \alias{clean_filenames}
 \title{Clean Filenames}
 \usage{
-clean_filenames(filenames, rename_files = FALSE)
+clean_filenames(filenames)
 }
 \arguments{
-\item{filenames}{A character vector of full file paths or basenames to clean.}
-
-\item{rename_files}{A bolean input to rename files using the new filenames.
-Default is FALSE.}
+\item{filenames}{A character vector of file paths or basenames.}
 }
 \value{
-A character vector of cleaned filenames with:
-\itemize{
-\item Common standalone numbers removed
-\item Multiple dots/underscores/hyphens condensed to single instances
-\item Leading/trailing separators removed
-\item Original paths preserved if full paths were provided
-\item Files automatically renamed if full paths were provided
-}
+A character vector of cleaned filenames (same length as
+input). Directory paths are preserved if provided.
 }
 \description{
-This function cleans a vector of filenames by removing common standalone
-numbers that appear in more than half of the filenames, condensing multiple
-separators (dots, underscores, hyphens), and removing leading/trailing
-separators.
+Cleans a vector of filenames by removing common standalone numbers
+that appear in more than half of the filenames, condensing multiple
+separators, and removing leading/trailing separators. This is a
+pure string operation — no files are renamed on disk.
 }
 \examples{
-# Basic usage
 clean_filenames(c("file_001.txt", "file_002.txt"))
-
-# With full paths
 clean_filenames(c("/path/to/file_001.txt", "/path/to/file_002.txt"))
 }

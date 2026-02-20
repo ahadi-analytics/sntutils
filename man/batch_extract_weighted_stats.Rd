@@ -11,7 +11,9 @@ batch_extract_weighted_stats(
   id_cols = c("adm0", "adm1", "adm2"),
   value_layer_to_process = 1,
   weight_na_as_zero = TRUE,
-  stat_type = "mean"
+  stat_type = "mean",
+  pattern_info = NULL,
+  time_components = NULL
 )
 }
 \arguments{
@@ -42,6 +44,12 @@ below and 50\% above, interpolating between pixel values when needed
 \item "both": Returns both weighted mean and weighted median statistics
 (default: "mean")
 }}
+
+\item{pattern_info}{Optional. Pre-parsed time pattern from
+\code{detect_time_pattern()}. If NULL, detected from filename.}
+
+\item{time_components}{Optional. Pre-parsed time components from
+\code{extract_time_components()}. If NULL, extracted from filename.}
 }
 \value{
 Data frame with id_cols and population-weighted mean values
