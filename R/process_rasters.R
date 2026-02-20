@@ -244,6 +244,10 @@ extract_time_components <- function(filename, info) {
 #'   multi-layer raster to extract. If the raster contains multiple layers
 #'   (e.g., different years or indicators), this argument selects the layer to
 #'   be processed. Default is 1
+#' @param pattern_info Optional. Pre-parsed time pattern from
+#'   \code{detect_time_pattern()}. If NULL, detected from filename.
+#' @param time_components Optional. Pre-parsed time components from
+#'   \code{extract_time_components()}. If NULL, extracted from filename.
 #'
 #' @return A data frame containing:
 #'   \itemize{
@@ -498,6 +502,10 @@ process_raster_collection <- function(directory,
 #'     below and 50% above, interpolating between pixel values when needed
 #'   - "both": Returns both weighted mean and weighted median statistics
 #'   (default: "mean")
+#' @param pattern_info Optional. Pre-parsed time pattern from
+#'   \code{detect_time_pattern()}. If NULL, detected from filename.
+#' @param time_components Optional. Pre-parsed time components from
+#'   \code{extract_time_components()}. If NULL, extracted from filename.
 #'
 #' @return Data frame with id_cols and population-weighted mean values
 batch_extract_weighted_stats <- function(
