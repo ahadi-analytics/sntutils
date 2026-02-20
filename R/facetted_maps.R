@@ -37,11 +37,14 @@
 #' @param fill_colors Named character vector of colors. Names must correspond
 #'   exactly to the levels in `fill_col`. Colors should be hex codes.
 #'
-#' @param title Character scalar. Plot title.
+#' @param title Optional character scalar. Plot title. Default is `NULL`
+#'   (no title).
 #'
-#' @param subtitle Character scalar. Plot subtitle.
+#' @param subtitle Optional character scalar. Plot subtitle. Default is
+#'   `NULL` (no subtitle).
 #'
-#' @param fill_label Character scalar. Legend title for the fill scale.
+#' @param fill_label Optional character scalar. Legend title for the fill
+#'   scale. Default is `NULL` (no legend title).
 #'
 #' @param ncol Integer. Number of columns in the facet layout. Only used when
 #'   `facet_row` is `NULL` (i.e., when using `facet_wrap()`). Default is `3`.
@@ -59,6 +62,14 @@
 #' @param scale Numeric. Scaling factor for the plot. Values greater than 1
 #'   make text and elements relatively smaller; values less than 1 make them
 #'   larger. Default is `1`.
+#'
+#' @param title_size Numeric. Font size for the plot title. Default is `14`.
+#'
+#' @param subtitle_size Numeric. Font size for the plot subtitle. Default
+#'   is `11`.
+#'
+#' @param legend_title_size Numeric. Font size for the legend title.
+#'   Default is `10`.
 #'
 #' @param compress_image Logical. Compress PNG using `compress_png()` after
 #'   saving. Defaults to TRUE.
@@ -113,15 +124,18 @@ facetted_map_bins <- function(
   facet_row = NULL,
   adm1_shp = NULL,
   fill_colors,
-  title,
-  subtitle,
-  fill_label,
+  title = NULL,
+  subtitle = NULL,
+  fill_label = NULL,
   ncol = 3,
   output_file = NULL,
   width = 7,
   height = 10,
   dpi = 300,
   scale = 1,
+  title_size = 14,
+  subtitle_size = 11,
+  legend_title_size = 10,
   compress_image = TRUE
 ) {
   plot_obj <-
@@ -204,12 +218,15 @@ facetted_map_bins <- function(
       panel.spacing = grid::unit(4, "pt"),
       legend.box.margin = ggplot2::margin(t = 8),
       plot.title = ggplot2::element_text(
+        size = title_size,
         margin = ggplot2::margin(b = 8)
       ),
       plot.subtitle = ggplot2::element_text(
+        size = subtitle_size,
         margin = ggplot2::margin(b = 10)
       ),
       legend.title = ggplot2::element_text(
+        size = legend_title_size,
         margin = ggplot2::margin(b = 6)
       ),
       plot.margin = ggplot2::margin(t = 5, r = 5, b = 5, l = 5)
