@@ -35,14 +35,8 @@ clean_filenames <- function(filenames, rename_files = FALSE) {
     stringr::str_extract_all("(?<![A-Za-z])\\d+(?![A-Za-z])") |>
     unlist()
 
-  common_numbers <- all_numbers |>
-    table() |>
-    as.data.frame() |>
-    dplyr::rename(Number = all_numbers) |>
-    dplyr::mutate(Number = as.character(Number)) |>
-    dplyr::arrange(dplyr::desc(Freq)) |>
-    dplyr::filter(Freq > length(filenames) / 2) |>
-    dplyr::pull(Number)
+  num_freq <- table(all_numbers)
+  common_numbers <- names(num_freq[num_freq > length(filenames) / 2])
 
   # Return original filenames if no common numbers are found
   if (is.null(common_numbers) || length(common_numbers) == 0) {
