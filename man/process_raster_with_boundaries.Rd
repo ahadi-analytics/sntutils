@@ -10,7 +10,9 @@ process_raster_with_boundaries(
   id_cols = c("adm0", "adm1"),
   aggregations = c("mean"),
   raster_is_density = FALSE,
-  layer_to_process = 1
+  layer_to_process = 1,
+  pattern_info = NULL,
+  time_components = NULL
 )
 }
 \arguments{
@@ -33,6 +35,12 @@ Default is FALSE.}
 multi-layer raster to extract. If the raster contains multiple layers
 (e.g., different years or indicators), this argument selects the layer to
 be processed. Default is 1}
+
+\item{pattern_info}{Optional. Pre-parsed time pattern from
+\code{detect_time_pattern()}. If NULL, detected from filename.}
+
+\item{time_components}{Optional. Pre-parsed time components from
+\code{extract_time_components()}. If NULL, extracted from filename.}
 }
 \value{
 A data frame containing:
