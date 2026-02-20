@@ -11,15 +11,18 @@ facetted_map_bins(
   facet_row = NULL,
   adm1_shp = NULL,
   fill_colors,
-  title,
-  subtitle,
-  fill_label,
+  title = NULL,
+  subtitle = NULL,
+  fill_label = NULL,
   ncol = 3,
   output_file = NULL,
   width = 7,
   height = 10,
   dpi = 300,
   scale = 1,
+  title_size = 14,
+  subtitle_size = 11,
+  legend_title_size = 10,
   compress_image = TRUE
 )
 }
@@ -46,11 +49,14 @@ black outlines. Default is \code{NULL}.}
 \item{fill_colors}{Named character vector of colors. Names must correspond
 exactly to the levels in \code{fill_col}. Colors should be hex codes.}
 
-\item{title}{Character scalar. Plot title.}
+\item{title}{Optional character scalar. Plot title. Default is \code{NULL}
+(no title).}
 
-\item{subtitle}{Character scalar. Plot subtitle.}
+\item{subtitle}{Optional character scalar. Plot subtitle. Default is
+\code{NULL} (no subtitle).}
 
-\item{fill_label}{Character scalar. Legend title for the fill scale.}
+\item{fill_label}{Optional character scalar. Legend title for the fill
+scale. Default is \code{NULL} (no legend title).}
 
 \item{ncol}{Integer. Number of columns in the facet layout. Only used when
 \code{facet_row} is \code{NULL} (i.e., when using \code{facet_wrap()}). Default is \code{3}.}
@@ -68,6 +74,14 @@ Default is \code{300}.}
 \item{scale}{Numeric. Scaling factor for the plot. Values greater than 1
 make text and elements relatively smaller; values less than 1 make them
 larger. Default is \code{1}.}
+
+\item{title_size}{Numeric. Font size for the plot title. Default is \code{14}.}
+
+\item{subtitle_size}{Numeric. Font size for the plot subtitle. Default
+is \code{11}.}
+
+\item{legend_title_size}{Numeric. Font size for the legend title.
+Default is \code{10}.}
 
 \item{compress_image}{Logical. Compress PNG using \code{compress_png()} after
 saving. Defaults to TRUE.}
