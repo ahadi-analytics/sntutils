@@ -1,84 +1,75 @@
 #' Clean Filenames
 #'
-#' This function cleans a vector of filenames by removing common standalone
-#' numbers that appear in more than half of the filenames, condensing multiple
-#' separators (dots, underscores, hyphens), and removing leading/trailing
-#' separators.
+#' Cleans a vector of filenames by removing common standalone numbers
+#' that appear in more than half of the filenames, condensing multiple
+#' separators, and removing leading/trailing separators. This is a
+#' pure string operation — no files are renamed on disk.
 #'
-#' @param filenames A character vector of full file paths or basenames to clean.
-#' @param rename_files A bolean input to rename files using the new filenames.
-#'    Default is FALSE.
-#' @return A character vector of cleaned filenames with:
-#'   - Common standalone numbers removed
-#'   - Multiple dots/underscores/hyphens condensed to single instances
-#'   - Leading/trailing separators removed
-#'   - Original paths preserved if full paths were provided
-#'   - Files automatically renamed if full paths were provided
+#' @param filenames A character vector of file paths or basenames.
+#' @return A character vector of cleaned filenames (same length as
+#'   input). Directory paths are preserved if provided.
 #'
 #' @examples
-#' # Basic usage
 #' clean_filenames(c("file_001.txt", "file_002.txt"))
-#'
-#' # With full paths
 #' clean_filenames(c("/path/to/file_001.txt", "/path/to/file_002.txt"))
 #' @export
-clean_filenames <- function(filenames, rename_files = FALSE) {
-  if (all(dirname(filenames) != ".")) {
-    full_path <- filenames
-    filenames <- basename(filenames)
-    is_full_path <- TRUE
-  } else {
-    is_full_path <- FALSE
-  }
+clean_filenames <- function(filenames) {
+  dirs <- dirname(filenames)
+  fnames <- basename(filenames)
 
-  all_numbers <- filenames |>
-    stringr::str_extract_all("(?<![A-Za-z])\\d+(?![A-Za-z])") |>
+  # separate extension before cleaning to protect it
+  extensions <- tools::file_ext(fnames)
+  basenames <- tools::file_path_sans_ext(fnames)
+
+  all_numbers <- basenames |>
+    stringr::str_extract_all(
+      "(?<![A-Za-z])\\d+(?![A-Za-z])"
+    ) |>
     unlist()
 
   num_freq <- table(all_numbers)
-  common_numbers <- names(num_freq[num_freq > length(filenames) / 2])
+  common_numbers <- names(
+    num_freq[num_freq > length(filenames) / 2]
+  )
 
-  # Return original filenames if no common numbers are found
-  if (is.null(common_numbers) || length(common_numbers) == 0) {
-    return(if (is_full_path) full_path else filenames)
+  # never strip 4-digit years (1980-2099)
+  is_year <- grepl("^(19[89]\\d|20\\d{2})$", common_numbers)
+  common_numbers <- common_numbers[!is_year]
+
+  # return originals if no common numbers to strip
+  if (length(common_numbers) == 0) {
+    return(filenames)
   }
 
-  pattern_common_numbers <- if (length(common_numbers) > 0) {
-    paste0(
-      "(?<![A-Za-z\\d])(",
-      paste(common_numbers, collapse = "|"),
-      ")(?![A-Za-z\\d])"
-    )
-  } else {
-    NULL
-  }
+  pattern_common_numbers <- paste0(
+    "(?<![A-Za-z\\d])(",
+    paste(common_numbers, collapse = "|"),
+    ")(?![A-Za-z\\d])"
+  )
 
-  cleaned_filenames <- filenames |>
+  cleaned_basenames <- basenames |>
     stringr::str_replace_all(
       pattern = pattern_common_numbers,
       replacement = ""
     ) |>
-    stringr::str_replace_all(pattern = "\\.{2,}", replacement = ".") |>
     stringr::str_replace_all(pattern = "_{2,}", replacement = "_") |>
-    stringr::str_replace_all(pattern = "_+\\.|\\._", replacement = "") |>
+    stringr::str_replace_all(
+      pattern = "_+\\.|\\._+", replacement = "."
+    ) |>
+    stringr::str_replace_all(
+      pattern = "\\.{2,}", replacement = "."
+    ) |>
     stringr::str_replace_all(pattern = "-+", replacement = "-") |>
-    stringr::str_replace_all(pattern = "^[_\\.]+|[_\\.]+$", replacement = "")
+    stringr::str_replace_all(
+      pattern = "^[_\\.]+|[_\\.]+$", replacement = ""
+    )
 
-  if (is_full_path) {
-    cleaned_filenames <- file.path(dirname(full_path), cleaned_filenames)
+  # reattach extension and directory
+  cleaned <- paste0(cleaned_basenames, ".", extensions)
+  has_dir <- dirs != "."
+  cleaned[has_dir] <- file.path(dirs[has_dir], cleaned[has_dir])
 
-    if (rename_files) {
-      # Rename actual files if they differ from cleaned names
-      for (i in seq_along(full_path)) {
-        if (full_path[i] != cleaned_filenames[i] && file.exists(
-          full_path[i])) {
-          file.rename(full_path[i], cleaned_filenames[i])
-        }
-      }
-    }
-  }
-
-  return(cleaned_filenames)
+  cleaned
 }
 
 
@@ -291,15 +282,25 @@ process_raster_with_boundaries <- function(raster_file,
                                            id_cols = c("adm0", "adm1"),
                                            aggregations = c("mean"),
                                            raster_is_density = FALSE,
-                                           layer_to_process = 1) {
+                                           layer_to_process = 1,
+                                           pattern_info = NULL,
+                                           time_components = NULL) {
 
   valid_aggs <- c("mean", "sum", "median")
   if (!all(aggregations %in% valid_aggs)) {
     cli::cli_abort("Invalid aggregation method. Use: {valid_aggs}")
   }
 
-  pattern_info <- detect_time_pattern(raster_file)
-  components <- extract_time_components(raster_file, pattern_info)
+  # use pre-parsed time info if provided, otherwise detect
+  if (is.null(pattern_info)) {
+    pattern_info <- detect_time_pattern(raster_file)
+  }
+  if (is.null(time_components)) {
+    time_components <- extract_time_components(
+      raster_file, pattern_info
+    )
+  }
+  components <- time_components
 
   rast <- terra::rast(raster_file)[[layer_to_process]]
   rast[rast == -9999] <- NA
@@ -425,37 +426,37 @@ process_raster_collection <- function(directory,
                                       layer_to_process = 1,
                                       raster_is_density = FALSE) {
 
-  # Get list of raster files in directory
-  raster_files <- list.files(directory, pattern = pattern, full.names = TRUE)
-
-  # Apply the cleaning function to filenames if there are multiple files
-  # then change the names accordingly
-  if (length(raster_files) > 1) {
-    cleaned_filenames <- clean_filenames(raster_files, rename_files = TRUE)
-
-    # Update raster_files with the cleaned filenames
-    raster_files <- cleaned_filenames
-  }
+  # get raster files (original paths stay untouched)
+  raster_files <- list.files(
+    directory, pattern = pattern, full.names = TRUE
+  )
 
   if (length(raster_files) == 0) {
     cli::cli_abort("No files matching pattern found in: {directory}")
   }
 
-  # Create progress bar
+  # clean names for date detection only; never rename on disk
+  cleaned_names <- clean_filenames(raster_files)
+  pattern_info <- detect_time_pattern(cleaned_names)
+
   pb <- progress::progress_bar$new(
     format = "Processing raster files [:bar] :percent | ETA: :eta",
     total = length(raster_files)
   )
 
-  # Process each file and combine results
-  results <- lapply(raster_files, function(x) {
+  results <- lapply(seq_along(raster_files), function(i) {
+    components <- extract_time_components(
+      cleaned_names[i], pattern_info
+    )
     result <- process_raster_with_boundaries(
-      x,
+      raster_file = raster_files[i],
       shapefile = shapefile,
       id_cols = id_cols,
       aggregations = aggregations,
       raster_is_density = raster_is_density,
-      layer_to_process = layer_to_process
+      layer_to_process = layer_to_process,
+      pattern_info = pattern_info,
+      time_components = components
     )
     pb$tick()
     result
@@ -506,18 +507,25 @@ batch_extract_weighted_stats <- function(
   id_cols = c("adm0", "adm1", "adm2"),
   value_layer_to_process = 1,
   weight_na_as_zero = TRUE,
-  stat_type = "mean"
+  stat_type = "mean",
+  pattern_info = NULL,
+  time_components = NULL
 ) {
   # validate stat_type input
   if (!stat_type %in% c("mean", "median", "both")) {
     cli::cli_abort("stat_type must be 'mean', 'median', or 'both'")
   }
 
-  # detect time pattern in filename
-  pattern_info <- detect_time_pattern(value_raster_file)
-
-  # extract year/month components
-  components <- extract_time_components(value_raster_file, pattern_info)
+  # use pre-parsed time info if provided, otherwise detect
+  if (is.null(pattern_info)) {
+    pattern_info <- detect_time_pattern(value_raster_file)
+  }
+  if (is.null(time_components)) {
+    time_components <- extract_time_components(
+      value_raster_file, pattern_info
+    )
+  }
+  components <- time_components
 
   # load rasters
   value_rast <- terra::rast(value_raster_file)[[value_layer_to_process]]
@@ -726,32 +734,37 @@ process_weighted_raster_collection <- function(
     cli::cli_abort("stat_type must be 'mean', 'median', or 'both'")
   }
 
-  # list and clean value raster filenames
+  # list value rasters (original paths stay untouched)
   value_raster_files <- list.files(
     value_raster_dir,
     pattern = value_pattern,
     full.names = TRUE
-  ) |>
-    clean_filenames(rename_files = TRUE)
+  )
 
   if (length(value_raster_files) == 0) {
-    cli::cli_abort("No value raster files found in '{value_raster_dir}'.")
+    cli::cli_abort(
+      "No value raster files found in '{value_raster_dir}'."
+    )
   }
 
-  # list and clean population raster filenames
+  # list population rasters (original paths stay untouched)
   pop_raster_files <- list.files(
     pop_raster_dir,
     pattern = pop_pattern,
     full.names = TRUE
-  ) |>
-    clean_filenames(rename_files = TRUE)
+  )
 
   if (length(pop_raster_files) == 0) {
-    cli::cli_abort("No population raster files found in '{pop_raster_dir}'.")
+    cli::cli_abort(
+      "No population raster files found in '{pop_raster_dir}'."
+    )
   }
 
-  # detect time pattern once for value rasters
-  pattern_info <- detect_time_pattern(value_raster_files)
+  # clean names for date detection only; never rename on disk
+  cleaned_value_names <- clean_filenames(value_raster_files)
+  pattern_info <- detect_time_pattern(cleaned_value_names)
+
+  single_pop <- length(pop_raster_files) == 1
 
   # initialize progress bar
   cli::cli_progress_bar(
@@ -759,51 +772,50 @@ process_weighted_raster_collection <- function(
     total = length(value_raster_files)
   )
 
-  # process each value raster using for loop for progress tracking
   results <- vector("list", length(value_raster_files))
 
   for (i in seq_along(value_raster_files)) {
-    value_file <- value_raster_files[i]
+    # parse time from cleaned name, read from original path
+    components <- extract_time_components(
+      cleaned_value_names[i], pattern_info
+    )
+    year_str <- as.character(components$year)
 
-    # extract time components
-    time_components <- extract_time_components(value_file, pattern_info)
-    year_str <- as.character(time_components$year)
-
-    # find matching population raster by year
-    matched_pop <- pop_raster_files[grepl(year_str, basename(pop_raster_files))]
+    # match population raster: use single pop for all if only one
+    if (single_pop) {
+      matched_pop <- pop_raster_files
+    } else {
+      matched_pop <- pop_raster_files[
+        grepl(year_str, basename(pop_raster_files))
+      ]
+    }
 
     if (length(matched_pop) == 0) {
-      cli::cli_abort(
-        paste0(
-          "No population raster matching year {year_str} found",
-          " for {basename(value_file)}."
-        )
-      )
+      cli::cli_abort(paste0(
+        "No population raster matching year {year_str}",
+        " found for {basename(value_raster_files[i])}."
+      ))
     } else if (length(matched_pop) > 1) {
       cli::cli_abort(
-        paste0(
-          "Multiple population rasters found for year {year_str}. ",
-          "Please resolve duplicates."
-        )
+        "Multiple population rasters found for year {year_str}."
       )
     }
 
-    # process with matched population raster
     results[[i]] <- batch_extract_weighted_stats(
-      value_raster_file = value_file,
+      value_raster_file = value_raster_files[i],
       pop_raster_file = matched_pop,
       shapefile = shapefile,
       id_cols = id_cols,
       value_layer_to_process = value_layer_to_process,
       weight_na_as_zero = weight_na_as_zero,
-      stat_type = stat_type
+      stat_type = stat_type,
+      pattern_info = pattern_info,
+      time_components = components
     )
 
-    # update progress
     cli::cli_progress_update()
   }
 
-  # complete progress bar
   cli::cli_progress_done()
 
   # combine and sort results
