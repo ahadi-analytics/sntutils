@@ -2330,6 +2330,263 @@ dhs_anemia:
     label_fr: "Nombre d'enfants de 6-59 mois atteints d'anémie sévère (Hb <8,0 g/dL) (numérateur pour dhs_severe_anemia)"
     label_pt: "Número de crianças de 6-59 meses com anemia grave (Hb <8,0 g/dL) (numerador para dhs_severe_anemia)"
 
+  # ── ACT Treatment ────────────────────────────────────────────────────────────
+  dhs_act:
+    snt_var_name: dhs_act
+    label_en: "ACT treatment among febrile children 0-59 months (%). Numerator: febrile children who received ACT. Denominator: children with fever in last 2 weeks."
+    label_fr: "Traitement CTA chez les enfants fiévreux de 0-59 mois (%). Numérateur: enfants fiévreux ayant reçu un CTA. Dénominateur: enfants avec fièvre dans les 2 dernières semaines."
+    label_pt: "Tratamento ACT em crianças febris de 0-59 meses (%). Numerador: crianças febris que receberam ACT. Denominador: crianças com febre nas últimas 2 semanas."
+
+  dhs_act_low:
+    snt_var_name: dhs_act_low
+    label_en: "Lower 95% confidence interval for ACT treatment (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour le traitement CTA (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para tratamento ACT (%)"
+
+  dhs_act_upp:
+    snt_var_name: dhs_act_upp
+    label_en: "Upper 95% confidence interval for ACT treatment (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour le traitement CTA (%)"
+    label_pt: "Intervalo de confiança superior de 95% para tratamento ACT (%)"
+
+  dhs_act_tested:
+    snt_var_name: dhs_act_tested
+    label_en: "ACT treatment among febrile children who tested positive (%). Numerator: test-positive children who received ACT. Denominator: febrile children who tested positive."
+    label_fr: "Traitement CTA chez les enfants fiévreux testés positifs (%). Numérateur: enfants testés positifs ayant reçu un CTA. Dénominateur: enfants fiévreux testés positifs."
+    label_pt: "Tratamento ACT em crianças febris com teste positivo (%). Numerador: crianças com teste positivo que receberam ACT. Denominador: crianças febris com teste positivo."
+
+  dhs_act_tested_low:
+    snt_var_name: dhs_act_tested_low
+    label_en: "Lower 95% confidence interval for ACT treatment among tested positive (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour le traitement CTA parmi les testés positifs (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para tratamento ACT entre testados positivos (%)"
+
+  dhs_act_tested_upp:
+    snt_var_name: dhs_act_tested_upp
+    label_en: "Upper 95% confidence interval for ACT treatment among tested positive (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour le traitement CTA parmi les testés positifs (%)"
+    label_pt: "Intervalo de confiança superior de 95% para tratamento ACT entre testados positivos (%)"
+
+  dhs_n_fever:
+    snt_var_name: dhs_n_fever
+    label_en: "Number of children 0-59 months with fever in last 2 weeks (denominator for dhs_act)"
+    label_fr: "Nombre d'enfants de 0-59 mois avec fièvre dans les 2 dernières semaines (dénominateur pour dhs_act)"
+    label_pt: "Número de crianças de 0-59 meses com febre nas últimas 2 semanas (denominador para dhs_act)"
+
+  dhs_n_act:
+    snt_var_name: dhs_n_act
+    label_en: "Number of febrile children 0-59 months who received ACT (numerator for dhs_act)"
+    label_fr: "Nombre d'enfants fiévreux de 0-59 mois ayant reçu un CTA (numérateur pour dhs_act)"
+    label_pt: "Número de crianças febris de 0-59 meses que receberam ACT (numerador para dhs_act)"
+
+  dhs_n_tested:
+    snt_var_name: dhs_n_tested
+    label_en: "Number of febrile children who tested positive (denominator for dhs_act_tested)"
+    label_fr: "Nombre d'enfants fiévreux testés positifs (dénominateur pour dhs_act_tested)"
+    label_pt: "Número de crianças febris com teste positivo (denominador para dhs_act_tested)"
+
+  # ── IRS Coverage ─────────────────────────────────────────────────────────────
+  dhs_irs:
+    snt_var_name: dhs_irs
+    label_en: "Indoor Residual Spraying (IRS) coverage (%). Proportion of households sprayed in last 12 months."
+    label_fr: "Couverture en pulvérisation intradomiciliaire (PID) (%). Proportion de ménages pulvérisés dans les 12 derniers mois."
+    label_pt: "Cobertura de Pulverização Residual Intradomiciliar (PRI) (%). Proporção de domicílios pulverizados nos últimos 12 meses."
+
+  dhs_irs_low:
+    snt_var_name: dhs_irs_low
+    label_en: "Lower 95% confidence interval for IRS coverage (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la couverture PID (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para cobertura PRI (%)"
+
+  dhs_irs_upp:
+    snt_var_name: dhs_irs_upp
+    label_en: "Upper 95% confidence interval for IRS coverage (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la couverture PID (%)"
+    label_pt: "Intervalo de confiança superior de 95% para cobertura PRI (%)"
+
+  dhs_n_households_irs:
+    snt_var_name: dhs_n_households_irs
+    label_en: "Number of households with valid IRS data (denominator for dhs_irs)"
+    label_fr: "Nombre de ménages avec données PID valides (dénominateur pour dhs_irs)"
+    label_pt: "Número de domicílios com dados PRI válidos (denominador para dhs_irs)"
+
+  dhs_n_sprayed:
+    snt_var_name: dhs_n_sprayed
+    label_en: "Number of households sprayed in last 12 months (numerator for dhs_irs)"
+    label_fr: "Nombre de ménages pulvérisés dans les 12 derniers mois (numérateur pour dhs_irs)"
+    label_pt: "Número de domicílios pulverizados nos últimos 12 meses (numerador para dhs_irs)"
+
+  # ── ANC Coverage ─────────────────────────────────────────────────────────────
+  dhs_anc_1plus:
+    snt_var_name: dhs_anc_1plus
+    label_en: "ANC 1+ coverage (%). Proportion of women with at least 1 antenatal care visit during most recent pregnancy."
+    label_fr: "Couverture CPN 1+ (%). Proportion de femmes ayant eu au moins 1 visite prénatale lors de la dernière grossesse."
+    label_pt: "Cobertura CPN 1+ (%). Proporção de mulheres com pelo menos 1 consulta pré-natal na gravidez mais recente."
+
+  dhs_anc_1plus_low:
+    snt_var_name: dhs_anc_1plus_low
+    label_en: "Lower 95% confidence interval for ANC 1+ coverage (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la couverture CPN 1+ (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para cobertura CPN 1+ (%)"
+
+  dhs_anc_1plus_upp:
+    snt_var_name: dhs_anc_1plus_upp
+    label_en: "Upper 95% confidence interval for ANC 1+ coverage (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la couverture CPN 1+ (%)"
+    label_pt: "Intervalo de confiança superior de 95% para cobertura CPN 1+ (%)"
+
+  dhs_anc_4plus:
+    snt_var_name: dhs_anc_4plus
+    label_en: "ANC 4+ coverage (%). Proportion of women with at least 4 antenatal care visits."
+    label_fr: "Couverture CPN 4+ (%). Proportion de femmes ayant eu au moins 4 visites prénatales."
+    label_pt: "Cobertura CPN 4+ (%). Proporção de mulheres com pelo menos 4 consultas pré-natais."
+
+  dhs_anc_4plus_low:
+    snt_var_name: dhs_anc_4plus_low
+    label_en: "Lower 95% confidence interval for ANC 4+ coverage (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la couverture CPN 4+ (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para cobertura CPN 4+ (%)"
+
+  dhs_anc_4plus_upp:
+    snt_var_name: dhs_anc_4plus_upp
+    label_en: "Upper 95% confidence interval for ANC 4+ coverage (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la couverture CPN 4+ (%)"
+    label_pt: "Intervalo de confiança superior de 95% para cobertura CPN 4+ (%)"
+
+  dhs_anc_8plus:
+    snt_var_name: dhs_anc_8plus
+    label_en: "ANC 8+ coverage (%). Proportion of women with at least 8 antenatal care visits (2016 WHO recommendation)."
+    label_fr: "Couverture CPN 8+ (%). Proportion de femmes ayant eu au moins 8 visites prénatales (recommandation OMS 2016)."
+    label_pt: "Cobertura CPN 8+ (%). Proporção de mulheres com pelo menos 8 consultas pré-natais (recomendação OMS 2016)."
+
+  dhs_anc_8plus_low:
+    snt_var_name: dhs_anc_8plus_low
+    label_en: "Lower 95% confidence interval for ANC 8+ coverage (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la couverture CPN 8+ (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para cobertura CPN 8+ (%)"
+
+  dhs_anc_8plus_upp:
+    snt_var_name: dhs_anc_8plus_upp
+    label_en: "Upper 95% confidence interval for ANC 8+ coverage (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la couverture CPN 8+ (%)"
+    label_pt: "Intervalo de confiança superior de 95% para cobertura CPN 8+ (%)"
+
+  dhs_n_recent_births:
+    snt_var_name: dhs_n_recent_births
+    label_en: "Number of women with recent births used for ANC analysis (denominator)"
+    label_fr: "Nombre de femmes avec naissances récentes utilisé pour l'analyse CPN (dénominateur)"
+    label_pt: "Número de mulheres com nascimentos recentes usado para análise CPN (denominador)"
+
+  # ── EPI Coverage ─────────────────────────────────────────────────────────────
+  dhs_epi_bcg:
+    snt_var_name: dhs_epi_bcg
+    label_en: "BCG vaccination coverage among children 12-23 months (%)"
+    label_fr: "Couverture vaccinale BCG chez les enfants de 12-23 mois (%)"
+    label_pt: "Cobertura vacinal BCG em crianças de 12-23 meses (%)"
+
+  dhs_epi_bcg_low:
+    snt_var_name: dhs_epi_bcg_low
+    label_en: "Lower 95% confidence interval for BCG coverage (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la couverture BCG (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para cobertura BCG (%)"
+
+  dhs_epi_bcg_upp:
+    snt_var_name: dhs_epi_bcg_upp
+    label_en: "Upper 95% confidence interval for BCG coverage (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la couverture BCG (%)"
+    label_pt: "Intervalo de confiança superior de 95% para cobertura BCG (%)"
+
+  dhs_epi_dpt3:
+    snt_var_name: dhs_epi_dpt3
+    label_en: "DPT3 vaccination coverage among children 12-23 months (%)"
+    label_fr: "Couverture vaccinale DTC3 chez les enfants de 12-23 mois (%)"
+    label_pt: "Cobertura vacinal DPT3 em crianças de 12-23 meses (%)"
+
+  dhs_epi_dpt3_low:
+    snt_var_name: dhs_epi_dpt3_low
+    label_en: "Lower 95% confidence interval for DPT3 coverage (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la couverture DTC3 (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para cobertura DPT3 (%)"
+
+  dhs_epi_dpt3_upp:
+    snt_var_name: dhs_epi_dpt3_upp
+    label_en: "Upper 95% confidence interval for DPT3 coverage (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la couverture DTC3 (%)"
+    label_pt: "Intervalo de confiança superior de 95% para cobertura DPT3 (%)"
+
+  dhs_epi_measles1:
+    snt_var_name: dhs_epi_measles1
+    label_en: "Measles 1 vaccination coverage among children 12-23 months (%)"
+    label_fr: "Couverture vaccinale rougeole 1 chez les enfants de 12-23 mois (%)"
+    label_pt: "Cobertura vacinal sarampo 1 em crianças de 12-23 meses (%)"
+
+  dhs_epi_measles1_low:
+    snt_var_name: dhs_epi_measles1_low
+    label_en: "Lower 95% confidence interval for measles 1 coverage (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la couverture rougeole 1 (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para cobertura sarampo 1 (%)"
+
+  dhs_epi_measles1_upp:
+    snt_var_name: dhs_epi_measles1_upp
+    label_en: "Upper 95% confidence interval for measles 1 coverage (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la couverture rougeole 1 (%)"
+    label_pt: "Intervalo de confiança superior de 95% para cobertura sarampo 1 (%)"
+
+  dhs_epi_fully_vaccinated:
+    snt_var_name: dhs_epi_fully_vaccinated
+    label_en: "Fully vaccinated coverage among children 12-23 months (%). BCG + DPT3 + Polio3 + Measles1."
+    label_fr: "Couverture complète de vaccination chez les enfants de 12-23 mois (%). BCG + DTC3 + Polio3 + Rougeole1."
+    label_pt: "Cobertura vacinal completa em crianças de 12-23 meses (%). BCG + DPT3 + Pólio3 + Sarampo1."
+
+  dhs_epi_fully_vaccinated_low:
+    snt_var_name: dhs_epi_fully_vaccinated_low
+    label_en: "Lower 95% confidence interval for fully vaccinated coverage (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la couverture vaccinale complète (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para cobertura vacinal completa (%)"
+
+  dhs_epi_fully_vaccinated_upp:
+    snt_var_name: dhs_epi_fully_vaccinated_upp
+    label_en: "Upper 95% confidence interval for fully vaccinated coverage (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la couverture vaccinale complète (%)"
+    label_pt: "Intervalo de confiança superior de 95% para cobertura vacinal completa (%)"
+
+  dhs_n_epi_eligible:
+    snt_var_name: dhs_n_epi_eligible
+    label_en: "Number of children in eligible age range for EPI analysis (denominator)"
+    label_fr: "Nombre d'enfants dans la tranche d'âge éligible pour l'analyse PEV (dénominateur)"
+    label_pt: "Número de crianças na faixa etária elegível para análise PEV (denominador)"
+
+  # ── SMC Coverage ─────────────────────────────────────────────────────────────
+  dhs_smc:
+    snt_var_name: dhs_smc
+    label_en: "Seasonal Malaria Chemoprevention (SMC) coverage among children 0-59 months (%)"
+    label_fr: "Couverture en chimioprévention du paludisme saisonnier (CPS) chez les enfants de 0-59 mois (%)"
+    label_pt: "Cobertura de Quimioprevenção Sazonal da Malária (QSM) em crianças de 0-59 meses (%)"
+
+  dhs_smc_low:
+    snt_var_name: dhs_smc_low
+    label_en: "Lower 95% confidence interval for SMC coverage (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la couverture CPS (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para cobertura QSM (%)"
+
+  dhs_smc_upp:
+    snt_var_name: dhs_smc_upp
+    label_en: "Upper 95% confidence interval for SMC coverage (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la couverture CPS (%)"
+    label_pt: "Intervalo de confiança superior de 95% para cobertura QSM (%)"
+
+  dhs_n_smc_eligible:
+    snt_var_name: dhs_n_smc_eligible
+    label_en: "Number of children 0-59 months with valid SMC data (denominator for dhs_smc)"
+    label_fr: "Nombre d'enfants de 0-59 mois avec données CPS valides (dénominateur pour dhs_smc)"
+    label_pt: "Número de crianças de 0-59 meses com dados QSM válidos (denominador para dhs_smc)"
+
+  dhs_n_smc_received:
+    snt_var_name: dhs_n_smc_received
+    label_en: "Number of children 0-59 months who received SMC (numerator for dhs_smc)"
+    label_fr: "Nombre d'enfants de 0-59 mois ayant reçu la CPS (numérateur pour dhs_smc)"
+    label_pt: "Número de crianças de 0-59 meses que receberam QSM (numerador para dhs_smc)"
+
 mbg_indicators:
   _description: "Model-Based Geostatistics (MBG) spatially smoothed estimates from DHS survey data."
   label_en: "MBG spatial model outputs"
