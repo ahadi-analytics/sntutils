@@ -4,7 +4,13 @@
 \alias{write_emod_weather_by_adm2}
 \title{Write EMOD weather files per adm2 (one folder per district)}
 \usage{
-write_emod_weather_by_adm2(df, node_coord, weather_dir, ...)
+write_emod_weather_by_adm2(
+  df,
+  node_coord,
+  weather_dir,
+  folder_case = "title",
+  ...
+)
 }
 \arguments{
 \item{df}{Data.frame with columns \code{node_id}, \code{steps},
@@ -14,6 +20,9 @@ write_emod_weather_by_adm2(df, node_coord, weather_dir, ...)
 (e.g. from shapefile centroids).}
 
 \item{weather_dir}{Base output directory. Each adm2 gets a subfolder.}
+
+\item{folder_case}{Case style for subfolder names: \code{"title"} (default),
+\code{"upper"}, or \code{"lower"}.}
 
 \item{...}{Additional arguments passed to \code{\link[=write_emod_weather]{write_emod_weather()}}.}
 }
