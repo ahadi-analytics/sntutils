@@ -103,7 +103,12 @@
           )
         }
 
-        dplyr::bind_cols(data, row[admin_cols])
+        # keep only needed columns to avoid unnamed metadata
+        keep_cols <- intersect(
+          c("YYYYMMDD", "YEAR", "MM", power_vars),
+          names(data)
+        )
+        dplyr::bind_cols(data[keep_cols], row[admin_cols])
       },
       error = function(e) {
         if (attempt < max_retries) {
