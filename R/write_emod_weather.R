@@ -223,7 +223,8 @@ write_emod_weather <- function(
     suffix <- var_suffixes[[var_name]]
     bin_path <- file.path(
       weather_dir,
-      paste0(climate_profile, "_", suffix, ".bin")
+      if (nzchar(climate_profile)) paste0(climate_profile, "_", suffix, ".bin")
+      else paste0(suffix, ".bin")
     )
     json_path <- paste0(bin_path, ".json")
 
@@ -281,7 +282,7 @@ write_emod_weather_by_adm2 <- function(df, node_coord, weather_dir, ...) {
       list(
         df = adm2_df,
         weather_dir = file.path(weather_dir, adm2_clean),
-        climate_profile = adm2_clean
+        climate_profile = ""
       ),
       dots
     ))
