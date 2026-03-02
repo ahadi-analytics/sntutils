@@ -260,20 +260,32 @@ write_emod_weather <- function(
 #' @param node_coord Data.frame mapping `node_id` to `adm2`
 #'   (e.g. from shapefile centroids).
 #' @param weather_dir Base output directory. Each adm2 gets a subfolder.
+#' @param folder_case Case style for subfolder names: `"title"` (default),
+#'   `"upper"`, or `"lower"`.
 #' @param ... Additional arguments passed to [write_emod_weather()].
 #'
 #' @return The base output directory path (invisibly).
 #'
 #' @export
-write_emod_weather_by_adm2 <- function(df, node_coord, weather_dir, ...) {
+write_emod_weather_by_adm2 <- function(
+    df, node_coord, weather_dir, folder_case = "title", ...
+) {
   rlang::check_installed("purrr", reason = "to iterate over adm2 nodes")
+
+  folder_case <- match.arg(folder_case, c("title", "upper", "lower"))
+
+  case_fn <- switch(
+    folder_case,
+    title = stringr::str_to_title,
+    upper = toupper,
+    lower = tolower
+  )
 
   dots <- list(...)
   cli::cli_process_start("Writing EMOD weather files per adm2")
 
   purrr::pwalk(node_coord, function(node_id, adm2, ...) {
-    adm2_clean <- tolower(gsub("[^A-Za-z0-9]+", "_", adm2)) |>
-      stringr::str_to_title()
+    adm2_clean <- gsub("[^A-Za-z0-9]+", "_", adm2) |> case_fn()
 
     adm2_df <- df[df$node_id == node_id, ]
     adm2_df$node_id <- 1L
@@ -283,10 +295,7 @@ write_emod_weather_by_adm2 <- function(df, node_coord, weather_dir, ...) {
       c(
         list(
           df = adm2_df,
-          weather_dir = file.path(
-            weather_dir,
-            stringr::str_to_title(adm2_clean)
-          ),
+          weather_dir = file.path(weather_dir, adm2_clean),
           climate_profile = ""
         ),
         dots
