@@ -278,14 +278,20 @@ write_emod_weather_by_adm2 <- function(df, node_coord, weather_dir, ...) {
     adm2_df <- df[df$node_id == node_id, ]
     adm2_df$node_id <- 1L
 
-    do.call(write_emod_weather, c(
-      list(
-        df = adm2_df,
-        weather_dir = file.path(weather_dir, adm2_clean),
-        climate_profile = ""
-      ),
-      dots
-    ))
+    do.call(
+      write_emod_weather,
+      c(
+        list(
+          df = adm2_df,
+          weather_dir = file.path(
+            weather_dir,
+            stringr::str_to_title(adm2_clean)
+          ),
+          climate_profile = ""
+        ),
+        dots
+      )
+    )
   })
 
   cli::cli_process_done()
