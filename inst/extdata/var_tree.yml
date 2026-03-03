@@ -2267,6 +2267,24 @@ dhs_iptp:
     label_fr: "Intervalle de confiance supérieur à 95% pour la couverture TPIg 3+ doses (%)"
     label_pt: "Intervalo de confiança superior de 95% para cobertura TIPg 3+ doses (%)"
 
+  dhs_iptp_4:
+    snt_var_name: dhs_iptp_4
+    label_en: "IPTp 4+ dose coverage among women 15-49 with live birth in past 2 years (%). Numerator: women who received at least 4 doses of SP/Fansidar during pregnancy. Denominator: women with live birth in past 2 years. Requires ml1_1 (dose count variable)."
+    label_fr: "Couverture TPIg 4+ doses chez les femmes de 15-49 ans ayant eu une naissance vivante dans les 2 dernières années (%). Numérateur: femmes ayant reçu au moins 4 doses de SP/Fansidar pendant la grossesse. Dénominateur: femmes avec naissance vivante dans les 2 dernières années. Nécessite ml1_1 (variable de comptage des doses)."
+    label_pt: "Cobertura TIPg 4+ doses entre mulheres de 15-49 anos com nascimento vivo nos últimos 2 anos (%). Numerador: mulheres que receberam pelo menos 4 doses de SP/Fansidar durante a gravidez. Denominador: mulheres com nascimento vivo nos últimos 2 anos. Requer ml1_1 (variável de contagem de doses)."
+
+  dhs_iptp_4_low:
+    snt_var_name: dhs_iptp_4_low
+    label_en: "Lower 95% confidence interval for IPTp 4+ dose coverage (%)"
+    label_fr: "Intervalle de confiance inférieur à 95% pour la couverture TPIg 4+ doses (%)"
+    label_pt: "Intervalo de confiança inferior de 95% para cobertura TIPg 4+ doses (%)"
+
+  dhs_iptp_4_upp:
+    snt_var_name: dhs_iptp_4_upp
+    label_en: "Upper 95% confidence interval for IPTp 4+ dose coverage (%)"
+    label_fr: "Intervalle de confiance supérieur à 95% pour la couverture TPIg 4+ doses (%)"
+    label_pt: "Intervalo de confiança superior de 95% para cobertura TIPg 4+ doses (%)"
+
   # ── Sample sizes ──────────────────────────────────────────────────────────────
   dhs_n_women:
     snt_var_name: dhs_n_women
@@ -2291,6 +2309,12 @@ dhs_iptp:
     label_en: "Number of women who received at least 3 doses of SP/Fansidar during pregnancy (numerator for dhs_iptp_3)"
     label_fr: "Nombre de femmes ayant reçu au moins 3 doses de SP/Fansidar pendant la grossesse (numérateur pour dhs_iptp_3)"
     label_pt: "Número de mulheres que receberam pelo menos 3 doses de SP/Fansidar durante a gravidez (numerador para dhs_iptp_3)"
+
+  dhs_n_iptp_4plus:
+    snt_var_name: dhs_n_iptp_4plus
+    label_en: "Number of women who received at least 4 doses of SP/Fansidar during pregnancy (numerator for dhs_iptp_4)"
+    label_fr: "Nombre de femmes ayant reçu au moins 4 doses de SP/Fansidar pendant la grossesse (numérateur pour dhs_iptp_4)"
+    label_pt: "Número de mulheres que receberam pelo menos 4 doses de SP/Fansidar durante a gravidez (numerador para dhs_iptp_4)"
 
 dhs_anemia:
   _description: "DHS severe anemia indicators for children 6-59 months."
@@ -2815,7 +2839,7 @@ mbg_indicators:
       - "anc1, anc4"
       - "csb_public, csb_private, csb_none"
       - "anemia_any, anemia_moderate_plus, anemia_severe"
-      - "iptp_1plus, iptp_2plus, iptp_3plus"
+      - "iptp_1plus, iptp_2plus, iptp_3plus, iptp_4plus"
 
   # Generic cluster statistics (applicable to all indicators)
   dhs_n_tested_generic:
@@ -4293,6 +4317,22 @@ schema:
     label_fr: "TPIg 3+ doses - IC supérieur"
     label_pt: "TIPg 3+ doses - IC superior"
 
+  iptp_4plus_mean:
+    snt_var_name: iptp_4plus_mean
+    label_en: "IPTp 4+ doses - Mean"
+    label_fr: "TPIg 4+ doses - Moyenne"
+    label_pt: "TIPg 4+ doses - Média"
+  iptp_4plus_lower:
+    snt_var_name: iptp_4plus_lower
+    label_en: "IPTp 4+ doses - Lower CI"
+    label_fr: "TPIg 4+ doses - IC inférieur"
+    label_pt: "TIPg 4+ doses - IC inferior"
+  iptp_4plus_upper:
+    snt_var_name: iptp_4plus_upper
+    label_en: "IPTp 4+ doses - Upper CI"
+    label_fr: "TPIg 4+ doses - IC supérieur"
+    label_pt: "TIPg 4+ doses - IC superior"
+
   iptp_1only_mean:
     snt_var_name: iptp_1only_mean
     label_en: "IPTp exactly 1 dose - Mean"
@@ -5322,6 +5362,12 @@ survey_indicators:
     label_fr: "Couverture IPTp (3+ doses)"
     label_pt: "Cobertura IPTp (3+ doses)"
 
+  iptp_4:
+    snt_var_name: iptp_4
+    label_en: "IPTp coverage (4+ doses)"
+    label_fr: "Couverture IPTp (4+ doses)"
+    label_pt: "Cobertura IPTp (4+ doses)"
+
   n_iptp_1plus:
     snt_var_name: n_iptp_1plus
     label_en: "Number receiving 1+ IPTp doses"
@@ -5339,6 +5385,12 @@ survey_indicators:
     label_en: "Number receiving 3+ IPTp doses"
     label_fr: "Nombre recevant 3+ doses IPTp"
     label_pt: "Número recebendo 3+ doses IPTp"
+
+  n_iptp_4plus:
+    snt_var_name: n_iptp_4plus
+    label_en: "Number receiving 4+ IPTp doses"
+    label_fr: "Nombre recevant 4+ doses IPTp"
+    label_pt: "Número recebendo 4+ doses IPTp"
 
   # ── Anemia ───────────────────────────────────────────────────────────────────
   n_tested_hb:
