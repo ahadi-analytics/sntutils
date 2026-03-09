@@ -98,9 +98,9 @@ build_emod_demog_from_wpp <- function(country, year) {
   age_data$age_days <- age_data$age * 365
 
   age_distribution <- list(
-    DistributionValues = list(age_data$cdf),
+    DistributionValues = age_data$cdf,
     ResultScaleFactor = 1,
-    ResultValues = list(age_data$age_days)
+    ResultValues = age_data$age_days
   )
 
   # get vital rates
