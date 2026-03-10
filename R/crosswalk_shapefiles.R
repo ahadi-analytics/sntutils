@@ -79,7 +79,16 @@ crosswalk_shapefiles_sf <- function(
     cli::cli_h1("Building admin crosswalk at {.val {level}} level")
   }
 
-  required_name_cols <- c("adm0", "adm1", "adm2")
+  # configure level ------------------------------------------------------------
+
+  level_name_cols <- switch(
+    level,
+    adm0 = "adm0",
+    adm1 = c("adm0", "adm1"),
+    adm2 = c("adm0", "adm1", "adm2")
+  )
+
+  level_name_cols_old <- paste0(level_name_cols, old_suffix)
 
   # validate inputs ------------------------------------------------------------
 
@@ -88,7 +97,7 @@ crosswalk_shapefiles_sf <- function(
   }
 
   assert_sf <- function(x, nm) {
-    missing_cols <- setdiff(required_name_cols, names(x))
+    missing_cols <- setdiff(level_name_cols, names(x))
 
     if (length(missing_cols) > 0) {
       cli::cli_abort(c(
@@ -116,17 +125,6 @@ crosswalk_shapefiles_sf <- function(
   if (min_primary_weight <= 0 || min_primary_weight > 1) {
     cli::cli_abort("min_primary_weight must be in (0, 1].")
   }
-
-  # configure level ------------------------------------------------------------
-
-  level_name_cols <- switch(
-    level,
-    adm0 = "adm0",
-    adm1 = c("adm0", "adm1"),
-    adm2 = c("adm0", "adm1", "adm2")
-  )
-
-  level_name_cols_old <- paste0(level_name_cols, old_suffix)
 
   # disable spherical geometry locally ----------------------------------------
 
