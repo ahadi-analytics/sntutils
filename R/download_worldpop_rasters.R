@@ -239,6 +239,8 @@ download_worldpop <- function(
 #' @param years Numeric vector. Years for which to download data (2000-2030)
 #' @param age_range Numeric vector of length 2 specifying the lower and upper
 #'   age range bounds (e.g., c(1, 9) for ages 1-9). Default: c(1, 9)
+#' @param sex Character. Which sex to download: "both" (default, sums male
+#'   and female), "m" (male only), or "f" (female only).
 #' @param resolution Character. Either "1km" (default) or "100m". The 100m
 #'   resolution is only available for years >= 2015 (R2024B dataset).
 #' @param out_dir Character string. Directory where downloaded files will be
@@ -269,15 +271,25 @@ download_worldpop <- function(
 #' 40-44, 45-49, 50-54, 55-59, 60-64, 65-69, 70-74, 75-79, 80+
 #'
 #' @return No return value. Files saved to output directory with pattern:
-#'   `{iso3}_total_{lower}_{upper}_{year}.tif`
+#'   `{iso3}_{sex}_{lower}_{upper}_{year}.tif` where sex is "total", "m",
+#'   or "f", and upper is "80plus" when the 80+ band is included.
 #'
 #' @examples
 #' \dontrun{
-#' # Download age 1-9 data for Burundi
+#' # Download age 1-9 data for Burundi (both sexes combined)
 #' download_worldpop_age_band(
 #'   country_codes = "BDI",
 #'   years = 2020:2024,
 #'   age_range = c(1, 9),
+#'   out_dir = "data/worldpop"
+#' )
+#'
+#' # Download female-only age 1-9 data
+#' download_worldpop_age_band(
+#'   country_codes = "BDI",
+#'   years = 2020:2024,
+#'   age_range = c(1, 9),
+#'   sex = "f",
 #'   out_dir = "data/worldpop"
 #' )
 #' }
@@ -286,9 +298,11 @@ download_worldpop_age_band <- function(
     country_codes,
     years,
     age_range = c(1, 9),
+    sex = "both",
     resolution = "1km",
     out_dir = ".") {
 
+  sex <- match.arg(sex, choices = c("both", "m", "f"))
   resolution <- match.arg(resolution, choices = c("1km", "100m"))
 
   # 100m only available for years >= 2015
@@ -308,7 +322,8 @@ download_worldpop_age_band <- function(
     upper = c(1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, Inf)
   )
 
-  sexes <- c("m", "f")
+  sexes <- if (sex == "both") c("m", "f") else sex
+  sex_label <- if (sex == "both") "total" else sex
 
   # build url and local filename based on year and resolution
   make_url_info <- function(cc, sex, code, yr, res) {
@@ -387,19 +402,23 @@ download_worldpop_age_band <- function(
 
     adjusted_upper <- ifelse(
       matching_bands$upper == Inf,
-      matching_bands$upper,
-      matching_bands$upper - 1
+      "plus",
+      as.character(matching_bands$upper - 1)
     )
     band_labels <- paste(matching_bands$lower, adjusted_upper, sep = "-")
 
     covered_lower <- min(matching_bands$lower)
-    covered_upper <- max(adjusted_upper)
+    has_80plus <- any(matching_bands$upper == Inf)
+    covered_upper_num <- max(
+      matching_bands$upper[matching_bands$upper != Inf] - 1,
+      -Inf
+    )
 
-    if (covered_upper < age_range[2]) {
+    if (!has_80plus && covered_upper_num < age_range[2]) {
       cli::cli_alert_warning(
         paste0(
           "Requested {age_range[1]}-{age_range[2]} not fully covered. ",
-          "Downloading {covered_lower}-{covered_upper} instead."
+          "Downloading {covered_lower}-{covered_upper_num} instead."
         )
       )
     } else {
@@ -408,9 +427,10 @@ download_worldpop_age_band <- function(
       )
     }
 
+    upper_str <- if (has_80plus) "80plus" else sprintf("%02d", covered_upper_num)
     out_fname <- file.path(
       out_dir,
-      sprintf("%s_total_%02d_%02d_%d.tif", cc_lo, covered_lower, covered_upper, yr)
+      sprintf("%s_%s_%02d_%s_%d.tif", cc_lo, sex_label, covered_lower, upper_str, yr)
     )
 
     if (file.exists(out_fname)) {
@@ -420,13 +440,13 @@ download_worldpop_age_band <- function(
 
     acc <- NULL
     for (band_code in matching_bands$code) {
-      for (sex in sexes) {
-        url_info <- make_url_info(cc, sex, band_code, yr, resolution)
+      for (sx in sexes) {
+        url_info <- make_url_info(cc, sx, band_code, yr, resolution)
         temp_fname <- file.path(out_dir, url_info$filename)
 
         if (!file.exists(temp_fname)) {
           cli::cli_alert_info(
-            "Downloading {sex} band {band_code} for {cc}, {yr}"
+            "Downloading {sx} band {band_code} for {cc}, {yr}"
           )
           utils::download.file(
             url_info$url,
