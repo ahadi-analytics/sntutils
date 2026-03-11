@@ -8,6 +8,7 @@ download_worldpop_age_band(
   country_codes,
   years,
   age_range = c(1, 9),
+  sex = "both",
   resolution = "1km",
   out_dir = "."
 )
@@ -20,6 +21,9 @@ download_worldpop_age_band(
 \item{age_range}{Numeric vector of length 2 specifying the lower and upper
 age range bounds (e.g., c(1, 9) for ages 1-9). Default: c(1, 9)}
 
+\item{sex}{Character. Which sex to download: "both" (default, sums male
+and female), "m" (male only), or "f" (female only).}
+
 \item{resolution}{Character. Either "1km" (default) or "100m". The 100m
 resolution is only available for years >= 2015 (R2024B dataset).}
 
@@ -28,7 +32,8 @@ saved. Default: "."}
 }
 \value{
 No return value. Files saved to output directory with pattern:
-\verb{\{iso3\}_total_\{lower\}_\{upper\}_\{year\}.tif}
+\verb{\{iso3\}_\{sex\}_\{lower\}_\{upper\}_\{year\}.tif} where sex is "total", "m",
+or "f", and upper is "80plus" when the 80+ band is included.
 }
 \description{
 Downloads and processes WorldPop population raster data for specified age
@@ -76,11 +81,20 @@ Available bands: 0, 1-4, 5-9, 10-14, 15-19, 20-24, 25-29, 30-34, 35-39,
 }
 \examples{
 \dontrun{
-# Download age 1-9 data for Burundi
+# Download age 1-9 data for Burundi (both sexes combined)
 download_worldpop_age_band(
   country_codes = "BDI",
   years = 2020:2024,
   age_range = c(1, 9),
+  out_dir = "data/worldpop"
+)
+
+# Download female-only age 1-9 data
+download_worldpop_age_band(
+  country_codes = "BDI",
+  years = 2020:2024,
+  age_range = c(1, 9),
+  sex = "f",
   out_dir = "data/worldpop"
 )
 }
