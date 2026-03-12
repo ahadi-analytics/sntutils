@@ -218,6 +218,7 @@ download_worldpop <- function(
 
       httr2::request(url) |>
         httr2::req_timeout(600) |>
+        httr2::req_retry(max_tries = 3, backoff = ~ 5) |>
         httr2::req_progress() |>
         httr2::req_perform(path = dest)
       dest
@@ -474,12 +475,10 @@ download_worldpop_age_band <- function(
           if (!quiet) cli::cli_alert_info(
             "Downloading {sx} band {band_code} for {cc}, {yr}"
           )
-          utils::download.file(
-            url_info$url,
-            temp_fname,
-            mode = "wb",
-            quiet = TRUE
-          )
+          httr2::request(url_info$url) |>
+            httr2::req_timeout(600) |>
+            httr2::req_retry(max_tries = 3, backoff = ~ 5) |>
+            httr2::req_perform(path = temp_fname)
         } else if (!quiet) {
           cli::cli_alert_info("Using cached file {basename(temp_fname)}")
         }
