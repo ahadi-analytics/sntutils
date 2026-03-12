@@ -10,7 +10,8 @@ download_worldpop_age_band(
   age_range = c(1, 9),
   sex = "both",
   resolution = "1km",
-  out_dir = "."
+  out_dir = ".",
+  quiet = FALSE
 )
 }
 \arguments{
@@ -29,6 +30,9 @@ resolution is only available for years >= 2015 (R2024B dataset).}
 
 \item{out_dir}{Character string. Directory where downloaded files will be
 saved. Default: "."}
+
+\item{quiet}{Logical; if TRUE, suppresses progress messages
+(default: FALSE)}
 }
 \value{
 No return value. Files saved to output directory with pattern:

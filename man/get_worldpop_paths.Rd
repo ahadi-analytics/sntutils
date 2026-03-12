@@ -11,7 +11,8 @@ get_worldpop_paths(
     list(age_range = c(15, 49), sex = "f")),
   resolution = "1km",
   dest_dir = here::here(),
-  download = TRUE
+  download = TRUE,
+  quiet = TRUE
 )
 }
 \arguments{
@@ -32,6 +33,9 @@ Total population goes to \code{dest_dir}, age bands go to
 
 \item{download}{Logical. If TRUE (default), downloads rasters before
 building paths. Set FALSE to just get expected paths.}
+
+\item{quiet}{Logical. If TRUE (default), suppresses per-file progress
+messages during download. A compact summary is always shown.}
 }
 \value{
 Named list of groups, each a named list of file paths keyed
