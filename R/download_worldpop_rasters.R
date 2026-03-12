@@ -640,15 +640,16 @@ get_worldpop_paths <- function(
     )
   }
 
-  # Compact summary: which groups have all files present
-  n_groups <- length(result)
-  n_ready <- sum(vapply(result, function(paths) {
-    all(vapply(paths, file.exists, logical(1)))
-  }, logical(1)))
-  group_names <- paste(names(result), collapse = ", ")
-  cli::cli_alert_success(
-    "Population rasters ready: {n_ready}/{n_groups} groups ({group_names})"
-  )
+  if (!quiet) {
+    n_groups <- length(result)
+    n_ready <- sum(vapply(result, function(paths) {
+      all(vapply(paths, file.exists, logical(1)))
+    }, logical(1)))
+    group_names <- paste(names(result), collapse = ", ")
+    cli::cli_alert_success(
+      "Population rasters ready: {n_ready}/{n_groups} groups ({group_names})"
+    )
+  }
 
   result
 }
