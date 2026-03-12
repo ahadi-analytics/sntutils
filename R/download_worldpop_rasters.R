@@ -481,3 +481,149 @@ download_worldpop_age_band <- function(
     cli::cli_alert_success("Written: {basename(out_fname)}")
   }
 }
+
+# build the expected output filename for an age band raster
+#' @noRd
+.build_age_band_filename <- function(cc, year, age_range, sex = "both") {
+  cc_lo <- tolower(cc)
+  sex_label <- if (sex == "both") "total" else sex
+
+  bands <- data.frame(
+    lower = c(0, 1, 5, 10, 15, 20, 25, 30, 35,
+              40, 45, 50, 55, 60, 65, 70, 75, 80),
+    upper = c(1, 5, 10, 15, 20, 25, 30, 35, 40,
+              45, 50, 55, 60, 65, 70, 75, 80, Inf)
+  )
+
+  matching <- subset(
+    bands, lower < (age_range[2] + 1) & upper > age_range[1]
+  )
+  covered_lower <- min(matching$lower)
+  has_80plus <- any(matching$upper == Inf)
+  covered_upper_num <- max(
+    matching$upper[matching$upper != Inf] - 1, -Inf
+  )
+
+  upper_str <- if (has_80plus) {
+    "80plus"
+  } else {
+    sprintf("%02d", covered_upper_num)
+  }
+
+  sprintf(
+    "%s_%s_%02d_%s_%d.tif",
+    cc_lo, sex_label, covered_lower, upper_str, year
+  )
+}
+
+#' Download WorldPop Rasters and Get Paths
+#'
+#' Downloads WorldPop population rasters for multiple age groups in one
+#' call and returns file paths as a nested named list. Each group is a
+#' named list keyed by year.
+#'
+#' @param country_code Character. Single ISO3 country code (e.g., "TGO")
+#' @param years Numeric vector of years to download (2000-2030)
+#' @param groups Named list of age group specifications. Each element
+#'   should be a list with `age_range` (length-2 numeric vector or NULL
+#'   for total population) and optionally `sex` ("both", "m", or "f").
+#'   Default includes total, u5, and wra groups.
+#' @param resolution Character. "1km" (default) or "100m".
+#' @param dest_dir Character. Base directory for downloaded files.
+#'   Total population goes to `dest_dir`, age bands go to
+#'   `dest_dir/aged_rasters`.
+#' @param download Logical. If TRUE (default), downloads rasters before
+#'   building paths. Set FALSE to just get expected paths.
+#'
+#' @return Named list of groups, each a named list of file paths keyed
+#'   by year.
+#'
+#' @examples
+#' \dontrun{
+#' # default groups: total, u5, wra
+#' paths <- get_worldpop_paths(
+#'   "TGO", years = c(2013, 2017),
+#'   dest_dir = here::here("data/worldpop/raw")
+#' )
+#' paths$total$`2013`  # total population raster
+#' paths$u5$`2017`     # under-5 raster
+#' paths$wra$`2013`    # women of reproductive age raster
+#'
+#' # custom groups
+#' paths <- get_worldpop_paths(
+#'   "TGO", years = c(2013, 2017),
+#'   groups = list(
+#'     total = list(age_range = NULL),
+#'     u5 = list(age_range = c(0, 4)),
+#'     "5_9" = list(age_range = c(5, 9)),
+#'     "10_19" = list(age_range = c(10, 19)),
+#'     "20plus" = list(age_range = c(20, Inf)),
+#'     wra = list(age_range = c(15, 49), sex = "f")
+#'   ),
+#'   dest_dir = here::here("data/worldpop/raw")
+#' )
+#' }
+#' @export
+get_worldpop_paths <- function(
+    country_code,
+    years,
+    groups = list(
+      total = list(age_range = NULL),
+      u5 = list(age_range = c(0, 4)),
+      wra = list(age_range = c(15, 49), sex = "f")
+    ),
+    resolution = "1km",
+    dest_dir = here::here(),
+    download = TRUE) {
+
+  result <- list()
+
+  for (group_name in names(groups)) {
+    spec <- groups[[group_name]]
+    age_range <- spec$age_range
+    sex <- spec$sex %||% "both"
+
+    # total pop goes to dest_dir, age bands to aged_rasters subdir
+    if (is.null(age_range)) {
+      out_dir <- dest_dir
+    } else {
+      out_dir <- file.path(dest_dir, "aged_rasters")
+    }
+
+    # download
+    if (download) {
+      if (is.null(age_range)) {
+        download_worldpop(
+          country_code, years,
+          resolution = resolution, dest_dir = out_dir
+        )
+      } else {
+        download_worldpop_age_band(
+          country_code, years, age_range,
+          sex = sex, resolution = resolution, out_dir = out_dir
+        )
+      }
+    }
+
+    # build year-keyed path list
+    path_list <- lapply(years, function(yr) {
+      if (is.null(age_range)) {
+        dataset <- if (yr < 2015) "legacy" else "r2025a"
+        fn <- .build_worldpop_url(
+          country_code, yr, "count", dataset, resolution
+        )$filename
+      } else {
+        fn <- .build_age_band_filename(
+          country_code, yr, age_range, sex
+        )
+      }
+      file.path(out_dir, fn)
+    })
+
+    result[[group_name]] <- stats::setNames(
+      path_list, as.character(years)
+    )
+  }
+
+  result
+}
