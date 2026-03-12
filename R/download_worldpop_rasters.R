@@ -444,6 +444,20 @@ download_worldpop_age_band <- function(
         url_info <- make_url_info(cc, sx, band_code, yr, resolution)
         temp_fname <- file.path(out_dir, url_info$filename)
 
+        # check if cached file is valid; re-download if corrupt
+        if (file.exists(temp_fname)) {
+          valid <- tryCatch(
+            { suppressWarnings(terra::rast(temp_fname)); TRUE },
+            error = function(e) FALSE
+          )
+          if (!valid) {
+            cli::cli_alert_warning(
+              "Corrupt file {basename(temp_fname)}, re-downloading"
+            )
+            unlink(temp_fname)
+          }
+        }
+
         if (!file.exists(temp_fname)) {
           cli::cli_alert_info(
             "Downloading {sx} band {band_code} for {cc}, {yr}"
