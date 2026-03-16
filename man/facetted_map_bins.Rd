@@ -13,6 +13,7 @@ facetted_map_bins(
   fill_colors,
   title = NULL,
   subtitle = NULL,
+  caption = NULL,
   fill_label = NULL,
   ncol = 3,
   output_file = NULL,
@@ -54,6 +55,9 @@ exactly to the levels in \code{fill_col}. Colors should be hex codes.}
 
 \item{subtitle}{Optional character scalar. Plot subtitle. Default is
 \code{NULL} (no subtitle).}
+
+\item{caption}{Optional character scalar. Plot caption (annotation at bottom
+right). Default is \code{NULL} (no caption).}
 
 \item{fill_label}{Optional character scalar. Legend title for the fill
 scale. Default is \code{NULL} (no legend title).}

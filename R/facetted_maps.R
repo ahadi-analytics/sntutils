@@ -43,6 +43,9 @@
 #' @param subtitle Optional character scalar. Plot subtitle. Default is
 #'   `NULL` (no subtitle).
 #'
+#' @param caption Optional character scalar. Plot caption (annotation at bottom
+#'   right). Default is `NULL` (no caption).
+#'
 #' @param fill_label Optional character scalar. Legend title for the fill
 #'   scale. Default is `NULL` (no legend title).
 #'
@@ -126,6 +129,7 @@ facetted_map_bins <- function(
   fill_colors,
   title = NULL,
   subtitle = NULL,
+  caption = NULL,
   fill_label = NULL,
   ncol = 3,
   output_file = NULL,
@@ -204,6 +208,7 @@ facetted_map_bins <- function(
     ggplot2::labs(
       title = title,
       subtitle = subtitle,
+      caption = caption,
       fill = fill_label
     ) +
     ggplot2::theme_void() +
@@ -296,6 +301,9 @@ facetted_map_bins <- function(
 #' @param subtitle Optional character scalar. Plot subtitle. Default is
 #'   `NULL` (no subtitle).
 #'
+#' @param caption Optional character scalar. Plot caption (annotation at bottom
+#'   right). Default is `NULL` (no caption).
+#'
 #' @param fill_label Optional character scalar. Legend title for the fill
 #'   scale. Default is `NULL` (no legend title).
 #'
@@ -369,6 +377,7 @@ facetted_map_gradient <- function(
   adm1_shp = NULL,
   title = NULL,
   subtitle = NULL,
+  caption = NULL,
   fill_label = NULL,
   ncol = 3,
   output_file = NULL,
@@ -439,6 +448,7 @@ facetted_map_gradient <- function(
     ggplot2::labs(
       title = title,
       subtitle = subtitle,
+      caption = caption,
       fill = fill_label
     ) +
     ggplot2::theme_void() +
