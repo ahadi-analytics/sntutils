@@ -889,10 +889,18 @@ validate_process_spatial <- function(
             )
 
           # clean aggregated geometries: make valid and remove interior holes
+          # explicitly disable s2 for make_valid to handle degenerate geometries
+          s2_local <- sf::sf_use_s2()
+          suppressMessages(sf::sf_use_s2(FALSE))
+
           # apply zero-width buffer after make_valid for stubborn invalid geometries
           agg_shp <- agg_shp |>
             sf::st_make_valid() |>
             sf::st_buffer(dist = 0)
+
+          # restore s2 setting
+          suppressMessages(sf::sf_use_s2(s2_local))
+
           if (rlang::is_installed("nngeo")) {
             agg_shp <- nngeo::st_remove_holes(agg_shp)
           }
@@ -929,6 +937,9 @@ validate_process_spatial <- function(
       }
     }
   }))
+
+  # Restore s2 setting after aggregations complete
+  suppressMessages(sf::sf_use_s2(s2_was_on))
 
   if (!quiet) {
     cli::cli_progress_done()
