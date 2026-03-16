@@ -436,7 +436,7 @@ facetted_map_gradient <- function(
       guide = ggplot2::guide_colorbar(
         title.position = "top",
         title.hjust = 0.5,
-        barwidth = grid::unit(0.6, "npc"),
+        barwidth = grid::unit(15, "lines"),
         barheight = grid::unit(0.5, "lines")
       )
     )
