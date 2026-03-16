@@ -2,7 +2,8 @@
 #'
 #' This function provides a unified interface for reading data from various
 #' file formats supported by the \code{\link[rio]{import}},
-#' \code{\link[sf]{read_sf}}, and \code{\link[readxl]{read_excel}} packages.
+#' \code{\link[sf]{read_sf}}, \code{\link[readxl]{read_excel}}, and
+#' \code{\link[yaml]{read_yaml}} packages.
 #' Additionally, it supports fast binary format \code{.qs2}
 #' via the optional \code{qs2} package. The format is automatically detected
 #' from the file extension to simplify the importing process.
@@ -42,10 +43,16 @@
 #' # Import an shapefiles file (GeoJSON/json)
 #' data_geojson <- read(file_path = file.path(path, "test_data.GeoJSON"))
 #'
+#' # Import a YAML file
+#' data_yaml <- read(file_path = file.path(path, "var_tree.yml"))
+#' 
+#' # Or access snt_var_tree as package data
+#' data(snt_var_tree, package = "sntutils")
+#'
 #' @seealso \code{\link[rio]{import}},
 #'         \code{\link[sf]{read_sf}}, \code{\link[readxl]{read_excel}},
-#'         and \code{qs2::qs_read} (or \code{qs2::qread}) for reading
-#'         \code{.qs2} files.
+#'         \code{\link[yaml]{read_yaml}}, and \code{qs2::qs_read} 
+#'         (or \code{qs2::qread}) for reading \code{.qs2} files.
 #'
 #' @export
 read <- function(file_path, ...) {
@@ -65,10 +72,23 @@ read <- function(file_path, ...) {
 
   # Excel formats
   excel_formats <- c("xls", "xlsx")
+  
+  # YAML formats
+  yaml_formats <- c("yml", "yaml")
 
   # Handle different file formats
   if (file_ext %in% excel_formats) {
     readxl::read_excel(file_path, ...)
+  } else if (file_ext %in% yaml_formats) {
+    if (!requireNamespace("yaml", quietly = TRUE)) {
+      stop(
+        paste0(
+          "Reading '.yml/.yaml' requires the 'yaml' package. ",
+          "Please install it: install.packages('yaml')."
+        )
+      )
+    }
+    yaml::read_yaml(file_path, ...)
   } else if (file_ext %in% supported_formats_rio) { # for tabular data
     rio::import(file_path, ...)
   } else if (file_ext == "rds") {

@@ -28,12 +28,14 @@
     cli::cli_abort("`path` is not a directory: {path}.")
   }
 
-  if (!grepl("^[A-Za-z0-9._-]+$", data_name)) {
-    cli::cli_abort("`data_name` contains illegal characters.")
+
+  if (!nzchar(data_name) || grepl("[/\\\\:*?\"<>|]", data_name)) {
+    cli::cli_abort("`data_name` is empty or contains illegal characters.")
   }
 
   file_formats <- tolower(file_formats)
-  ok_fmts <- c("rds", "csv", "tsv", "xlsx", "parquet", "feather", "qs2", "geojson")
+  ok_fmts <- c("rds", "csv", "tsv", "xlsx",
+  "parquet", "feather", "qs2", "geojson")
   bad <- setdiff(file_formats, ok_fmts)
   if (length(bad) > 0) {
     cli::cli_abort(c(
@@ -83,7 +85,9 @@
   }
 
   fname <- paste0(data_name, suffix, ".", file_format)
-  fs::path_abs(fs::path(path, fname))
+  # normalize the directory first (which exists), then append filename
+  norm_dir <- normalizePath(path, winslash = "/", mustWork = FALSE)
+  fs::path(norm_dir, fname)
 }
 
 # encoding ---------------------------------------------------------------------
@@ -439,140 +443,6 @@
   invisible(path)
 }
 
-# hashing ----------------------------------------------------------------------
-
-#' Normalize object for hashing (internal)
-#'
-#' @description
-#' Produces a canonical representation by optionally sorting columns/rows,
-#' dropping `sf` geometry, stringifying dates/factors/list-cols, and
-#' enforcing UTF-8. For `fmt = "xlsx"`, uses Excel preparation rules.
-#'
-#' @param x Object to normalize (data.frame or list of them).
-#' @param fmt Format hint (affects normalization, e.g., "xlsx").
-#' @param ignore_row Logical; if TRUE, order rows deterministically.
-#' @param ignore_col Logical; if TRUE, sort columns by name.
-#' @param ignore_sheet Logical; if TRUE, sort sheet names.
-#' @return A normalized object suitable for stable hashing.
-#' @keywords internal
-#' @noRd
-.normalize_for_hash <- function(
-  x,
-  fmt,
-  ignore_row = TRUE,
-  ignore_col = TRUE,
-  ignore_sheet = TRUE
-) {
-  if (identical(fmt, "xlsx")) {
-    x <- .prepare_for_excel(x)
-  }
-
-  norm_df <- function(df) {
-    if (inherits(df, "sf") && requireNamespace("sf", quietly = TRUE)) {
-      df <- sf::st_drop_geometry(df)
-    }
-
-    df[] <- lapply(df, function(col) {
-      if (is.factor(col)) {
-        return(as.character(col))
-      }
-      if (inherits(col, c("POSIXct", "POSIXt", "Date"))) {
-        return(as.character(col))
-      }
-      if (is.list(col)) {
-        return(vapply(
-          col,
-          function(v) {
-            paste0(
-              utils::capture.output(utils::str(v, give.attr = FALSE)),
-              collapse = " "
-            )
-          },
-          character(1)
-        ))
-      }
-      col
-    })
-
-    if (isTRUE(ignore_col)) {
-      ord_cols <- sort(names(df), method = "radix")
-      df <- df[, ord_cols, drop = FALSE]
-    }
-
-    if (isTRUE(ignore_row) && nrow(df) > 1L && ncol(df) > 0L) {
-      ord <- do.call(order, c(df, list(na.last = TRUE)))
-      if (length(ord) == nrow(df)) {
-        df <- df[ord, , drop = FALSE]
-      }
-      rownames(df) <- NULL
-    }
-
-    .to_utf8(df)
-  }
-
-  if (is.data.frame(x)) {
-    return(norm_df(x))
-  }
-  if (is.list(x)) {
-    dfs <- x[vapply(x, is.data.frame, logical(1))]
-    dfs <- lapply(dfs, norm_df)
-    nm <- names(dfs)
-    if (is.null(nm)) {
-      nm <- paste0("Sheet", seq_along(dfs))
-    }
-    names(dfs) <- nm
-    if (isTRUE(ignore_sheet)) {
-      dfs <- dfs[order(names(dfs))]
-    }
-    return(dfs)
-  }
-  x
-}
-
-#' Compute a stable object hash (internal)
-#'
-#' @description
-#' Normalizes tabular/list objects to a canonical form (sorts columns/rows,
-#' stringifies dates/factors, drops `sf` geometry), then hashes with digest.
-#'
-#' @inheritParams write_snt_data
-#' @param x Object to hash.
-#' @param fmt Format hint (affects normalization, e.g. "xlsx").
-#' @param algo Digest algorithm; default "xxhash64".
-#' @return Character scalar hash.
-#' @keywords internal
-#' @noRd
-.obj_hash <- function(x, fmt, algo = "xxhash64") {
-  nx <- .normalize_for_hash(x, fmt, TRUE, TRUE, TRUE)
-
-  if (!requireNamespace("digest", quietly = TRUE)) {
-    p <- tempfile(fileext = ".bin")
-    on.exit(unlink(p), add = TRUE)
-    con <- file(p, open = "wb")
-    on.exit(try(close(con), silent = TRUE), add = TRUE)
-    serialize(nx, con, version = 3)
-    return(as.character(tools::md5sum(p)))
-  }
-
-  if (
-    !algo %in%
-    c(
-      "crc32",
-      "md5",
-      "sha1",
-      "sha256",
-      "sha512",
-      "xxhash32",
-      "xxhash64",
-      "murmur32"
-    )
-  ) {
-    algo <- "md5"
-  }
-
-  digest::digest(nx, algo = algo, serialize = TRUE)
-}
-
 # atomic write -----------------------------------------------------------------
 
 #' Atomic write helper (internal)
@@ -737,174 +607,6 @@
   )
 }
 
-# sidecar metadata (.snt) ------------------------------------------------------
-
-#' Build hidden sidecar path (internal)
-#'
-#' @description
-#' Computes the path for the hidden `.snt/<basename>.snt.json` sidecar that
-#' stores metadata for a written data file. Creates the `.snt/` directory if
-#' missing.
-#'
-#' @param data_path Path to the primary data file.
-#' @return Absolute path to the sidecar JSON file.
-#' @keywords internal
-#' @noRd
-.sidecar_path <- function(data_path) {
-  dir <- fs::path_dir(data_path)
-  hid <- fs::path(dir, ".snt")
-  if (!fs::dir_exists(hid)) {
-    fs::dir_create(hid, recurse = TRUE)
-  }
-  fs::path(hid, paste0(fs::path_file(data_path), ".snt.json"))
-}
-
-#' Write sidecar JSON (internal)
-#'
-#' @description
-#' Writes a compact JSON sidecar with metadata for a given data file. On
-#' Windows, attempts to hide the sidecar file.
-#'
-#' @param data_path Path to the primary data file.
-#' @param meta Named list of metadata to write.
-#' @return Invisibly, the sidecar path.
-#' @keywords internal
-#' @noRd
-.write_sidecar <- function(data_path, meta) {
-  if (!requireNamespace("jsonlite", quietly = TRUE)) {
-    cli::cli_abort("Install 'jsonlite' to write sidecar JSON.")
-  }
-  sc <- .sidecar_path(data_path)
-  jsonlite::write_json(meta, path = sc, auto_unbox = TRUE, pretty = FALSE)
-  if (.Platform$OS.type == "windows") {
-    # best-effort hide when fs::file_hide is available
-    if (requireNamespace("fs", quietly = TRUE)) {
-      ns <- asNamespace("fs")
-      if (exists("file_hide", envir = ns, mode = "function")) {
-        try(get("file_hide", envir = ns)(sc), silent = TRUE)
-      }
-    }
-  }
-  invisible(sc)
-}
-
-#' Read sidecar JSON (if present)
-#'
-#' @description
-#' Reads the `.snt` sidecar metadata for a written data file when present.
-#'
-#' @param data_path Path to the primary data file.
-#' @return A named list of metadata, or `NULL` if missing/unavailable.
-#' @keywords internal
-#' @noRd
-.read_sidecar <- function(data_path) {
-  sc <- .sidecar_path(data_path)
-  if (!fs::file_exists(sc)) {
-    return(NULL)
-  }
-  if (!requireNamespace("jsonlite", quietly = TRUE)) {
-    return(NULL)
-  }
-  out <- try(jsonlite::read_json(sc, simplifyVector = TRUE), silent = TRUE)
-  if (inherits(out, "try-error")) {
-    return(NULL)
-  }
-  out
-}
-
-# read back (for hashing on files) ---------------------------------------------
-
-
-#' Read a file back for file-based hashing (internal)
-#'
-#' @description
-#' Best-effort reader used for deduplication: attempts to import a file by
-#' format using lightweight dependencies (base, qs2, arrow, openxlsx).
-#'
-#' @param path File path to read.
-#' @param fmt Lowercase format (e.g., "csv", "qs2").
-#' @return R object or `NULL` on failure.
-#' @keywords internal
-#' @noRd
-.read_back <- function(path, fmt) {
-  if (!fs::file_exists(path)) {
-    return(NULL)
-  }
-  fmt <- tolower(fmt)
-
-  try_read <- function(funs) {
-    for (fn in funs) {
-      out <- try(fn(), silent = TRUE)
-      if (!inherits(out, "try-error")) return(out)
-    }
-    NULL
-  }
-
-  out <- switch(
-    fmt,
-    rds = try(readRDS(path), silent = TRUE),
-    csv = try(
-      utils::read.csv(
-        path,
-        stringsAsFactors = FALSE,
-        check.names = FALSE,
-        encoding = "UTF-8"
-      ),
-      silent = TRUE
-    ),
-    tsv = try(
-      utils::read.delim(
-        path,
-        stringsAsFactors = FALSE,
-        check.names = FALSE,
-        encoding = "UTF-8"
-      ),
-      silent = TRUE
-    ),
-    qs2 = try_read(list(
-      function() {
-        if (requireNamespace("qs2", quietly = TRUE)) {
-          ns <- asNamespace("qs2")
-          if (exists("qs_read", envir = ns, mode = "function")) {
-            return(get("qs_read", envir = ns)(path))
-          } else if (exists("qread", envir = ns, mode = "function")) {
-            return(get("qread", envir = ns)(path))
-          }
-        }
-        stop("no qs2 reader")
-      }
-    )),
-    parquet = if (requireNamespace("arrow", quietly = TRUE)) {
-      try(arrow::read_parquet(path), silent = TRUE)
-    } else {
-      try("error", silent = TRUE)
-    },
-    feather = if (requireNamespace("arrow", quietly = TRUE)) {
-      try(arrow::read_feather(path), silent = TRUE)
-    } else {
-      try("error", silent = TRUE)
-    },
-    xlsx = if (requireNamespace("openxlsx", quietly = TRUE)) {
-      suppressWarnings(try(
-        openxlsx::read.xlsx(path),
-        silent = TRUE
-      ))
-    } else {
-      try("error", silent = TRUE)
-    },
-    geojson = if (requireNamespace("sf", quietly = TRUE)) {
-      try(sf::st_read(path, quiet = TRUE), silent = TRUE)
-    } else {
-      try("error", silent = TRUE)
-    },
-    try("error", silent = TRUE)
-  )
-
-  if (inherits(out, "try-error")) {
-    return(NULL)
-  }
-  out
-}
 
 # list versions ----------------------------------------------------------------
 
@@ -925,136 +627,83 @@
   files[startsWith(bn, pref)]
 }
 
-# fast file hash ---------------------------------------------------------------
-
-#' Fast file hash (internal)
+#' Prune old versioned files (internal)
 #'
 #' @description
-#' Computes a fast file hash using `tools::md5sum` by default, or other
-#' algorithms via `digest` when available.
+#' Keeps the newest `keep` files for `<data_name>` in a format and removes
+#' any extra files beyond that limit. Uses birth time when available and
+#' falls back to modification time.
 #'
-#' @param path Path to an existing file.
-#' @param algo Hash algorithm (e.g., "md5").
-#' @return Lowercase hex digest or `NA_character_` on failure.
-#' @keywords internal
-#' @noRd
-.file_hash <- function(path, algo = "md5") {
-  if (!fs::file_exists(path)) {
-    return(NA_character_)
-  }
-  if (identical(algo, "md5")) {
-    h <- suppressWarnings(tools::md5sum(path))
-    return(tolower(as.character(h[[1]])))
-  }
-  if (requireNamespace("digest", quietly = TRUE)) {
-    raw <- try(
-      readBin(path, what = "raw", n = file.info(path)$size),
-      silent = TRUE
-    )
-    if (inherits(raw, "try-error")) {
-      return(NA_character_)
-    }
-    return(digest::digest(raw, algo = algo, serialize = FALSE))
-  }
-  NA_character_
-}
-
-# dedupe (cross-format, tag-agnostic) ------------------------------------------
-
-#' Dedupe identical historical versions (internal)
-#'
-#' @description
-#' Removes older files for the same `data_name` whose content matches the
-#' current write. Compares sidecar object-hash, file MD5 (same format), or
-#' last-resort read+normalize object-hash. Excludes the current write and any
-#' `exclude_paths` from deletion.
-#'
-#' @inheritParams write_snt_data
-#' @param current_path Path to the newly written file to keep.
-#' @param exclude_paths Paths to protect from deletion.
-#' @param verbose Emit messages for each removed file.
+#' @param dir Directory containing the files.
+#' @param data_name Target data name.
+#' @param fmt Lowercase format extension.
+#' @param keep Number of newest files to retain.
+#' @param protect Paths that must never be deleted (e.g., current write).
+#' @param verbose Emit messages for deleted files.
 #' @return Character vector of removed file paths.
 #' @keywords internal
 #' @noRd
-.dedupe_versions <- function(
-  obj,
-  dir,
-  data_name,
-  current_path,
-  verbose = FALSE,
-  exclude_paths = character(0)
-) {
-  cur_ext <- tolower(fs::path_ext(current_path))
-  cur_file_hash <- .file_hash(current_path, "md5")
-
-  # try sidecar first for the new file
-  cur_sc <- .read_sidecar(current_path)
-  cur_obj_hash <- NULL
-  if (!is.null(cur_sc) && isTRUE(nzchar(cur_sc$obj_hash))) {
-    cur_obj_hash <- cur_sc$obj_hash
-  } else {
-    # compute once only if needed
-    cur_obj_hash <- .obj_hash(obj, fmt = "csv")
+.prune_versions <- function(dir,
+                            data_name,
+                            fmt,
+                            keep,
+                            protect = character(0),
+                            verbose = FALSE) {
+  keep <- as.integer(keep)
+  if (is.na(keep) || keep < 1L) {
+    cli::cli_abort("`n_saved` must be a positive integer when supplied.")
   }
 
-  all_ver <- .list_versions(dir, data_name)
-  if (length(all_ver) == 0) {
+  files <- .list_versions(dir, data_name)
+  if (length(files) == 0L) {
     return(character(0))
   }
 
-  keep <- unique(fs::path_abs(c(current_path, exclude_paths)))
-  cand <- setdiff(fs::path_abs(all_ver), keep)
-  if (length(cand) == 0) {
+  files <- normalizePath(files, winslash = "/", mustWork = FALSE)
+  fmt <- tolower(fmt)
+  files <- files[tolower(fs::path_ext(files)) == fmt]
+  if (length(files) <= keep) {
+    return(character(0))
+  }
+
+  info <- fs::file_info(files)
+  time_col <- info$birth_time
+  if (all(is.na(time_col))) {
+    time_col <- info$modification_time
+  }
+
+  ord <- order(time_col, decreasing = TRUE, na.last = TRUE)
+  keep_idx <- ord[
+    seq_len(base::min(keep, base::length(ord)))
+  ]
+  keep_paths <- files[keep_idx]
+  keep_paths <- unique(c(
+    keep_paths,
+    normalizePath(protect, winslash = "/", mustWork = FALSE)
+  ))
+
+  drop <- setdiff(files, keep_paths)
+  if (length(drop) == 0L) {
     return(character(0))
   }
 
   removed <- character(0)
 
-  for (f in cand) {
-    f_ext <- tolower(fs::path_ext(f))
-    same <- FALSE
-
-    # 1) fast path: sidecar hash match (format-agnostic)
-    f_sc <- .read_sidecar(f)
-    if (!is.null(f_sc) && isTRUE(nzchar(f_sc$obj_hash))) {
-      same <- identical(f_sc$obj_hash, cur_obj_hash)
+  for (f in drop) {
+    ok <- try(fs::file_delete(f), silent = TRUE)
+    ok <- !inherits(ok, "try-error") && !fs::file_exists(f)
+    if (!ok) {
+      ok <- tryCatch(isTRUE(file.remove(f)), error = function(...) FALSE)
     }
-
-    # 2) if same ext and no sidecar path, try file MD5
-    if (!same && identical(f_ext, cur_ext) && !is.na(cur_file_hash)) {
-      f_hash <- .file_hash(f, "md5")
-      same <- !is.na(f_hash) && identical(f_hash, cur_file_hash)
-    }
-
-    # 3) last resort: read+normalize and compare object-hash
-    if (!same) {
-      f_obj <- .read_back(f, f_ext)
-      if (!is.null(f_obj)) {
-        f_hash_obj <- .obj_hash(f_obj, fmt = "csv")
-        same <- identical(f_hash_obj, cur_obj_hash)
-      }
-    }
-
-    if (isTRUE(same)) {
-      # Prefer fs::file_delete for robust cross-platform removal
-      del_ok <- try(fs::file_delete(f), silent = TRUE)
-      del_ok <- !inherits(del_ok, "try-error") && !fs::file_exists(f)
-      if (!del_ok) {
-        # Fallback to base file.remove
-        del_ok <- tryCatch(isTRUE(file.remove(f)), error = function(...) FALSE)
-      }
-      if (del_ok) {
+    if (isTRUE(ok)) {
       removed <- c(removed, f)
       if (isTRUE(verbose)) {
-        cli::cli_inform("Removed duplicate: {fs::path_file(f)}")
-      }
-      # best effort: remove stale sidecar, too
-      sc <- .sidecar_path(f)
-      if (fs::file_exists(sc)) try(fs::file_delete(sc), silent = TRUE)
+        cli::cli_inform("Removed older version: {fs::path_file(f)}")
       }
     }
   }
-  unique(removed)
+
+  removed
 }
 
 # main api ---------------------------------------------------------------------
@@ -1063,8 +712,8 @@
 #'
 #' @description
 #' Writes an object (data.frame, list of data.frames, sf, etc.) to a directory
-#' using standardized naming. Supports atomic writes, optional deduping across
-#' prior dated versions, and returns a structured summary.
+#' using standardized naming. Supports atomic writes, optional pruning of older
+#' versioned files, and returns a structured summary.
 #'
 #' When filenames are not versioned (no date and no tag) and a file already
 #' exists, set `overwrite = TRUE` to replace it. Otherwise an error is thrown.
@@ -1076,12 +725,13 @@
 #' @param date_format Date format for version tag. Default "%Y-%m-%d".
 #' @param include_date Logical; append _v<date>. Default TRUE.
 #' @param version_tag Optional explicit tag (conflicts with include_date)
-#' @param dedupe_identical Logical; remove older identical versions.
+#' @param n_saved Optional positive integer; keep only the newest
+#'   `n_saved` versioned files per format. Default is 3.
 #' @param quiet Logical; suppress info logs.
 #' @param overwrite Logical; allow overwrite when not versioned.
 #' @param ... Additional writer-specific arguments
 #'
-#' @return tibble with columns format, path, ok, bytes, hash, message
+#' @return tibble with columns format, path, ok, bytes, message
 #' @examples
 #' # write_snt_data(head(mtcars), tempdir(), "cars", "rds",
 #' #                include_date = FALSE, overwrite = TRUE)
@@ -1094,7 +744,7 @@ write_snt_data <- function(
   date_format = "%Y-%m-%d",
   include_date = TRUE,
   version_tag = NULL,
-  dedupe_identical = TRUE,
+  n_saved = 3,
   quiet = TRUE,
   overwrite = TRUE,
   ...
@@ -1108,10 +758,24 @@ write_snt_data <- function(
   include_date_eff <- isTRUE(include_date) && is.null(version_tag)
   is_versioned <- include_date_eff || !is.null(version_tag)
 
+  if (!is.null(n_saved)) {
+    if (!is.numeric(n_saved) || length(n_saved) != 1L || is.na(n_saved)) {
+      cli::cli_abort("`n_saved` must be a positive integer or NULL.")
+    }
+    if (is.infinite(n_saved)) {
+      n_saved <- NULL
+    } else {
+      n_saved <- as.integer(n_saved)
+      if (n_saved < 1L) {
+        cli::cli_abort("`n_saved` must be at least 1 when supplied.")
+      }
+    }
+  }
+
   reg <- .writer_registry()
   fmts <- tolower(file_formats)
 
-  # plan all output paths first (protect siblings during dedupe)
+  # plan all output paths first (protect siblings during pruning)
   planned_paths <- vapply(
     fmts,
     function(fmt) {
@@ -1138,14 +802,14 @@ write_snt_data <- function(
           "Refusing to overwrite existing file (non-versioned).",
           "i" = "Set `overwrite = TRUE`, enable `include_date`, ",
           "i" = "or supply a `version_tag`.",
-          "x" = "Path: {fs::path_abs(write_path)}"
+          "x" = "Path: {normalizePath(write_path, winslash = '/', mustWork = FALSE)}"
         ))
       }
       ok_rm <- try(fs::file_delete(write_path), silent = TRUE)
       if (inherits(ok_rm, "try-error") && fs::file_exists(write_path)) {
         cli::cli_abort(c(
           "Failed to remove existing file before overwrite.",
-          "x" = "Path: {fs::path_abs(write_path)}"
+          "x" = "Path: {normalizePath(write_path, winslash = '/', mustWork = FALSE)}"
         ))
       }
     }
@@ -1161,7 +825,6 @@ write_snt_data <- function(
         path = write_path,
         ok = FALSE,
         bytes = NA_real_,
-        hash = NA_character_,
         message = cli::format_message(msg)
       )
       next
@@ -1169,45 +832,29 @@ write_snt_data <- function(
 
     ok <- FALSE
     bytes <- NA_real_
-    hash_val <- NA_character_
     err_msg <- NULL
 
         tryCatch(
           {
             .atomic_write(function(p) writer(obj, p, ...), write_path)
             bytes <- suppressWarnings(file.size(write_path))
-            hash_val <- .obj_hash(obj, fmt)
             ok <- TRUE
 
-            # write sidecar metadata (hidden in .snt/)
-            .write_sidecar(
-              write_path,
-              list(
-                fmt = fmt,
-                data_name = data_name,
-                size = as.numeric(bytes),
-                algo = "xxhash64",
-                obj_hash = .obj_hash(obj, fmt = "csv"),
-                file_md5 = .file_hash(write_path, "md5"),
-                written_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ"),
-                path = fs::path_file(write_path)
-              )
-            )
           },
           error = function(e) err_msg <<- conditionMessage(e)
         )
 
-    if (isTRUE(ok) && isTRUE(dedupe_identical) && isTRUE(is_versioned)) {
-      removed <- .dedupe_versions(
-        obj = obj,
+    if (isTRUE(ok) && !is.null(n_saved) && isTRUE(is_versioned)) {
+      removed <- .prune_versions(
         dir = path,
         data_name = data_name,
-        current_path = write_path,
-        verbose = if (quiet == FALSE) TRUE,
-        exclude_paths = planned_paths
+        fmt = fmt,
+        keep = n_saved,
+        protect = write_path,
+        verbose = FALSE
       )
-      if (!quiet && length(removed) > 0) {
-        cli::cli_inform("Removed {length(removed)} duplicate file(s).")
+      if (!quiet && length(removed) > 0L) {
+        cli::cli_inform("Removed {length(removed)} older version(s).")
       }
     }
 
@@ -1235,7 +882,6 @@ write_snt_data <- function(
       path = write_path,
       ok = ok,
       bytes = bytes,
-      hash = hash_val,
       message = if (ok) "ok" else (rlang::`%||%`(err_msg, "error"))
     )
   }

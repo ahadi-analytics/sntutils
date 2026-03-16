@@ -8,28 +8,30 @@ outlier_plot(
   data,
   column,
   record_id = "record_id",
-  spatial_level = NULL,
   admin_level = c("adm1", "adm2"),
+  spatial_level = "hf_uid",
   date = "date",
-  time_mode = c("by_month", "across_time", "within_year"),
+  time_mode = c("across_time", "within_year", "seasonal"),
   value_type = c("count", "rate"),
   strictness = c("balanced", "lenient", "strict", "advanced"),
+  methods = c("iqr", "median", "mean", "consensus"),
   sd_multiplier = 3,
   mad_constant = 1.4826,
   mad_multiplier = 9,
   iqr_multiplier = 2,
+  consensus_rule = 3,
   min_n = 8,
   reporting_rate_col = NULL,
   reporting_rate_min = 0.5,
   key_indicators_hf = NULL,
-  consensus_rule = 2,
-  seasonal_pool_years = 5,
-  min_years_per_month = 3,
-  methods = c("iqr", "median", "mean", "consensus"),
+  classify_outbreaks = FALSE,
+  outbreak_min_run = 2,
+  outbreak_prop_tolerance = 0.9,
+  outbreak_max_gap = 12,
+  show_outbreaks = FALSE,
+  consensus_colors = TRUE,
+  return_plots = "all",
   year_breaks = 2,
-  cache_stats = TRUE,
-  cache_dir = NULL,
-  verbose = TRUE,
   target_language = "en",
   source_language = "en",
   lang_cache_path = tempdir(),
@@ -42,7 +44,8 @@ outlier_plot(
   plot_width = NULL,
   plot_height = NULL,
   plot_dpi = 300,
-  show_plot = TRUE
+  show_plot = TRUE,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -52,21 +55,23 @@ outlier_plot(
 
 \item{record_id}{Unique record identifier column.}
 
-\item{spatial_level}{Character string specifying the finest spatial unit
-for analysis (e.g., "hf_uid" for facility-level). When specified,
-\code{admin_levels} defines grouping boundaries while \code{spatial_level} defines
-the unit of analysis. This prevents excessive grouping while maintaining
-spatial granularity. Default is \code{NULL} (uses most granular admin level).}
-
 \item{admin_level}{Character vector of administrative level columns for
 parallel grouping, ordered from higher to lower resolution.
-Defaults to \code{c("adm1", "adm2")}. Used for efficient data.table grouping.}
+Defaults to \code{c("adm1", "adm2")}.}
+
+\item{spatial_level}{Character string specifying the finest spatial unit
+for analysis (e.g., "hf_uid" for facility-level). When specified,
+\code{admin_level} defines grouping boundaries while \code{spatial_level} defines
+the unit of analysis. This prevents excessive grouping while maintaining
+spatial granularity. Default is \code{hf_uid}.}
 
 \item{date}{Date column (Date, POSIXt, or parseable character string).
 Year, month, and yearmon are automatically derived from this column.}
 
 \item{time_mode}{Pooling strategy: \code{"across_time"}, \code{"within_year"}, or
-\code{"by_month"}. \code{"by_month"} activates the seasonal fallback ladder.}
+\code{"seasonal"}. Seasonal mode groups by month across all years (e.g., all
+Januaries together), useful for detecting values that are unusual for a
+specific month regardless of year.}
 
 \item{value_type}{Indicator type: \code{"count"} or \code{"rate"}. Counts floor lower
 bounds at 0.}
@@ -74,6 +79,12 @@ bounds at 0.}
 \item{strictness}{Strictness preset: \code{"lenient"}, \code{"balanced"}, \code{"strict"},
 or \code{"advanced"}. Presets map to method multipliers. If not \code{"advanced"},
 any manual multipliers are \strong{ignored}.}
+
+\item{methods}{Character vector specifying which outlier detection methods
+to plot: "iqr" (Interquartile Range), "median" (Median Absolute
+Deviation), "mean" (Mean +/- SD), and/or "consensus".
+Default is \code{c("iqr", "median", "mean", "consensus")}.
+For consensus, at least two other methods must be selected.}
 
 \item{sd_multiplier}{Width (in SD units) for the mean method
 (used only when \code{strictness = "advanced"}).}
@@ -86,6 +97,9 @@ any manual multipliers are \strong{ignored}.}
 \item{iqr_multiplier}{Tukey fence multiplier for the IQR method
 (advanced mode).}
 
+\item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3})
+for the consensus flag to call an outlier. Default \code{2}.}
+
 \item{min_n}{Minimum observations required in the active comparison bucket
 before flagging is attempted (applies to any seasonal bucket or fallback).}
 
@@ -96,42 +110,62 @@ before flagging is attempted (applies to any seasonal bucket or fallback).}
 threshold receive \code{reason = "low_reporting"} and are not flagged.}
 
 \item{key_indicators_hf}{Optional character vector of indicator names used to
-determine facility activeness. If supplied, the function calls
-\code{classify_facility_activity()} internally to exclude inactive health
-facilities from outlier detection. Inactive facility-months are tagged with
-\code{reason = "inactive_facility"} and excluded from detection. If \code{NULL}
+determine facility activeness. If supplied, the function uses a fast path
+to filter out inactive facility-months. A facility-month is considered
+active if ANY of the specified key indicators have non-NA values.
+Inactive facility-months are excluded from outlier detection. If \code{NULL}
 (default), activeness filtering is skipped. Typical indicators include
 \code{"allout"}, \code{"test"}, or \code{"conf"}. This adjustment prevents false positives
 caused by facilities that start or stop reporting mid-period.}
 
-\item{consensus_rule}{Number of methods that must agree (\code{1}, \code{2}, or \code{3})
-for the consensus flag to call an outlier. Default \code{2}.}
+\item{classify_outbreaks}{Logical. When \code{TRUE} (default), applies outbreak
+classification to distinguish between isolated outliers and sustained
+outbreak patterns. Consecutive outliers meeting the outbreak criteria are
+reclassified from "outlier" to "outbreak". This is particularly useful
+for epidemiological surveillance to identify disease outbreak patterns.
+Set to \code{FALSE} to disable outbreak classification.}
 
-\item{seasonal_pool_years}{Rolling history window (in years) for same-month
-pooling when \code{time_mode = "by_month"}. Default \code{5}.}
+\item{outbreak_min_run}{Integer. Minimum number of consecutive outliers
+required to classify as an outbreak (default \code{2}). Must be >= 2.}
 
-\item{min_years_per_month}{Minimum distinct years required in the same-month
-pool before moving to a fallback. Default \code{3}.}
+\item{outbreak_prop_tolerance}{Numeric. Proportional tolerance for outbreak
+consistency (default \code{0.9}). Values within this tolerance of the run
+median are considered consistent. Range: (0, 1).}
 
-\item{methods}{Character vector specifying which outlier detection methods
-to plot: "iqr" (Interquartile Range), "median" (Median Absolute
-Deviation), "mean" (Mean +/- SD), and/or "consensus".
-Default is \code{c("iqr", "median", "mean", "consensus")}.
-For consensus, at least two other methods must be selected.}
+\item{outbreak_max_gap}{Integer. Maximum allowed gap (non-outlier months)
+between outliers that can still be considered part of the same outbreak
+(default \code{1}). For example, with \code{outbreak_max_gap = 12}, the pattern
+"outlier-normal-outlier-outlier" would be classified as one outbreak
+of length 3, rather than separate incidents. Set to \code{0} for strict
+consecutive-only outbreaks. Useful for real-world data with reporting gaps.}
+
+\item{show_outbreaks}{Logical. When \code{TRUE}, displays outbreaks separately
+from outliers in the plot using a distinct color (#52AAC2 teal).
+The subtitle will show separate counts for outliers (red) and outbreaks
+(teal). When \code{FALSE} (default), outbreaks and outliers are shown
+together in red. Only relevant when \code{classify_outbreaks = TRUE}.}
+
+\item{consensus_colors}{Logical. When \code{TRUE} (default), creates a single plot
+showing consensus strength across all methods using graduated colors. Point
+colors indicate how many methods flagged each observation: grey (normal),
+light red (1 method, weak signal), medium red (2 methods, moderate signal),
+dark red (3 methods, strong signal). Requires at least 2 detection methods
+(excluding "consensus"). When enabled, \code{show_outbreaks} is automatically set
+to \code{FALSE} as the two visualization modes are mutually exclusive. A legend
+is displayed showing the color-to-strength mapping. Set to \code{FALSE} for
+standard multi-method plot behavior (separate plot per method).}
+
+\item{return_plots}{Character vector specifying which plots to return.
+Can be any subset of the methods being computed: "iqr", "median",
+"mean", "consensus", or "all" (default). For example, if
+\code{methods = c("iqr", "median", "consensus")} and
+\code{return_plots = c("iqr", "consensus")}, only the IQR and consensus
+plots will be returned. All computed plots are still created and
+saved (if \code{plot_path} is specified), but only the requested ones
+are returned.}
 
 \item{year_breaks}{Numeric value specifying the interval for x-axis breaks.
 Default \code{2}. For example, \code{2} shows every second tick and \code{3} every third.}
-
-\item{cache_stats}{Logical. If TRUE, caches computed statistics to improve
-performance on repeated calls with the same data. Default is TRUE.}
-
-\item{cache_dir}{Character string specifying directory for file-based cache.
-If NULL (default), uses project cache directory or tempdir(). Cache persists
-across R sessions for reproducible performance gains.}
-
-\item{verbose}{Logical. When \code{TRUE}, prints an informative summary describing
-methods, pooling, strictness, guardrails, and consensus rule.
-Default is \code{FALSE}.}
 
 \item{target_language}{Character string specifying the language for plot
 labels. Defaults to \code{"en"} (English). Use ISO 639-1 language codes.}
@@ -171,6 +205,10 @@ Default is 300.}
 
 \item{show_plot}{Logical. If \code{FALSE}, the plot is returned invisibly
 (not displayed). Useful when only saving plots. Default is \code{TRUE}.}
+
+\item{verbose}{Logical. When \code{TRUE}, prints an informative summary describing
+methods, pooling, strictness, guardrails, and consensus rule.
+Default is \code{FALSE}.}
 }
 \value{
 If a single method is specified, returns a ggplot object. If multiple
@@ -179,16 +217,20 @@ methods are specified, returns a named list of ggplot objects
 }
 \description{
 This function creates plots to visualize outliers in data using the same
-detection methods as \code{detect_outliers()}. The plotting function inherits
+detection methods as \code{detect_outliers()}. Only values above the upper
+thresholds are highlighted as outliers. The plotting function inherits
 all parameters from the detection function for seamless integration.
 }
 \details{
 The function creates scatter plots showing outliers detected using the
 specified statistical methods. Each method produces a separate plot with
-points colored by outlier status (red for outliers, grey for normal values).
-For consensus plots, the caption shows the consensus rule used.
-The plots are faceted by administrative levels and include summary
-statistics in the subtitle.
+points colored by outlier status. By default, both outliers and outbreaks
+are shown in red, with normal values in grey. When \code{show_outbreaks = TRUE},
+outbreaks are displayed in teal (#52AAC2) to distinguish them from isolated
+outliers (red). For consensus plots, the caption shows the consensus rule
+used. The plots are faceted by administrative levels and include summary
+statistics in the subtitle. Facet labels longer than 15 characters are
+automatically truncated with "..." to prevent overcrowding.
 }
 \examples{
 \dontrun{
@@ -243,5 +285,40 @@ district_plots <- outlier_plot(
   admin_level = c("adm1", "adm2"),  # Plot/facet at district level
   methods = c("consensus")
 )
+
+# Show outbreaks separately in teal color
+outbreak_plot <- outlier_plot(
+  data = malaria_data,
+  column = "confirmed_cases",
+  date = "date",
+  record_id = "facility_id",
+  methods = "consensus",
+  classify_outbreaks = TRUE,
+  show_outbreaks = TRUE  # Outbreaks shown in teal, outliers in red
+)
+
+# Compute multiple methods but return only specific plots
+selected <- outlier_plot(
+  data = malaria_data,
+  column = "confirmed_cases",
+  date = "date",
+  record_id = "facility_id",
+  methods = c("iqr", "median", "mean", "consensus"),
+  return_plots = c("iqr", "consensus"),  # Only return these two
+  plot_path = "outliers.png"  # All methods still saved to disk
+)
+# Returns list with only $iqr and $consensus plots
+
+# Consensus color visualization showing agreement strength
+consensus_plot <- outlier_plot(
+  data = malaria_data,
+  column = "confirmed_cases",
+  date = "date",
+  record_id = "facility_id",
+  methods = c("iqr", "median", "mean"),
+  consensus_colors = TRUE  # Single plot with color-coded consensus strength
+)
+# Returns single ggplot with graduated colors:
+# grey = normal, light red = 1 method, medium red = 2 methods, dark red = 3 methods
 }
 }

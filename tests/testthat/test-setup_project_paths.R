@@ -8,11 +8,12 @@ exp_names <- c(
   "core",
   # 1.1_foundational
   "admin_shp",
-  "physical_features",
+  "physical_feat",
   "hf",
   "chw",
   "pop_national",
   "pop_worldpop",
+  "pop_displaced",
   "cache",
   # 1.2_epidemiology
   "dhis2",
@@ -32,14 +33,29 @@ exp_names <- c(
   "ento",
   # 1.8_commodities
   "commodities",
-  # outputs
-  "validation_plots",
-  "validation_tables"
+  # 1.9_finance
+  "finance",
+  # 1.10_final
+  "final_data",
+  # outputs - parent directories
+  "val",
+  "interm",
+  "final",
+  "model",
+  # outputs - figures and tables
+  "val_fig",
+  "val_tbl",
+  "interm_fig",
+  "interm_tbl",
+  "final_fig",
+  "final_tbl",
+  "model_fig",
+  "model_tbl"
 )
 
 testthat::test_that("returns list with expected names and absolute paths", {
   tmp <- withr::local_tempdir()
-  paths <- setup_project_paths(base_path = tmp, create = FALSE, quiet = TRUE)
+  paths <- setup_project_paths(base_path = tmp, quiet = TRUE)
 
   testthat::expect_type(paths, "list")
   testthat::expect_setequal(names(paths), exp_names)
@@ -53,35 +69,37 @@ testthat::test_that("returns list with expected names and absolute paths", {
   testthat::expect_true(all(abs_ok))
 })
 
-testthat::test_that("create = TRUE makes the directories", {
+testthat::test_that("does not create directories automatically", {
   tmp <- withr::local_tempdir()
-  paths <- setup_project_paths(base_path = tmp, create = TRUE, quiet = TRUE)
+  paths <- setup_project_paths(base_path = tmp, quiet = TRUE)
 
-  # spot-check a few deep dirs plus ensure all exist
-  testthat::expect_true(fs::dir_exists(paths$admin_shp))
-  testthat::expect_true(fs::dir_exists(paths$chw))
-  testthat::expect_true(fs::dir_exists(paths$pop_worldpop))
-  testthat::expect_true(fs::dir_exists(paths$validation_plots))
-  testthat::expect_true(all(fs::dir_exists(unlist(paths))))
-})
-
-testthat::test_that("create = FALSE does not create directories", {
-  tmp <- withr::local_tempdir()
-  paths <- setup_project_paths(base_path = tmp, create = FALSE, quiet = TRUE)
-
-  # Should *not* exist yet (function only returns paths)
-  testthat::expect_false(fs::dir_exists(paths$validation_tables))
+  # should *not* exist yet (function only returns paths)
+  testthat::expect_false(fs::dir_exists(paths$val_tbl))
   testthat::expect_false(fs::dir_exists(paths$admin_shp))
   testthat::expect_false(fs::dir_exists(paths$chw))
 
-  # Creating afterwards should succeed
-  fs::dir_create(paths$validation_tables, recurse = TRUE)
-  testthat::expect_true(fs::dir_exists(paths$validation_tables))
+  # creating afterwards should succeed
+  fs::dir_create(paths$val_tbl, recurse = TRUE)
+  testthat::expect_true(fs::dir_exists(paths$val_tbl))
+})
+
+testthat::test_that("initialize_project_structure creates directories", {
+  tmp <- withr::local_tempdir()
+  initialize_project_structure(base_path = tmp)
+  paths <- setup_project_paths(base_path = tmp, quiet = TRUE)
+
+  # spot-check a few deep dirs plus ensure key ones exist
+  testthat::expect_true(fs::dir_exists(paths$admin_shp))
+  testthat::expect_true(fs::dir_exists(paths$chw))
+  testthat::expect_true(fs::dir_exists(paths$pop_worldpop))
+  testthat::expect_true(fs::dir_exists(paths$val_fig))
+  testthat::expect_true(fs::dir_exists(paths$interm))
+  testthat::expect_true(fs::dir_exists(paths$final))
 })
 
 testthat::test_that("sets useful project options", {
   tmp <- withr::local_tempdir()
-  paths <- setup_project_paths(base_path = tmp, create = TRUE, quiet = TRUE)
+  paths <- setup_project_paths(base_path = tmp, quiet = TRUE)
 
   opt_labels <- getOption("snt.labels_en_path")
   opt_paths <- getOption("snt.paths")
@@ -98,44 +116,48 @@ testthat::test_that("sets useful project options", {
 testthat::test_that("idempotent and stable across repeated calls", {
   tmp <- withr::local_tempdir()
 
-  p1 <- setup_project_paths(base_path = tmp, create = TRUE, quiet = TRUE)
-  p2 <- setup_project_paths(base_path = tmp, create = TRUE, quiet = TRUE)
+  p1 <- setup_project_paths(base_path = tmp, quiet = TRUE)
+  p2 <- setup_project_paths(base_path = tmp, quiet = TRUE)
 
   testthat::expect_identical(p1, p2)
-  testthat::expect_true(all(fs::dir_exists(unlist(p1))))
 })
 
 testthat::test_that("base_path normalization produces absolute core", {
-  tmp <- withr::local_tempdir()
-  nested <- fs::path(tmp, ".", "project_root")
 
-  # Not created yet; function will still return absolute path
-  paths <- setup_project_paths(base_path = nested, create = FALSE, quiet = TRUE)
+  tmp <- withr::local_tempdir()
+  nested <- fs::path(tmp, "project_root")
+
+  # not created yet; function will still return absolute path
+  paths <- setup_project_paths(base_path = nested, quiet = TRUE)
 
   testthat::expect_true(fs::is_absolute_path(paths$core))
-  testthat::expect_identical(paths$core, fs::path_abs(nested))
+  # compare basename to avoid symlink resolution differences on macOS
+  testthat::expect_identical(basename(paths$core), "project_root")
+  testthat::expect_true(grepl(basename(tmp), paths$core))
 })
 
-testthat::test_that("quiet = TRUE is silent; quiet = FALSE emits messages", {
+testthat::test_that("quiet = TRUE is silent; quiet = FALSE emits warnings", {
   tmp <- withr::local_tempdir()
 
-  # Silent creation
+  # silent when no folders exist
   testthat::expect_silent(
-    setup_project_paths(base_path = tmp, create = TRUE, quiet = TRUE)
+    setup_project_paths(base_path = tmp, quiet = TRUE)
   )
 
-  # With messages — we don't assert exact content, just that it runs
+  # with messages when folders missing and quiet = FALSE
   # (cli usually writes to stdout; this ensures it doesn't error)
-  setup_project_paths(base_path = tmp, create = TRUE, quiet = FALSE)
-
-  # Still fine to call again (idempotent)
-  setup_project_paths(base_path = tmp, create = FALSE, quiet = FALSE)
+  testthat::expect_message(
+    setup_project_paths(base_path = tmp, quiet = FALSE),
+    "Missing"
+  )
 })
 
 testthat::test_that(
   "does not rely on here()/rprojroot when base_path provided", {
   # even if those packages are not installed, passing base_path must work
   tmp <- withr::local_tempdir()
-  paths <- setup_project_paths(base_path = tmp, create = FALSE, quiet = TRUE)
-  testthat::expect_identical(paths$core, fs::path_abs(tmp))
+  paths <- setup_project_paths(base_path = tmp, quiet = TRUE)
+  # compare basename to avoid symlink resolution differences on macOS
+  testthat::expect_identical(basename(paths$core), basename(tmp))
+  testthat::expect_true(fs::is_absolute_path(paths$core))
 })

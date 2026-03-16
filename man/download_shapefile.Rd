@@ -67,8 +67,7 @@ Requires the \code{httr2} package for API requests. Install with:
 }
 \examples{
 
-\donttest{
-
+\dontrun{
 tf <- file.path(tempdir(), "test_env")
 
 # Download latest ADM2 boundaries without saving to disk

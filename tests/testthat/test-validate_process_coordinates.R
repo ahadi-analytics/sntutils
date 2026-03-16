@@ -248,10 +248,10 @@ testthat::test_that("comprehensive validation with all issue types", {
     requireNamespace("parzer", quietly = TRUE),
     message = "parzer not installed for DMS parsing"
   )
-  
-  # Approximate ADM0 rectangle for Burundi (EPSG:4326)
+
+  # Approximate ADM0 rectangle (EPSG:4326)
   adm0_bdi <- sf::st_as_sfc(
-    sf::st_bbox(c(xmin = 29.0, ymin = -4.5, xmax = 30.9, ymax = -2.3), 
+    sf::st_bbox(c(xmin = 29.0, ymin = -4.5, xmax = 30.9, ymax = -2.3),
                 crs = sf::st_crs(4326))
   ) |> sf::st_sf()
 
@@ -260,12 +260,12 @@ testthat::test_that("comprehensive validation with all issue types", {
     id = c(
       # Valid, inside
       "ID_valid",
-      # DMS (needs parzer), inside  
+      # DMS (needs parzer), inside
       "ID_dms",
       # Flipped lon/lat (should be corrected)
       "ID_flip",
       # Out-of-range lon
-      "ID_out_range_lon", 
+      "ID_out_range_lon",
       # Out-of-range lat
       "ID_out_range_lat",
       # Zero coords
@@ -273,7 +273,7 @@ testthat::test_that("comprehensive validation with all issue types", {
       # Missing lon
       "ID_missing_lon",
       # Missing lat (empty string)
-      "ID_missing_lat", 
+      "ID_missing_lat",
       # Non-numeric
       "ID_nonnumeric",
       # Low precision decimals
@@ -287,7 +287,7 @@ testthat::test_that("comprehensive validation with all issue types", {
     ),
     hf = c(
       "Valid HF", "DMS HF", "Flip HF", "OutRange Lon HF", "OutRange Lat HF",
-      "Zero HF", "Missing Lon HF", "Missing Lat HF", "NonNumeric HF", "LowPrecision HF", 
+      "Zero HF", "Missing Lon HF", "Missing Lat HF", "NonNumeric HF", "LowPrecision HF",
       "Dup HF A", "Dup HF B", "Shared Loc A", "Shared Loc B", "Outside ADM0 HF"
     ),
     lon = c(
@@ -326,7 +326,7 @@ testthat::test_that("comprehensive validation with all issue types", {
   res <- validate_process_coordinates(
     data = df,
     name = "comprehensive_test",
-    id_col = "id", 
+    id_col = "id",
     adm0_sf = adm0_bdi,
     min_decimals = 3,
     fix_issues = TRUE,
@@ -338,11 +338,11 @@ testthat::test_that("comprehensive validation with all issue types", {
   testthat::expect_true("issues" %in% names(res))
   pts <- res$final_points_df
   testthat::expect_s3_class(pts, "sf")
-  
+
   # Test that some rows are preserved (current behavior may vary)
   testthat::expect_true(nrow(pts) > 0)
   testthat::expect_true(nrow(pts) <= nrow(df))
-  
+
   # Test that all expected issue types are detected
   issues_str <- paste(res$issues, collapse = " ")
   testthat::expect_true(grepl("missing coordinates", issues_str))
@@ -355,22 +355,22 @@ testthat::test_that("comprehensive validation with all issue types", {
   testthat::expect_true(grepl("duplicates by ID and coordinates|duplicate", issues_str))
   testthat::expect_true(grepl("shared locations|duplicate", issues_str))
   testthat::expect_true(grepl("outside ADM0|outside country", issues_str))
-  
+
   # Test that coordinates exist (behavior may vary for NA handling)
   testthat::expect_true("lon" %in% names(pts))
   testthat::expect_true("lat" %in% names(pts))
-  
+
   # Test that at least some coordinates are valid
   if (nrow(pts) > 0) {
     testthat::expect_true(sum(!is.na(pts$lon)) >= 0)
     testthat::expect_true(sum(!is.na(pts$lat)) >= 0)
   }
-  
+
   # Test output structure
   testthat::expect_true("lon" %in% names(pts))
   testthat::expect_true("lat" %in% names(pts))
   testthat::expect_equal(names(pts)[ncol(pts)], "geometry")
-  
+
   # Test checks structure
   if (!is.null(res$checks)) {
     testthat::expect_type(res$checks, "list")

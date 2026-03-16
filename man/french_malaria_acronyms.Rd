@@ -7,8 +7,8 @@
 french_malaria_acronyms()
 }
 \value{
-tibble with columns: english_acronyms (list), english_full,
-french_acronyms (list), french_full, preferred_french_acronym
+tibble with columns: english_acronyms, english_full,
+french_acronyms, french_full, preferred_french_acronym
 }
 \description{
 returns a tibble of English<->French acronyms and their full phrases used

@@ -10,9 +10,15 @@ reporting_rate_map(
   x_var,
   adm_var,
   vars_of_interest,
-  hf_col = NULL,
+  hf_col = "hf_uid",
+  key_indicators = c("allout", "conf", "test", "treat", "pres"),
   use_reprate = TRUE,
   full_range = TRUE,
+  show_title = TRUE,
+  method = 3,
+  nonreport_window = 6,
+  reporting_rule = "any_non_na",
+  require_all = FALSE,
   weighting = FALSE,
   weight_var = NULL,
   weight_window = 12,
@@ -33,7 +39,8 @@ reporting_rate_map(
   plot_width = NULL,
   plot_height = NULL,
   plot_dpi = 300,
-  show_plot = TRUE
+  show_plot = TRUE,
+  ...
 )
 }
 \arguments{
@@ -51,11 +58,34 @@ These will be displayed in the plot title and subtitle.}
 
 \item{hf_col}{Character. Health facility ID column, if required. Default is NULL.}
 
+\item{key_indicators}{Character vector. Indicator variables used to determine facility
+activity status. Facilities that never report any of these indicators will be
+excluded from denominators. Default is c("allout", "conf", "test", "treat", "pres").}
+
 \item{use_reprate}{Logical. If TRUE, plot reporting rate (facilities that reported);
 if FALSE, plot missing rate (facilities that didn't report). Default is TRUE.}
 
 \item{full_range}{Logical. If TRUE, the fill scale will use the full range from 0 to 100.
 If FALSE, the fill scale will use the range of values present in the data. Default is TRUE.}
+
+\item{show_title}{Logical. If TRUE, display the plot title. If FALSE, hide the title.
+Default is TRUE.}
+
+\item{method}{Character or numeric. Classification method for facility activity
+status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
+Defaults to 3. See \code{\link{classify_facility_activity}} for details.}
+
+\item{nonreport_window}{Integer. Minimum number of consecutive non-reporting
+months to classify a facility as inactive in method 3. Defaults to 6.}
+
+\item{reporting_rule}{Character. Defines what counts as reporting:
+\code{"any_non_na"} (default, counts NA as non-reporting, 0 counts as reported)
+or \code{"positive_only"} (requires >0 value to count as reported).}
+
+\item{require_all}{Logical. When TRUE and multiple vars_of_interest are
+provided, calculates the proportion of facilities reporting ALL variables
+(complete data). When FALSE (default), calculates per-variable reporting
+rates. Only applies to facility-level analysis (when hf_col is provided).}
 
 \item{weighting}{Logical. If TRUE, compute weighted reporting rates based on
 facility size. Default is FALSE.}
@@ -117,6 +147,8 @@ Default is 300.}
 
 \item{show_plot}{Logical. Display plot (TRUE) or return invisibly (FALSE).
 Default is TRUE.}
+
+\item{...}{Additional arguments passed to internal functions.}
 }
 \value{
 A ggplot2 object.

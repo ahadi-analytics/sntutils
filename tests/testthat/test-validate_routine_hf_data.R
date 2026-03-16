@@ -15,6 +15,8 @@ create_test_data <- function(n_rows = 100, add_issues = TRUE) {
   data <- tibble::tibble(
     record_id = paste0("REC", seq_len(n_rows)),
     hf_id = paste0("HF", rep(1:10, length.out = n_rows)),
+    hf_uid = paste0("HF", rep(1:10, length.out = n_rows)),
+    hf = paste0("Health Facility ", rep(1:10, length.out = n_rows)),
     date = sample(dates, n_rows, replace = TRUE),
     yearmon = format(date, "%Y-%m"),
     year = lubridate::year(date),
@@ -82,26 +84,29 @@ testthat::test_that("validate_routine_hf_data returns correct structure", {
     data = data,
     verbose = FALSE,
     check_outliers = TRUE,
-    outlier_methods = c("iqr", "median", "mean")
+    outlier_methods = c("iqr", "median", "mean"),
+    build_dictionary = TRUE
   )
 
   # check result is a list
   testthat::expect_type(result, "list")
 
-  # check required components exist
-  testthat::expect_named(
-    result,
-    c(
-      "Summary",
-      "Missing values",
-      "Duplicate records",
-      "Future dates",
-      "Consistency failures",
-      "Consistency details",
-      "Outliers"
-    ),
-    ignore.order = TRUE
+  # check required components exist (some may be absent if no issues found)
+  expected_keys <- c(
+    "Summary",
+    "Missing values",
+    "Missing values detail",
+    "Duplicate records",
+    "Future dates",
+    "Consistency summary",
+    "Consistency details",
+    "Outlier detailed",
+    "Outlier summary",
+    "HF activeness summary",
+    "Data dictionary"
   )
+  # verify all expected keys are present
+  testthat::expect_true(all(expected_keys %in% names(result)))
 
   # check Summary is a tibble
   testthat::expect_s3_class(result$Summary, "tbl_df")
@@ -300,10 +305,6 @@ testthat::test_that("validate_routine_hf_data detects consistency violations", {
     check_outliers = FALSE
   )
 
-  # check consistency failures exist
-  testthat::expect_type(result[["Consistency failures"]], "list")
-  testthat::expect_gt(length(result[["Consistency failures"]]), 0)
-
   # check consistency details table
   testthat::expect_s3_class(result[["Consistency details"]], "tbl_df")
   testthat::expect_gt(nrow(result[["Consistency details"]]), 0)
@@ -327,6 +328,106 @@ testthat::test_that("validate_routine_hf_data detects consistency violations", {
   testthat::expect_true(grepl("pair\\(s\\)", consistency_row$issues_found))
 })
 
+testthat::test_that("validate_routine_hf_data includes consistency summary", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_duplicates = FALSE,
+    check_future_dates = FALSE,
+    check_outliers = FALSE
+  )
+
+  # check structure
+  testthat::expect_s3_class(result[["Consistency summary"]], "tbl_df")
+  testthat::expect_gt(nrow(result[["Consistency summary"]]), 0)
+
+  # check columns
+  expected_cols <- c(
+    "input_indicator", "output_indicator",
+    "input_value", "output_value", "difference",
+    "difference_prop", "difference_sd"
+  )
+  testthat::expect_true(all(expected_cols %in% names(result[["Consistency summary"]])))
+
+  # verify details also has difference_prop
+  testthat::expect_true("difference_prop" %in% names(result[["Consistency details"]]))
+
+  # verify aggregation matches details
+  summary <- result[["Consistency summary"]]
+  details <- result[["Consistency details"]]
+
+  for (i in seq_len(nrow(summary))) {
+    pair_details <- details |>
+      dplyr::filter(
+        input_indicator == summary$input_indicator[i],
+        output_indicator == summary$output_indicator[i]
+      )
+
+    # verify sums match
+    testthat::expect_equal(
+      summary$difference[i],
+      sum(pair_details$difference, na.rm = TRUE)
+    )
+  }
+})
+
+testthat::test_that("validate_routine_hf_data includes data dictionary", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_outliers = FALSE,
+    build_dictionary = TRUE
+  )
+
+  # check dictionary exists
+  testthat::expect_s3_class(result[["Data dictionary"]], "tbl_df")
+  testthat::expect_gt(nrow(result[["Data dictionary"]]), 0)
+
+  # check required columns
+  testthat::expect_true("variable" %in% names(result[["Data dictionary"]]))
+  testthat::expect_true("appears_in_tabs" %in% names(result[["Data dictionary"]]))
+  testthat::expect_true("label_en" %in% names(result[["Data dictionary"]]))
+
+  # verify some known columns are documented
+  dict <- result[["Data dictionary"]]
+  testthat::expect_true("check" %in% dict$variable)  # from Summary
+  testthat::expect_true("input_indicator" %in% dict$variable)  # from Consistency
+})
+
+testthat::test_that("data dictionary supports translation from dictionaries", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_outliers = FALSE,
+    language = "fr",
+    build_dictionary = TRUE
+  )
+
+  # check French label column exists
+  testthat::expect_true("label_fr" %in% names(result[["Data dictionary"]]))
+
+  dict <- result[["Data dictionary"]]
+
+  # verify validation terms are translated
+  check_row <- dict |> dplyr::filter(variable == "check")
+  if (nrow(check_row) > 0) {
+    testthat::expect_equal(check_row$label_fr, "Vérification")
+  }
+
+  # verify SNT variables are translated (if present)
+  conf_row <- dict |> dplyr::filter(variable == "conf")
+  if (nrow(conf_row) > 0) {
+    testthat::expect_true(!is.na(conf_row$label_fr))
+    testthat::expect_true(conf_row$label_fr != "Conf")  # should be translated
+  }
+})
+
 testthat::test_that("validate_routine_hf_data handles custom consistency pairs", {
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
 
@@ -342,9 +443,14 @@ testthat::test_that("validate_routine_hf_data handles custom consistency pairs",
     check_outliers = FALSE
   )
 
-  # check that only one pair is checked
-  testthat::expect_type(result[["Consistency failures"]], "list")
-  testthat::expect_true("test vs conf" %in% names(result[["Consistency failures"]]))
+  # check that only one pair is checked - verify in Consistency summary
+  testthat::expect_s3_class(result[["Consistency summary"]], "tbl_df")
+  summary_pairs <- base::paste(
+    result[["Consistency summary"]]$input_indicator,
+    result[["Consistency summary"]]$output_indicator,
+    sep = " vs "
+  )
+  testthat::expect_true("test vs conf" %in% summary_pairs)
 })
 
 # test outlier detection -----------------------------------------------------
@@ -361,27 +467,28 @@ testthat::test_that("validate_routine_hf_data detects outliers", {
     outlier_methods = c("iqr", "median", "mean")
   )
 
-  # check outliers table exists
-  testthat::expect_s3_class(result[["Outliers"]], "tbl_df")
-
-  # check outliers were detected
-  testthat::expect_gte(nrow(result[["Outliers"]]), 0)
-
-  # If outliers were detected, verify the table structure
-  if (nrow(result[["Outliers"]]) > 0) {
-    outlier_cols <- names(result[["Outliers"]])
-    testthat::expect_true("value" %in% outlier_cols)
-    testthat::expect_true(any(grepl("outlier_flag_", outlier_cols)))
-  }
+  # check outlier summary table always exists (even if no outliers found)
+  testthat::expect_s3_class(result[["Outlier summary"]], "tbl_df")
 
   # check summary always has an outliers row
   summary_df <- result$Summary
   outlier_row <- summary_df |>
-    dplyr::filter(check == "Outliers")
+    dplyr::filter(check == "Outliers & Corrections")
 
   testthat::expect_equal(nrow(outlier_row), 1)
   # percent can be 0 if no outliers detected
   testthat::expect_gte(outlier_row$percent, 0)
+
+  # if outliers detected, check detailed table structure
+  if (!base::is.null(result[["Outlier detailed"]])) {
+    testthat::expect_s3_class(result[["Outlier detailed"]], "tbl_df")
+    testthat::expect_gte(nrow(result[["Outlier detailed"]]), 0)
+
+    # verify the table structure - at minimum has metadata columns
+    outlier_cols <- names(result[["Outlier detailed"]])
+    testthat::expect_true("record_id" %in% outlier_cols)
+    testthat::expect_true("hf_uid" %in% outlier_cols)
+  }
 })
 
 testthat::test_that("validate_routine_hf_data handles no outliers", {
@@ -399,12 +506,13 @@ testthat::test_that("validate_routine_hf_data handles no outliers", {
 
   # outliers may or may not be detected depending on the data distribution
   # just check that the structure is correct
-  testthat::expect_true("Outliers" %in% names(result))
+  testthat::expect_true("Outlier detailed" %in% names(result))
+  testthat::expect_true("Outlier summary" %in% names(result))
 
   # check summary has outliers row
   summary_df <- result$Summary
   outlier_row <- summary_df |>
-    dplyr::filter(check == "Outliers")
+    dplyr::filter(check == "Outliers & Corrections")
 
   testthat::expect_equal(nrow(outlier_row), 1)
 })
@@ -427,7 +535,7 @@ testthat::test_that("validate_routine_hf_data works with all checks disabled", {
   # check that no duplicate, future date, or outlier checks ran
   testthat::expect_false("Duplicate records" %in% result$Summary$check)
   testthat::expect_false("Future dates" %in% result$Summary$check)
-  testthat::expect_false("Outliers" %in% result$Summary$check)
+  testthat::expect_false("Outliers & Corrections" %in% result$Summary$check)
 })
 
 testthat::test_that("validate_routine_hf_data works with all checks enabled", {
@@ -449,7 +557,7 @@ testthat::test_that("validate_routine_hf_data works with all checks enabled", {
   testthat::expect_true("Duplicate records" %in% summary_checks)
   testthat::expect_true("Future dates" %in% summary_checks)
   testthat::expect_true("Logical consistency" %in% summary_checks)
-  testthat::expect_true("Outliers" %in% summary_checks)
+  testthat::expect_true("Outliers & Corrections" %in% summary_checks)
 })
 
 testthat::test_that("validate_routine_hf_data handles custom indicator list", {
@@ -503,6 +611,8 @@ testthat::test_that("validate_routine_hf_data handles minimal data", {
   data <- tibble::tibble(
     record_id = c("REC1", "REC2", "REC3"),
     hf_id = c("HF1", "HF2", "HF3"),
+    hf_uid = c("HF1", "HF2", "HF3"),
+    hf = c("Health Facility 1", "Health Facility 2", "Health Facility 3"),
     date = rep(Sys.Date(), 3),
     yearmon = format(Sys.Date(), "%Y-%m"),
     year = lubridate::year(Sys.Date()),
@@ -535,7 +645,7 @@ testthat::test_that("validate_routine_hf_data verbose mode works", {
   testthat::expect_output(
     result <- sntutils::validate_routine_hf_data(
       data = data,
-      verbose = TRUE,
+        verbose = TRUE,
       check_outliers = FALSE
     )
   )
@@ -593,29 +703,18 @@ testthat::test_that("summary percentages are correctly calculated", {
 # test language translation --------------------------------------------------
 
 testthat::test_that("validate_routine_hf_data handles language translation", {
-  # Skip if translation fails (e.g., no internet)
-  testthat::skip_if_not(
-    tryCatch({
-      sntutils::translate_text("test", target_language = "fr")
-      TRUE
-    }, error = function(e) FALSE),
-    "Translation service not available"
-  )
-
   data <- create_test_data(n_rows = 50, add_issues = TRUE)
   temp_dir <- tempdir()
   temp_file <- file.path(temp_dir, "test_validation")
 
-  # Test with French translation
+  # Test with French translation using dictionaries
   result <- sntutils::validate_routine_hf_data(
     data = data,
     verbose = FALSE,
-    save_results = TRUE,
     output_path = temp_dir,
     output_name = "test_validation",
     output_formats = "xlsx",
-    target_language = "fr",
-    source_language = "en"
+    language = "fr"
   )
 
   # Check that file was created
@@ -627,21 +726,6 @@ testthat::test_that("validate_routine_hf_data handles language translation", {
 })
 
 testthat::test_that("validate_routine_hf_data translation converts column names correctly", {
-  # Mock translation function for testing
-  mock_translate <- function(text, target_language, source_language, cache_path) {
-    if (text == "Summary") return("Résumé")
-    if (text == "Missing values") return("Valeurs manquantes")
-    if (text == "Issues found") return("Problèmes trouvés")
-    if (text == "N missing") return("N manquant")
-    if (text == "Column type") return("Type de colonne")
-    if (text == "Core ID") return("ID principal")
-    if (text == "Indicator") return("Indicateur")
-    if (text == "column(s)") return("colonne(s)")
-    if (text == "set(s)") return("ensemble(s)")
-    if (text == "pair(s)") return("paire(s)")
-    return(text)
-  }
-
   # Create minimal test results
   test_results <- list(
     Summary = tibble::tibble(
@@ -659,47 +743,222 @@ testthat::test_that("validate_routine_hf_data translation converts column names 
     )
   )
 
-  # Mock the translate_text function
-  with_mocked_bindings(
-    translate_text = mock_translate,
-    {
-      # Call the internal translation function
-      translated <- sntutils:::`.translate_results`(
-        results = test_results,
-        target_language = "fr",
-        source_language = "en",
-        cache_path = tempdir()
-      )
-
-      # Check sheet names are translated
-      testthat::expect_true("Résumé" %in% names(translated))
-      testthat::expect_true("Valeurs manquantes" %in% names(translated))
-
-      # Check column names don't have dots
-      summary_cols <- names(translated[["Résumé"]])
-      testthat::expect_false(any(grepl("\\.", summary_cols)))
-
-      missing_cols <- names(translated[["Valeurs manquantes"]])
-      testthat::expect_false(any(grepl("\\.", missing_cols)))
-
-      # Check specific translations in data
-      # Find the column that contains the issues (might have different name after translation)
-      issues_col <- which(grepl("Problèmes", names(translated[["Résumé"]])))
-      if (length(issues_col) > 0) {
-        issues_data <- translated[["Résumé"]][[issues_col[1]]]
-        testthat::expect_true(any(grepl("colonne\\(s\\)", issues_data)))
-        testthat::expect_true(any(grepl("ensemble\\(s\\)", issues_data)))
-      }
-
-      # Check Core ID and Indicator translations
-      # Find the column type column
-      type_col <- which(grepl("Type", names(translated[["Valeurs manquantes"]])))
-      if (length(type_col) > 0) {
-        type_data <- translated[["Valeurs manquantes"]][[type_col[1]]]
-        testthat::expect_true("ID principal" %in% type_data)
-        testthat::expect_true("Indicateur" %in% type_data)
-      }
-    },
-    .package = "sntutils"
+  # Call the internal translation function (now dictionary-based)
+  translated <- sntutils:::`.translate_results`(
+    results = test_results,
+    language = "fr"
   )
+
+  # Check sheet names are translated using validation_terms dictionary
+  testthat::expect_true("Résumé" %in% names(translated))
+  testthat::expect_true("Valeurs manquantes" %in% names(translated))
+
+  # Check column names don't have dots
+  summary_cols <- names(translated[["Résumé"]])
+  testthat::expect_false(any(grepl("\\.", summary_cols)))
+
+  missing_cols <- names(translated[["Valeurs manquantes"]])
+  testthat::expect_false(any(grepl("\\.", missing_cols)))
+
+  # Check that column names have been translated using dictionaries
+  # Should have French column names
+  testthat::expect_true(any(grepl("Type", missing_cols, ignore.case = TRUE)))
+})
+
+# test data dictionary for input columns ------------------------------------
+
+testthat::test_that("data dictionary includes input columns from non-duplicate tabs", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_duplicates = TRUE,
+    check_future_dates = TRUE,
+    check_outliers = TRUE,
+    build_dictionary = TRUE
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # verify input ID columns are included (they appear in multiple tabs)
+  testthat::expect_true("record_id" %in% dict$variable)
+  testthat::expect_true("date" %in% dict$variable)
+  testthat::expect_true("hf_uid" %in% dict$variable)
+
+  # verify admin columns are included
+  testthat::expect_true("adm0" %in% dict$variable)
+  testthat::expect_true("adm1" %in% dict$variable)
+  testthat::expect_true("adm2" %in% dict$variable)
+
+  # verify malaria indicators are included (they appear in Outliers/Consistency tabs)
+  testthat::expect_true(any(c("conf", "test", "susp", "maltreat") %in% dict$variable))
+})
+
+testthat::test_that("data dictionary excludes columns ONLY in Duplicate records tab", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_duplicates = TRUE,
+    check_future_dates = FALSE,
+    check_outliers = FALSE,
+    check_facility_activeness = FALSE,
+    build_dictionary = TRUE
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # check that columns appearing ONLY in Duplicate records are excluded
+  # however, if those same columns appear in other tabs (like Future dates),
+  # they should be included
+  duplicate_only_vars <- dict |>
+    dplyr::filter(appears_in_tabs == "Duplicate records")
+
+  # should be empty - no columns appear ONLY in Duplicate records
+  testthat::expect_equal(nrow(duplicate_only_vars), 0)
+})
+
+testthat::test_that("data dictionary provides labels for input columns", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_outliers = TRUE,
+    build_dictionary = TRUE
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # verify input columns have human-readable labels
+  record_id_row <- dict |> dplyr::filter(variable == "record_id")
+  if (nrow(record_id_row) > 0) {
+    testthat::expect_true(!is.na(record_id_row$label_en))
+    testthat::expect_true(record_id_row$label_en != "record_id")
+    testthat::expect_true(nchar(record_id_row$label_en) > 0)
+  }
+
+  # verify admin columns have labels
+  adm0_row <- dict |> dplyr::filter(variable == "adm0")
+  if (nrow(adm0_row) > 0) {
+    testthat::expect_true(!is.na(adm0_row$label_en))
+    testthat::expect_true(adm0_row$label_en != "adm0")
+  }
+})
+
+testthat::test_that("data dictionary provides labels for malaria indicators", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_outliers = TRUE,
+    build_dictionary = TRUE
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # verify malaria indicators have labels from snt_var_tree
+  conf_row <- dict |> dplyr::filter(variable == "conf")
+  if (nrow(conf_row) > 0) {
+    testthat::expect_true(!is.na(conf_row$label_en))
+    testthat::expect_true(conf_row$label_en != "conf")
+    testthat::expect_true(nchar(conf_row$label_en) > 5)  # should be descriptive
+  }
+
+  test_row <- dict |> dplyr::filter(variable == "test")
+  if (nrow(test_row) > 0) {
+    testthat::expect_true(!is.na(test_row$label_en))
+    testthat::expect_true(test_row$label_en != "test")
+  }
+})
+
+testthat::test_that("data dictionary supports multilingual labels for input columns", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_outliers = TRUE,
+    language = "fr",
+    build_dictionary = TRUE
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # verify French label column exists
+  testthat::expect_true("label_fr" %in% names(dict))
+
+  # verify input columns have French labels
+  record_id_row <- dict |> dplyr::filter(variable == "record_id")
+  if (nrow(record_id_row) > 0) {
+    testthat::expect_true(!is.na(record_id_row$label_fr))
+    testthat::expect_true(nchar(record_id_row$label_fr) > 0)
+  }
+
+  # verify malaria indicators have French labels
+  conf_row <- dict |> dplyr::filter(variable == "conf")
+  if (nrow(conf_row) > 0) {
+    testthat::expect_true(!is.na(conf_row$label_fr))
+    testthat::expect_true(conf_row$label_fr != conf_row$label_en)
+  }
+})
+
+testthat::test_that("data dictionary includes validation-created columns", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_outliers = TRUE,
+    build_dictionary = TRUE
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # verify validation-created columns are still included
+  testthat::expect_true("check" %in% dict$variable)
+  testthat::expect_true("issues_found" %in% dict$variable)
+  testthat::expect_true("percent" %in% dict$variable)
+  testthat::expect_true("input_indicator" %in% dict$variable)
+  testthat::expect_true("output_indicator" %in% dict$variable)
+  testthat::expect_true("difference" %in% dict$variable)
+
+  # verify outlier columns if outliers detected
+  if (any(grepl("outlier_flag", dict$variable))) {
+    testthat::expect_true(any(grepl("outlier_flag_", dict$variable)))
+  }
+})
+
+testthat::test_that("data dictionary appears_in_tabs shows correct tabs", {
+  data <- create_test_data(n_rows = 50, add_issues = TRUE)
+
+  result <- sntutils::validate_routine_hf_data(
+    data = data,
+    verbose = FALSE,
+    check_duplicates = TRUE,
+    check_future_dates = TRUE,
+    check_outliers = TRUE,
+    build_dictionary = TRUE
+  )
+
+  dict <- result[["Data dictionary"]]
+
+  # verify record_id appears in multiple tabs
+  record_id_row <- dict |> dplyr::filter(variable == "record_id")
+  if (nrow(record_id_row) > 0) {
+    tabs <- record_id_row$appears_in_tabs
+    # should appear in Future dates, Outliers, Consistency details, etc.
+    # but NOT show "Duplicate records" alone
+    testthat::expect_false(tabs == "Duplicate records")
+    testthat::expect_true(grepl(",", tabs) || !grepl("Duplicate", tabs))
+  }
+
+  # verify validation-only columns appear in specific tabs
+  check_row <- dict |> dplyr::filter(variable == "check")
+  if (nrow(check_row) > 0) {
+    testthat::expect_true(grepl("Summary", check_row$appears_in_tabs))
+  }
 })

@@ -176,5 +176,30 @@ testthat::test_that("translate_yearmon handles all supported languages", {
   }
 })
 
+testthat::test_that("preprocess_en_to_fr_acronyms handles Mean to Moyenne", {
+  # Test that "mean" is translated to "Moyenne"
+  result <- sntutils:::.preprocess_en_to_fr_acronyms("Mean")
+  testthat::expect_equal(result, "Moyenne")
+  
+  # Test case-insensitive
+  result <- sntutils:::.preprocess_en_to_fr_acronyms("mean")
+  testthat::expect_equal(result, "Moyenne")
+  
+  result <- sntutils:::.preprocess_en_to_fr_acronyms("MEAN")
+  testthat::expect_equal(result, "Moyenne")
+  
+  # Test within sentences
+  result <- sntutils:::.preprocess_en_to_fr_acronyms("The mean value is 5")
+  testthat::expect_equal(result, "The Moyenne value is 5")
+  
+  # Test that it doesn't replace partial matches
+  result <- sntutils:::.preprocess_en_to_fr_acronyms("meaning of life")
+  testthat::expect_equal(result, "meaning of life")
+  
+  # Test with Mean in method context
+  result <- sntutils:::.preprocess_en_to_fr_acronyms("Mean (+/- 2 SD)")
+  testthat::expect_equal(result, "Moyenne (+/- 2 SD)")
+})
+
 
 

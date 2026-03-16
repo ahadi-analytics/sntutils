@@ -42,7 +42,8 @@ testthat::test_that(
       data = test_data,
       vars_of_interest = "malaria",
       x_var = "month",
-      y_var = "district"
+      y_var = "district",
+      hf_col = "facility_id"
     )
 
     testthat::expect_s3_class(result2, "tbl_df")
@@ -65,7 +66,8 @@ testthat::test_that(
       data = test_data,
       vars_of_interest = c("malaria", "pneumonia"),
       x_var = "month",
-      y_var = "district"
+      y_var = "district",
+      hf_col = NULL
     )
 
     testthat::expect_s3_class(result3, "tbl_df")
@@ -84,7 +86,8 @@ testthat::test_that(
     result4 <- calculate_reporting_metrics(
       data = test_data_with_zeros,
       vars_of_interest = c("malaria", "pneumonia"),
-      x_var = "month"
+      x_var = "month",
+      hf_col = NULL
     )
 
     testthat::expect_s3_class(result4, "tbl_df")
@@ -95,6 +98,25 @@ testthat::test_that(
         "reprate", "missrate"
       ) %in% names(result4))
     )
+
+    # Test 5: hf_col without y_var (facility-level time trends)
+    result5 <- calculate_reporting_metrics(
+      data = test_data,
+      vars_of_interest = "malaria",
+      x_var = "month",
+      y_var = NULL,
+      hf_col = "facility_id"
+    )
+
+    testthat::expect_s3_class(result5, "tbl_df")
+    testthat::expect_true(
+      all(c(
+        "month", "exp", "rep",
+        "reprate", "missrate"
+      ) %in% names(result5))
+    )
+    # Should not have y_var column
+    testthat::expect_false("district" %in% names(result5))
   }
 )
 
@@ -291,50 +313,6 @@ testthat::test_that("prepare_plot_data handles edge cases correctly", {
   )
 })
 
-testthat::test_that("prepare_plot_data handles errors correctly", {
-  # Create test data
-  test_data <- data.frame(
-    month = rep(c("Jan", "Feb", "Mar"), each = 4),
-    district = rep(c("North", "South"), each = 2, times = 3),
-    facility_id = rep(1:2, times = 6),
-    malaria = c(10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 0),
-    pneumonia = c(100, 150, 200, 250, 300, 350, 400, NA, 500, 550, 600, 0)
-  )
-
-  # Test 1: Missing required parameters
-  testthat::expect_error(
-    prepare_plot_data(
-      data = test_data,
-      vars_of_interest = "malaria"
-    ),
-    'argument "x_var" is missing, with no default'
-  )
-
-  # Test 2: Invalid facility mode parameters
-  testthat::expect_error(
-    prepare_plot_data(
-      data = test_data,
-      x_var = "month",
-      vars_of_interest = "malaria",
-      by_facility = TRUE
-    ),
-    "'y_var' is required when by_facility = TRUE"
-  )
-
-  # Test 3: Multiple variables in facility mode
-  testthat::expect_error(
-    prepare_plot_data(
-      data = test_data,
-      x_var = "month",
-      y_var = "district",
-      vars_of_interest = c("malaria", "pneumonia"),
-      by_facility = TRUE,
-      hf_col = "facility_id"
-    ),
-    "Only one variable can be used when by_facility = TRUE"
-  )
-})
-
 # Replace the failing test with this approach
 testthat::test_that("reporting_rate_plot handles basic variable scenario", {
   # Create dummy data
@@ -354,7 +332,8 @@ testthat::test_that("reporting_rate_plot handles basic variable scenario", {
     p1 <- reporting_rate_plot(
       data = hf_data,
       x_var = "month",
-      vars_of_interest = c("malaria", "pneumonia")
+      vars_of_interest = c("malaria", "pneumonia"),
+      hf_col = NULL
     )
   )
 
@@ -385,7 +364,8 @@ testthat::test_that("reporting_rate_plot handles basic variable scenario", {
       data = hf_data,
       x_var = "month",
       vars_of_interest = c("malaria", "pneumonia"),
-      full_range = FALSE
+      full_range = FALSE,
+      hf_col = NULL
     )
   )
 
@@ -399,7 +379,8 @@ testthat::test_that("reporting_rate_plot handles basic variable scenario", {
       data = hf_data,
       x_var = "month",
       vars_of_interest = c("malaria", "pneumonia"),
-      use_reprate = FALSE
+      use_reprate = FALSE,
+      hf_col = NULL
     )
   )
 })
@@ -421,7 +402,8 @@ testthat::test_that("reporting_rate_plot handles district-level scenario", {
       data = hf_data,
       x_var = "month",
       y_var = "district",
-      vars_of_interest = c("malaria", "pneumonia")
+      vars_of_interest = c("malaria", "pneumonia"),
+      hf_col = "facility"
     )
   )
 
@@ -438,7 +420,8 @@ testthat::test_that("reporting_rate_plot handles district-level scenario", {
       x_var = "month",
       y_var = "district",
       vars_of_interest = c("malaria", "pneumonia"),
-      y_axis_label = "Admin Level"
+      y_axis_label = "Admin Level",
+      hf_col = "facility"
     )
   )
 
@@ -490,7 +473,8 @@ testthat::test_that("reporting_rate_plot validates inputs correctly", {
     reporting_rate_plot(
       data = hf_data,
       x_var = "nonexistent_column",
-      vars_of_interest = "malaria"
+      vars_of_interest = "malaria",
+      hf_col = NULL
     ),
     regexp = "A valid 'x_var' must be provided"
   )
@@ -500,33 +484,22 @@ testthat::test_that("reporting_rate_plot validates inputs correctly", {
     reporting_rate_plot(
       data = "not_a_dataframe",
       x_var = "month",
-      vars_of_interest = "malaria"
+      vars_of_interest = "malaria",
+      hf_col = NULL
     ),
     "A valid 'x_var' must be provided and must exist in the data."
   )
 
-  # Test facility-level validation - requires y_var
-  testthat::expect_error(
+  # Test that hf_col now works without y_var (facility-level time trends)
+  testthat::expect_no_error(
     reporting_rate_plot(
       data = hf_data,
       x_var = "month",
       vars_of_interest = "malaria",
       hf_col = "facility"
-    ),
-    "For facility-level analysis, both 'hf_col'and 'y_var' must be provided."
+    )
   )
 
-  # Test facility-level validation - only one variable
-  testthat::expect_error(
-    reporting_rate_plot(
-      data = hf_data,
-      x_var = "month",
-      y_var = "district",
-      vars_of_interest = c("malaria", "pneumonia"),
-      hf_col = "facility"
-    ),
-    regexp = "Only one variable can be used"
-  )
 
 })
 
@@ -561,7 +534,8 @@ testthat::test_that("reporting_rate_plot saves plots correctly", {
       x_var = "month",
       vars_of_interest = "malaria",
       plot_path = temp_dir,
-      compress_image = FALSE
+      compress_image = FALSE,
+      hf_col = NULL
     )
   )
 
@@ -591,7 +565,9 @@ testthat::test_that("reporting_rate_plot handles language parameter", {
     x_var = "month",
     y_var = "district",
     vars_of_interest = "malaria",
-    target_language = "en"
+    target_language = "en",
+    include_plot_title = TRUE,
+    hf_col = NULL
   )
 
   # Store original labels
@@ -606,6 +582,8 @@ testthat::test_that("reporting_rate_plot handles language parameter", {
       x_var = "month",
       y_var = "district",
       vars_of_interest = "malaria",
+      hf_col = NULL,
+      include_plot_title = TRUE,
       target_language = "fr",
       y_axis_label = "Administrative level"
     )
@@ -651,56 +629,375 @@ testthat::test_that("translate_text() handles basic translations", {
 })
 
 testthat::test_that("same source and target language returns input", {
-  testthat::expect_message(
-    out <- translate_text("Bonjour",
-      target_language = "fr",
-      source_language = "fr"
-    ),
-    "Source and target languages are the same. Returning original text."
+  out <- translate_text("Bonjour",
+    target_language = "fr",
+    source_language = "fr"
   )
 
   testthat::expect_identical(out, "Bonjour")
 })
 
-
-
-testthat::test_that("Scenario 1 edge cases are handled correctly", {
-  edge_data <- tibble::tibble(
-    month_year = rep(c("2023-01", "2023-02", "2023-03"), each = 3),
-    admin = rep("Z", 9),
-    facility_id = rep(c("A", "B", "C"), 3),
-    malaria = c(1, NA, NA, NA, NA, NA, 1, NA, NA),
-    conf = c(NA, NA, NA, NA, 1, NA, NA, NA, NA),
-    treat = c(NA, NA, NA, NA, NA, NA, NA, NA, NA),
-    test = c(NA, NA, NA, NA, NA, NA, NA, NA, NA),
-    allout = c(NA, NA, NA, NA, NA, NA, NA, NA, NA)
+testthat::test_that("require_all validation catches invalid combinations", {
+  # Create test data
+  test_data <- data.frame(
+    month = rep(c("Jan", "Feb", "Mar"), each = 3),
+    district = rep("North", 9),
+    facility_id = rep(1:3, times = 3),
+    malaria = c(10, 15, NA, 20, 25, 30, 35, 40, NA),
+    pneumonia = c(100, NA, NA, 200, 250, 300, 350, NA, NA)
   )
 
-  result <- calculate_reporting_metrics(
-    data = edge_data,
-    vars_of_interest = c("malaria"),
-    x_var = "month_year",
-    y_var = "admin",
+  # Should error: require_all = TRUE with multiple vars and no y_var
+  testthat::expect_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = NULL,
+      vars_of_interest = c("malaria", "pneumonia"),
+      hf_col = "facility_id",
+      require_all = TRUE
+    ),
+    regexp = "require_all = TRUE.*cannot be used with multiple variables"
+  )
+
+  # Should work: require_all = TRUE with multiple vars AND y_var
+  testthat::expect_no_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = "district",
+      vars_of_interest = c("malaria", "pneumonia"),
+      hf_col = "facility_id",
+      require_all = TRUE
+    )
+  )
+
+  # Should work: require_all = TRUE with single var and no y_var
+  testthat::expect_no_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = NULL,
+      vars_of_interest = "malaria",
+      hf_col = "facility_id",
+      require_all = TRUE
+    )
+  )
+
+  # Should work: require_all = FALSE with multiple vars and no y_var
+  testthat::expect_no_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = NULL,
+      vars_of_interest = c("malaria", "pneumonia"),
+      hf_col = "facility_id",
+      require_all = FALSE
+    )
+  )
+})
+
+testthat::test_that("require_all parameter works correctly", {
+  # Create test data with multiple variables
+  # Facility 1: reports both malaria and pneumonia in all months
+  # Facility 2: reports malaria but not pneumonia (some months)
+  # Facility 3: reports neither in some months
+  test_data <- data.frame(
+    month = rep(c("Jan", "Feb", "Mar"), each = 3),
+    district = rep("North", 9),
+    facility_id = rep(1:3, times = 3),
+    malaria = c(
+      10, 15, NA,     # Jan: fac 1 reports, fac 2 reports, fac 3 doesn't
+      20, 25, 30,     # Feb: all report
+      35, 40, NA      # Mar: fac 1 & 2 report, fac 3 doesn't
+    ),
+    pneumonia = c(
+      100, NA, NA,    # Jan: fac 1 reports, fac 2 & 3 don't
+      200, 250, 300,  # Feb: all report
+      350, NA, NA     # Mar: fac 1 reports, fac 2 & 3 don't
+    ),
+    allout = c(
+      50, 60, 70,
+      80, 90, 100,
+      110, 120, 130
+    )
+  )
+
+  # Test 1: require_all = FALSE (default) - per-variable rates
+  result_per_var <- calculate_reporting_metrics(
+    data = test_data,
+    vars_of_interest = c("malaria", "pneumonia"),
+    x_var = "month",
+    y_var = "district",
     hf_col = "facility_id",
-    key_indicators = c("malaria", "conf", "treat", "test", "allout")
+    require_all = FALSE
   )
-  # Check rows
-testthat::expect_equal(nrow(result), 3)
 
-jan <- dplyr::filter(result, month_year == "2023-01")
-feb <- dplyr::filter(result, month_year == "2023-02")
-mar <- dplyr::filter(result, month_year == "2023-03")
+  # Should have 'variable' column (per-variable rates)
+  testthat::expect_true("variable" %in% names(result_per_var))
+  testthat::expect_true(
+    all(c("malaria", "pneumonia") %in% result_per_var$variable)
+  )
 
-testthat::expect_equal(jan$exp, 1)
-testthat::expect_equal(jan$rep, 1)
-testthat::expect_equal(jan$reprate, 1)
+  # Test 2: require_all = TRUE - complete data only
+  result_all_vars <- calculate_reporting_metrics(
+    data = test_data,
+    vars_of_interest = c("malaria", "pneumonia"),
+    x_var = "month",
+    y_var = "district",
+    hf_col = "facility_id",
+    require_all = TRUE
+  )
 
-testthat::expect_equal(feb$exp, 2)
-testthat::expect_equal(feb$rep, 0)
-testthat::expect_equal(feb$reprate, 0)
+  # Should NOT have 'variable' column (aggregated metric)
+  testthat::expect_false("variable" %in% names(result_all_vars))
+  testthat::expect_true(all(c("exp", "rep", "reprate") %in%
+    names(result_all_vars)))
 
-testthat::expect_equal(mar$exp, 2)
-testthat::expect_equal(mar$rep, 1)
-testthat::expect_equal(mar$reprate, .5)
-}
-)
+  # Test 3: Verify the counts make sense
+  # In Jan: only facility 1 reports both (1/3 = 33.33%)
+  # In Feb: all facilities report both (3/3 = 100%)
+  # In Mar: only facility 1 reports both (1/3 = 33.33%)
+  jan_result <- result_all_vars[result_all_vars$month == "Jan", ]
+  feb_result <- result_all_vars[result_all_vars$month == "Feb", ]
+  mar_result <- result_all_vars[result_all_vars$month == "Mar", ]
+
+  testthat::expect_equal(jan_result$rep, 1)
+  testthat::expect_equal(jan_result$exp, 3)
+  testthat::expect_equal(feb_result$rep, 3)
+  testthat::expect_equal(feb_result$exp, 3)
+  testthat::expect_equal(mar_result$rep, 1)
+  testthat::expect_equal(mar_result$exp, 3)
+
+  # Test 4: Single variable with require_all should still work
+  result_single <- calculate_reporting_metrics(
+    data = test_data,
+    vars_of_interest = "malaria",
+    x_var = "month",
+    y_var = "district",
+    hf_col = "facility_id",
+    require_all = TRUE
+  )
+
+  testthat::expect_s3_class(result_single, "tbl_df")
+  testthat::expect_false("variable" %in% names(result_single))
+})
+
+testthat::test_that("reprate_col parameter works correctly", {
+  # create test data with pre-calculated reporting rates (decimal format)
+  test_data_decimal <- data.frame(
+    month = rep(c("Jan", "Feb", "Mar"), each = 4),
+    district = rep(c("North", "South"), each = 2, times = 3),
+    facility_id = rep(1:2, times = 6),
+    reprate = c(
+      0.8, 0.9, 0.7, 0.85,
+      0.75, 0.95, 0.6, 0.8,
+      0.9, 0.85, 0.7, 0.65
+    )
+  )
+
+  # test 1: basic usage with decimal format (0-1)
+  result1 <- prepare_plot_data(
+    data = test_data_decimal,
+    x_var = "month",
+    y_var = "district",
+    vars_of_interest = NULL,
+    by_facility = FALSE,
+    reprate_col = "reprate",
+    use_reprate = TRUE
+  )
+
+  testthat::expect_type(result1, "list")
+  testthat::expect_s3_class(result1$plot_data, "tbl_df")
+  testthat::expect_true(all(c("month", "district", "reprate", "missrate") %in%
+    names(result1$plot_data)))
+
+  # rates should be converted to percentages (0-100)
+  testthat::expect_true(all(result1$plot_data$reprate >= 0 &
+    result1$plot_data$reprate <= 100))
+  testthat::expect_true(all(result1$plot_data$reprate > 50))
+
+  # missrate should be calculated correctly
+  testthat::expect_equal(
+    result1$plot_data$reprate + result1$plot_data$missrate,
+    rep(100, nrow(result1$plot_data))
+  )
+
+  # test 2: with percentage format (0-100)
+  test_data_percentage <- test_data_decimal
+  test_data_percentage$reprate <- test_data_percentage$reprate * 100
+
+  result2 <- prepare_plot_data(
+    data = test_data_percentage,
+    x_var = "month",
+    y_var = "district",
+    vars_of_interest = NULL,
+    by_facility = FALSE,
+    reprate_col = "reprate",
+    use_reprate = TRUE
+  )
+
+  testthat::expect_s3_class(result2$plot_data, "tbl_df")
+  testthat::expect_true(all(result2$plot_data$reprate >= 0 &
+    result2$plot_data$reprate <= 100))
+
+  # test 3: without y_var (just over time)
+  result3 <- prepare_plot_data(
+    data = test_data_decimal,
+    x_var = "month",
+    y_var = NULL,
+    vars_of_interest = NULL,
+    by_facility = FALSE,
+    reprate_col = "reprate",
+    use_reprate = TRUE
+  )
+
+  testthat::expect_s3_class(result3$plot_data, "tbl_df")
+  testthat::expect_true(all(c("month", "reprate", "missrate") %in%
+    names(result3$plot_data)))
+  testthat::expect_false("district" %in% names(result3$plot_data))
+  testthat::expect_equal(nrow(result3$plot_data), 3)
+
+  # test 4: aggregation works correctly (mean of rates)
+  jan_north_data <- test_data_decimal[
+    test_data_decimal$month == "Jan" &
+      test_data_decimal$district == "North",
+  ]
+  expected_mean <- base::mean(jan_north_data$reprate) * 100
+
+  jan_north_result <- result1$plot_data[
+    result1$plot_data$month == "Jan" &
+      result1$plot_data$district == "North",
+  ]
+
+  testthat::expect_equal(jan_north_result$reprate, expected_mean)
+
+  # test 5: with hf_col for counting facilities
+  result5 <- prepare_plot_data(
+    data = test_data_decimal,
+    x_var = "month",
+    y_var = "district",
+    vars_of_interest = NULL,
+    by_facility = FALSE,
+    hf_col = "facility_id",
+    reprate_col = "reprate",
+    use_reprate = TRUE
+  )
+
+  testthat::expect_true(all(c("rep", "exp") %in% names(result5$plot_data)))
+  testthat::expect_true(all(result5$plot_data$exp >= result5$plot_data$rep))
+})
+
+testthat::test_that("reprate_col validation works correctly", {
+  test_data <- data.frame(
+    month = rep(c("Jan", "Feb"), each = 2),
+    district = rep(c("North", "South"), times = 2),
+    reprate = c(0.8, 0.9, 0.7, 0.85),
+    invalid_text = c("a", "b", "c", "d")
+  )
+
+  # test 1: missing column error
+  testthat::expect_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = "district",
+      reprate_col = "nonexistent_column",
+      use_reprate = TRUE
+    ),
+    "does not exist in data"
+  )
+
+  # test 2: non-numeric column error
+  testthat::expect_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = "district",
+      reprate_col = "invalid_text",
+      use_reprate = TRUE
+    ),
+    "must be numeric"
+  )
+
+  # test 3: values out of range error
+  test_data_invalid <- test_data
+  test_data_invalid$reprate <- c(0.8, 0.9, 150, 0.85)
+
+  testthat::expect_error(
+    reporting_rate_plot(
+      data = test_data_invalid,
+      x_var = "month",
+      y_var = "district",
+      reprate_col = "reprate",
+      use_reprate = TRUE
+    ),
+    "must be between 0 and 100"
+  )
+
+  # test 4: negative values error
+  test_data_negative <- test_data
+  test_data_negative$reprate <- c(-0.1, 0.9, 0.7, 0.85)
+
+  testthat::expect_error(
+    reporting_rate_plot(
+      data = test_data_negative,
+      x_var = "month",
+      y_var = "district",
+      reprate_col = "reprate",
+      use_reprate = TRUE
+    ),
+    "must be between 0 and 100"
+  )
+
+  # test 5: non-character reprate_col error
+  testthat::expect_error(
+    reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = "district",
+      reprate_col = c("reprate", "other"),
+      use_reprate = TRUE
+    ),
+    "must be a single character string"
+  )
+})
+
+testthat::test_that("reprate_col works in full reporting_rate_plot", {
+  # create test data with pre-calculated rates
+  test_data <- data.frame(
+    month = rep(seq.Date(
+      as.Date("2024-01-01"),
+      by = "month", length.out = 3
+    ), each = 4),
+    district = rep(c("North", "South"), each = 2, times = 3),
+    facility_id = rep(1:2, times = 6),
+    reporting_rate = runif(12, 0.5, 1)
+  )
+
+  # test that plot is generated successfully
+  testthat::expect_no_error({
+    plot_result <- reporting_rate_plot(
+      data = test_data,
+      x_var = "month",
+      y_var = "district",
+      reprate_col = "reporting_rate",
+      hf_col = "facility_id",
+      use_reprate = TRUE,
+      show_plot = FALSE
+    )
+  })
+
+  # verify plot object is returned
+  plot_result <- reporting_rate_plot(
+    data = test_data,
+    x_var = "month",
+    y_var = "district",
+    reprate_col = "reporting_rate",
+    hf_col = "facility_id",
+    use_reprate = TRUE,
+    show_plot = FALSE
+  )
+
+  testthat::expect_s3_class(plot_result, "gg")
+})

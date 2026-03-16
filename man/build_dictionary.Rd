@@ -10,7 +10,9 @@ build_dictionary(
   language = NULL,
   max_levels = 50L,
   n_examples = 3L,
-  trans_cache_path = NULL
+  trans_cache_path = NULL,
+  override_yaml = FALSE,
+  verbose = TRUE
 )
 }
 \arguments{
@@ -26,6 +28,12 @@ override english labels.}
 \item{n_examples}{number of example values to show. default 3.}
 
 \item{trans_cache_path}{optional cache dir for translate_text_vec().}
+
+\item{override_yaml}{logical; if TRUE, CSV labels override YAML labels.
+default FALSE (YAML takes precedence).}
+
+\item{verbose}{logical; if TRUE (default), prints info messages such as
+fuzzy match notifications.}
 }
 \value{
 tibble with:
@@ -42,6 +50,10 @@ translated label column.
 \details{
 english labels are merged as: internal defaults, then csv overrides.
 unknown variables fall back to their column name.
+
+performance: the snt variable tree is cached in a package environment on
+first use. subsequent calls reuse the flattened tree. the cache automatically
+refreshes when the tree version changes (tracked via _meta$last_updated).
 }
 \examples{
 dd <- build_dictionary(dplyr::as_tibble(iris))

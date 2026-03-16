@@ -1,3 +1,33 @@
+#' Universal Console Clearing
+#'
+#' Attempts multiple methods to clear the console across different R environments
+#' including RStudio, VSCode, Positron, and various terminal applications.
+#'
+#' @return Invisible NULL
+#' @keywords internal
+#' @noRd
+.clear_console <- function() {
+  if (!interactive()) return(invisible(NULL))
+
+  # Method 1: Form feed (works in RStudio)
+  cat("\014")
+
+  # Method 2: ANSI escape codes (works in most terminals including VSCode)
+  cat("\033[2J\033[H")
+
+  # Method 3: System call for Unix/Mac terminals
+  if (.Platform$OS.type == "unix") {
+    system("clear", ignore.stdout = TRUE, ignore.stderr = TRUE)
+  }
+
+  # Method 4: System call for Windows
+  if (.Platform$OS.type == "windows") {
+    system("cls", ignore.stdout = TRUE, ignore.stderr = TRUE)
+  }
+
+  invisible(NULL)
+}
+
 #' Save Dataframe Using sntutils Write Function
 #'
 #' Prompts the user for confirmation before saving a dataframe to a file.
@@ -489,7 +519,7 @@ format_choice <- function(index, choice, width) {
 #' @param column_width Width of each column
 #' @return Vector of formatted choice strings, one per row
 #' @noRd
-format_choices <- function(choices, num_columns, column_width = 45) {
+format_choices <- function(choices, num_columns, column_width = 60) {
   num_choices <- length(choices)
   rows_per_column <- ceiling(num_choices / num_columns)
 
@@ -520,6 +550,8 @@ format_choices <- function(choices, num_columns, column_width = 45) {
 #' @param choices_input Vector of option strings to display.
 #' @param special_actions Named list of special actions with string identifiers.
 #' @param prompt String to display for user input prompt.
+#' @param column_width Numeric; the maximum width (in characters) for each
+#'        column in the menu display. Default is 60.
 #'
 #' @return The selected option's identifier (numeric or special action key).
 #' @importFrom cli cli_h1 cli_h2 cli_text cli_alert_warning
@@ -531,7 +563,8 @@ format_choices <- function(choices, num_columns, column_width = 45) {
 #' @keywords internal
 #' @noRd
 display_custom_menu <- function(title, main_header, choices_input,
-                                special_actions, prompt) {
+                                special_actions, prompt,
+                                column_width = 60) {
   cli::cli_h1(main_header)
   cli::cli_h2(title)
 
@@ -539,7 +572,7 @@ display_custom_menu <- function(title, main_header, choices_input,
   num_columns <- if (num_choices > 50) 3 else if (num_choices > 25) 2 else 1
 
   formatted_choices <- format_choices(choices_input, num_columns,
-    column_width = 45
+    column_width = column_width
   )
   cat("\n")
   cat(formatted_choices, sep = "\n")
@@ -641,6 +674,8 @@ calculate_string_distance <- function(
 #'                  prompts; defaults to TRUE.
 #' @param max_options Maximum number of options to display in the menu.
 #'       Default is 200.
+#' @param column_width Numeric; the maximum width (in characters) for each
+#'       column in the interactive menu display. Default is 60.
 #'
 #' @return Data frame of user-selected replacements if any; otherwise,
 #'          provides feedback based on user actions.
@@ -652,7 +687,8 @@ calculate_string_distance <- function(
 #' @noRd
 handle_user_interaction <- function(input_data, levels, level,
                                     clear_console = TRUE,
-                                    max_options) {
+                                    max_options,
+                                    column_width = 60) {
   # Interactivity --------------------------------------------------------------
 
   # set up the messaging prompts at the start of the function
@@ -677,8 +713,11 @@ handle_user_interaction <- function(input_data, levels, level,
       !is.na(matched_names) & !is.na(name_to_match)
     )
 
-  # set cachees for looping
-  unique_names <- unique(input_data$name_to_match)
+  # set cachees for looping - use unique (name, context) pairs to avoid
+
+  # cross-context contamination when same name appears in multiple hierarchies
+  unique_contexts <- input_data |>
+    dplyr::distinct(name_to_match, long_geo)
 
   # initialize empty lists to store user choices
   user_choices <- list()
@@ -687,11 +726,10 @@ handle_user_interaction <- function(input_data, levels, level,
   # loop through unmatched records in input_data
   # Initialize the index
   i <- 1
-  while (i <= length(unique_names)) {
+  while (i <= nrow(unique_contexts)) {
     # clear console
     if (clear_console) {
-      cat("\014")
-      cat("\033[2J", "\033[H")
+      .clear_console()
     }
 
     # Define color using crayon function
@@ -703,10 +741,12 @@ handle_user_interaction <- function(input_data, levels, level,
 
     # set up choices -----------------------------------------------------------
     # select the cache to clean and suggested replacements
-    name_to_clean <- unique_names[i]
+    name_to_clean <- unique_contexts$name_to_match[i]
+    current_long_geo <- unique_contexts$long_geo[i]
     replacement_name <- input_data |>
       dplyr::filter(
-        name_to_match == name_to_clean
+        name_to_match == name_to_clean,
+        long_geo == current_long_geo
       ) |>
       dplyr::distinct(matched_names) |>
       # narrow down to top max_options
@@ -714,10 +754,11 @@ handle_user_interaction <- function(input_data, levels, level,
       dplyr::pull() |>
       stringr::str_to_title()
 
-    # get unique long names
+    # get unique long names for this specific context
     unique_geo_long <- input_data |>
       dplyr::filter(
-        name_to_match == name_to_clean
+        name_to_match == name_to_clean,
+        long_geo == current_long_geo
       ) |>
       dplyr::distinct()
 
@@ -725,7 +766,7 @@ handle_user_interaction <- function(input_data, levels, level,
 
     # set up main header to keep track
     main_header <- glue::glue(
-      "{stringr::str_to_title(level)} {i} of {length(unique_names)}"
+      "{stringr::str_to_title(level)} {i} of {nrow(unique_contexts)}"
     )
 
     if (!is.na(levels[2]) && level == levels[2]) {
@@ -811,7 +852,8 @@ handle_user_interaction <- function(input_data, levels, level,
       title, main_header,
       replacement_name,
       special_actions,
-      prompt = prompt
+      prompt = prompt,
+      column_width = column_width
     )
 
     # handle user choices ------------------------------------------------------
@@ -825,6 +867,7 @@ handle_user_interaction <- function(input_data, levels, level,
     } else if (user_choice == "s") { # Skip this one
       cli::cli_alert_info("You are skipping this one...")
       i <- i + 1
+      if (clear_console) .clear_console()
       next
     } else if (user_choice == "e") { # Save and exit
       if (length(user_choices) > 0) {
@@ -865,6 +908,7 @@ handle_user_interaction <- function(input_data, levels, level,
         cli::cli_alert_warning("No name entered. Returning to menu...")
       }
       i <- i + 1
+      if (clear_console) .clear_console()
     } else {
       suppressWarnings({
         replace_int <- toupper(replacement_name[as.integer(user_choice)])
@@ -883,6 +927,7 @@ handle_user_interaction <- function(input_data, levels, level,
         )
       })
       i <- i + 1
+      if (clear_console) .clear_console()
     }
   }
 
@@ -890,8 +935,7 @@ handle_user_interaction <- function(input_data, levels, level,
 
   # clear console
   if (clear_console) {
-    cat("\014")
-    cat("\033[2J", "\033[H")
+    .clear_console()
   }
 
   if (length(user_choices) != 0) {
@@ -929,6 +973,25 @@ handle_user_interaction <- function(input_data, levels, level,
       created_time = NULL
     )
   }
+}
+
+#' Clean UTF-8 Encoding for Geographic Names
+#'
+#' Converts text to UTF-8 encoding and removes special characters that may
+#' cause matching issues, keeping only letters, numbers, spaces, hyphens,
+#' and underscores.
+#'
+#' @param x Character vector to clean
+#' @return Character vector with cleaned UTF-8 text
+#' @keywords internal
+#' @noRd
+.clean_utf8 <- function(x) {
+  x |>
+    stringi::stri_enc_toutf8(validate = FALSE) |>
+    stringi::stri_replace_all_regex(
+      "[^\\p{L}\\p{N}\\s\\-\\_']",
+      ""
+    )
 }
 
 #' Construct Long Geographic Names
@@ -1010,7 +1073,7 @@ apply_case_mapping <- function(df, case_mapping, levels) {
           by = stats::setNames("uppercase", level)
         ) |>
         dplyr::mutate(
-          !!level := dplyr::coalesce(original, .data[[level]])
+          !!rlang::sym(level) := dplyr::coalesce(original, .data[[level]])
         ) |>
         dplyr::select(-original)
     }
@@ -1214,6 +1277,11 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
 #' @param preserve_case Logical; if TRUE, preserves the original case of admin
 #'        names from the lookup data when returning matched values. If FALSE
 #'        (default), returns all admin names in uppercase as before.
+#' @param column_width Numeric; the maximum width (in characters) for each
+#'        column in the interactive menu. Controls how much text is displayed
+#'        before truncation. Default is 60 characters. Note that the actual
+#'        text display width is approximately 8 characters less to accommodate
+#'        number labels and truncation markers ("...").
 #'
 #' @details
 #' The function performs the following steps:
@@ -1244,17 +1312,24 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
 #'   subdistrict = c("AREA1", "AREA2", "AREA3")
 #' )
 #'
+#' # Dummy lookup data with correct spellings
+#' lookup_df <- data.frame(
+#'   country = c("ANGOLA", "ANGOLA", "UGANDA", "UGANDA", "ZAMBIA", "ZAMBIA"),
+#'   province = c("CABINDA", "CABINDA", "TESO", "TESO", "LUSAKA", "LUSAKA"),
+#'   district = c("BELIZE", "BUCO-ZAU", "BUKEDEA", "KUMI", "KAFUE", "LUSAKA"),
+#'   stringsAsFactors = FALSE
+#' )
+#'
 #' # Interactively clean geonames
 #' prep_geonames(
 #'   target_df,
+#'   lookup_df = lookup_df,
 #'   level0 = "country", level1 = "province",
 #'   level2 = "district",
-#'   interactive = FALSE # replace with TRUE for interactivty
+#'   interactive = FALSE # replace with TRUE for interactivity
 #' )
 #' }
 #'
-#' @importFrom rlang :=
-#' @importFrom foreach %dopar%
 #' @export
 prep_geonames <- function(
   target_df,
@@ -1269,11 +1344,12 @@ prep_geonames <- function(
   method = "jw",
   interactive = TRUE,
   max_options = 200,
-  preserve_case = FALSE
+  preserve_case = FALSE,
+  column_width = 60
 ) {
   # Capture the names of the data frames at the beginning
-  target_df_name <- deparse(substitute(target_df))
-  lookup_df_name <- deparse(substitute(lookup_df))
+  target_df_name <- paste(deparse(substitute(target_df)), collapse = "")
+  lookup_df_name <- paste(deparse(substitute(lookup_df)), collapse = "")
 
   # Validation -----------------------------------------------------------------
 
@@ -1450,23 +1526,15 @@ prep_geonames <- function(
 
   # Get the internal shapefile if lookup data is not provided
   if (is.null(lookup_df)) {
-    lookup_df <- sntutils::shp_global
-
-    if (!is.null(level0)) {
-      lookup_df <- dplyr::rename(lookup_df, !!level0 := ADM0_NAME)
-    }
-    if (!is.null(level1)) {
-      lookup_df <- dplyr::rename(lookup_df, !!level1 := ADM1_NAME)
-    }
-    if (!is.null(level2)) {
-      lookup_df <- dplyr::rename(lookup_df, !!level2 := ADM2_NAME)
-    }
-    if (!is.null(level3)) {
-      lookup_df <- dplyr::rename(lookup_df, !!level3 := ADM3_NAME)
-    }
-    if (!is.null(level4)) {
-      lookup_df <- dplyr::rename(lookup_df, !!level4 := ADM4_NAME)
-    }
+    cli::cli_abort(
+      c(
+        "No lookup data provided.",
+        "i" = "The internal WHO shapefile (shp_global) has been removed from this package.",
+        "i" = "Please provide your own lookup data using the 'lookup_df' parameter.",
+        "i" = "You can download WHO administrative boundaries from:",
+        "i" = "https://hub.arcgis.com/datasets/WHO::polio-administrative-boundaries"
+      )
+    )
   }
 
   # Create the levels vector
@@ -1488,7 +1556,7 @@ prep_geonames <- function(
       if (level %in% names(lookup_df)) {
         # Get unique mappings from uppercase to original case
         original_values <- lookup_df[[level]]
-        uppercase_values <- toupper(original_values)
+        uppercase_values <- .clean_utf8(original_values) |> toupper()
 
         # Create mapping dataframe
         mapping_df <- data.frame(
@@ -1503,12 +1571,12 @@ prep_geonames <- function(
     }
   }
 
-  # Ensure administrative names are uppercase for matching
+  # Clean UTF-8 encoding and ensure uppercase for matching
   target_df <- target_df |>
     dplyr::mutate(
       dplyr::across(
         dplyr::any_of(levels),
-        toupper
+        ~ .clean_utf8(.x) |> toupper()
       )
     )
 
@@ -1516,7 +1584,7 @@ prep_geonames <- function(
     dplyr::mutate(
       dplyr::across(
         dplyr::any_of(levels),
-        toupper
+        ~ .clean_utf8(.x) |> toupper()
       )
     )
 
@@ -1579,15 +1647,30 @@ prep_geonames <- function(
           level == "settlements" ~ "level4",
           TRUE ~ level
         ),
-        level3_prepped = if ("level3_prepped" %in% names(saved_cache_df)) {
-          level3_prepped
+        level0_prepped = if ("level0_prepped" %in% names(saved_cache_df)) {
+          as.character(level0_prepped)
         } else {
-          NA
+          NA_character_
+        },
+        level1_prepped = if ("level1_prepped" %in% names(saved_cache_df)) {
+          as.character(level1_prepped)
+        } else {
+          NA_character_
+        },
+        level2_prepped = if ("level2_prepped" %in% names(saved_cache_df)) {
+          as.character(level2_prepped)
+        } else {
+          NA_character_
+        },
+        level3_prepped = if ("level3_prepped" %in% names(saved_cache_df)) {
+          as.character(level3_prepped)
+        } else {
+          NA_character_
         },
         level4_prepped = if ("level4_prepped" %in% names(saved_cache_df)) {
-          level4_prepped
+          as.character(level4_prepped)
         } else {
-          NA
+          NA_character_
         },
       ) |>
       dplyr::select(dplyr::everything(), level3_prepped, level4_prepped)
@@ -1611,8 +1694,8 @@ prep_geonames <- function(
           by = stats::setNames("name_to_match", level0)
         ) |>
         dplyr::mutate(
-          !!level0 := stringr::str_replace_all(!!rlang::sym(level0), "\n", ""),
-          !!level0 := dplyr::coalesce(level0_prepped, .data[[level0]])
+          !!rlang::sym(level0) := stringr::str_replace_all(!!rlang::sym(level0), "\n", ""),
+          !!rlang::sym(level0) := dplyr::coalesce(level0_prepped, .data[[level0]])
         )
     }
 
@@ -1628,8 +1711,8 @@ prep_geonames <- function(
           )
         ) |>
         dplyr::mutate(
-          !!level1 := stringr::str_replace_all(!!rlang::sym(level1), "\n", ""),
-          !!level1 := dplyr::coalesce(level1_prepped, .data[[level1]])
+          !!rlang::sym(level1) := stringr::str_replace_all(!!rlang::sym(level1), "\n", ""),
+          !!rlang::sym(level1) := dplyr::coalesce(level1_prepped, .data[[level1]])
         )
     }
 
@@ -1650,8 +1733,8 @@ prep_geonames <- function(
           )
         ) |>
         dplyr::mutate(
-          !!level2 := stringr::str_replace_all(!!rlang::sym(level2), "\n", ""),
-          !!level2 := dplyr::coalesce(level2_prepped, .data[[level2]])
+          !!rlang::sym(level2) := stringr::str_replace_all(!!rlang::sym(level2), "\n", ""),
+          !!rlang::sym(level2) := dplyr::coalesce(level2_prepped, .data[[level2]])
         )
     }
 
@@ -1678,8 +1761,8 @@ prep_geonames <- function(
           )
         ) |>
         dplyr::mutate(
-          !!level3 := stringr::str_replace_all(!!rlang::sym(level3), "\n", ""),
-          !!level3 := dplyr::coalesce(level3_prepped, .data[[level3]])
+          !!rlang::sym(level3) := stringr::str_replace_all(!!rlang::sym(level3), "\n", ""),
+          !!rlang::sym(level3) := dplyr::coalesce(level3_prepped, .data[[level3]])
         )
     }
 
@@ -1708,8 +1791,8 @@ prep_geonames <- function(
           )
         ) |>
         dplyr::mutate(
-          !!level4 := stringr::str_replace_all(!!rlang::sym(level4), "\n", ""),
-          !!level4 := dplyr::coalesce(level4_prepped, .data[[level4]])
+          !!rlang::sym(level4) := stringr::str_replace_all(!!rlang::sym(level4), "\n", ""),
+          !!rlang::sym(level4) := dplyr::coalesce(level4_prepped, .data[[level4]])
         )
     }
 
@@ -1959,7 +2042,8 @@ prep_geonames <- function(
         input_data = top_res,
         levels = levels,
         level = level,
-        max_options = max_options
+        max_options = max_options,
+        column_width = column_width
       )
 
       if (!is.null(replacement_df) && nrow(replacement_df) > 0) {
@@ -1976,13 +2060,13 @@ prep_geonames <- function(
         dplyr::left_join(
           replacement_df |>
             dplyr::select(
-              !!level := name_to_match,
+              !!rlang::sym(level) := name_to_match,
               replacement
             ),
           by = level
         ) |>
         dplyr::mutate(
-          !!level := ifelse(
+          !!rlang::sym(level) := ifelse(
             is.na(replacement),
             .data[[level]],
             replacement
@@ -2221,7 +2305,7 @@ impute_higher_admin <- function(target_df,
                                 lookup_higher_col) {
   target_df <- target_df |>
     dplyr::mutate(
-      !!target_higher_col := dplyr::recode(
+      !!rlang::sym(target_higher_col) := dplyr::recode(
         .data[[target_lower_col]],
         !!!stats::setNames(
           lookup_df[[lookup_higher_col]],

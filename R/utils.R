@@ -71,6 +71,29 @@ ensure_packages <- function(pkgs) {
   invisible(NULL)
 }
 
+#' Check if Optional Package is Available
+#'
+#' @description
+#' Helper function to check if an optional package is available and provide
+#' helpful error messages when it's not.
+#'
+#' @param pkg Package name to check
+#' @param purpose Brief description of what the package is needed for
+#' @return Logical indicating if package is available
+#' @keywords internal
+#' @noRd
+.check_optional_pkg <- function(pkg, purpose = NULL) {
+  available <- requireNamespace(pkg, quietly = TRUE)
+  if (!available) {
+    purpose_text <- if (!is.null(purpose)) paste0(" for ", purpose) else ""
+    cli::cli_abort(c(
+      "Package {.pkg {pkg}} is required{purpose_text}.",
+      "i" = "Install with: install.packages('{pkg}')"
+    ))
+  }
+  available
+}
+
 #' Format Numbers with Thousand Separator
 #'
 #' This function formats numbers by adding a thousand separator (big mark)
@@ -160,6 +183,7 @@ median2 <- function(x) {
 #' @examples
 #' vdigest(c("a", "b", "c"))
 #' vdigest(as.character(iris$Species))
+#' @importFrom digest digest
 #' @export
 vdigest <- Vectorize(digest::digest)
 

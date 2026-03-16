@@ -3,9 +3,8 @@
 #' @description
 #' Orchestrates a multi-step matching pipeline between a *target* dataset
 #' (e.g., DHIS2 facilities) and a *lookup* dataset (e.g., MFL).
-#' Steps include exact match, interactive stratified match
-#' (using `sntutils::prep_geonames()`), standardized-name match, and
-#' fuzzy match.
+#' Steps include exact match, standardized-name match, fuzzy match,
+#' and interactive stratified match (using `sntutils::prep_geonames()`).
 #' Returns consolidated results and QA summaries.
 #'
 #' @param target_df Tibble/data.frame with facility names and admin columns.
@@ -17,14 +16,14 @@
 #' @param uid_col Character. Column in `target_df` uniquely identifying each
 #'   facility. Default "hf_uid".
 #' @param steps Named logical vector toggling steps:
-#'   c(exact = TRUE, interactive = FALSE, standardization = TRUE, fuzzy = TRUE).
+#'   c(exact = TRUE, standardization = TRUE, fuzzy = TRUE, interactive = FALSE).
 #' @param lookup_cols Character vector of `lookup_df` columns to append to the
 #'   match results and returned target table. Default `character()`.
 #' @param match_interactivity Logical flag forwarded to the interactive
 #'   matching helper. Default `TRUE`.
 #' @param fuzzy_methods Character vector of string distance methods to
 #'   combine. Supported: c("jw", "lv"). Default c("jw", "lv").
-#' @param fuzzy_threshold Integer in 0-100 for acceptance. Default 80.
+#' @param fuzzy_threshold Integer in 0-100 for acceptance. Default 95.
 #' @param score_exact Integer score for exact matches. Default 100.
 #' @param score_standardization Integer score for standardized matches.
 #'   Default 100.
@@ -46,7 +45,9 @@
 #'   matching results. Default TRUE.
 #'
 #' @return A list with results, by_method, dhis2_only, mfl_only,
-#'   target_augmented, summary_table, coverage_summary, and params.
+#'   target_augmented, summary_table, coverage_summary, and params. One-to-one
+#'   matching is always enforced, ensuring each MFL facility is matched by at
+#'   most one DHIS2 facility.
 #' @export
 fuzzy_match_facilities <- function(
   target_df,
@@ -56,14 +57,14 @@ fuzzy_match_facilities <- function(
   uid_col = "hf_uid",
   steps = c(
     exact = TRUE,
-    interactive = TRUE,
     standardization = TRUE,
-    fuzzy = TRUE
+    fuzzy = TRUE,
+    interactive = TRUE
   ),
   lookup_cols = character(),
   match_interactivity = TRUE,
   fuzzy_methods = c("jw", "lv"),
-  fuzzy_threshold = 80L,
+  fuzzy_threshold = 95L,
   score_exact = 100L,
   score_standardization = 100L,
   score_interactive = 95L,
@@ -169,7 +170,7 @@ fuzzy_match_facilities <- function(
   # ------------------- split missing vs valid names ---------------------------
   target_missing <- target_df |>
     dplyr::filter(base::is.na(.data[[hf_col_name]])) |>
-    dplyr::distinct(.data[[uid_col]], .keep_all = TRUE)
+    dplyr::distinct(dplyr::across(dplyr::all_of(uid_col)), .keep_all = TRUE)
 
   target_valid <- target_df |>
     dplyr::filter(!base::is.na(.data[[hf_col_name]])) |>
@@ -214,7 +215,32 @@ fuzzy_match_facilities <- function(
   # ---------------------- remove matched from pool ----------------------------
   pool <- .anti_by_uid(target_valid, matches_exact, uid_col = uid_col)
 
-  # ------ step 2: interactive (via sntutils::prep_geonames + unmatched) -------
+  # ---------------- step 2: standardized-name + admin -------------------------
+  if (base::isTRUE(steps[["standardization"]]) && base::nrow(pool) > 0) {
+    matches_std <- .match_step_standardized(
+      pool = pool,
+      lookup_df = lookup_df,
+      admin_cols = admin_cols,
+      score_standardization = score_standardization,
+      uid_col = uid_col
+    )
+    pool <- .anti_by_uid(pool, matches_std, uid_col = uid_col)
+  }
+
+  # ------------------ step 3: fuzzy within admin groups -----------------------
+  if (base::isTRUE(steps[["fuzzy"]]) && base::nrow(pool) > 0) {
+    matches_fuzzy <- .match_step_fuzzy(
+      pool = pool,
+      lookup_df = lookup_df,
+      admin_cols = admin_cols,
+      fuzzy_methods = fuzzy_methods,
+      fuzzy_threshold = fuzzy_threshold,
+      uid_col = uid_col
+    )
+    pool <- .anti_by_uid(pool, matches_fuzzy, uid_col = uid_col)
+  }
+
+  # ------ step 4: interactive (via sntutils::prep_geonames + unmatched) -------
   if (base::isTRUE(steps[["interactive"]]) && base::nrow(pool) > 0) {
     matches_interactive <- .match_step_interactive(
       pool = pool,
@@ -227,31 +253,6 @@ fuzzy_match_facilities <- function(
       matching_cache_path = matching_cache_path
     )
     pool <- .anti_by_uid(pool, matches_interactive, uid_col = uid_col)
-  }
-
-  # ---------------- step 3: standardized-name + admin -------------------------
-  if (base::isTRUE(steps[["standardization"]]) && base::nrow(pool) > 0) {
-    matches_std <- .match_step_standardized(
-      pool = pool,
-      lookup_df = lookup_df,
-      admin_cols = admin_cols,
-      score_standardization = score_standardization,
-      uid_col = uid_col
-    )
-    pool <- .anti_by_uid(pool, matches_std, uid_col = uid_col)
-  }
-
-  # ------------------ step 4: fuzzy within admin groups -----------------------
-  if (base::isTRUE(steps[["fuzzy"]]) && base::nrow(pool) > 0) {
-    matches_fuzzy <- .match_step_fuzzy(
-      pool = pool,
-      lookup_df = lookup_df,
-      admin_cols = admin_cols,
-      fuzzy_methods = fuzzy_methods,
-      fuzzy_threshold = fuzzy_threshold,
-      uid_col = uid_col
-    )
-    pool <- .anti_by_uid(pool, matches_fuzzy, uid_col = uid_col)
   }
 
   # ------------- step 5: unmatched + missing-name rows ------------------------
@@ -284,11 +285,39 @@ fuzzy_match_facilities <- function(
   }
 
   # -------------------------- step 6: consolidate -----------------------------
-  results <- dplyr::bind_rows(
+  all_matches <- dplyr::bind_rows(
     matches_exact,
-    matches_interactive,
     matches_std,
     matches_fuzzy,
+    matches_interactive
+  )
+
+  uids_before_dedup <- all_matches[[uid_col]]
+  all_matches <- .enforce_one_to_one_matching(
+    matches = all_matches,
+    admin_cols = admin_cols,
+    uid_col = uid_col
+  )
+  uids_after_dedup <- all_matches[[uid_col]]
+  removed_uids <- base::setdiff(uids_before_dedup, uids_after_dedup)
+
+  if (base::length(removed_uids) > 0L) {
+    removed_facilities <- target_valid |>
+      dplyr::filter(.data[[uid_col]] %in% removed_uids) |>
+      dplyr::transmute(
+        dplyr::across(dplyr::all_of(admin_cols)),
+        !!uid_col := .data[[uid_col]],
+        hf_target_raw = .data[[hf_col_name]],
+        hf_target_std = hf_target_std,
+        match_method = "unmatched",
+        match_pct = 0L,
+        hf_mfl = NA_character_
+      )
+    unmatched <- dplyr::bind_rows(unmatched, removed_facilities)
+  }
+
+  results <- dplyr::bind_rows(
+    all_matches,
     unmatched,
     missing_rows
   ) |>
@@ -343,7 +372,7 @@ fuzzy_match_facilities <- function(
     dplyr::count(match_method, name = "count") |>
     dplyr::arrange(match_method)
 
-  unique_target <- dplyr::n_distinct(results[[uid_col]])
+  unique_target <- dplyr::n_distinct(target_df[[uid_col]])
 
   # ---------------------- coverage cross-checks ---------------------------
   cross <- .coverage_crosscheck(
@@ -353,30 +382,49 @@ fuzzy_match_facilities <- function(
     uid_col = uid_col
   )
 
-  lookup_total <- base::nrow(lookup_df)
-  mfl_only_count <- base::nrow(cross$mfl_only)
+  lookup_total_unique <- lookup_df |>
+    dplyr::distinct(dplyr::across(dplyr::all_of(admin_cols)), hf_lookup_raw) |>
+    base::nrow()
+
+  n_unique_mfl_matched <- results |>
+    dplyr::filter(!base::is.na(hf_mfl)) |>
+    dplyr::distinct(hf_mfl) |>
+    base::nrow()
+
+  # calculate mfl_only as simple subtraction: total - matched
+  mfl_only_count <- lookup_total_unique - n_unique_mfl_matched
 
   counts <- list(
-    n_exact = base::nrow(matches_exact),
-    n_interactive = base::nrow(matches_interactive),
-    n_standardization = base::nrow(matches_std),
-    n_fuzzy = base::nrow(matches_fuzzy),
-    n_unmatched = base::nrow(unmatched),
-    n_missing = base::nrow(missing_rows),
+    n_exact = base::sum(results$match_method == "exact_admin", na.rm = TRUE),
+    n_interactive = base::sum(
+      results$match_method == "interactive",
+      na.rm = TRUE
+    ),
+    n_standardization = base::sum(
+      results$match_method == "standardization",
+      na.rm = TRUE
+    ),
+    n_fuzzy = base::sum(results$match_method == "fuzzy", na.rm = TRUE),
+    n_unmatched = base::sum(results$match_method == "unmatched", na.rm = TRUE),
+    n_missing = base::sum(
+      results$match_method == "missing_name",
+      na.rm = TRUE
+    ),
     n_lookup_missing = lookup_missing_count,
     unique_target = unique_target,
+    n_mfl_matched = n_unique_mfl_matched,
     n_mfl_only = mfl_only_count,
-    lookup_total = lookup_total
+    lookup_total = lookup_total_unique
   )
 
   summary_table <- .build_summary_table(
-    lookup_n = lookup_total,
+    lookup_n = lookup_total_unique,
     counts = counts,
     languages = summary_language,
     steps_enabled = steps
   )
   attr(summary_table, "counts") <- counts
-  attr(summary_table, "lookup_total") <- lookup_total
+  attr(summary_table, "lookup_total") <- lookup_total_unique
   attr(summary_table, "steps") <- steps
 
   if (base::isTRUE(verbose)) {
@@ -399,6 +447,7 @@ fuzzy_match_facilities <- function(
       interactive = score_interactive
     ),
     status_cuts = status_cuts,
+    include_missing_name_rows = include_missing_name_rows,
     matching_cache_path = matching_cache_path,
     save_path = save_path,
     save_stem = save_stem,
@@ -416,8 +465,8 @@ fuzzy_match_facilities <- function(
     coverage_summary = list(
       mfl_only = list(
         count = mfl_only_count,
-        pct_of_lookup = if (lookup_total > 0L) {
-          mfl_only_count / lookup_total
+        pct_of_lookup = if (lookup_total_unique > 0L) {
+          mfl_only_count / lookup_total_unique
         } else {
           NA_real_
         }
@@ -454,8 +503,8 @@ fuzzy_match_facilities <- function(
     coverage_summary = list(
       mfl_only = list(
         count = mfl_only_count,
-        pct_of_lookup = if (lookup_total > 0L) {
-          mfl_only_count / lookup_total
+        pct_of_lookup = if (lookup_total_unique > 0L) {
+          mfl_only_count / lookup_total_unique
         } else {
           NA_real_
         }
@@ -513,9 +562,59 @@ fuzzy_match_facilities <- function(
   }
   pool |>
     dplyr::anti_join(
-      matches |> dplyr::distinct(.data[[uid_col]]),
+      matches |> dplyr::distinct(dplyr::across(dplyr::all_of(uid_col))),
       by = stats::setNames(uid_col, uid_col)
     )
+}
+
+#' enforce one-to-one matching (internal)
+#'
+#' @description
+#' when multiple target facilities match the same lookup facility, keep only
+#' the best match. disambiguation rules: highest match_pct wins; if tied,
+#' earliest method wins (exact > interactive > standardization > fuzzy).
+#'
+#' @param matches Tibble of all matches (before adding unmatched rows).
+#' @param admin_cols Character vector of admin columns.
+#' @param uid_col Character name of the unique identifier column.
+#'
+#' @return Tibble with duplicate matches removed.
+#'
+#' @keywords internal
+#' @noRd
+.enforce_one_to_one_matching <- function(matches, admin_cols, uid_col) {
+  if (base::nrow(matches) == 0L) {
+    return(matches)
+  }
+
+  method_priority <- c(
+    "exact_admin" = 1L,
+    "interactive" = 2L,
+    "standardization" = 3L,
+    "fuzzy" = 4L
+  )
+
+  matches |>
+    dplyr::mutate(
+      method_rank = dplyr::case_when(
+        match_method == "exact_admin" ~ 1L,
+        match_method == "interactive" ~ 2L,
+        match_method == "standardization" ~ 3L,
+        match_method == "fuzzy" ~ 4L,
+        TRUE ~ 99L
+      )
+    ) |>
+    dplyr::group_by(
+      dplyr::across(dplyr::all_of(c(admin_cols, "hf_mfl")))
+    ) |>
+    dplyr::arrange(
+      dplyr::desc(match_pct),
+      method_rank,
+      .by_group = TRUE
+    ) |>
+    dplyr::slice_head(n = 1L) |>
+    dplyr::ungroup() |>
+    dplyr::select(-method_rank)
 }
 
 #' exact name matching within admin levels (internal)
@@ -553,7 +652,7 @@ fuzzy_match_facilities <- function(
       relationship = "many-to-many"
     ) |>
     dplyr::filter(hf_target_raw_upper == hf_lookup_raw_upper) |>
-    dplyr::distinct(.data[[uid_col]], .keep_all = TRUE) |>
+    dplyr::distinct(dplyr::across(dplyr::all_of(uid_col)), .keep_all = TRUE) |>
     dplyr::transmute(
       dplyr::across(dplyr::all_of(admin_cols)),
       !!uid_col := .data[[uid_col]],
@@ -704,7 +803,7 @@ fuzzy_match_facilities <- function(
       match_pct = score_interactive,
       hf_mfl
     ) |>
-    dplyr::distinct(.data[[uid_col]], .keep_all = TRUE)
+    dplyr::distinct(dplyr::across(dplyr::all_of(uid_col)), .keep_all = TRUE)
 
   matches_interactive
 }
@@ -739,7 +838,7 @@ fuzzy_match_facilities <- function(
       relationship = "many-to-many"
     ) |>
     dplyr::filter(hf_target_std == hf_lookup_std) |>
-    dplyr::distinct(.data[[uid_col]], .keep_all = TRUE) |>
+    dplyr::distinct(dplyr::across(dplyr::all_of(uid_col)), .keep_all = TRUE) |>
     dplyr::transmute(
       dplyr::across(dplyr::all_of(admin_cols)),
       !!uid_col := .data[[uid_col]],
@@ -831,7 +930,7 @@ fuzzy_match_facilities <- function(
   uid_col
 ) {
   targets <- g |>
-    dplyr::distinct(.data[[uid_col]], hf_target_raw, hf_target_std) |>
+    dplyr::distinct(dplyr::across(dplyr::all_of(uid_col)), hf_target_raw, hf_target_std) |>
     dplyr::rename(uid = !!uid_col)
   cands <- g |> dplyr::distinct(hf_lookup_raw, hf_lookup_std)
 
@@ -924,21 +1023,27 @@ fuzzy_match_facilities <- function(
   lookup_keys <- lookup_df |>
     dplyr::distinct(dplyr::across(dplyr::all_of(admin_cols)), hf_lookup_raw)
 
-  matched_keys <- results |>
+  matched_mfl_names <- results |>
     dplyr::filter(!base::is.na(hf_mfl)) |>
-    dplyr::distinct(
-      dplyr::across(dplyr::all_of(admin_cols)),
-      hf_lookup_raw = hf_mfl
-    )
+    dplyr::distinct(hf_mfl) |>
+    dplyr::pull(hf_mfl)
+
+  matched_keys <- lookup_df |>
+    dplyr::filter(hf_lookup_raw %in% matched_mfl_names) |>
+    dplyr::distinct(dplyr::across(dplyr::all_of(admin_cols)), hf_lookup_raw)
 
   mfl_only <- lookup_keys |>
     dplyr::anti_join(matched_keys, by = c(admin_cols, "hf_lookup_raw"))
 
   target_only <- results |>
     dplyr::filter(match_method %in% c("unmatched", "missing_name")) |>
-    dplyr::distinct(.data[[uid_col]], .keep_all = TRUE)
+    dplyr::distinct(dplyr::across(dplyr::all_of(uid_col)), .keep_all = TRUE)
 
-  list(mfl_only = mfl_only, target_only = target_only)
+  list(
+    mfl_only = mfl_only,
+    target_only = target_only,
+    matched_keys = matched_keys
+  )
 }
 
 #' display facility matching summary in CLI box
@@ -1015,11 +1120,11 @@ fuzzy_match_facilities <- function(
   has_metric <- function(metric) metric %in% summary_table$metric
 
   format_primary <- function(label, value) {
-    sprintf("  \u2022 %-24s : %s", label, value)
+    sprintf("  \u2022 %-38s : %s", label, value)
   }
 
   format_secondary <- function(label, value) {
-    sprintf("    \u2013 %-22s : %s", label, value)
+    sprintf("    \u2013 %-36s : %s", label, value)
   }
 
   matched_value <- sprintf(
@@ -1034,14 +1139,20 @@ fuzzy_match_facilities <- function(
     "      (insufficient data to compute match rate)"
   }
 
+  mfl_matched <- counts$n_mfl_matched
+
   lines <- c(
     format_primary("Matched DHIS2 facilities", matched_value),
     matched_pct_line,
     "",
     format_primary("MFL facilities (total)", fmt_count(mfl_total)),
-    format_secondary("Missing names in MFL", fmt_count(mfl_missing)),
+    format_secondary("Missing names in MFL", fmt_count(mfl_missing, 5)),
     format_secondary(
-      "MFL-only facilities",
+      "MFL facilities matched to DHIS2",
+      fmt_with_pct(mfl_matched, mfl_total)
+    ),
+    format_secondary(
+      "MFL facilities not matched to DHIS2",
       fmt_with_pct(mfl_only, mfl_total)
     ),
     "",
@@ -1060,15 +1171,6 @@ fuzzy_match_facilities <- function(
       )
     )
   }
-  if (has_metric("Interactive matches")) {
-    lines <- c(
-      lines,
-      format_secondary(
-        "Interactive matches",
-        fmt_with_pct(counts$n_interactive, dhis2_total)
-      )
-    )
-  }
   if (has_metric("Standardization matches")) {
     lines <- c(
       lines,
@@ -1084,6 +1186,15 @@ fuzzy_match_facilities <- function(
       format_secondary(
         "Fuzzy matches",
         fmt_with_pct(counts$n_fuzzy, dhis2_total)
+      )
+    )
+  }
+  if (has_metric("Interactive matches")) {
+    lines <- c(
+      lines,
+      format_secondary(
+        "Interactive matches",
+        fmt_with_pct(counts$n_interactive, dhis2_total)
       )
     )
   }
@@ -1121,7 +1232,7 @@ fuzzy_match_facilities <- function(
   cli::cat_line(
     cli::boxx(
       styled_lines,
-      header = cli::style_bold("Facility Matching Summary"),
+      header = cli::style_bold("Health Facility Matching Summary"),
       border_style = "double",
       padding = 1L,
       width = box_width
@@ -1184,9 +1295,9 @@ fuzzy_match_facilities <- function(
       "Missing names in DHIS2",
       "Valid DHIS2 facilities",
       "Exact matches (admin)",
-      "Interactive matches",
       "Standardization matches",
       "Fuzzy matches",
+      "Interactive matches",
       "Total matched",
       "Unmatched",
       "MFL-only facilities"
@@ -1198,9 +1309,9 @@ fuzzy_match_facilities <- function(
       counts$n_missing,
       total_valid,
       pct(counts$n_exact, counts$unique_target),
-      pct(counts$n_interactive, counts$unique_target),
       pct(counts$n_standardization, counts$unique_target),
       pct(counts$n_fuzzy, counts$unique_target),
+      pct(counts$n_interactive, counts$unique_target),
       pct(total_matched, counts$unique_target),
       pct(counts$n_unmatched, counts$unique_target),
       pct(counts$n_mfl_only, lookup_n)
@@ -1226,9 +1337,9 @@ fuzzy_match_facilities <- function(
       "Unique DHIS2 facilities with missing names",
       "Unique DHIS2 facilities with valid names",
       "Facilities matched on exact name and admin unit",
-      "Facilities matched through manual interactive review",
       "Facilities matched after name standardization",
       "Facilities matched using fuzzy string similarity",
+      "Facilities matched through manual interactive review",
       "Total facilities successfully matched",
       "Facilities still unmatched after all methods",
       "MFL facilities never matched to any DHIS2 facility"
@@ -1240,9 +1351,9 @@ fuzzy_match_facilities <- function(
       "FS DHIS2 avec noms manquants",
       "FS DHIS2 avec noms valides",
       "FS appari\u00e9es par nom exact et niveau administratif",
-      "FS appari\u00e9es par revue interactive manuelle",
       "FS appari\u00e9es apr\u00e8s standardisation des noms",
       "FS appari\u00e9es par similarit\u00e9 de texte floue",
+      "FS appari\u00e9es par revue interactive manuelle",
       "Total des FS appari\u00e9es avec succ\u00e8s",
       "FS restant non appari\u00e9es apr\u00e8s toutes les m\u00e9thodes",
       "FS MFL jamais appari\u00e9es \u00e0 DHIS2"
@@ -1254,9 +1365,9 @@ fuzzy_match_facilities <- function(
       "Unidades DHIS2 sem nome",
       "Unidades DHIS2 com nomes v\u00e1lidos",
       "Unidades correspondidas por nome exato e n\u00edvel administrativo",
-      "Unidades correspondidas por revis\u00e3o interativa manual",
       "Unidades correspondidas ap\u00f3s padroniza\u00e7\u00e3o de nomes",
       "Unidades correspondidas por similaridade de texto aproximada",
+      "Unidades correspondidas por revis\u00e3o interativa manual",
       "Total de unidades correspondidas com sucesso",
       "Unidades ainda sem correspond\u00eancia ap\u00f3s todos os m\u00e9todos",
       "Unidades MFL nunca correspondidas a DHIS2"
