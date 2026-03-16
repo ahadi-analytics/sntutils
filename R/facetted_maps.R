@@ -283,6 +283,10 @@ facetted_map_bins <- function(
 #'   gradient will interpolate smoothly between these colors. Default is a
 #'   7-color diverging palette from dark red through yellow to dark blue.
 #'
+#' @param limits Optional numeric vector of length 2 specifying the minimum
+#'   and maximum values for the color scale (e.g., `c(0, 100)` for percentages).
+#'   When `NULL`, limits are determined from the data range. Default is `NULL`.
+#'
 #' @param facet_col Optional character scalar. Name of the column used for
 #'   faceting columns, typically a time variable such as `year`. When `NULL`,
 #'   no faceting is applied and a single map is produced. Default is `NULL`.
@@ -348,6 +352,7 @@ facetted_map_bins <- function(
 #'
 #' @examples
 #' \dontrun{
+#' # continuous incidence rates
 #' facetted_map_gradient(
 #'   data = incidence_shp,
 #'   fill_col = "incidence_rate",
@@ -362,6 +367,16 @@ facetted_map_bins <- function(
 #'     "burundi_continuous_incidence.png"
 #'   )
 #' )
+#'
+#' # percentage coverage with fixed 0-100 scale
+#' facetted_map_gradient(
+#'   data = coverage_shp,
+#'   fill_col = "coverage_pct",
+#'   limits = c(0, 100),
+#'   facet_col = "year",
+#'   title = "ITN Coverage (%)",
+#'   fill_label = "Coverage (%)"
+#' )
 #' }
 #'
 #' @export
@@ -372,6 +387,7 @@ facetted_map_gradient <- function(
     "#7b0d0d", "#c0392b", "#e67e22", "#f7dc6f",
     "#d6eaf8", "#5dade2", "#1a5276"
   ),
+  limits = NULL,
   facet_col = NULL,
   facet_row = NULL,
   adm1_shp = NULL,
@@ -415,6 +431,7 @@ facetted_map_gradient <- function(
     plot_obj +
     ggplot2::scale_fill_gradientn(
       colors = colors,
+      limits = limits,
       na.value = "grey90",
       guide = ggplot2::guide_colorbar(
         title.position = "top",
