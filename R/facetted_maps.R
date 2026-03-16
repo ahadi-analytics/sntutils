@@ -249,3 +249,238 @@ facetted_map_bins <- function(
 
   plot_obj
 }
+
+#' Plot Faceted Choropleth Maps from sf Data with Continuous Gradient
+#'
+#' @description
+#' Creates a faceted choropleth map from an `sf` object using a continuous
+#' numeric variable for fill colors displayed as a gradient. The function is
+#' designed for programmatic mapping of continuous indicators over space and
+#' time, with optional administrative boundary overlays and optional file
+#' export.
+#'
+#' The function expects the fill variable to be continuous numeric data
+#' (e.g. incidence rates, prevalence percentages, continuous coverage metrics)
+#' and maps it to a color gradient.
+#'
+#' Typical use cases include:
+#' - Mapping continuous incidence rates by district over multiple years
+#' - Visualising continuous prevalence or coverage indicators
+#' - Producing consistent, publication-ready spatial outputs with gradients
+#'
+#' @param data An `sf` object containing geometries and attributes to plot.
+#'   Must include the columns specified in `fill_col` and `facet_col`.
+#'
+#' @param fill_col Character scalar. Name of the column in `data` used for
+#'   polygon fill. This column should be numeric and contain continuous values.
+#'
+#' @param colors Character vector of hex color codes for the gradient. The
+#'   gradient will interpolate smoothly between these colors. Default is a
+#'   7-color diverging palette from dark red through yellow to dark blue.
+#'
+#' @param facet_col Optional character scalar. Name of the column used for
+#'   faceting columns, typically a time variable such as `year`. When `NULL`,
+#'   no faceting is applied and a single map is produced. Default is `NULL`.
+#'
+#' @param facet_row Optional character scalar. Name of the column used for
+#'   faceting rows. When provided, the function uses `facet_grid(row ~ col)`
+#'   instead of `facet_wrap()`. Default is `NULL`.
+#'
+#' @param adm1_shp Optional `sf` object containing higher-level administrative
+#'   boundaries (e.g. ADM1). When provided, boundaries are overlaid as thin
+#'   black outlines. Default is `NULL`.
+#'
+#' @param title Optional character scalar. Plot title. Default is `NULL`
+#'   (no title).
+#'
+#' @param subtitle Optional character scalar. Plot subtitle. Default is
+#'   `NULL` (no subtitle).
+#'
+#' @param fill_label Optional character scalar. Legend title for the fill
+#'   scale. Default is `NULL` (no legend title).
+#'
+#' @param ncol Integer. Number of columns in the facet layout. Only used when
+#'   `facet_row` is `NULL` (i.e., when using `facet_wrap()`). Default is `3`.
+#'
+#' @param output_file Optional character scalar. File path where the plot
+#'   should be saved. If `NULL`, the plot is not saved to disk.
+#'
+#' @param width Numeric. Width of the saved plot in inches. Default is `7`.
+#'
+#' @param height Numeric. Height of the saved plot in inches. Default is `10`.
+#'
+#' @param dpi Numeric. Resolution (dots per inch) for saved output.
+#'   Default is `300`.
+#'
+#' @param scale Numeric. Scaling factor for the plot. Values greater than 1
+#'   make text and elements relatively smaller; values less than 1 make them
+#'   larger. Default is `1`.
+#'
+#' @param title_size Numeric. Font size for the plot title. Default is `14`.
+#'
+#' @param subtitle_size Numeric. Font size for the plot subtitle. Default
+#'   is `11`.
+#'
+#' @param legend_title_size Numeric. Font size for the legend title.
+#'   Default is `10`.
+#'
+#' @param compress_image Logical. Compress PNG using `compress_png()` after
+#'   saving. Defaults to TRUE.
+#'
+#' @return
+#' A `ggplot` object. If `output_file` is provided, the plot is also written
+#' to disk using `ggsave()`.
+#'
+#' @details
+#' - Uses `geom_sf()` for spatial rendering.
+#' - Uses `scale_fill_gradientn()` to create a smooth color gradient.
+#' - Faceting is implemented via `facet_wrap()` or `facet_grid()` using a
+#'   dynamically constructed formula.
+#' - The function works directly with continuous numeric data without binning.
+#'
+#' @examples
+#' \dontrun{
+#' facetted_map_gradient(
+#'   data = incidence_shp,
+#'   fill_col = "incidence_rate",
+#'   facet_col = "year",
+#'   adm1_shp = shp_file$adm1,
+#'   title = "Continuous Malaria Incidence by District (ADM2), Burundi",
+#'   subtitle = "All-age crude incidence aggregated annually",
+#'   fill_label = "Cases per 1,000 population",
+#'   ncol = 3,
+#'   output_file = here::here(
+#'     "outputs",
+#'     "burundi_continuous_incidence.png"
+#'   )
+#' )
+#' }
+#'
+#' @export
+facetted_map_gradient <- function(
+  data,
+  fill_col,
+  colors = c(
+    "#7b0d0d", "#c0392b", "#e67e22", "#f7dc6f",
+    "#d6eaf8", "#5dade2", "#1a5276"
+  ),
+  facet_col = NULL,
+  facet_row = NULL,
+  adm1_shp = NULL,
+  title = NULL,
+  subtitle = NULL,
+  fill_label = NULL,
+  ncol = 3,
+  output_file = NULL,
+  width = 7,
+  height = 10,
+  dpi = 300,
+  scale = 1,
+  title_size = 14,
+  subtitle_size = 11,
+  legend_title_size = 10,
+  compress_image = TRUE
+) {
+  plot_obj <-
+    ggplot2::ggplot(data) +
+    ggplot2::geom_sf(
+      ggplot2::aes(fill = .data[[fill_col]]),
+      color = "white",
+      size = 0.2,
+      na.rm = TRUE
+    )
+
+  if (!is.null(adm1_shp)) {
+    plot_obj <-
+      plot_obj +
+      ggplot2::geom_sf(
+        data = adm1_shp,
+        fill = NA,
+        color = "black",
+        linewidth = 0.2,
+        inherit.aes = FALSE
+      )
+  }
+
+  plot_obj <-
+    plot_obj +
+    ggplot2::scale_fill_gradientn(
+      colors = colors,
+      na.value = "grey90",
+      guide = ggplot2::guide_colorbar(
+        title.position = "top",
+        title.hjust = 0.5,
+        barwidth = grid::unit(0.6, "npc"),
+        barheight = grid::unit(0.5, "lines")
+      )
+    )
+
+  if (!is.null(facet_col)) {
+    if (!is.null(facet_row)) {
+      plot_obj <-
+        plot_obj +
+        ggplot2::facet_grid(
+          rows = ggplot2::vars(.data[[facet_row]]),
+          cols = ggplot2::vars(.data[[facet_col]]),
+          drop = FALSE
+        )
+    } else {
+      plot_obj <-
+        plot_obj +
+        ggplot2::facet_wrap(
+          stats::as.formula(paste0("~", facet_col)),
+          ncol = ncol
+        )
+    }
+  }
+
+  plot_obj <-
+    plot_obj +
+    ggplot2::labs(
+      title = title,
+      subtitle = subtitle,
+      fill = fill_label
+    ) +
+    ggplot2::theme_void() +
+    ggplot2::theme(
+      legend.position = "bottom",
+      strip.text = ggplot2::element_text(
+        face = "bold",
+        size = 10,
+        margin = ggplot2::margin(t = 2, b = 6, l = 4, r = 4)
+      ),
+      strip.text.y = ggplot2::element_text(angle = -90),
+      panel.spacing = grid::unit(4, "pt"),
+      legend.box.margin = ggplot2::margin(t = 8),
+      plot.title = ggplot2::element_text(
+        size = title_size,
+        margin = ggplot2::margin(b = 8)
+      ),
+      plot.subtitle = ggplot2::element_text(
+        size = subtitle_size,
+        margin = ggplot2::margin(b = 10)
+      ),
+      legend.title = ggplot2::element_text(
+        size = legend_title_size,
+        margin = ggplot2::margin(b = 6)
+      ),
+      plot.margin = ggplot2::margin(t = 5, r = 5, b = 5, l = 5)
+    )
+
+  if (!is.null(output_file)) {
+    ggplot2::ggsave(
+      plot = plot_obj,
+      filename = output_file,
+      width = width,
+      height = height,
+      dpi = dpi,
+      scale = scale
+    )
+
+    if (compress_image && grepl("\\.png$", output_file, ignore.case = TRUE)) {
+      compress_png(path = output_file)
+    }
+  }
+
+  plot_obj
+}
