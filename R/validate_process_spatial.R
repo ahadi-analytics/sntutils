@@ -889,9 +889,7 @@ validate_process_spatial <- function(
             )
 
           # clean aggregated geometries: make valid and remove interior holes
-          if (any(!sf::st_is_valid(agg_shp))) {
-            agg_shp <- sf::st_make_valid(agg_shp)
-          }
+          agg_shp <- sf::st_make_valid(agg_shp)
           if (rlang::is_installed("nngeo")) {
             agg_shp <- nngeo::st_remove_holes(agg_shp)
           }
