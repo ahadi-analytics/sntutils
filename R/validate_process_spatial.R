@@ -938,16 +938,16 @@ validate_process_spatial <- function(
     }
   }))
 
-  # Restore s2 setting after aggregations complete
-  suppressMessages(sf::sf_use_s2(s2_was_on))
-
-  # Final validation pass: ensure all aggregated geometries are valid
-  # in the restored s2 mode (geometries valid in planar may fail in spherical)
+  # Final validation pass: disable s2 for make_valid to handle edge-crossing
+  suppressMessages(sf::sf_use_s2(FALSE))
   for (level_name in names(spat_vec)) {
     if (any(!sf::st_is_valid(spat_vec[[level_name]]))) {
       spat_vec[[level_name]] <- sf::st_make_valid(spat_vec[[level_name]])
     }
   }
+
+  # Restore s2 setting after all validation complete
+  suppressMessages(sf::sf_use_s2(s2_was_on))
 
   if (!quiet) {
     cli::cli_progress_done()
