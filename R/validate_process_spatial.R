@@ -17,6 +17,12 @@
 #'   for subsequent processing and output.
 #' @param drop_z Logical, whether to drop Z/M coordinates before validation.
 #'   Defaults to TRUE to avoid s2 warnings for 2D processing.
+#' @param clean_artefacts Logical, whether to apply boundary artifact cleaning
+#'   (precision snapping, sliver removal). Defaults to TRUE.
+#' @param sliver_threshold_km2 Numeric, area threshold in km² below which
+#'   polygons are considered slivers and removed. Default 0.01.
+#' @param snap_precision Numeric, precision value for coordinate snapping
+#'   passed to `sf::st_set_precision()`. Default 1e5 (~1m grid).
 #'
 #' @return A list with validation results. Key elements:
 #'   - `issues`: Character vector of issues detected.
@@ -33,6 +39,8 @@
 #'     (adm0, adm1, adm2, adm3).
 #'   - `geometry_types`: Tibble summarizing geometry types and counts.
 #'   - `spatial_extent`: Named vector with xmin, ymin, xmax, ymax.
+#'   - `artefact_diagnostics`: List of boundary artifact cleaning diagnostics
+#'     (if clean_artefacts = TRUE).
 #'
 #' @examples
 #' \dontrun{
@@ -81,7 +89,10 @@ validate_process_spatial <- function(
   fix_issues = TRUE,
   quiet = FALSE,
   geometry_crs = 4326,
-  drop_z = TRUE
+  drop_z = TRUE,
+  clean_artefacts = TRUE,
+  sliver_threshold_km2 = 0.01,
+  snap_precision = 1e5
 ) {
   # Initialize results structure
   results <- .init_spatial_validation_results(name, fix_issues, quiet)
@@ -121,6 +132,20 @@ validate_process_spatial <- function(
   results$issues <- c(results$issues, crs_result$issues)
   shp_clean <- crs_result$shp
 
+  # Early pass: clean boundary artefacts before geometry validation
+  if (fix_issues && clean_artefacts && nrow(shp_clean) > 0) {
+    early_clean <- .apply_boundary_cleaning(
+      shp = shp_clean,
+      metric_crs = 32736,
+      sliver_threshold_km2 = sliver_threshold_km2,
+      snap_precision = snap_precision,
+      quiet = quiet,
+      pass_label = "early"
+    )
+    shp_clean <- early_clean$shp
+    results$artefact_diagnostics <- early_clean$diagnostics
+  }
+
   # Validate geometries
   geom_validation <- .validate_spatial_geometry(
     shp_clean,
@@ -130,6 +155,25 @@ validate_process_spatial <- function(
   )
   results <- geom_validation$results
   shp_clean <- geom_validation$shp
+
+  # Late pass: clean boundary artefacts after geometry fixes
+  if (fix_issues && clean_artefacts && nrow(shp_clean) > 0) {
+    late_clean <- .apply_boundary_cleaning(
+      shp = shp_clean,
+      metric_crs = 32736,
+      sliver_threshold_km2 = sliver_threshold_km2,
+      snap_precision = snap_precision,
+      quiet = quiet,
+      pass_label = "late"
+    )
+    shp_clean <- late_clean$shp
+    # Merge diagnostics from both passes
+    if (!is.null(results$artefact_diagnostics)) {
+      results$artefact_diagnostics$late_pass <- late_clean$diagnostics
+    } else {
+      results$artefact_diagnostics <- list(late_pass = late_clean$diagnostics)
+    }
+  }
 
   # Handle duplicates
   duplicate_result <- .handle_spatial_duplicates(
@@ -181,7 +225,8 @@ validate_process_spatial <- function(
     checks = NULL,
     invalid_rows = NULL,
     duplicate_rows = NULL,
-    column_dictionary = NULL
+    column_dictionary = NULL,
+    artefact_diagnostics = NULL
   )
 }
 
@@ -1293,4 +1338,119 @@ validate_process_spatial <- function(
     }
     return(dplyr::bind_rows(existing_df, new_df))
   }
+}
+
+# Apply boundary artifact cleaning to sf object
+# @param shp sf object to clean
+# @param metric_crs integer EPSG code for metric CRS
+# @param sliver_threshold_km2 numeric area threshold for slivers
+# @param snap_precision numeric precision value for snapping
+# @param quiet logical whether to suppress messages
+# @param pass_label character label for this cleaning pass ("early" or "late")
+# @return list with cleaned shp and diagnostics
+# @noRd
+.apply_boundary_cleaning <- function(
+  shp,
+  metric_crs,
+  sliver_threshold_km2,
+  snap_precision,
+  quiet,
+  pass_label = "early"
+) {
+  original_crs <- sf::st_crs(shp)
+
+  # run diagnostics
+  diagnostics <- .diagnose_boundary_issues_internal(
+    shp = shp,
+    metric_crs = metric_crs,
+    sliver_threshold_km2 = sliver_threshold_km2
+  )
+
+  # display diagnostics
+  if (!quiet) {
+    cli::cli_h2("boundary artifact cleaning ({pass_label} pass)")
+    cli::cli_alert_info("invalid geometries : {diagnostics$n_invalid}")
+    cli::cli_alert_info(
+      "slivers (< {sliver_threshold_km2} km\u00b2) : {diagnostics$n_slivers}"
+    )
+    cli::cli_alert_info(
+      "overlapping polygons : {diagnostics$n_overlapping}"
+    )
+  }
+
+  # apply fixes
+  shp_fixed <- shp |>
+    sf::st_set_precision(snap_precision) |>
+    sf::st_make_valid() |>
+    sf::st_buffer(dist = 0) |>
+    sf::st_make_valid()
+
+  # remove slivers
+  shp_metric <- shp_fixed |>
+    sf::st_transform(crs = metric_crs) |>
+    dplyr::mutate(
+      area_km2 = base::as.numeric(sf::st_area(geometry)) / 1e6
+    )
+
+  n_before <- base::nrow(shp_metric)
+  shp_metric <- shp_metric |>
+    dplyr::filter(area_km2 >= sliver_threshold_km2)
+  slivers_removed <- n_before - base::nrow(shp_metric)
+
+  # transform back to original crs
+  shp_clean <- shp_metric |>
+    dplyr::select(-area_km2) |>
+    sf::st_transform(crs = original_crs)
+
+  # post-fix summary
+  if (!quiet && slivers_removed > 0) {
+    cli::cli_alert_success("slivers removed : {slivers_removed}")
+  }
+
+  # add slivers_removed to diagnostics
+  diagnostics$slivers_removed <- slivers_removed
+
+  base::list(
+    shp = shp_clean,
+    diagnostics = diagnostics
+  )
+}
+
+# Diagnose boundary issues in sf object (internal version)
+# @param shp sf object
+# @param metric_crs integer EPSG code
+# @param sliver_threshold_km2 numeric threshold
+# @return list of diagnostic metrics
+# @noRd
+.diagnose_boundary_issues_internal <- function(
+  shp,
+  metric_crs,
+  sliver_threshold_km2
+) {
+  # count invalid geometries
+  n_invalid <- base::sum(!sf::st_is_valid(shp), na.rm = TRUE)
+
+  # transform to metric and calculate areas
+  shp_metric <- shp |>
+    sf::st_transform(crs = metric_crs) |>
+    dplyr::mutate(
+      area_km2 = base::as.numeric(sf::st_area(geometry)) / 1e6
+    )
+
+  # count slivers
+  n_slivers <- shp_metric |>
+    dplyr::filter(area_km2 < sliver_threshold_km2) |>
+    base::nrow()
+
+  # count overlapping polygons
+  n_overlapping <- shp |>
+    sf::st_overlaps() |>
+    base::lengths() |>
+    (\(x) base::sum(x > 0))()
+
+  base::list(
+    n_invalid = n_invalid,
+    n_slivers = n_slivers,
+    n_overlapping = n_overlapping
+  )
 }

@@ -462,3 +462,99 @@ testthat::test_that("validate_process_spatial handles larger datasets", {
   # Performance check (should complete within reasonable time)
   testthat::expect_true(as.numeric(end_time - start_time, units = "secs") < 30)
 })
+
+# Test 13: Boundary artifact cleaning integration (enabled by default)
+testthat::test_that("validate_process_spatial applies boundary cleaning by default", {
+  shp_test <- create_test_shapefile(n_features = 3)
+
+  result <- validate_process_spatial(
+    shp = shp_test,
+    adm0_col = "country",
+    adm1_col = "region",
+    fix_issues = TRUE,
+    quiet = TRUE
+  )
+
+  # Should have artefact_diagnostics in result
+  testthat::expect_true("artefact_diagnostics" %in% names(result))
+  testthat::expect_type(result$artefact_diagnostics, "list")
+
+  # Should have diagnostics from early pass
+  testthat::expect_type(result$artefact_diagnostics, "list")
+})
+
+# Test 14: Boundary artifact cleaning can be disabled
+testthat::test_that("validate_process_spatial respects clean_artefacts = FALSE", {
+  shp_test <- create_test_shapefile(n_features = 3)
+
+  result <- validate_process_spatial(
+    shp = shp_test,
+    adm0_col = "country",
+    adm1_col = "region",
+    fix_issues = TRUE,
+    clean_artefacts = FALSE,
+    quiet = TRUE
+  )
+
+  # Should NOT have artefact_diagnostics when disabled
+  testthat::expect_null(result$artefact_diagnostics)
+})
+
+# Test 15: Boundary artifact diagnostics structure
+testthat::test_that("validate_process_spatial returns complete artifact diagnostics", {
+  shp_test <- create_test_shapefile(n_features = 3)
+
+  result <- validate_process_spatial(
+    shp = shp_test,
+    adm0_col = "country",
+    adm1_col = "region",
+    fix_issues = TRUE,
+    clean_artefacts = TRUE,
+    quiet = TRUE
+  )
+
+  # Check diagnostics structure from early pass
+  diag <- result$artefact_diagnostics
+  testthat::expect_type(diag, "list")
+  testthat::expect_true("n_invalid" %in% names(diag))
+  testthat::expect_true("n_slivers" %in% names(diag))
+  testthat::expect_true("n_overlapping" %in% names(diag))
+  testthat::expect_true("slivers_removed" %in% names(diag))
+})
+
+# Test 16: Custom sliver threshold and snap precision
+testthat::test_that("validate_process_spatial accepts custom cleaning parameters", {
+  shp_test <- create_test_shapefile(n_features = 3)
+
+  result <- validate_process_spatial(
+    shp = shp_test,
+    adm0_col = "country",
+    adm1_col = "region",
+    fix_issues = TRUE,
+    clean_artefacts = TRUE,
+    sliver_threshold_km2 = 0.05,
+    snap_precision = 1e6,
+    quiet = TRUE
+  )
+
+  # Should complete successfully with custom parameters
+  testthat::expect_true("artefact_diagnostics" %in% names(result))
+  testthat::expect_equal(length(result$issues), 0)
+})
+
+# Test 17: Artifact cleaning only runs when fix_issues = TRUE
+testthat::test_that("validate_process_spatial skips cleaning when fix_issues = FALSE", {
+  shp_test <- create_test_shapefile(n_features = 3)
+
+  result <- validate_process_spatial(
+    shp = shp_test,
+    adm0_col = "country",
+    adm1_col = "region",
+    fix_issues = FALSE,
+    clean_artefacts = TRUE,
+    quiet = TRUE
+  )
+
+  # Should not apply cleaning when fix_issues = FALSE
+  testthat::expect_null(result$artefact_diagnostics)
+})
