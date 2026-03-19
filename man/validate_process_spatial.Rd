@@ -14,11 +14,7 @@ validate_process_spatial(
   fix_issues = TRUE,
   quiet = FALSE,
   geometry_crs = 4326,
-  drop_z = TRUE,
-  clean_artefacts = TRUE,
-  sliver_threshold_km2 = 0.01,
-  snap_precision = 1e+05,
-  simplify_tolerance = NULL
+  drop_z = TRUE
 )
 }
 \arguments{
@@ -44,19 +40,6 @@ for subsequent processing and output.}
 
 \item{drop_z}{Logical, whether to drop Z/M coordinates before validation.
 Defaults to TRUE to avoid s2 warnings for 2D processing.}
-
-\item{clean_artefacts}{Logical, whether to apply boundary artifact cleaning
-(precision snapping, sliver removal). Defaults to TRUE.}
-
-\item{sliver_threshold_km2}{Numeric, area threshold in km² below which
-polygons are considered slivers and removed. Default 0.01.}
-
-\item{snap_precision}{Numeric, precision value for coordinate snapping
-passed to \code{sf::st_set_precision()}. Default 1e5 (~1m grid).}
-
-\item{simplify_tolerance}{Numeric or NULL, tolerance for geometry
-simplification to smooth boundaries. If NULL (default), no simplification
-is applied. Typical values: 0.0001 to 0.001 for degree-based CRS.}
 }
 \value{
 A list with validation results. Key elements:
@@ -75,8 +58,6 @@ shared geometry.
 (adm0, adm1, adm2, adm3).
 \item \code{geometry_types}: Tibble summarizing geometry types and counts.
 \item \code{spatial_extent}: Named vector with xmin, ymin, xmax, ymax.
-\item \code{artefact_diagnostics}: List of boundary artifact cleaning diagnostics
-(if clean_artefacts = TRUE).
 }
 }
 \description{
