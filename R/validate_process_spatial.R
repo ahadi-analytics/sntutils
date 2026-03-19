@@ -1386,19 +1386,10 @@ validate_process_spatial <- function(
     )
   }
 
-  # apply fixes with more aggressive multi-pass approach
+  # apply fixes: precision snap and zero-buffer topology clean
   shp_fixed <- shp |>
     sf::st_set_precision(snap_precision) |>
-    sf::st_make_valid()
-
-  # first zero-buffer pass
-  shp_fixed <- shp_fixed |>
-    sf::st_buffer(dist = 0) |>
-    sf::st_make_valid()
-
-  # second buffer pass with small positive buffer for stubborn artifacts
-  shp_fixed <- shp_fixed |>
-    sf::st_buffer(dist = 1e-10) |>
+    sf::st_make_valid() |>
     sf::st_buffer(dist = 0) |>
     sf::st_make_valid()
 
@@ -1437,13 +1428,27 @@ validate_process_spatial <- function(
   # final validation pass
   shp_clean <- sf::st_make_valid(shp_clean)
 
+  # post-cleaning overlap check
+  n_overlapping_post <- shp_clean |>
+    sf::st_overlaps() |>
+    base::lengths() |>
+    (\(x) base::sum(x > 0))()
+
   # post-fix summary
-  if (!quiet && slivers_removed > 0) {
-    cli::cli_alert_success("slivers removed : {slivers_removed}")
+  if (!quiet) {
+    if (slivers_removed > 0) {
+      cli::cli_alert_success("slivers removed : {slivers_removed}")
+    }
+    if (n_overlapping_post > 0) {
+      cli::cli_alert_warning(
+        "overlapping polygons after cleaning : {n_overlapping_post}"
+      )
+    }
   }
 
-  # add slivers_removed to diagnostics
+  # add post-cleaning metrics to diagnostics
   diagnostics$slivers_removed <- slivers_removed
+  diagnostics$n_overlapping_post <- n_overlapping_post
 
   base::list(
     shp = shp_clean,

@@ -116,9 +116,22 @@ clean_boundary_artefacts <- function(
 
   # post-fix summary
   n_invalid_post <- base::sum(!sf::st_is_valid(shp_fixed), na.rm = TRUE)
+  n_overlapping_post <- shp_fixed |>
+    sf::st_overlaps() |>
+    base::lengths() |>
+    (\(x) base::sum(x > 0))()
+
   cli::cli_h1("post-fix summary")
   cli::cli_alert_success("slivers removed     : {slivers_removed}")
   cli::cli_alert_success("remaining invalid   : {n_invalid_post}")
+  if (n_overlapping_post > 0) {
+    cli::cli_alert_warning("overlapping polygons: {n_overlapping_post}")
+  } else {
+    cli::cli_alert_success("overlapping polygons: {n_overlapping_post}")
+  }
+
+  # add post-cleaning overlap count to diagnostics
+  diagnostics$n_overlapping_post <- n_overlapping_post
 
   base::list(
     shp_clean = shp_fixed,
@@ -193,7 +206,7 @@ clean_boundary_artefacts <- function(
     sf::st_make_valid()
 }
 
-#' Apply zero-buffer topology clean with multi-pass approach
+#' Apply zero-buffer topology clean
 #'
 #' @param shp sf object
 #'
@@ -202,18 +215,9 @@ clean_boundary_artefacts <- function(
 .apply_zero_buffer <- function(shp) {
   cli::cli_alert("fix 2: zero-buffer topology repair...")
 
-  # first zero-buffer pass
-  shp_clean <- shp |>
+  shp |>
     sf::st_buffer(dist = 0) |>
     sf::st_make_valid()
-
-  # second buffer pass with small positive buffer for stubborn artifacts
-  shp_clean <- shp_clean |>
-    sf::st_buffer(dist = 1e-10) |>
-    sf::st_buffer(dist = 0) |>
-    sf::st_make_valid()
-
-  shp_clean
 }
 
 #' Apply geometry simplification to smooth boundaries
