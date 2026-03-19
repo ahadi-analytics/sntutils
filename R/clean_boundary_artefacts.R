@@ -12,6 +12,9 @@
 #'   polygons are considered slivers. Default 0.01.
 #' @param snap_precision Numeric. Precision value passed to
 #'   `sf::st_set_precision()`. Default 1e5 (~1m grid).
+#' @param simplify_tolerance Numeric or NULL. Tolerance for geometry
+#'   simplification to smooth boundaries. If NULL (default), no simplification
+#'   is applied. Typical values: 0.0001 to 0.001 for degree-based CRS.
 #' @param group_col Character or NULL. Column name to group by when rebuilding
 #'   topology (nuclear option). If NULL, rebuild step is skipped.
 #'
@@ -38,6 +41,7 @@ clean_boundary_artefacts <- function(
   metric_crs = 32736,
   sliver_threshold_km2 = 0.01,
   snap_precision = 1e5,
+  simplify_tolerance = NULL,
   group_col = NULL
 ) {
   # validate inputs
@@ -87,6 +91,11 @@ clean_boundary_artefacts <- function(
 
   shp_fixed <- .apply_precision_snap(shp, snap_precision)
   shp_fixed <- .apply_zero_buffer(shp_fixed)
+
+  # apply simplification if tolerance provided
+  if (!is.null(simplify_tolerance) && simplify_tolerance > 0) {
+    shp_fixed <- .apply_simplification(shp_fixed, simplify_tolerance)
+  }
 
   sliver_result <- .remove_slivers(
     shp = shp_fixed,
@@ -184,7 +193,7 @@ clean_boundary_artefacts <- function(
     sf::st_make_valid()
 }
 
-#' Apply zero-buffer topology clean
+#' Apply zero-buffer topology clean with multi-pass approach
 #'
 #' @param shp sf object
 #'
@@ -193,8 +202,37 @@ clean_boundary_artefacts <- function(
 .apply_zero_buffer <- function(shp) {
   cli::cli_alert("fix 2: zero-buffer topology repair...")
 
-  shp |>
+  # first zero-buffer pass
+  shp_clean <- shp |>
     sf::st_buffer(dist = 0) |>
+    sf::st_make_valid()
+
+  # second buffer pass with small positive buffer for stubborn artifacts
+  shp_clean <- shp_clean |>
+    sf::st_buffer(dist = 1e-10) |>
+    sf::st_buffer(dist = 0) |>
+    sf::st_make_valid()
+
+  shp_clean
+}
+
+#' Apply geometry simplification to smooth boundaries
+#'
+#' @param shp sf object
+#' @param simplify_tolerance numeric tolerance value
+#'
+#' @return sf object with simplified geometries
+#' @noRd
+.apply_simplification <- function(shp, simplify_tolerance) {
+  cli::cli_alert(
+    "fix 3: simplifying geometries (tolerance: {simplify_tolerance})..."
+  )
+
+  shp |>
+    sf::st_simplify(
+      preserveTopology = TRUE,
+      dTolerance = simplify_tolerance
+    ) |>
     sf::st_make_valid()
 }
 
@@ -213,7 +251,7 @@ clean_boundary_artefacts <- function(
   sliver_threshold_km2,
   original_crs
 ) {
-  cli::cli_alert("fix 3: removing slivers...")
+  cli::cli_alert("fix 4: removing slivers...")
 
   # transform to metric and calculate areas
   shp_metric <- shp |>
@@ -248,7 +286,7 @@ clean_boundary_artefacts <- function(
 #' @noRd
 .rebuild_topology <- function(shp, group_col, snap_precision) {
   cli::cli_alert(
-    "fix 4: rebuilding topology by group column '{group_col}'..."
+    "fix 5: rebuilding topology by group column '{group_col}'..."
   )
 
   shp |>

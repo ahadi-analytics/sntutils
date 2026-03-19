@@ -23,6 +23,9 @@
 #'   polygons are considered slivers and removed. Default 0.01.
 #' @param snap_precision Numeric, precision value for coordinate snapping
 #'   passed to `sf::st_set_precision()`. Default 1e5 (~1m grid).
+#' @param simplify_tolerance Numeric or NULL, tolerance for geometry
+#'   simplification to smooth boundaries. If NULL (default), no simplification
+#'   is applied. Typical values: 0.0001 to 0.001 for degree-based CRS.
 #'
 #' @return A list with validation results. Key elements:
 #'   - `issues`: Character vector of issues detected.
@@ -92,7 +95,8 @@ validate_process_spatial <- function(
   drop_z = TRUE,
   clean_artefacts = TRUE,
   sliver_threshold_km2 = 0.01,
-  snap_precision = 1e5
+  snap_precision = 1e5,
+  simplify_tolerance = NULL
 ) {
   # Initialize results structure
   results <- .init_spatial_validation_results(name, fix_issues, quiet)
@@ -139,6 +143,7 @@ validate_process_spatial <- function(
       metric_crs = 32736,
       sliver_threshold_km2 = sliver_threshold_km2,
       snap_precision = snap_precision,
+      simplify_tolerance = simplify_tolerance,
       quiet = quiet,
       pass_label = "early"
     )
@@ -163,6 +168,7 @@ validate_process_spatial <- function(
       metric_crs = 32736,
       sliver_threshold_km2 = sliver_threshold_km2,
       snap_precision = snap_precision,
+      simplify_tolerance = simplify_tolerance,
       quiet = quiet,
       pass_label = "late"
     )
@@ -1345,6 +1351,7 @@ validate_process_spatial <- function(
 # @param metric_crs integer EPSG code for metric CRS
 # @param sliver_threshold_km2 numeric area threshold for slivers
 # @param snap_precision numeric precision value for snapping
+# @param simplify_tolerance numeric tolerance for geometry simplification
 # @param quiet logical whether to suppress messages
 # @param pass_label character label for this cleaning pass ("early" or "late")
 # @return list with cleaned shp and diagnostics
@@ -1354,6 +1361,7 @@ validate_process_spatial <- function(
   metric_crs,
   sliver_threshold_km2,
   snap_precision,
+  simplify_tolerance = NULL,
   quiet,
   pass_label = "early"
 ) {
@@ -1378,12 +1386,36 @@ validate_process_spatial <- function(
     )
   }
 
-  # apply fixes
+  # apply fixes with more aggressive multi-pass approach
   shp_fixed <- shp |>
     sf::st_set_precision(snap_precision) |>
-    sf::st_make_valid() |>
+    sf::st_make_valid()
+
+  # first zero-buffer pass
+  shp_fixed <- shp_fixed |>
     sf::st_buffer(dist = 0) |>
     sf::st_make_valid()
+
+  # second buffer pass with small positive buffer for stubborn artifacts
+  shp_fixed <- shp_fixed |>
+    sf::st_buffer(dist = 1e-10) |>
+    sf::st_buffer(dist = 0) |>
+    sf::st_make_valid()
+
+  # apply simplification if tolerance provided
+  if (!is.null(simplify_tolerance) && simplify_tolerance > 0) {
+    if (!quiet) {
+      cli::cli_alert_info(
+        "applying geometry simplification (tolerance: {simplify_tolerance})"
+      )
+    }
+    shp_fixed <- shp_fixed |>
+      sf::st_simplify(
+        preserveTopology = TRUE,
+        dTolerance = simplify_tolerance
+      ) |>
+      sf::st_make_valid()
+  }
 
   # remove slivers
   shp_metric <- shp_fixed |>
@@ -1401,6 +1433,9 @@ validate_process_spatial <- function(
   shp_clean <- shp_metric |>
     dplyr::select(-area_km2) |>
     sf::st_transform(crs = original_crs)
+
+  # final validation pass
+  shp_clean <- sf::st_make_valid(shp_clean)
 
   # post-fix summary
   if (!quiet && slivers_removed > 0) {

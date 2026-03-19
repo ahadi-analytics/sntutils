@@ -9,6 +9,7 @@ clean_boundary_artefacts(
   metric_crs = 32736,
   sliver_threshold_km2 = 0.01,
   snap_precision = 1e+05,
+  simplify_tolerance = NULL,
   group_col = NULL
 )
 }
@@ -23,6 +24,10 @@ polygons are considered slivers. Default 0.01.}
 
 \item{snap_precision}{Numeric. Precision value passed to
 \code{sf::st_set_precision()}. Default 1e5 (~1m grid).}
+
+\item{simplify_tolerance}{Numeric or NULL. Tolerance for geometry
+simplification to smooth boundaries. If NULL (default), no simplification
+is applied. Typical values: 0.0001 to 0.001 for degree-based CRS.}
 
 \item{group_col}{Character or NULL. Column name to group by when rebuilding
 topology (nuclear option). If NULL, rebuild step is skipped.}
