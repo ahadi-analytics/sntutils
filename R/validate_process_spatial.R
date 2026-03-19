@@ -878,9 +878,6 @@ validate_process_spatial <- function(
             shp_valid <- sf::st_make_valid(shp_valid)
           }
 
-          # Apply zero-width buffer to fix edge-crossing issues
-          shp_valid <- sf::st_buffer(shp_valid, 0)
-
           agg_shp <- shp_valid |>
             dplyr::group_by(dplyr::across(dplyr::all_of(all_group_cols))) |>
             dplyr::summarise(
@@ -893,12 +890,9 @@ validate_process_spatial <- function(
             agg_shp <- sf::st_make_valid(agg_shp)
           }
 
-          # remove interior holes created by st_union()
-          # Note: st_remove_holes() only removes interior rings, preserving outer
-          # boundaries, so this does not cause boundary misalignment
-          if (rlang::is_installed("nngeo")) {
-            agg_shp <- nngeo::st_remove_holes(agg_shp)
-          }
+          # Note: Do NOT remove holes from aggregated geometries. Even though
+          # st_remove_holes() preserves outer boundaries, it changes the total
+          # vertex count, causing misalignment with the union of base features.
 
           # recompute geometry hash after cleaning
           agg_shp <- agg_shp |>
