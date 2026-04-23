@@ -209,8 +209,10 @@ download_process_nasapower <- function(
   )
 
   # extract centroids and convert to WGS84
+  # suppress the "st_centroid assumes attributes are constant" warning:
+  # we only use the geometry for coordinate extraction below
   centroids <- adm_sf |>
-    sf::st_centroid() |>
+    (\(x) base::suppressWarnings(sf::st_centroid(x)))() |>
     sf::st_transform(4326)
 
   coords <- sf::st_coordinates(centroids)

@@ -539,6 +539,12 @@ process_raster_with_boundaries <- function(raster_file,
 #'   multi-layer raster to extract. If the raster contains multiple layers
 #'   (e.g., different years or indicators), this argument selects the layer to
 #'   be processed. Default is 1.
+#' @param year_extractor Optional function. A custom function that accepts a
+#'   filename (character) and returns a year as integer or character. Passed
+#'   through to [extract_time_components()]. Use this when the default
+#'   "last plausible 4-digit year in 1980-2099" heuristic picks the wrong
+#'   year (for example with malariaAtlas filenames that contain multiple
+#'   year-like tokens). Defaults to `NULL`, which uses the built-in extractor.
 #'
 #' @return A combined data frame containing results from all processed files,
 #'   sorted by time unit if available. Has the same structure as output from
@@ -571,48 +577,50 @@ process_raster_collection <- function(directory,
                                       pattern = "\\.tif$",
                                       aggregations = c("mean"),
                                       layer_to_process = 1,
-                                      raster_is_density = FALSE) {
+                                      raster_is_density = FALSE,
+                                      year_extractor = NULL) {
 
   # get raster files (original paths stay untouched)
-  raster_files <- list.files(
+  raster_files <- base::list.files(
     directory, pattern = pattern, full.names = TRUE
   )
 
-  if (length(raster_files) == 0) {
-    cli::cli_abort("No files matching pattern found in: {directory}")
+  if (base::length(raster_files) == 0) {
+    cli::cli_abort("No files matching pattern found in: {.path {directory}}")
   }
 
   # clean names for date detection only; never rename on disk
   cleaned_names <- clean_filenames(raster_files)
   pattern_info <- detect_time_pattern(cleaned_names)
 
-  pb <- progress::progress_bar$new(
-    format = "Processing raster files [:bar] :percent | ETA: :eta",
-    total = length(raster_files)
-  )
+  # process each file with a built-in progress bar
+  results <- purrr::map(
+    base::seq_along(raster_files),
+    function(i) {
+      components <- extract_time_components(
+        cleaned_names[i],
+        pattern_info,
+        year_extractor = year_extractor
+      )
+      process_raster_with_boundaries(
+        raster_file = raster_files[i],
+        shapefile = shapefile,
+        id_cols = id_cols,
+        aggregations = aggregations,
+        raster_is_density = raster_is_density,
+        layer_to_process = layer_to_process,
+        pattern_info = pattern_info,
+        time_components = components
+      )
+    },
+    .progress = "Processing raster files"
+  ) |>
+    purrr::list_rbind()
 
-  results <- lapply(seq_along(raster_files), function(i) {
-    components <- extract_time_components(
-      cleaned_names[i], pattern_info
-    )
-    result <- process_raster_with_boundaries(
-      raster_file = raster_files[i],
-      shapefile = shapefile,
-      id_cols = id_cols,
-      aggregations = aggregations,
-      raster_is_density = raster_is_density,
-      layer_to_process = layer_to_process,
-      pattern_info = pattern_info,
-      time_components = components
-    )
-    pb$tick()
-    result
-  }) |> dplyr::bind_rows()
-
-  # Sort by appropriate time unit
+  # sort by appropriate time unit
   sort_cols <- c("year", "month")
 
-  if (all(sort_cols %in% names(results))) {
+  if (base::all(sort_cols %in% base::names(results))) {
     results |>
       dplyr::arrange(dplyr::across(dplyr::all_of(sort_cols)))
   } else {
@@ -853,6 +861,12 @@ batch_extract_weighted_stats <- function(
 #'     below and 50% above, interpolating between pixel values when needed
 #'   - "both": Returns both weighted mean and weighted median statistics
 #'   (default: "mean")
+#' @param year_extractor Optional function. A custom function that accepts a
+#'   filename (character) and returns a year as integer or character. Passed
+#'   through to [extract_time_components()]. Use this when the default
+#'   "last plausible 4-digit year in 1980-2099" heuristic picks the wrong
+#'   year (for example with malariaAtlas filenames that contain multiple
+#'   year-like tokens). Defaults to `NULL`, which uses the built-in extractor.
 #'
 #' @return A data frame containing:
 #'   - Spatial identifiers from id_cols
@@ -878,7 +892,8 @@ process_weighted_raster_collection <- function(
   pop_pattern = "\\.tif$",
   value_layer_to_process = 1,
   weight_na_as_zero = TRUE,
-  stat_type = "mean"
+  stat_type = "mean",
+  year_extractor = NULL
 ) {
   # input validation
   if (!stat_type %in% c("mean", "median", "both")) {
@@ -886,28 +901,28 @@ process_weighted_raster_collection <- function(
   }
 
   # list value rasters (original paths stay untouched)
-  value_raster_files <- list.files(
+  value_raster_files <- base::list.files(
     value_raster_dir,
     pattern = value_pattern,
     full.names = TRUE
   )
 
-  if (length(value_raster_files) == 0) {
+  if (base::length(value_raster_files) == 0) {
     cli::cli_abort(
-      "No value raster files found in '{value_raster_dir}'."
+      "No value raster files found in {.path {value_raster_dir}}."
     )
   }
 
   # list population rasters (original paths stay untouched)
-  pop_raster_files <- list.files(
+  pop_raster_files <- base::list.files(
     pop_raster_dir,
     pattern = pop_pattern,
     full.names = TRUE
   )
 
-  if (length(pop_raster_files) == 0) {
+  if (base::length(pop_raster_files) == 0) {
     cli::cli_abort(
-      "No population raster files found in '{pop_raster_dir}'."
+      "No population raster files found in {.path {pop_raster_dir}}."
     )
   }
 
@@ -915,71 +930,76 @@ process_weighted_raster_collection <- function(
   cleaned_value_names <- clean_filenames(value_raster_files)
   pattern_info <- detect_time_pattern(cleaned_value_names)
 
-  single_pop <- length(pop_raster_files) == 1
+  single_pop <- base::length(pop_raster_files) == 1
+  pop_basenames <- base::basename(pop_raster_files)
 
-  # initialize progress bar
-  cli::cli_progress_bar(
-    "Extracting population-weighted statistics",
-    total = length(value_raster_files)
-  )
-
-  results <- vector("list", length(value_raster_files))
-
-  for (i in seq_along(value_raster_files)) {
-    # parse time from cleaned name, read from original path
-    components <- extract_time_components(
-      cleaned_value_names[i], pattern_info
-    )
-    year_str <- as.character(components$year)
-
-    # match population raster: use single pop for all if only one
+  # helper: find the population raster that matches a given year
+  match_pop_for_year <- function(year_str, value_file) {
     if (single_pop) {
-      matched_pop <- pop_raster_files
-    } else {
-      matched_pop <- pop_raster_files[
-        grepl(year_str, basename(pop_raster_files))
-      ]
+      return(pop_raster_files)
     }
 
-    if (length(matched_pop) == 0) {
-      cli::cli_abort(paste0(
-        "No population raster matching year {year_str}",
-        " found for {basename(value_raster_files[i])}."
+    # word-boundary match so "2020" does not match inside "202005"
+    year_pattern <- base::paste0("(?<!\\d)", year_str, "(?!\\d)")
+    matched <- pop_raster_files[
+      base::grepl(year_pattern, pop_basenames, perl = TRUE)
+    ]
+
+    if (base::length(matched) == 0) {
+      cli::cli_abort(c(
+        "No population raster matching year {.val {year_str}} found for \\
+         {.file {base::basename(value_file)}}.",
+        "i" = "Checked {base::length(pop_raster_files)} file(s) in the \\
+               population directory."
       ))
-    } else if (length(matched_pop) > 1) {
-      cli::cli_abort(
-        "Multiple population rasters found for year {year_str}."
-      )
+    } else if (base::length(matched) > 1) {
+      cli::cli_abort(c(
+        "Multiple population rasters found for year {.val {year_str}}.",
+        "i" = "Matched: {.file {base::basename(matched)}}"
+      ))
     }
 
-    results[[i]] <- batch_extract_weighted_stats(
-      value_raster_file = value_raster_files[i],
-      pop_raster_file = matched_pop,
-      shapefile = shapefile,
-      id_cols = id_cols,
-      value_layer_to_process = value_layer_to_process,
-      weight_na_as_zero = weight_na_as_zero,
-      stat_type = stat_type,
-      pattern_info = pattern_info,
-      time_components = components
-    )
-
-    cli::cli_progress_update()
+    matched
   }
 
-  cli::cli_progress_done()
+  # process each value raster with a built-in progress bar
+  results <- purrr::map(
+    base::seq_along(value_raster_files),
+    function(i) {
+      components <- extract_time_components(
+        cleaned_value_names[i],
+        pattern_info,
+        year_extractor = year_extractor
+      )
+      year_str <- base::as.character(components$year)
+      matched_pop <- match_pop_for_year(year_str, value_raster_files[i])
+
+      batch_extract_weighted_stats(
+        value_raster_file = value_raster_files[i],
+        pop_raster_file = matched_pop,
+        shapefile = shapefile,
+        id_cols = id_cols,
+        value_layer_to_process = value_layer_to_process,
+        weight_na_as_zero = weight_na_as_zero,
+        stat_type = stat_type,
+        pattern_info = pattern_info,
+        time_components = components
+      )
+    },
+    .progress = "Extracting population-weighted statistics"
+  )
 
   # combine and sort results
-  combined_results <- dplyr::bind_rows(results)
+  combined_results <- purrr::list_rbind(results)
   sort_cols <- c("year", "month", id_cols)
-  sort_cols <- sort_cols[sort_cols %in% names(combined_results)]
+  sort_cols <- sort_cols[sort_cols %in% base::names(combined_results)]
 
-  if (length(sort_cols) > 0) {
+  if (base::length(sort_cols) > 0) {
     combined_results <- combined_results |>
       dplyr::arrange(dplyr::across(dplyr::all_of(sort_cols)))
   }
 
-  return(combined_results)
+  combined_results
 }
 
 #' Normalize Raster Values by Polygon Regions

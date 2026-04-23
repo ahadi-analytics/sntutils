@@ -208,13 +208,15 @@ testthat::test_that("detect_time_pattern handles edge cases", {
   pattern_info <- detect_time_pattern(single_file)
   testthat::expect_equal(pattern_info$pattern, "monthly")
 
-  # Test mixed yearly and monthly files - should prefer more specific pattern
+  # Mixed yearly and monthly files: previous behaviour (any()) reported
+  # "monthly". With all() semantics, a batch where not every file has a
+  # month component falls back to "yearly" instead of misclassifying.
   mixed_files <- c(
     "chirps-v2.0.2020.01.tif",
     "annual_2020.tif"
   )
   pattern_info <- detect_time_pattern(mixed_files)
-  testthat::expect_equal(pattern_info$pattern, "monthly")
+  testthat::expect_equal(pattern_info$pattern, "yearly")
 })
 
 testthat::test_that("detect_time_pattern handles international date formats", {
@@ -297,7 +299,7 @@ testthat::test_that("detect_time_pattern fails gracefully with invalid input", {
 
   testthat::expect_error(
     detect_time_pattern(invalid_formats),
-    "No date pattern found in filenames"
+    "Inconsistent date patterns"
   )
 })
 
@@ -2646,9 +2648,15 @@ testthat::test_that(
   pattern_info <- detect_time_pattern(cleaned_names)
   testthat::expect_equal(pattern_info$pattern, "yearly")
 
-  # extract year from each
+  # default heuristic ("last plausible year") picks the trailing download
+  # stamp 2026; demonstrate the year_extractor workaround for this case
+  data_year_extractor <- function(f) {
+    stringr::str_extract(f, "Explorer_(\\d{4})_", group = 1)
+  }
   years <- purrr::map_int(cleaned_names, function(f) {
-    extract_time_components(f, pattern_info)$year
+    extract_time_components(
+      f, pattern_info, year_extractor = data_year_extractor
+    )$year
   })
   testthat::expect_equal(years, c(2010L, 2015L, 2020L))
 })
@@ -2746,4 +2754,203 @@ testthat::test_that(
   testthat::expect_equal(sort(result$year), c(2010, 2015, 2020))
 
   unlink(c(value_dir, pop_dir), recursive = TRUE)
+})
+
+# ---- tidy_malaria_raster_names ----
+
+testthat::test_that("tidy_malaria_raster_names renames malariaAtlas files", {
+  temp_dir <- base::file.path(base::tempdir(), "tidy_malaria_test")
+  base::dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
+  base::on.exit(base::unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  # simulate malariaAtlas::getRaster output
+  messy_files <- c(
+    paste0(
+      "Malaria__202508_Global_Pf_Parasite_Rate.2020.",
+      "200028_300045_310050_400.tiff"
+    ),
+    paste0(
+      "Malaria__202508_Global_Pf_Parasite_Rate.2021.",
+      "200028_300045_310050_400.tiff"
+    )
+  )
+  for (nm in messy_files) {
+    base::file.create(base::file.path(temp_dir, nm))
+  }
+
+  renamed <- tidy_malaria_raster_names(temp_dir)
+
+  # should rename both files
+  testthat::expect_equal(base::nrow(renamed), 2)
+
+  # canonical names should now exist
+  final_names <- base::list.files(temp_dir)
+  testthat::expect_true(
+    "Malaria__202508_Global_Pf_Parasite_Rate.2020.tiff" %in% final_names
+  )
+  testthat::expect_true(
+    "Malaria__202508_Global_Pf_Parasite_Rate.2021.tiff" %in% final_names
+  )
+})
+
+testthat::test_that("tidy_malaria_raster_names is idempotent", {
+  temp_dir <- base::file.path(base::tempdir(), "tidy_malaria_idempotent")
+  base::dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
+  base::on.exit(base::unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  # already canonical filenames
+  base::file.create(base::file.path(
+    temp_dir, "Malaria_Global_Pf_Parasite_Rate.2020.tiff"
+  ))
+
+  result <- tidy_malaria_raster_names(temp_dir)
+  testthat::expect_equal(base::nrow(result), 0)
+})
+
+testthat::test_that("tidy_malaria_raster_names aborts if directory missing", {
+  testthat::expect_error(
+    tidy_malaria_raster_names(
+      base::file.path(base::tempdir(), "nonexistent_dir_xyz_123")
+    ),
+    "does not exist"
+  )
+})
+
+testthat::test_that("tidy_malaria_raster_names removes getRaster artifact", {
+  temp_dir <- base::file.path(base::tempdir(), "tidy_malaria_getraster")
+  base::dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
+  base::on.exit(base::unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  # need at least one file that will be renamed to trigger the cleanup
+  messy <- paste0(
+    "Malaria__202508_Global_Pf_Parasite_Rate.2020.",
+    "1_2_3_4.tiff"
+  )
+  base::file.create(base::file.path(temp_dir, messy))
+
+  artifact_dir <- base::file.path(temp_dir, "getRaster")
+  base::dir.create(artifact_dir, showWarnings = FALSE)
+  base::file.create(base::file.path(artifact_dir, "junk.txt"))
+
+  tidy_malaria_raster_names(temp_dir)
+
+  testthat::expect_false(base::dir.exists(artifact_dir))
+})
+
+# ---- extract_time_components with year_extractor and plausibility ----
+
+testthat::test_that("extract_time_components picks last plausible year", {
+  # download stamp "202508" contains no 4-digit run at a word boundary
+  # (it's 6 digits), so only "2020" is a candidate
+  info <- list(pattern = "yearly", parser = function(x) {
+    base::as.Date(base::paste0(x, "-01-01"))
+  })
+
+  components <- extract_time_components(
+    "Malaria_Global_Pf_Parasite_Rate.2020.tiff", info
+  )
+  testthat::expect_equal(components$year, 2020L)
+})
+
+testthat::test_that("extract_time_components filters implausible years", {
+  info <- list(pattern = "yearly", parser = function(x) {
+    base::as.Date(base::paste0(x, "-01-01"))
+  })
+
+  # 1234 is out of plausible range (1980-2099), 2020 is in range
+  components <- extract_time_components(
+    "bbox_1234_file_2020.tiff", info
+  )
+  testthat::expect_equal(components$year, 2020L)
+})
+
+testthat::test_that("extract_time_components returns NA when no plausible year", {
+  info <- list(pattern = "yearly", parser = function(x) {
+    if (base::is.na(x)) {
+      return(base::as.Date(NA))
+    }
+    base::as.Date(base::paste0(x, "-01-01"))
+  })
+
+  components <- extract_time_components(
+    "bbox_1234_file_5678.tiff", info
+  )
+  testthat::expect_true(base::is.na(components$year))
+})
+
+testthat::test_that("extract_time_components respects custom year_extractor", {
+  info <- list(pattern = "yearly", parser = function(x) {
+    base::as.Date(base::paste0(x, "-01-01"))
+  })
+
+  # custom extractor that grabs the "Rate.YYYY" year specifically
+  my_extractor <- function(f) {
+    stringr::str_extract(f, "Rate\\.(\\d{4})", group = 1)
+  }
+
+  components <- extract_time_components(
+    "Malaria__202508_Global_Pf_Parasite_Rate.2015.tiff",
+    info,
+    year_extractor = my_extractor
+  )
+  testthat::expect_equal(components$year, 2015L)
+})
+
+# ---- detect_time_pattern with all() logic ----
+
+testthat::test_that("detect_time_pattern uses all() not any() semantics", {
+  # when NOT all files match the more specific monthly pattern, the function
+  # must NOT report "monthly". Here the first file is yearly-only; previously
+  # (with any()) the whole batch would be misclassified as monthly.
+  mixed <- c("file_2020.tif", "file_2021_05.tif")
+  info <- detect_time_pattern(mixed)
+  testthat::expect_false(info$pattern == "monthly")
+  testthat::expect_equal(info$pattern, "yearly")
+})
+
+testthat::test_that("detect_time_pattern rejects substring year matches", {
+  # "202005" should NOT match the yearly pattern because of word boundaries
+  names_with_ym_compact <- c("rain_202005.tif", "rain_202006.tif")
+  info <- detect_time_pattern(names_with_ym_compact)
+  testthat::expect_equal(info$pattern, "monthly")
+})
+
+# ---- year_extractor pass-through integration ----
+
+testthat::test_that(
+  "tidy + extract_time_components pipeline parses malariaAtlas files", {
+  temp_dir <- base::file.path(base::tempdir(), "tidy_extract_pipeline")
+  base::dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
+  base::on.exit(base::unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  # raw malariaAtlas output
+  raw_files <- c(
+    paste0(
+      "Malaria__202508_Global_Pf_Parasite_Rate.2019.",
+      "200028_300045_310050_400.tiff"
+    ),
+    paste0(
+      "Malaria__202508_Global_Pf_Parasite_Rate.2020.",
+      "200028_300045_310050_400.tiff"
+    )
+  )
+  for (nm in raw_files) {
+    base::file.create(base::file.path(temp_dir, nm))
+  }
+
+  # step 1: tidy
+  tidy_malaria_raster_names(temp_dir)
+
+  # step 2: detect and extract
+  final_paths <- base::list.files(temp_dir, full.names = TRUE)
+  cleaned <- clean_filenames(final_paths)
+  info <- detect_time_pattern(cleaned)
+
+  testthat::expect_equal(info$pattern, "yearly")
+
+  years <- purrr::map_int(cleaned, function(f) {
+    extract_time_components(f, info)$year
+  })
+
+  testthat::expect_equal(base::sort(years), c(2019L, 2020L))
 })

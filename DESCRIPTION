@@ -2,7 +2,7 @@ Package: sntutils
 Type: Package
 Title: Utility Functions for Data Preparation and Analysis in Subnational
     Tailoring of Malaria Interventions (SNT)
-Version: 1.12.5
+Version: 1.12.6
 Authors@R: c(
     person("Mohamed A.", "Yusuf",
            role = c("aut", "cre"),
@@ -21,6 +21,7 @@ Imports:
     countrycode,
     dplyr,
     ggplot2,
+    purrr (>= 1.0.0),
     rio,
     rlang,
     sf,
@@ -64,7 +65,6 @@ Suggests:
     nngeo,
     parzer,
     progress,
-    purrr,
     qs2,
     R.utils,
     raster,

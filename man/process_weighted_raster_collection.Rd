@@ -13,7 +13,8 @@ process_weighted_raster_collection(
   pop_pattern = "\\\\.tif$",
   value_layer_to_process = 1,
   weight_na_as_zero = TRUE,
-  stat_type = "mean"
+  stat_type = "mean",
+  year_extractor = NULL
 )
 }
 \arguments{
@@ -49,6 +50,13 @@ below and 50\% above, interpolating between pixel values when needed
 \item "both": Returns both weighted mean and weighted median statistics
 (default: "mean")
 }}
+
+\item{year_extractor}{Optional function. A custom function that accepts a
+filename (character) and returns a year as integer or character. Passed
+through to \code{\link[=extract_time_components]{extract_time_components()}}. Use this when the default
+"last plausible 4-digit year in 1980-2099" heuristic picks the wrong
+year (for example with malariaAtlas filenames that contain multiple
+year-like tokens). Defaults to \code{NULL}, which uses the built-in extractor.}
 }
 \value{
 A data frame containing:
