@@ -1,3 +1,86 @@
+#' Normalize malariaAtlas Raster Filenames
+#'
+#' @description
+#' Strips bounding-box coordinates and download-date metadata appended by
+#' `malariaAtlas::getRaster()`, leaving only `...Rate.YYYY.tiff`. This
+#' function renames files on disk and is idempotent: re-running after a
+#' fresh download only touches newly-added files.
+#'
+#' This is the **recommended first step** after downloading malariaAtlas
+#' rasters to ensure downstream processing functions can correctly extract
+#' years from filenames.
+#'
+#' @param dir Character scalar. Directory containing downloaded `.tiff` files.
+#' @return Invisibly, a tibble with columns `old_name` and `new_name` for
+#'   files that were renamed. Files already in canonical form are skipped.
+#'
+#' @examples
+#' \dontrun{
+#' # Typical workflow with malariaAtlas
+#' malariaAtlas::getRaster(
+#'   dataset_id = "Malaria__202508_Global_Pf_Parasite_Rate",
+#'   year = 2010:2020,
+#'   file_path = "data/maps",
+#'   shp = admin_boundaries
+#' )
+#'
+#' # Clean the filenames immediately after download
+#' tidy_malaria_raster_names("data/maps")
+#'
+#' # Now process with standard functions
+#' sntutils::process_weighted_raster_collection(...)
+#' }
+#' @export
+tidy_malaria_raster_names <- function(dir) {
+  if (!base::dir.exists(dir)) {
+    cli::cli_abort("Directory {.path {dir}} does not exist.")
+  }
+
+  tiff_files <- base::list.files(
+    path = dir,
+    pattern = "\\.tiff?$",
+    full.names = TRUE,
+    ignore.case = TRUE
+  )
+
+  if (base::length(tiff_files) == 0) {
+    cli::cli_warn("No .tiff files found in {.path {dir}}")
+    return(base::invisible(tibble::tibble(old_name = character(0), new_name = character(0))))
+  }
+
+  plan <- tibble::tibble(
+    old_path = tiff_files,
+    old_name = base::basename(tiff_files),
+    new_name = stringr::str_replace(
+      base::basename(tiff_files),
+      "(Rate\\.\\d{4}).*(\\.tiff?)$",
+      "\\1\\2"
+    )
+  ) |>
+    dplyr::filter(old_name != new_name)
+
+  if (base::nrow(plan) == 0) {
+    cli::cli_alert_info("All filenames already canonical")
+    return(base::invisible(plan))
+  }
+
+  base::file.rename(
+    from = plan$old_path,
+    to = base::file.path(dir, plan$new_name)
+  )
+
+  # remove unwanted artifact folder (created by malariaAtlas::getRaster)
+  get_raster_dir <- base::file.path(dir, "getRaster")
+  if (base::dir.exists(get_raster_dir)) {
+    base::unlink(get_raster_dir, recursive = TRUE)
+    cli::cli_alert_info("Removed getRaster artifact directory")
+  }
+
+  cli::cli_alert_success("Renamed {nrow(plan)} file{?s}")
+  base::invisible(dplyr::select(plan, old_name, new_name))
+}
+
+
 #' Clean Filenames
 #'
 #' Cleans a vector of filenames by removing common standalone numbers
@@ -6,6 +89,8 @@
 #' pure string operation — no files are renamed on disk.
 #'
 #' @param filenames A character vector of file paths or basenames.
+#' @param verbose Logical. If `TRUE`, emits an info message when no cleaning
+#'   is performed. Default is `FALSE`.
 #' @return A character vector of cleaned filenames (same length as
 #'   input). Directory paths are preserved if provided.
 #'
@@ -13,7 +98,7 @@
 #' clean_filenames(c("file_001.txt", "file_002.txt"))
 #' clean_filenames(c("/path/to/file_001.txt", "/path/to/file_002.txt"))
 #' @export
-clean_filenames <- function(filenames) {
+clean_filenames <- function(filenames, verbose = FALSE) {
   dirs <- dirname(filenames)
   fnames <- basename(filenames)
 
@@ -38,6 +123,9 @@ clean_filenames <- function(filenames) {
 
   # return originals if no common numbers to strip
   if (length(common_numbers) == 0) {
+    if (verbose) {
+      cli::cli_alert_info("No common numbers found to clean")
+    }
     return(filenames)
   }
 
@@ -94,20 +182,43 @@ detect_time_pattern <- function(filenames) {
     monthly_iso = "\\d{4}[._-]\\d{2}", # YYYY-MM
     monthly_compact = "(?<!\\d)\\d{6}(?!\\d)", # YYYYMM
     monthly_euro = "\\d{2}[._-]\\d{4}", # MM-YYYY
-    yearly = "\\d{4}"
+    yearly = "(?<!\\d)(19[89]\\d|20\\d{2})(?!\\d)" # plausible years with word boundaries
   )
 
   # Check patterns in order of specificity
-  if (any(grepl(patterns$daily, b))) {
+  # Use all() to ensure ALL files match the pattern (prevent one outlier
+  # from misclassifying the entire batch)
+  is_daily <- base::all(grepl(patterns$daily, b))
+  is_monthly <- base::all(
+    grepl(patterns$monthly_iso, b, perl = TRUE) |
+      grepl(patterns$monthly_compact, b, perl = TRUE) |
+      grepl(patterns$monthly_euro, b)
+  )
+  is_yearly <- base::all(grepl(patterns$yearly, b, perl = TRUE))
+
+  if (is_daily) {
     pattern <- "daily"
-  } else if (any(grepl(patterns$monthly_iso, b, perl = TRUE)) ||
-             any(grepl(patterns$monthly_compact, b, perl = TRUE)) ||
-             any(grepl(patterns$monthly_euro, b))) {
+  } else if (is_monthly) {
     pattern <- "monthly"
-  } else if (any(grepl(patterns$yearly, b))) {
+  } else if (is_yearly) {
     pattern <- "yearly"
   } else {
-    cli::cli_abort("No date pattern found in filenames")
+    # Mixed or inconsistent patterns - list files for debugging
+    daily_files <- b[grepl(patterns$daily, b)]
+    monthly_files <- b[
+      grepl(patterns$monthly_iso, b, perl = TRUE) |
+        grepl(patterns$monthly_compact, b, perl = TRUE) |
+        grepl(patterns$monthly_euro, b)
+    ]
+    yearly_files <- b[grepl(patterns$yearly, b, perl = TRUE)]
+
+    cli::cli_abort(c(
+      "Inconsistent date patterns detected in filenames",
+      "i" = "Daily files ({length(daily_files)}): {.file {daily_files}}",
+      "i" = "Monthly files ({length(monthly_files)}): {.file {monthly_files}}",
+      "i" = "Yearly files ({length(yearly_files)}): {.file {yearly_files}}",
+      "x" = "All files in a directory must use the same time pattern"
+    ))
   }
 
   parser <- function(x) {
@@ -138,6 +249,11 @@ detect_time_pattern <- function(filenames) {
 #'     \item{pattern}{One of \code{"monthly"} or \code{"yearly"}.}
 #'     \item{parser}{Function to parse character dates into Date/POSIXct.}
 #'   }
+#' @param year_extractor Optional function to extract year from filename.
+#'   If provided, this function is used instead of automatic year detection
+#'   for yearly data. Should take a character string (filename) and return
+#'   a character string (year). Useful for filenames with multiple 4-digit
+#'   numbers where heuristics may fail.
 #' @return A list with:
 #'   \describe{
 #'     \item{year}{Integer year}
@@ -146,13 +262,23 @@ detect_time_pattern <- function(filenames) {
 #'     \item{quarter}{Integer quarter (1–4) or \code{NA}}
 #'     \item{date}{Date object for the first day of the period}
 #'   }
+#' @note For yearly data, when multiple plausible years (1980-2099) are
+#'   present in the filename, the last one is returned. This heuristic
+#'   assumes dataset version stamps appear early in the filename and data
+#'   years appear later. For deterministic control, pass a custom
+#'   \code{year_extractor} function.
 #' @examples
 #' info <- detect_time_pattern("rainfall_2022-01.tif")
 #' extract_time_components("rainfall_2022-01.tif", info)
 #' info <- detect_time_pattern("temp_2020.tif")
 #' extract_time_components("temp_2020.tif", info)
+#' # Custom year extractor for complex filenames
+#' my_extractor <- function(f) {
+#'   stringr::str_extract(f, "Rate\\.(\\d{4})\\.tiff$", group = 1)
+#' }
+#' extract_time_components("Malaria_Rate.2020.tiff", info, my_extractor)
 #' @export
-extract_time_components <- function(filename, info) {
+extract_time_components <- function(filename, info, year_extractor = NULL) {
   # Enhanced pattern matching for both ISO and European formats
   if (info$pattern == "monthly") {
     # Try European format first (since that's our input)
@@ -184,10 +310,27 @@ extract_time_components <- function(filename, info) {
       }
     }
   } else {
-    ds <- stringr::str_extract(
-      basename(filename),
-      "\\d{4}"
-    )
+    # Yearly data - use custom extractor if provided
+    if (!base::is.null(year_extractor)) {
+      ds <- year_extractor(base::basename(filename))
+    } else {
+      # Extract all 4-digit numbers with word boundaries
+      candidates <- base::basename(filename) |>
+        stringr::str_extract_all("(?<!\\d)\\d{4}(?!\\d)") |>
+        base::unlist() |>
+        base::as.integer()
+
+      # Filter to plausible years (1980-2099)
+      plausible <- candidates[candidates >= 1980 & candidates <= 2099]
+
+      if (base::length(plausible) == 0) {
+        ds <- NA_character_
+      } else {
+        # Take the last plausible year (data years typically appear
+        # later in filenames, version stamps earlier)
+        ds <- base::as.character(dplyr::last(plausible))
+      }
+    }
   }
 
   d <- info$parser(ds)

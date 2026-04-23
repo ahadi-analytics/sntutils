@@ -4,7 +4,7 @@
 \alias{extract_time_components}
 \title{Extract time components from a filename}
 \usage{
-extract_time_components(filename, info)
+extract_time_components(filename, info, year_extractor = NULL)
 }
 \arguments{
 \item{filename}{Character string of file path or name}
@@ -14,6 +14,12 @@ extract_time_components(filename, info)
 \item{pattern}{One of \code{"monthly"} or \code{"yearly"}.}
 \item{parser}{Function to parse character dates into Date/POSIXct.}
 }}
+
+\item{year_extractor}{Optional function to extract year from filename.
+If provided, this function is used instead of automatic year detection
+for yearly data. Should take a character string (filename) and return
+a character string (year). Useful for filenames with multiple 4-digit
+numbers where heuristics may fail.}
 }
 \value{
 A list with:
@@ -30,9 +36,21 @@ Uses the pattern and parser returned by \code{detect_time_pattern()}
 to parse the date embedded in \code{filename} and computes derived
 units (month, semester, quarter).
 }
+\note{
+For yearly data, when multiple plausible years (1980-2099) are
+present in the filename, the last one is returned. This heuristic
+assumes dataset version stamps appear early in the filename and data
+years appear later. For deterministic control, pass a custom
+\code{year_extractor} function.
+}
 \examples{
 info <- detect_time_pattern("rainfall_2022-01.tif")
 extract_time_components("rainfall_2022-01.tif", info)
 info <- detect_time_pattern("temp_2020.tif")
 extract_time_components("temp_2020.tif", info)
+# Custom year extractor for complex filenames
+my_extractor <- function(f) {
+  stringr::str_extract(f, "Rate\\\\.(\\\\d{4})\\\\.tiff$", group = 1)
+}
+extract_time_components("Malaria_Rate.2020.tiff", info, my_extractor)
 }

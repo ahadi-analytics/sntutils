@@ -4,10 +4,13 @@
 \alias{clean_filenames}
 \title{Clean Filenames}
 \usage{
-clean_filenames(filenames)
+clean_filenames(filenames, verbose = FALSE)
 }
 \arguments{
 \item{filenames}{A character vector of file paths or basenames.}
+
+\item{verbose}{Logical. If \code{TRUE}, emits an info message when no cleaning
+is performed. Default is \code{FALSE}.}
 }
 \value{
 A character vector of cleaned filenames (same length as
