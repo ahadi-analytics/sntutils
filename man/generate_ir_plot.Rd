@@ -48,7 +48,7 @@ is shown.}
 shown.}
 
 \item{y_label}{Character scalar. Y-axis label.
-Default is \code{"Mortalité (mean)\\n"}.}
+Default is \code{"Mortalit\\u00e9 (mean)\\n"}.}
 
 \item{legend_title}{Character scalar. Legend title for trend method.
 If \code{NULL}, a default title is generated.}

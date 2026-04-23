@@ -302,6 +302,8 @@ testthat::test_that("detect_time_pattern fails gracefully with invalid input", {
 })
 
 testthat::test_that("process_raster_with_boundaries works with basic inputs", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock raster data
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -375,6 +377,8 @@ testthat::test_that("process_raster_with_boundaries works with basic inputs", {
 })
 
 testthat::test_that("process_raster_with_boundaries handles multiple aggregations", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock raster data
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -439,6 +443,8 @@ testthat::test_that("process_raster_with_boundaries handles multiple aggregation
 })
 
 testthat::test_that("process_raster_with_boundaries handles density conversion", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock raster data
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -498,6 +504,8 @@ testthat::test_that("process_raster_with_boundaries handles density conversion",
 })
 
 testthat::test_that("process_raster_with_boundaries handles no-data values", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock raster with no-data values
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -620,6 +628,8 @@ testthat::test_that("process_raster_with_boundaries validates aggregation method
 })
 
 testthat::test_that("process_raster_with_boundaries handles crs transformation", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock raster in different crs
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -679,6 +689,8 @@ testthat::test_that("process_raster_with_boundaries handles crs transformation",
 })
 
 testthat::test_that("process_raster_with_boundaries handles custom id columns", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock data
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -743,6 +755,8 @@ testthat::test_that("process_raster_with_boundaries handles custom id columns", 
 })
 
 testthat::test_that("process_raster_with_boundaries returns correct time columns", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock data
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -822,6 +836,8 @@ testthat::test_that("process_raster_with_boundaries returns correct time columns
 })
 
 testthat::test_that("process_raster_collection works with multiple files", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory with mock raster files
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "test_rasters")
@@ -931,6 +947,8 @@ testthat::test_that("process_raster_collection works with multiple files", {
 })
 
 testthat::test_that("process_raster_collection handles single file", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory with single file
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "single_raster")
@@ -1041,6 +1059,8 @@ testthat::test_that("process_raster_collection handles empty directory", {
 })
 
 testthat::test_that("process_raster_collection respects file pattern", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory with mixed file types
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "mixed_files")
@@ -1125,6 +1145,8 @@ testthat::test_that("process_raster_collection respects file pattern", {
 })
 
 testthat::test_that("process_raster_collection handles multiple aggregations", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory with raster files
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "multi_agg")
@@ -1222,6 +1244,8 @@ testthat::test_that("process_raster_collection handles multiple aggregations", {
 })
 
 testthat::test_that("process_raster_collection sorts results correctly", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory with files in non-chronological order
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "sort_test")
@@ -1320,6 +1344,8 @@ testthat::test_that("process_raster_collection sorts results correctly", {
 })
 
 testthat::test_that("process_raster_collection handles custom parameters", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "custom_params")
@@ -1408,6 +1434,8 @@ testthat::test_that("process_raster_collection handles custom parameters", {
 })
 
 testthat::test_that("process_raster_collection handles results without time columns", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "no_time")
@@ -1493,6 +1521,8 @@ testthat::test_that("process_raster_collection handles results without time colu
 
 
 testthat::test_that("process_weighted_raster_collection handles no value files", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directories
   temp_dir <- tempdir()
   value_dir <- file.path(temp_dir, "empty_values")
@@ -1603,6 +1633,8 @@ testthat::test_that("process_weighted_raster_collection handles no population fi
 })
 
 testthat::test_that("process_weighted_raster_collection handles unmatched years", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directories
   temp_dir <- tempdir()
   value_dir <- file.path(temp_dir, "values")
@@ -1694,6 +1726,8 @@ testthat::test_that("process_weighted_raster_collection handles unmatched years"
 })
 
 testthat::test_that("process_weighted_raster_collection handles multiple population matches", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directories
   temp_dir <- tempdir()
   value_dir <- file.path(temp_dir, "values")
@@ -1872,6 +1906,8 @@ testthat::test_that("process_ihme_u5m_raster works with rates using mean", {
 })
 
 testthat::test_that("process_ihme_u5m_raster works with rates using median", {
+  testthat::skip_if_not_installed("matrixStats")
+
   # create simple 2x2 raster with known values
   raster_layer <- terra::rast(
     nrows = 2,
@@ -1916,6 +1952,8 @@ testthat::test_that("process_ihme_u5m_raster works with rates using median", {
 })
 
 testthat::test_that("process_ihme_u5m_raster works with rates using both stats", {
+  testthat::skip_if_not_installed("matrixStats")
+
   # create simple raster
   raster_layer <- terra::rast(
     nrows = 2,
@@ -2226,6 +2264,8 @@ testthat::test_that("process_weighted_raster_stacks works with mean", {
 })
 
 testthat::test_that("process_weighted_raster_stacks works with median", {
+  testthat::skip_if_not_installed("matrixStats")
+
   # create simple value and population rasters
   value_layer <- terra::rast(
     nrows = 2,
@@ -2281,6 +2321,8 @@ testthat::test_that("process_weighted_raster_stacks works with median", {
 })
 
 testthat::test_that("process_weighted_raster_stacks works with both stats", {
+  testthat::skip_if_not_installed("matrixStats")
+
   # create simple rasters
   value_layer <- terra::rast(
     nrows = 2,
@@ -2612,7 +2654,10 @@ testthat::test_that(
 })
 
 testthat::test_that(
+
   "process_weighted_raster_collection uses single pop for all years", {
+  testthat::skip_if_not_installed("mockery")
+
   # when only 1 pop raster exists, it should be used for all value years
   temp_dir <- tempdir()
   value_dir <- file.path(temp_dir, "tsi_values")

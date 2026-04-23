@@ -11,8 +11,6 @@ download_process_nasapower(
   end_date = "2025-12-31",
   power_vars = c("PRECTOTCORR", "T2M_MAX", "T2M_MIN", "T2M", "TS", "TS_MAX", "TS_MIN",
     "RH2M"),
-  n_sample_points = 3,
-  point_crs = 6933,
   power_community = "ag",
   max_retries = 3,
   dict_language = "fr"
@@ -31,13 +29,6 @@ unit identifier. Default is \code{c("adm0", "adm1", "adm2")}.}
 \item{end_date}{End date in \code{"YYYY-MM-DD"} format.}
 
 \item{power_vars}{Character vector of NASA POWER variable codes to download.}
-
-\item{n_sample_points}{Number of random points to sample per polygon.
-Median is computed across points. Smaller polygons may yield fewer points.
-Default is 3.}
-
-\item{point_crs}{EPSG code used for point sampling.
-Default is 6933 (World Cylindrical Equal Area).}
 
 \item{power_community}{NASA POWER community parameter. Default is "ag"
 (agroclimatology).}
@@ -61,14 +52,10 @@ administrative units, processes them into daily and monthly datasets, and
 generates data dictionaries for each output.
 }
 \details{
-For each polygon, multiple random points are sampled and data is downloaded
-for each point. The median across sample points is computed to produce a
-single representative value per administrative unit. This approach reduces
-sensitivity to within-polygon spatial variability.
-
-Returned values correspond to NASA POWER grid-cell averages (approximately
-0.5 degree resolution) and should be interpreted as regional conditions
-rather than point measurements.
+For each polygon, a single representative point (centroid) is used to
+download data. Returned values correspond to NASA POWER grid-cell averages
+(approximately 0.5 degree resolution) and should be interpreted as regional
+conditions rather than point measurements.
 
 The function is robust to partial download failures. Administrative units
 that fail to download after the specified number of retries are skipped with

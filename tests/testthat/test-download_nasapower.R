@@ -148,24 +148,3 @@ test_that("download_process_nasapower downloads and processes data", {
   expect_s3_class(result$dict_daily, "data.frame")
   expect_s3_class(result$dict_monthly, "data.frame")
 })
-
-test_that("download_process_nasapower uses custom point_crs", {
-  skip_if_no_internet()
-  skip_if_nasapower_down()
-
-  test_sf <- create_test_sf()
-
-  # should work with different CRS
-  result <- suppressMessages(
-    download_process_nasapower(
-      adm_sf = test_sf,
-      start_date = as.character(Sys.Date() - 10),
-      end_date = as.character(Sys.Date() - 9),
-      point_crs = 3857,
-      max_retries = 2
-    )
-  )
-
-  expect_type(result, "list")
-  expect_true(nrow(result$daily) > 0)
-})

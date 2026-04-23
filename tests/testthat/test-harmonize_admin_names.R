@@ -1,4 +1,6 @@
 testthat::test_that("handle_file_save handles basic file saving", {
+  testthat::skip_if_not_installed("mockery")
+
   # Setup
   temp_dir <- tempdir()
   test_file <- file.path(temp_dir, "test_cache.rds")
@@ -33,6 +35,8 @@ testthat::test_that("handle_file_save handles basic file saving", {
 })
 
 testthat::test_that("handle_file_save merges with existing cache", {
+  testthat::skip_if_not_installed("mockery")
+
   # Setup
   temp_dir <- tempdir()
   test_file <- file.path(temp_dir, "test_cache.rds")
@@ -77,6 +81,8 @@ testthat::test_that("handle_file_save merges with existing cache", {
 })
 
 testthat::test_that("handle_file_save handles user rejection", {
+  testthat::skip_if_not_installed("mockery")
+
   # Mock user input to say "n"
   mockery::stub(
     handle_file_save,
@@ -92,6 +98,8 @@ testthat::test_that("handle_file_save handles user rejection", {
 })
 
 testthat::test_that("handle_file_save handles invalid input then accepts", {
+  testthat::skip_if_not_installed("mockery")
+
   temp_dir <- tempdir()
   test_file <- file.path(temp_dir, "test_cache.rds")
 
@@ -114,6 +122,8 @@ testthat::test_that("handle_file_save handles invalid input then accepts", {
 })
 
 testthat::test_that("handle_file_save creates directory if needed", {
+  testthat::skip_if_not_installed("mockery")
+
   # Setup
   temp_dir <- file.path(tempdir(), "new_dir")
   test_file <- file.path(temp_dir, "test_cache.rds")
@@ -140,6 +150,8 @@ testthat::test_that("handle_file_save creates directory if needed", {
 })
 
 testthat::test_that("handle_file_save handles NULL path", {
+  testthat::skip_if_not_installed("mockery")
+
   # Mock user inputs: "y" for save, then provide path
   mockery::stub(
     handle_file_save,
@@ -159,6 +171,8 @@ testthat::test_that("handle_file_save handles NULL path", {
 
 
 testthat::test_that("calculate_string_distance works correctly", {
+  testthat::skip_if_not_installed("stringdist")
+
   # get function output
   result <- calculate_string_distance(
     c("New York", "Los Angeles"),
@@ -710,6 +724,8 @@ testthat::test_that("format_choice handles edge cases", {
 testthat::test_that(
   "display_custom_menu returns correct choice for numeric input",
   {
+    testthat::skip_if_not_installed("mockery")
+
     # Mock readline to return user input
     mockery::stub(display_custom_menu, "readline", mockery::mock("2"))
 
@@ -738,8 +754,11 @@ testthat::test_that(
 )
 
 testthat::test_that(
+
   "display_custom_menu returns correct choice for special action",
   {
+  testthat::skip_if_not_installed("mockery")
+
     # Mock readline to return a special action key
     mockery::stub(display_custom_menu, "readline", mockery::mock("x"))
 
@@ -765,8 +784,11 @@ testthat::test_that(
 )
 
 testthat::test_that(
+
   "display_custom_menu handles upper/lowercase special actions",
   {
+  testthat::skip_if_not_installed("mockery")
+
     # Mock readline to return uppercase special action key
     mockery::stub(display_custom_menu, "readline", mockery::mock("X"))
 
@@ -792,6 +814,8 @@ testthat::test_that(
 )
 
 testthat::test_that("display_custom_menu handles invalid then valid input", {
+  testthat::skip_if_not_installed("mockery")
+
   # Mock readline to first return invalid input, then valid input
   mockery::stub(
     display_custom_menu,
@@ -820,8 +844,11 @@ testthat::test_that("display_custom_menu handles invalid then valid input", {
 })
 
 testthat::test_that(
+
   "display_custom_menu calculates correct number of columns",
   {
+  testthat::skip_if_not_installed("mockery")
+
     # Mock needed functions
     mockery::stub(display_custom_menu, "readline", mockery::mock("1"))
     mockery::stub(display_custom_menu, "cli::cli_h1", function(...) NULL)
@@ -847,6 +874,8 @@ testthat::test_that(
 )
 
 testthat::test_that("display_custom_menu handles empty choices", {
+  testthat::skip_if_not_installed("mockery")
+
   # Mock readline
   mockery::stub(display_custom_menu, "readline", mockery::mock("x"))
 
@@ -871,6 +900,8 @@ testthat::test_that("display_custom_menu handles empty choices", {
 })
 
 testthat::test_that("display_custom_menu handles empty special actions", {
+  testthat::skip_if_not_installed("mockery")
+
   # Mock readline
   mockery::stub(display_custom_menu, "readline", mockery::mock("1"))
 
@@ -895,6 +926,8 @@ testthat::test_that("display_custom_menu handles empty special actions", {
 })
 
 testthat::test_that("display_custom_menu displays special actions correctly", {
+  testthat::skip_if_not_installed("mockery")
+
   # Setup capture of cat output
   cat_calls <- list()
   mock_cat <- function(...) {
@@ -946,8 +979,11 @@ testthat::test_that("display_custom_menu displays special actions correctly", {
 
 
 testthat::test_that(
+
   "handle_user_interaction processes basic selection correctly",
   {
+  testthat::skip_if_not_installed("mockery")
+
     # Create test data
     test_data <- data.frame(
       name_to_match = c("province1", "province1", "province2"),
@@ -992,6 +1028,8 @@ testthat::test_that(
 
 
 testthat::test_that("handle_user_interaction handles manual entry", {
+  testthat::skip_if_not_installed("mockery")
+
   # Create test data
   test_data <- data.frame(
     name_to_match = c("district1", "district1"),
@@ -1042,6 +1080,8 @@ testthat::test_that("handle_user_interaction handles manual entry", {
 })
 
 testthat::test_that("handle_user_interaction processes multiple selections", {
+  testthat::skip_if_not_installed("mockery")
+
   # Create test data with multiple unique names
   test_data <- data.frame(
     name_to_match = c("district1", "district2", "district3"),
@@ -1087,6 +1127,8 @@ testthat::test_that("handle_user_interaction processes multiple selections", {
 
 
 testthat::test_that("handle_user_interaction handles 'Save and exit' action", {
+  testthat::skip_if_not_installed("mockery")
+
   # Create test data with multiple entries
   test_data <- data.frame(
     name_to_match = c("settlement1", "settlement2", "settlement3"),
@@ -1127,8 +1169,11 @@ testthat::test_that("handle_user_interaction handles 'Save and exit' action", {
 })
 
 testthat::test_that(
+
   "handle_user_interaction handles 'Exit without saving' action",
   {
+  testthat::skip_if_not_installed("mockery")
+
     # Create test data
     test_data <- data.frame(
       name_to_match = c("country1", "country2"),
@@ -1171,6 +1216,8 @@ testthat::test_that(
 
 
 testthat::test_that("handle_user_interaction handles 'Go Back' action", {
+  testthat::skip_if_not_installed("mockery")
+
   # Create test data
   # Note: subdistrict1 has two possible matches to test option selection
   test_data <- data.frame(
@@ -1228,6 +1275,8 @@ testthat::test_that("handle_user_interaction handles 'Go Back' action", {
 })
 
 testthat::test_that("handle_user_interaction handles empty choices", {
+  testthat::skip_if_not_installed("mockery")
+
   # Create test data
   test_data <- data.frame(
     name_to_match = "country1",
@@ -1270,6 +1319,8 @@ testthat::test_that("handle_user_interaction handles empty choices", {
 })
 
 testthat::test_that("format_choices correctly formats single column display", {
+  testthat::skip_if_not_installed("mockery")
+
   choices <- c("Option A", "Option B", "Option C")
 
   # Mock format_choice to return predictable responses
@@ -1302,6 +1353,8 @@ testthat::test_that("format_choices correctly formats single column display", {
 })
 
 testthat::test_that("format_choices correctly formats multi-column display", {
+  testthat::skip_if_not_installed("mockery")
+
   choices <- paste("Option", 1:6)
 
   # Mock format_choice to return predictable responses
@@ -1336,6 +1389,8 @@ testthat::test_that("format_choices correctly formats multi-column display", {
 })
 
 testthat::test_that("format_choices handles partial columns correctly", {
+  testthat::skip_if_not_installed("mockery")
+
   # Note: 5 items won't divide evenly in 2 columns
   choices <- paste("Option", 1:5)
 
@@ -1364,6 +1419,8 @@ testthat::test_that("format_choices handles partial columns correctly", {
 })
 
 testthat::test_that("format_choices handles three columns correctly", {
+  testthat::skip_if_not_installed("mockery")
+
   choices <- paste("Option", 1:9)
 
   # Mock format_choice to return predictable responses
@@ -1392,6 +1449,8 @@ testthat::test_that("format_choices handles three columns correctly", {
 })
 
 testthat::test_that("format_choices uses custom column width", {
+  testthat::skip_if_not_installed("mockery")
+
   choices <- c("Option A", "Option B")
 
   # Mock format_choice to verify width parameter is passed correctly
@@ -1413,8 +1472,11 @@ testthat::test_that("format_choices uses custom column width", {
 })
 
 testthat::test_that(
+
   "prep_geonames handles basic case with no cleaning needed",
   {
+  testthat::skip_if_not_installed("mockery")
+
     # Setup test data where everything already matches
     target_df <- data.frame(
       country = c("ANGOLA", "UGANDA", "ZAMBIA"),
@@ -1539,6 +1601,8 @@ testthat::test_that("prep_geonames handles empty lookup_df properly", {
 })
 
 testthat::test_that("prep_geonames handles case conversion correctly", {
+  testthat::skip_if_not_installed("mockery")
+
   # Test that function converts admin names to uppercase
   target_df <- data.frame(
     country = c("angola", "Uganda"),
@@ -1577,6 +1641,8 @@ testthat::test_that("prep_geonames handles case conversion correctly", {
 
 
 testthat::test_that("prep_geonames handles cache path correctly", {
+  testthat::skip_if_not_installed("mockery")
+
   # Test with non-existent cache path
   target_df <- data.frame(
     country = "ANGOLA",
@@ -1603,6 +1669,8 @@ testthat::test_that("prep_geonames handles cache path correctly", {
 })
 
 testthat::test_that("prep_geonames handles missing data correctly", {
+  testthat::skip_if_not_installed("mockery")
+
   # Test with NA values in administrative levels
   target_df <- data.frame(
     country = c("ANGOLA", "UGANDA", NA),
@@ -1645,6 +1713,8 @@ testthat::test_that("prep_geonames handles missing data correctly", {
 })
 
 testthat::test_that("prep_geonames can be run non-interactively", {
+  testthat::skip_if_not_installed("mockery")
+
   # Test that non-interactive mode returns after matching with cache
   target_df <- data.frame(
     country = c("ANGOLA", "UGA"),

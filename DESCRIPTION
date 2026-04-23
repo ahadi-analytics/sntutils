@@ -76,6 +76,7 @@ Suggests:
     scales,
     ggrepel,
     slider,
+    mgcv,
     stringdist,
     testthat,
     vctrs,

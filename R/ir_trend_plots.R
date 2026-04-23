@@ -58,6 +58,12 @@ get_model <- function(df, model_type = "quasibinomial") {
   }
 
   if (model_type == "gam") {
+    if (!requireNamespace("mgcv", quietly = TRUE)) {
+      cli::cli_abort(c(
+        "Package {.pkg mgcv} is required for GAM models.",
+        "i" = "Install with: {.code install.packages('mgcv')}"
+      ))
+    }
     return(mgcv::gam(y ~ s(x), data = df, family = stats::quasibinomial))
   }
 
@@ -255,7 +261,7 @@ run_resistance_trend <- function(
 #' @param caption Character scalar. Plot caption. If `NULL`, no caption is
 #'   shown.
 #' @param y_label Character scalar. Y-axis label.
-#'   Default is `"Mortalité (mean)\n"`.
+#'   Default is `"Mortalit\u00e9 (mean)\n"`.
 #' @param legend_title Character scalar. Legend title for trend method.
 #'   If `NULL`, a default title is generated.
 #' @param continue_trend_start_year Numeric. First year to show in plot.
@@ -311,7 +317,7 @@ generate_ir_plot <- function(
   title = NULL,
   subtitle = NULL,
   caption = NULL,
-  y_label = "Mortalité (mean)\n",
+  y_label = "Mortalit\u00e9 (mean)\n",
   legend_title = NULL,
   continue_trend_start_year = 2010,
   year_cut = 2025,
@@ -341,7 +347,7 @@ generate_ir_plot <- function(
 
   if (base::is.null(legend_title)) {
     legend_title <- base::paste0(
-      "Options de tendance (Année de début: ",
+      "Options de tendance (Ann\u00e9e de d\u00e9but: ",
       year_cut,
       ")"
     )
@@ -352,8 +358,8 @@ generate_ir_plot <- function(
       ggplot2::aes(
         x = year,
         y = .data[[value_col]],
-        col = trendmethod,
-        group = interaction(.data[[facet_col]], trendmethod)
+        col = .data[["trendmethod"]],
+        group = interaction(.data[[facet_col]], .data[["trendmethod"]])
       ),
       linewidth = 1.1
     ) +
