@@ -291,6 +291,10 @@ validate_process_coordinates <- function(
   lon_chr <- dms_result$lon_chr
   lat_chr <- dms_result$lat_chr
 
+  # Normalize remaining strings (whitespace, comma decimals, typos, etc.)
+  lon_chr <- .clean_coord_string(lon_chr)
+  lat_chr <- .clean_coord_string(lat_chr)
+
   # Convert to numeric and handle non-numeric
   numeric_result <- .convert_to_numeric_coords(
     data, lon_col, lat_col, lon_chr, lat_chr, results, fix_issues
@@ -365,6 +369,64 @@ validate_process_coordinates <- function(
   }
 
   list(lon_chr = lon_chr, lat_chr = lat_chr)
+}
+
+# Normalize coordinate strings before numeric conversion.
+# Pure string cleaning, no country-specific assumptions and no range fixes.
+# Handles whitespace, comma decimals, common typos, unicode minus signs,
+# multiple decimal points, stray separators, and null-like placeholders.
+# @param values Character vector of coordinate values (any type, coerced)
+# @return Character vector of normalized strings (NA where uncleanable)
+.clean_coord_string <- function(values) {
+  null_like <- c("", "na", "n/a", "null", "none", "-", ".", "..", "?")
+
+  vapply(
+    as.character(values),
+    function(value) {
+      if (is.na(value)) return(NA_character_)
+
+      # trim ascii whitespace and non-breaking space
+      value <- gsub("^[\\s\u00A0]+|[\\s\u00A0]+$", "", value, perl = TRUE)
+
+      # null-like placeholders become NA
+      if (tolower(value) %in% null_like) return(NA_character_)
+
+      # normalize unicode minus variants (U+2212, en-dash, em-dash) to ascii
+      value <- gsub("[\u2212\u2013\u2014]", "-", value)
+
+      # `?` is a common typo for decimal separator
+      value <- gsub("\\?", ".", value)
+
+      # drop everything that is not digit, separator, or minus
+      value <- gsub("[^0-9,.\\-]", "", value)
+
+      # commas are decimal separators in many locales
+      value <- gsub(",", ".", value, fixed = TRUE)
+
+      # keep only a single leading minus; drop any others
+      negative <- startsWith(value, "-")
+      value <- gsub("-", "", value, fixed = TRUE)
+      if (negative) value <- paste0("-", value)
+
+      # strip trailing periods
+      value <- sub("\\.+$", "", value)
+
+      # collapse multiple decimal points to a single first one
+      if (grepl(".", value, fixed = TRUE)) {
+        parts <- strsplit(value, ".", fixed = TRUE)[[1]]
+        if (length(parts) > 2) {
+          value <- paste0(parts[1], ".", paste(parts[-1], collapse = ""))
+        }
+      }
+
+      # final guard against meaningless residue
+      if (value %in% c("", "-", ".", "-.")) return(NA_character_)
+
+      value
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
 }
 
 # Convert coordinate strings to numeric
