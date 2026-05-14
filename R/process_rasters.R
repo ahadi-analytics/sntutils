@@ -45,7 +45,10 @@ tidy_malaria_raster_names <- function(dir) {
 
   if (base::length(tiff_files) == 0) {
     cli::cli_warn("No .tiff files found in {.path {dir}}")
-    return(base::invisible(tibble::tibble(old_name = character(0), new_name = character(0))))
+    return(base::invisible(tibble::tibble(
+      old_name = character(0),
+      new_name = character(0)
+    )))
   }
 
   plan <- tibble::tibble(
@@ -56,8 +59,8 @@ tidy_malaria_raster_names <- function(dir) {
       "(Rate\\.\\d{4}).*(\\.tiff?)$",
       "\\1\\2"
     )
-  ) |>
-    dplyr::filter(old_name != new_name)
+  )
+  plan <- plan[plan$old_name != plan$new_name, , drop = FALSE]
 
   if (base::nrow(plan) == 0) {
     cli::cli_alert_info("All filenames already canonical")
@@ -77,7 +80,7 @@ tidy_malaria_raster_names <- function(dir) {
   }
 
   cli::cli_alert_success("Renamed {nrow(plan)} file{?s}")
-  base::invisible(dplyr::select(plan, old_name, new_name))
+  base::invisible(plan[c("old_name", "new_name")])
 }
 
 
@@ -947,14 +950,14 @@ process_weighted_raster_collection <- function(
 
     if (base::length(matched) == 0) {
       cli::cli_abort(c(
-        "No population raster matching year {.val {year_str}} found for \\
+        "No population raster matching year {year_str} found for \\
          {.file {base::basename(value_file)}}.",
         "i" = "Checked {base::length(pop_raster_files)} file(s) in the \\
                population directory."
       ))
     } else if (base::length(matched) > 1) {
       cli::cli_abort(c(
-        "Multiple population rasters found for year {.val {year_str}}.",
+        "Multiple population rasters found for year {year_str}.",
         "i" = "Matched: {.file {base::basename(matched)}}"
       ))
     }
@@ -962,8 +965,8 @@ process_weighted_raster_collection <- function(
     matched
   }
 
-  # process each value raster with a built-in progress bar
-  results <- purrr::map(
+  # use lapply so matching errors are not wrapped by purrr.
+  results <- base::lapply(
     base::seq_along(value_raster_files),
     function(i) {
       components <- extract_time_components(
@@ -985,8 +988,7 @@ process_weighted_raster_collection <- function(
         pattern_info = pattern_info,
         time_components = components
       )
-    },
-    .progress = "Extracting population-weighted statistics"
+    }
   )
 
   # combine and sort results

@@ -360,15 +360,53 @@ validate_process_coordinates <- function(
 # @return List with parsed coordinate strings (converted from DMS if applicable)
 .parse_dms_coordinates <- function(lon_chr, lat_chr) {
   if (requireNamespace("parzer", quietly = TRUE)) {
-    lon_try <- suppressWarnings(parzer::parse_lon(lon_chr))
-    lat_try <- suppressWarnings(parzer::parse_lat(lat_chr))
+    lon_dms <- .is_dms_like_coord(lon_chr)
+    lat_dms <- .is_dms_like_coord(lat_chr)
 
-    has_val <- !is.na(lon_try) & !is.na(lat_try)
-    lon_chr[has_val] <- as.character(lon_try[has_val])
-    lat_chr[has_val] <- as.character(lat_try[has_val])
+    if (!base::any(lon_dms | lat_dms, na.rm = TRUE)) {
+      return(list(lon_chr = lon_chr, lat_chr = lat_chr))
+    }
+
+    lon_idx <- base::which(lon_dms)
+    lat_idx <- base::which(lat_dms)
+
+    if (base::length(lon_idx) > 0) {
+      lon_try <- suppressWarnings(parzer::parse_lon(lon_chr[lon_idx]))
+      has_lon <- !base::is.na(lon_try)
+      lon_chr[lon_idx[has_lon]] <- base::as.character(lon_try[has_lon])
+    }
+    if (base::length(lat_idx) > 0) {
+      lat_try <- suppressWarnings(parzer::parse_lat(lat_chr[lat_idx]))
+      has_lat <- !base::is.na(lat_try)
+      lat_chr[lat_idx[has_lat]] <- base::as.character(lat_try[has_lat])
+    }
   }
 
   list(lon_chr = lon_chr, lat_chr = lat_chr)
+}
+
+# Detect strings that look like degrees-minutes-seconds coordinates.
+# Plain decimal strings should be handled by .clean_coord_string().
+.is_dms_like_coord <- function(values) {
+  values <- base::as.character(values)
+
+  dms_symbols <- c(
+    base::intToUtf8(176),
+    base::intToUtf8(186),
+    base::intToUtf8(8242),
+    base::intToUtf8(8243)
+  )
+  has_symbol <- base::Reduce(
+    `|`,
+    base::lapply(
+      dms_symbols,
+      function(symbol) base::grepl(symbol, values, fixed = TRUE)
+    )
+  )
+  has_marker <- base::grepl("[NSEWnsew'\"]", values, perl = TRUE)
+  has_spaced_parts <- base::grepl("\\d+\\s+\\d+", values, perl = TRUE)
+
+  !base::is.na(values) & (has_symbol | has_marker | has_spaced_parts)
 }
 
 # Normalize coordinate strings before numeric conversion.
