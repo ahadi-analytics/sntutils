@@ -38,6 +38,7 @@ make_small_sf <- function() {
 # input validation ------------------------------------------------------------
 
 testthat::test_that("rejects bad inputs", {
+  testthat::skip_on_os("windows")
   tmp <- withr::local_tempdir()
 
   err1 <- testthat::expect_error(
@@ -88,6 +89,7 @@ testthat::test_that("rejects bad inputs", {
 })
 
 testthat::test_that("date vs tag conflict is rejected", {
+  testthat::skip_on_os("windows")
   tmp <- withr::local_tempdir()
   testthat::expect_error(
     write_snt_data(
@@ -105,6 +107,7 @@ testthat::test_that("date vs tag conflict is rejected", {
 # basic writing ---------------------------------------------------------------
 
 testthat::test_that("csv is utf-8 and newline is set", {
+  testthat::skip_on_os("windows")
   tmp <- withr::local_tempdir()
   df <- make_small_df()
   res <- write_snt_data(
@@ -123,6 +126,7 @@ testthat::test_that("csv is utf-8 and newline is set", {
 })
 
 testthat::test_that("tsv writer works", {
+  testthat::skip_on_os("windows")
   tmp <- withr::local_tempdir()
   res <- write_snt_data(
     obj = head(iris),
@@ -138,6 +142,7 @@ testthat::test_that("tsv writer works", {
 # excel format ----------------------------------------------------------------
 
 testthat::test_that("xlsx writes when openxlsx is available", {
+  testthat::skip_on_os("windows")
   testthat::skip_if_not(has_pkg("openxlsx"))
   testthat::skip_if_not(has_writer("xlsx"))
 
@@ -156,6 +161,7 @@ testthat::test_that("xlsx writes when openxlsx is available", {
 testthat::test_that(
   "longitude columns stay numeric in excel export",
   {
+    testthat::skip_on_os("windows")
     testthat::skip_if_not(has_pkg("openxlsx"))
     testthat::skip_if_not(has_writer("xlsx"))
 
@@ -184,6 +190,7 @@ testthat::test_that(
 # arrow formats ---------------------------------------------------------------
 
 testthat::test_that("parquet writes when arrow is available", {
+  testthat::skip_on_os("windows")
   testthat::skip_if_not(has_pkg("arrow"))
   testthat::skip_if_not(has_writer("parquet"))
 
@@ -198,6 +205,7 @@ testthat::test_that("parquet writes when arrow is available", {
 })
 
 testthat::test_that("feather writes when arrow is available", {
+  testthat::skip_on_os("windows")
   testthat::skip_if_not(has_pkg("arrow"))
   testthat::skip_if_not(has_writer("feather"))
 
@@ -215,6 +223,7 @@ testthat::test_that("feather writes when arrow is available", {
 # qs2 format ------------------------------------------------------------------
 
 testthat::test_that("qs2 writes when qs2 is available", {
+  testthat::skip_on_os("windows")
   testthat::skip_if_not(has_pkg("qs2"))
   testthat::skip_if_not(has_writer("qs2"))
 
@@ -232,6 +241,7 @@ testthat::test_that("qs2 writes when qs2 is available", {
 # sf handling ------------------------------------------------------------------
 
 testthat::test_that("sf geometry is dropped for non-geo formats", {
+  testthat::skip_on_os("windows")
   sfobj <- make_small_sf()
   testthat::skip_if(is.null(sfobj))
 
@@ -251,6 +261,7 @@ testthat::test_that("sf geometry is dropped for non-geo formats", {
 # overwrite behavior ----------------------------------------------------------
 
 testthat::test_that("refuses overwrite when include_date = FALSE", {
+  testthat::skip_on_os("windows")
   tmp <- withr::local_tempdir()
 
   res1 <- write_snt_data(
@@ -279,6 +290,7 @@ testthat::test_that("refuses overwrite when include_date = FALSE", {
 
 testthat::test_that(
   "allows overwrite when include_date = FALSE and overwrite = TRUE", {
+  testthat::skip_on_os("windows")
   tmp <- withr::local_tempdir()
 
   # first write (file does not exist yet)
@@ -318,6 +330,7 @@ testthat::test_that(
 # version management ----------------------------------------------------------
 
 testthat::test_that("same-day versioned writes reuse the existing file", {
+  testthat::skip_on_os("windows")
   tmp <- withr::local_tempdir()
 
   res1 <- write_snt_data(
@@ -350,6 +363,7 @@ testthat::test_that("same-day versioned writes reuse the existing file", {
 })
 
 testthat::test_that("n_saved keeps only the newest versioned files", {
+  testthat::skip_on_os("windows")
   tmp <- withr::local_tempdir()
   tags <- sprintf("2025-01-%02d", 1:4)
   old_path <- NULL
@@ -387,6 +401,7 @@ testthat::test_that("n_saved keeps only the newest versioned files", {
 })
 
 testthat::test_that("n_saved defaults to keeping all versions", {
+  testthat::skip_on_os("windows")
   tmp <- withr::local_tempdir()
   tags <- c("old", "new")
   paths <- character(0)
@@ -411,6 +426,7 @@ testthat::test_that("n_saved defaults to keeping all versions", {
 # return values ---------------------------------------------------------------
 
 testthat::test_that("returns typed summary for multiple formats", {
+  testthat::skip_on_os("windows")
   tmp <- withr::local_tempdir()
 
   fmts <- c("rds", "csv")
@@ -432,6 +448,7 @@ testthat::test_that("returns typed summary for multiple formats", {
 
 
 testthat::test_that("invisible return can still be captured", {
+  testthat::skip_on_os("windows")
   tmp <- withr::local_tempdir()
   res <- (write_snt_data(
     obj = head(iris),
