@@ -1,8 +1,3 @@
-# tests/testthat/test-validate_routine_hf_data.R
-# comprehensive tests for validate_routine_hf_data function
-# this file focuses on output structure and validation logic
-# RELEVANT FILES: R/validate_routine_hf_data.R, R/detect_outliers.R
-
 # helper to create test data ------------------------------------------------
 
 create_test_data <- function(n_rows = 100, add_issues = TRUE) {

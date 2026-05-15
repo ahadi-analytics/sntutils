@@ -445,6 +445,56 @@
 
 # atomic write -----------------------------------------------------------------
 
+#' Move a file with retry (internal)
+#'
+#' @description
+#' Retries file moves to handle short-lived file locks on Windows.
+#'
+#' @param tmp_path Temporary file path to move.
+#' @param final_path Target path for the moved file.
+#' @param attempts Number of move attempts.
+#' @param sleep_seconds Base delay between attempts.
+#' @return NULL on success, or an error message on failure.
+#' @keywords internal
+#' @noRd
+.move_file_with_retry <- function(tmp_path,
+                                  final_path,
+                                  attempts = 6L,
+                                  sleep_seconds = 0.25) {
+  last_error <- NULL
+
+  for (attempt in base::seq_len(attempts)) {
+    ok <- base::tryCatch(
+      {
+        fs::file_move(tmp_path, final_path)
+        TRUE
+      },
+      error = function(error) {
+        last_error <<- base::conditionMessage(error)
+        FALSE
+      }
+    )
+
+    if (base::isTRUE(ok)) {
+      return(NULL)
+    }
+
+    if (!fs::file_exists(tmp_path) && fs::file_exists(final_path)) {
+      return(NULL)
+    }
+
+    if (attempt < attempts) {
+      base::Sys.sleep(sleep_seconds * attempt)
+    }
+  }
+
+  if (base::is.null(last_error)) {
+    return("unknown file move error")
+  }
+
+  last_error
+}
+
 #' Atomic write helper (internal)
 #'
 #' @description
@@ -463,18 +513,16 @@
   tmp <- fs::file_temp(tmp_dir = dir, pattern = ".snt.", ext = ext)
   on.exit(try(fs::file_delete(tmp), silent = TRUE), add = TRUE)
   write_fun(tmp)
-  # use fs::file_move so the move overwrites an existing destination on
-  # Windows (base file.rename() returns FALSE if target exists there).
-  ok <- tryCatch(
-    {
-      fs::file_move(tmp, final_path)
-      TRUE
-    },
-    error = function(e) FALSE
-  )
-  if (!ok) {
-    cli::cli_abort("Failed to move temp file to final path: {final_path}.")
+
+  # Windows can briefly lock fresh xlsx files after openxlsx writes them.
+  move_error <- .move_file_with_retry(tmp, final_path)
+  if (!base::is.null(move_error)) {
+    cli::cli_abort(c(
+      "Failed to move temp file to final path: {final_path}.",
+      "x" = move_error
+    ))
   }
+
   final_path
 }
 

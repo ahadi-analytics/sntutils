@@ -300,11 +300,6 @@ fallback_diff <- function(col1, col2, minimum = 0) {
   res
 }
 
-# /R/safe_sum.R
-# Internal helper: row-safe sum for grouped aggregation
-# Provides NA-aware sum: returns NA if all values are NA; otherwise sums with NA as 0
-# RELEVANT FILES:R/utils.R, R/reporting_rate.R, R/build_dictionary.R
-
 #' Row-safe sum for grouped aggregation
 #'
 #' Returns `NA_real_` if all values are `NA`; otherwise returns the sum with
