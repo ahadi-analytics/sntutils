@@ -1,0 +1,68 @@
+name: Check Commit Messages
+
+on:
+  push:
+    branches: [ master, dev ]
+  pull_request:
+    branches: [ master, dev ]
+
+jobs:
+  check-commits:
+    runs-on: ubuntu-latest
+    name: Verify no Claude/AI mentions in commits
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for all branches
+
+      - name: Check commit messages for Claude mentions
+        run: |
+          echo "Checking commit messages for Claude/AI mentions..."
+
+          # Determine the range of commits to check
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            # For PRs, check commits between base and head
+            COMMIT_RANGE="${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}"
+          else
+            # For pushes, check the pushed commits
+            if [ "${{ github.event.before }}" = "0000000000000000000000000000000000000000" ]; then
+              # New branch, check only the latest commit
+              COMMIT_RANGE="${{ github.sha }}~1..${{ github.sha }}"
+            else
+              COMMIT_RANGE="${{ github.event.before }}..${{ github.sha }}"
+            fi
+          fi
+
+          echo "Checking commit range: $COMMIT_RANGE"
+
+          # Get all commit messages in range
+          FAILED=0
+          while IFS= read -r commit_sha; do
+            commit_msg=$(git log --format=%B -n 1 "$commit_sha")
+
+            # Check for Claude mentions
+            if echo "$commit_msg" | grep -qiE '(Co-Authored-By.*Claude|Generated with.*Claude|claude\.com|anthropic\.com|🤖)'; then
+              echo ""
+              echo "❌ ERROR: Commit $commit_sha contains Claude/AI mentions!"
+              echo ""
+              echo "Commit message:"
+              echo "$commit_msg"
+              echo ""
+              echo "Violations found:"
+              echo "$commit_msg" | grep -iE '(Co-Authored-By.*Claude|Generated with.*Claude|claude\.com|anthropic\.com|🤖)'
+              echo ""
+              FAILED=1
+            fi
+          done < <(git rev-list "$COMMIT_RANGE")
+
+          if [ $FAILED -eq 1 ]; then
+            echo ""
+            echo "Per CLAUDE.md: NEVER include 'Co-Authored-By' or any mention of Claude/AI in commit messages"
+            echo ""
+            echo "Please rewrite these commits to remove Claude mentions."
+            exit 1
+          fi
+
+          echo "✅ All commit messages are clean - no Claude/AI mentions found."

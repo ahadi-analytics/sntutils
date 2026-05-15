@@ -480,10 +480,27 @@ fuzzy_match_facilities <- function(
 
   if (!base::is.null(save_path)) {
     base::dir.create(save_path, recursive = TRUE, showWarnings = FALSE)
-    base::saveRDS(
-      save_bundle,
-      base::file.path(save_path, base::paste0(save_stem, "_bundle.rds"))
+
+    # Try to save bundle with error handling for cloud storage issues
+    bundle_path <- base::file.path(
+      save_path,
+      base::paste0(save_stem, "_bundle.rds")
     )
+
+    tryCatch(
+      {
+        base::saveRDS(save_bundle, bundle_path)
+      },
+      error = function(e) {
+        cli::cli_alert_warning(
+          "Could not save bundle RDS file: {conditionMessage(e)}"
+        )
+        cli::cli_alert_info(
+          "Bundle will be skipped but other formats will be saved"
+        )
+      }
+    )
+
     sntutils::write_snt_data(
       obj = save_bundle,
       data_name = save_stem,

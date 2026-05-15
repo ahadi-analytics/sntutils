@@ -147,9 +147,11 @@ download_worldpop <- function(
 
   # download legacy years (< 2015)
   if (length(legacy_years) > 0) {
-    cli::cli_alert_info(
-      "Using legacy dataset (2000-2020 UN-adjusted) for years: {.val {legacy_years}}"
-    )
+    if (!quiet) {
+      cli::cli_alert_info(
+        "Using legacy dataset (2000-2020 UN-adjusted) for years: {.val {legacy_years}}"
+      )
+    }
     legacy_res <- .download_worldpop_batch(
       country_codes, legacy_years, type, "legacy", "1km", dest_dir, quiet
     )
@@ -159,9 +161,11 @@ download_worldpop <- function(
 
   # download r2025a years (>= 2015)
   if (length(r2025a_years) > 0) {
-    cli::cli_alert_info(
-      "Using R2025A dataset (2015-2030 constrained) for years: {.val {r2025a_years}}"
-    )
+    if (!quiet) {
+      cli::cli_alert_info(
+        "Using R2025A dataset (2015-2030 constrained) for years: {.val {r2025a_years}}"
+      )
+    }
     r2025a_res <- .download_worldpop_batch(
       country_codes, r2025a_years, type, "r2025a", resolution, dest_dir, quiet
     )
@@ -173,14 +177,15 @@ download_worldpop <- function(
   combined_params <- do.call(rbind, all_params)
   counts <- tapply(combined_params$success, combined_params$country, sum)
 
-  cli::cli_alert_success(
-    "Download of WorldPop {type} rasters is complete!"
-  )
-
-  for (cc in names(counts)) {
-    cli::cli_alert_info(
-      glue::glue("{cc}: {counts[[cc]]} of {length(years)} years downloaded")
+  if (!quiet) {
+    cli::cli_alert_success(
+      "Download of WorldPop {type} rasters is complete!"
     )
+    for (cc in names(counts)) {
+      cli::cli_alert_info(
+        glue::glue("{cc}: {counts[[cc]]} of {length(years)} years downloaded")
+      )
+    }
   }
 
   invisible(list(
@@ -213,6 +218,7 @@ download_worldpop <- function(
 
       httr2::request(url) |>
         httr2::req_timeout(600) |>
+        httr2::req_retry(max_tries = 3, backoff = ~ 5) |>
         httr2::req_progress() |>
         httr2::req_perform(path = dest)
       dest
@@ -239,10 +245,14 @@ download_worldpop <- function(
 #' @param years Numeric vector. Years for which to download data (2000-2030)
 #' @param age_range Numeric vector of length 2 specifying the lower and upper
 #'   age range bounds (e.g., c(1, 9) for ages 1-9). Default: c(1, 9)
+#' @param sex Character. Which sex to download: "both" (default, sums male
+#'   and female), "m" (male only), or "f" (female only).
 #' @param resolution Character. Either "1km" (default) or "100m". The 100m
 #'   resolution is only available for years >= 2015 (R2024B dataset).
 #' @param out_dir Character string. Directory where downloaded files will be
 #'   saved. Default: "."
+#' @param quiet Logical; if TRUE, suppresses progress messages
+#'   (default: FALSE)
 #'
 #' @details
 #' ## Data Source
@@ -269,15 +279,25 @@ download_worldpop <- function(
 #' 40-44, 45-49, 50-54, 55-59, 60-64, 65-69, 70-74, 75-79, 80+
 #'
 #' @return No return value. Files saved to output directory with pattern:
-#'   `{iso3}_total_{lower}_{upper}_{year}.tif`
+#'   `{iso3}_{sex}_{lower}_{upper}_{year}.tif` where sex is "total", "m",
+#'   or "f", and upper is "80plus" when the 80+ band is included.
 #'
 #' @examples
 #' \dontrun{
-#' # Download age 1-9 data for Burundi
+#' # Download age 1-9 data for Burundi (both sexes combined)
 #' download_worldpop_age_band(
 #'   country_codes = "BDI",
 #'   years = 2020:2024,
 #'   age_range = c(1, 9),
+#'   out_dir = "data/worldpop"
+#' )
+#'
+#' # Download female-only age 1-9 data
+#' download_worldpop_age_band(
+#'   country_codes = "BDI",
+#'   years = 2020:2024,
+#'   age_range = c(1, 9),
+#'   sex = "f",
 #'   out_dir = "data/worldpop"
 #' )
 #' }
@@ -286,9 +306,12 @@ download_worldpop_age_band <- function(
     country_codes,
     years,
     age_range = c(1, 9),
+    sex = "both",
     resolution = "1km",
-    out_dir = ".") {
+    out_dir = ".",
+    quiet = FALSE) {
 
+  sex <- match.arg(sex, choices = c("both", "m", "f"))
   resolution <- match.arg(resolution, choices = c("1km", "100m"))
 
   # 100m only available for years >= 2015
@@ -308,7 +331,8 @@ download_worldpop_age_band <- function(
     upper = c(1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, Inf)
   )
 
-  sexes <- c("m", "f")
+  sexes <- if (sex == "both") c("m", "f") else sex
+  sex_label <- if (sex == "both") "total" else sex
 
   # build url and local filename based on year and resolution
   make_url_info <- function(cc, sex, code, yr, res) {
@@ -367,10 +391,12 @@ download_worldpop_age_band <- function(
     cc_lo <- tolower(cc)
 
     # inform user which dataset
-    if (yr < 2015) {
-      cli::cli_alert_info("Using legacy dataset (1km) for {cc}, {yr}")
-    } else {
-      cli::cli_alert_info("Using R2024B dataset ({resolution}) for {cc}, {yr}")
+    if (!quiet) {
+      if (yr < 2015) {
+        cli::cli_alert_info("Using legacy dataset (1km) for {cc}, {yr}")
+      } else {
+        cli::cli_alert_info("Using R2024B dataset ({resolution}) for {cc}, {yr}")
+      }
     }
 
     matching_bands <- subset(
@@ -387,54 +413,73 @@ download_worldpop_age_band <- function(
 
     adjusted_upper <- ifelse(
       matching_bands$upper == Inf,
-      matching_bands$upper,
-      matching_bands$upper - 1
+      "plus",
+      as.character(matching_bands$upper - 1)
     )
     band_labels <- paste(matching_bands$lower, adjusted_upper, sep = "-")
 
     covered_lower <- min(matching_bands$lower)
-    covered_upper <- max(adjusted_upper)
+    has_80plus <- any(matching_bands$upper == Inf)
+    covered_upper_num <- max(
+      matching_bands$upper[matching_bands$upper != Inf] - 1,
+      -Inf
+    )
 
-    if (covered_upper < age_range[2]) {
-      cli::cli_alert_warning(
-        paste0(
-          "Requested {age_range[1]}-{age_range[2]} not fully covered. ",
-          "Downloading {covered_lower}-{covered_upper} instead."
+    if (!has_80plus && covered_upper_num < age_range[2]) {
+      if (!quiet) {
+        cli::cli_alert_warning(
+          paste0(
+            "Requested {age_range[1]}-{age_range[2]} not fully covered. ",
+            "Downloading {covered_lower}-{covered_upper_num} instead."
+          )
         )
-      )
-    } else {
+      }
+    } else if (!quiet) {
       cli::cli_alert_info(
         "Combining bands: {paste(band_labels, collapse = ', ')}"
       )
     }
 
+    upper_str <- if (has_80plus) "80plus" else sprintf("%02d", covered_upper_num)
     out_fname <- file.path(
       out_dir,
-      sprintf("%s_total_%02d_%02d_%d.tif", cc_lo, covered_lower, covered_upper, yr)
+      sprintf("%s_%s_%02d_%s_%d.tif", cc_lo, sex_label, covered_lower, upper_str, yr)
     )
 
     if (file.exists(out_fname)) {
-      cli::cli_alert_info("Skipping {basename(out_fname)} (already exists)")
+      if (!quiet) cli::cli_alert_info("Skipping {basename(out_fname)} (already exists)")
       next
     }
 
     acc <- NULL
     for (band_code in matching_bands$code) {
-      for (sex in sexes) {
-        url_info <- make_url_info(cc, sex, band_code, yr, resolution)
+      for (sx in sexes) {
+        url_info <- make_url_info(cc, sx, band_code, yr, resolution)
         temp_fname <- file.path(out_dir, url_info$filename)
 
+        # check if cached file is valid; re-download if corrupt
+        if (file.exists(temp_fname)) {
+          valid <- tryCatch(
+            { suppressWarnings(terra::rast(temp_fname)); TRUE },
+            error = function(e) FALSE
+          )
+          if (!valid) {
+            cli::cli_alert_warning(
+              "Corrupt file {basename(temp_fname)}, re-downloading"
+            )
+            unlink(temp_fname)
+          }
+        }
+
         if (!file.exists(temp_fname)) {
-          cli::cli_alert_info(
-            "Downloading {sex} band {band_code} for {cc}, {yr}"
+          if (!quiet) cli::cli_alert_info(
+            "Downloading {sx} band {band_code} for {cc}, {yr}"
           )
-          utils::download.file(
-            url_info$url,
-            temp_fname,
-            mode = "wb",
-            quiet = TRUE
-          )
-        } else {
+          httr2::request(url_info$url) |>
+            httr2::req_timeout(600) |>
+            httr2::req_retry(max_tries = 3, backoff = ~ 5) |>
+            httr2::req_perform(path = temp_fname)
+        } else if (!quiet) {
           cli::cli_alert_info("Using cached file {basename(temp_fname)}")
         }
 
@@ -444,6 +489,166 @@ download_worldpop_age_band <- function(
     }
 
     suppressWarnings(terra::writeRaster(acc, out_fname, overwrite = TRUE))
-    cli::cli_alert_success("Written: {basename(out_fname)}")
+    if (!quiet) cli::cli_alert_success("Written: {basename(out_fname)}")
   }
+}
+
+# build the expected output filename for an age band raster
+#' @noRd
+.build_age_band_filename <- function(cc, year, age_range, sex = "both") {
+  cc_lo <- tolower(cc)
+  sex_label <- if (sex == "both") "total" else sex
+
+  bands <- data.frame(
+    lower = c(0, 1, 5, 10, 15, 20, 25, 30, 35,
+              40, 45, 50, 55, 60, 65, 70, 75, 80),
+    upper = c(1, 5, 10, 15, 20, 25, 30, 35, 40,
+              45, 50, 55, 60, 65, 70, 75, 80, Inf)
+  )
+
+  matching <- subset(
+    bands, lower < (age_range[2] + 1) & upper > age_range[1]
+  )
+  covered_lower <- min(matching$lower)
+  has_80plus <- any(matching$upper == Inf)
+  covered_upper_num <- max(
+    matching$upper[matching$upper != Inf] - 1, -Inf
+  )
+
+  upper_str <- if (has_80plus) {
+    "80plus"
+  } else {
+    sprintf("%02d", covered_upper_num)
+  }
+
+  sprintf(
+    "%s_%s_%02d_%s_%d.tif",
+    cc_lo, sex_label, covered_lower, upper_str, year
+  )
+}
+
+#' Download WorldPop Rasters and Get Paths
+#'
+#' Downloads WorldPop population rasters for multiple age groups in one
+#' call and returns file paths as a nested named list. Each group is a
+#' named list keyed by year.
+#'
+#' @param country_code Character. Single ISO3 country code (e.g., "TGO")
+#' @param years Numeric vector of years to download (2000-2030)
+#' @param groups Named list of age group specifications. Each element
+#'   should be a list with `age_range` (length-2 numeric vector or NULL
+#'   for total population) and optionally `sex` ("both", "m", or "f").
+#'   Default includes total, u5, and wra groups.
+#' @param resolution Character. "1km" (default) or "100m".
+#' @param dest_dir Character. Base directory for downloaded files.
+#'   Total population goes to `dest_dir`, age bands go to
+#'   `dest_dir/aged_rasters`.
+#' @param download Logical. If TRUE (default), downloads rasters before
+#'   building paths. Set FALSE to just get expected paths.
+#' @param quiet Logical. If TRUE (default), suppresses per-file progress
+#'   messages during download. A compact summary is always shown.
+#'
+#' @return Named list of groups, each a named list of file paths keyed
+#'   by year.
+#'
+#' @examples
+#' \dontrun{
+#' # default groups: total, u5, wra
+#' paths <- get_worldpop_paths(
+#'   "TGO", years = c(2013, 2017),
+#'   dest_dir = here::here("data/worldpop/raw")
+#' )
+#' paths$total$`2013`  # total population raster
+#' paths$u5$`2017`     # under-5 raster
+#' paths$wra$`2013`    # women of reproductive age raster
+#'
+#' # custom groups
+#' paths <- get_worldpop_paths(
+#'   "TGO", years = c(2013, 2017),
+#'   groups = list(
+#'     total = list(age_range = NULL),
+#'     u5 = list(age_range = c(0, 4)),
+#'     "5_9" = list(age_range = c(5, 9)),
+#'     "10_19" = list(age_range = c(10, 19)),
+#'     "20plus" = list(age_range = c(20, Inf)),
+#'     wra = list(age_range = c(15, 49), sex = "f")
+#'   ),
+#'   dest_dir = here::here("data/worldpop/raw")
+#' )
+#' }
+#' @export
+get_worldpop_paths <- function(
+    country_code,
+    years,
+    groups = list(
+      total = list(age_range = NULL),
+      u5 = list(age_range = c(0, 4)),
+      wra = list(age_range = c(15, 49), sex = "f")
+    ),
+    resolution = "1km",
+    dest_dir = here::here(),
+    download = TRUE,
+    quiet = TRUE) {
+
+  result <- list()
+
+  for (group_name in names(groups)) {
+    spec <- groups[[group_name]]
+    age_range <- spec$age_range
+    sex <- spec$sex %||% "both"
+
+    # total pop goes to dest_dir, age bands to aged_rasters subdir
+    if (is.null(age_range)) {
+      out_dir <- dest_dir
+    } else {
+      out_dir <- file.path(dest_dir, "aged_rasters")
+    }
+
+    # download
+    if (download) {
+      if (is.null(age_range)) {
+        download_worldpop(
+          country_code, years,
+          resolution = resolution, dest_dir = out_dir, quiet = quiet
+        )
+      } else {
+        download_worldpop_age_band(
+          country_code, years, age_range,
+          sex = sex, resolution = resolution, out_dir = out_dir, quiet = quiet
+        )
+      }
+    }
+
+    # build year-keyed path list
+    path_list <- lapply(years, function(yr) {
+      if (is.null(age_range)) {
+        dataset <- if (yr < 2015) "legacy" else "r2025a"
+        fn <- .build_worldpop_url(
+          country_code, yr, "count", dataset, resolution
+        )$filename
+      } else {
+        fn <- .build_age_band_filename(
+          country_code, yr, age_range, sex
+        )
+      }
+      file.path(out_dir, fn)
+    })
+
+    result[[group_name]] <- stats::setNames(
+      path_list, as.character(years)
+    )
+  }
+
+  if (!quiet) {
+    n_groups <- length(result)
+    n_ready <- sum(vapply(result, function(paths) {
+      all(vapply(paths, file.exists, logical(1)))
+    }, logical(1)))
+    group_names <- paste(names(result), collapse = ", ")
+    cli::cli_alert_success(
+      "Population rasters ready: {n_ready}/{n_groups} groups ({group_names})"
+    )
+  }
+
+  result
 }

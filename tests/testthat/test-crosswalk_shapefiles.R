@@ -77,6 +77,7 @@ testthat::test_that("crosswalk_shapefiles_sf errors when required columns missin
     crosswalk_shapefiles_sf(
       old_sf = old_sf_bad,
       new_sf = new_sf,
+      level = "adm2",
       verbose = FALSE
     ),
     "missing required columns"

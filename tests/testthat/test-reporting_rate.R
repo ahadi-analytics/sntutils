@@ -329,11 +329,13 @@ testthat::test_that("reporting_rate_plot handles basic variable scenario", {
 
   # Test variable-level scenario (x_var only)
   testthat::expect_no_error(
-    p1 <- reporting_rate_plot(
-      data = hf_data,
-      x_var = "month",
-      vars_of_interest = c("malaria", "pneumonia"),
-      hf_col = NULL
+    p1 <- suppressWarnings(
+      reporting_rate_plot(
+        data = hf_data,
+        x_var = "month",
+        vars_of_interest = c("malaria", "pneumonia"),
+        hf_col = NULL
+      )
     )
   )
 
@@ -611,6 +613,8 @@ testthat::test_that("reporting_rate_plot handles language parameter", {
 })
 
 testthat::test_that("translate_text() handles basic translations", {
+  testthat::skip_if_not_installed("gtranslate")
+
   tmp_cache <- tempfile()
   dir.create(tmp_cache)
 

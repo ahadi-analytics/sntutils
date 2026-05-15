@@ -503,6 +503,8 @@ test_that("classification works correctly even when dates are in random order", 
 
 
 test_that("facility_reporting_plot handles new parameters and binary classification", {
+  testthat::skip_if_not_installed("mockery")
+
   data <- tibble::tibble(
     hf = rep(c("HF1", "HF2"), each = 3),
     date = rep(
@@ -563,6 +565,8 @@ test_that("facility_reporting_plot handles new parameters and binary classificat
 })
 
 test_that("facility_reporting_plot handles translation and palettes", {
+  testthat::skip_if_not_installed("mockery")
+
   data <- tibble::tibble(
     hf = rep(c("HF1", "HF2"), each = 3),
     date = rep(
@@ -614,6 +618,8 @@ test_that("facility_reporting_plot handles translation and palettes", {
 })
 
 test_that("facility_reporting_plot can save and compress with method in filename", {
+  testthat::skip_if_not_installed("mockery")
+
   data <- tibble::tibble(
     hf = rep(c("HF1", "HF2"), each = 2),
     date = rep(
@@ -655,6 +661,8 @@ test_that("facility_reporting_plot can save and compress with method in filename
 })
 
 test_that("facility_reporting_plot handles facet_col parameter", {
+  testthat::skip_if_not_installed("mockery")
+
   data <- tibble::tibble(
     hf = rep(c("HF1", "HF2", "HF3"), each = 3),
     date = rep(
@@ -708,6 +716,8 @@ test_that("facility_reporting_plot handles facet_col parameter", {
 })
 
 test_that("facility_reporting_plot forwards ... arguments correctly", {
+  testthat::skip_if_not_installed("mockery")
+
   data <- tibble::tibble(
     hf = rep(c("HF1", "HF2"), each = 2),
     date = rep(

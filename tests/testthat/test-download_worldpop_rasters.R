@@ -4,7 +4,6 @@ testthat::test_that("setup: required packages are available", {
   testthat::expect_true(requireNamespace("httr2", quietly = TRUE))
   testthat::expect_true(requireNamespace("terra", quietly = TRUE))
   testthat::expect_true(requireNamespace("cli", quietly = TRUE))
-  testthat::expect_true(requireNamespace("here", quietly = TRUE))
   testthat::expect_true(requireNamespace("glue", quietly = TRUE))
 })
 
@@ -38,6 +37,10 @@ testthat::test_that("download_worldpop: input validation works correctly", {
   )
 
   # test that country_codes is required
+  testthat::skip_if_not(
+    requireNamespace("here", quietly = TRUE),
+    "here package not available"
+  )
   testthat::expect_error(
     download_worldpop(),
     "argument \"country_codes\" is missing"

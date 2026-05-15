@@ -291,6 +291,10 @@ validate_process_coordinates <- function(
   lon_chr <- dms_result$lon_chr
   lat_chr <- dms_result$lat_chr
 
+  # Normalize remaining strings (whitespace, comma decimals, typos, etc.)
+  lon_chr <- .clean_coord_string(lon_chr)
+  lat_chr <- .clean_coord_string(lat_chr)
+
   # Convert to numeric and handle non-numeric
   numeric_result <- .convert_to_numeric_coords(
     data, lon_col, lat_col, lon_chr, lat_chr, results, fix_issues
@@ -356,15 +360,111 @@ validate_process_coordinates <- function(
 # @return List with parsed coordinate strings (converted from DMS if applicable)
 .parse_dms_coordinates <- function(lon_chr, lat_chr) {
   if (requireNamespace("parzer", quietly = TRUE)) {
-    lon_try <- suppressWarnings(parzer::parse_lon(lon_chr))
-    lat_try <- suppressWarnings(parzer::parse_lat(lat_chr))
+    lon_dms <- .is_dms_like_coord(lon_chr)
+    lat_dms <- .is_dms_like_coord(lat_chr)
 
-    has_val <- !is.na(lon_try) & !is.na(lat_try)
-    lon_chr[has_val] <- as.character(lon_try[has_val])
-    lat_chr[has_val] <- as.character(lat_try[has_val])
+    if (!base::any(lon_dms | lat_dms, na.rm = TRUE)) {
+      return(list(lon_chr = lon_chr, lat_chr = lat_chr))
+    }
+
+    lon_idx <- base::which(lon_dms)
+    lat_idx <- base::which(lat_dms)
+
+    if (base::length(lon_idx) > 0) {
+      lon_try <- suppressWarnings(parzer::parse_lon(lon_chr[lon_idx]))
+      has_lon <- !base::is.na(lon_try)
+      lon_chr[lon_idx[has_lon]] <- base::as.character(lon_try[has_lon])
+    }
+    if (base::length(lat_idx) > 0) {
+      lat_try <- suppressWarnings(parzer::parse_lat(lat_chr[lat_idx]))
+      has_lat <- !base::is.na(lat_try)
+      lat_chr[lat_idx[has_lat]] <- base::as.character(lat_try[has_lat])
+    }
   }
 
   list(lon_chr = lon_chr, lat_chr = lat_chr)
+}
+
+# Detect strings that look like degrees-minutes-seconds coordinates.
+# Plain decimal strings should be handled by .clean_coord_string().
+.is_dms_like_coord <- function(values) {
+  values <- base::as.character(values)
+
+  dms_symbols <- c(
+    base::intToUtf8(176),
+    base::intToUtf8(186),
+    base::intToUtf8(8242),
+    base::intToUtf8(8243)
+  )
+  has_symbol <- base::Reduce(
+    `|`,
+    base::lapply(
+      dms_symbols,
+      function(symbol) base::grepl(symbol, values, fixed = TRUE)
+    )
+  )
+  has_marker <- base::grepl("[NSEWnsew'\"]", values, perl = TRUE)
+  has_spaced_parts <- base::grepl("\\d+\\s+\\d+", values, perl = TRUE)
+
+  !base::is.na(values) & (has_symbol | has_marker | has_spaced_parts)
+}
+
+# Normalize coordinate strings before numeric conversion.
+# Pure string cleaning, no country-specific assumptions and no range fixes.
+# Handles whitespace, comma decimals, common typos, unicode minus signs,
+# multiple decimal points, stray separators, and null-like placeholders.
+# @param values Character vector of coordinate values (any type, coerced)
+# @return Character vector of normalized strings (NA where uncleanable)
+.clean_coord_string <- function(values) {
+  null_like <- c("", "na", "n/a", "null", "none", "-", ".", "..", "?")
+
+  vapply(
+    as.character(values),
+    function(value) {
+      if (is.na(value)) return(NA_character_)
+
+      # trim ascii whitespace and non-breaking space
+      value <- gsub("^[\\s\u00A0]+|[\\s\u00A0]+$", "", value, perl = TRUE)
+
+      # null-like placeholders become NA
+      if (tolower(value) %in% null_like) return(NA_character_)
+
+      # normalize unicode minus variants (U+2212, en-dash, em-dash) to ascii
+      value <- gsub("[\u2212\u2013\u2014]", "-", value)
+
+      # `?` is a common typo for decimal separator
+      value <- gsub("\\?", ".", value)
+
+      # drop everything that is not digit, separator, or minus
+      value <- gsub("[^0-9,.\\-]", "", value)
+
+      # commas are decimal separators in many locales
+      value <- gsub(",", ".", value, fixed = TRUE)
+
+      # keep only a single leading minus; drop any others
+      negative <- startsWith(value, "-")
+      value <- gsub("-", "", value, fixed = TRUE)
+      if (negative) value <- paste0("-", value)
+
+      # strip trailing periods
+      value <- sub("\\.+$", "", value)
+
+      # collapse multiple decimal points to a single first one
+      if (grepl(".", value, fixed = TRUE)) {
+        parts <- strsplit(value, ".", fixed = TRUE)[[1]]
+        if (length(parts) > 2) {
+          value <- paste0(parts[1], ".", paste(parts[-1], collapse = ""))
+        }
+      }
+
+      # final guard against meaningless residue
+      if (value %in% c("", "-", ".", "-.")) return(NA_character_)
+
+      value
+    },
+    character(1),
+    USE.NAMES = FALSE
+  )
 }
 
 # Convert coordinate strings to numeric

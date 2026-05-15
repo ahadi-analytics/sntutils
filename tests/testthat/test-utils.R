@@ -1,6 +1,9 @@
 testthat::test_that(
+
   "ensure_packages correctly handles all packages already installed",
   {
+  testthat::skip_if_not_installed("mockery")
+
     mockery::stub(ensure_packages, "cli::cli_alert_success", function(...) NULL)
 
     installed_pkgs <- c("stats", "utils")
@@ -9,8 +12,11 @@ testthat::test_that(
 )
 
 testthat::test_that(
+
   "ensure_packages installs missing packages interactively when user agrees",
   {
+  testthat::skip_if_not_installed("mockery")
+
     mockery::stub(ensure_packages, "interactive", function() TRUE)
     mockery::stub(ensure_packages, "readline", function(...) "y")
     mockery::stub(
@@ -27,8 +33,11 @@ testthat::test_that(
 )
 
 testthat::test_that(
+
   "ensure_packages skips installation interactively when user declines",
   {
+  testthat::skip_if_not_installed("mockery")
+
     mockery::stub(ensure_packages, "interactive", function() TRUE)
     mockery::stub(ensure_packages, "readline", function(...) "n")
     mockery::stub(ensure_packages, "requireNamespace", function(pkg, ...) FALSE)
@@ -43,8 +52,11 @@ testthat::test_that(
 )
 
 testthat::test_that(
+
   "ensure_packages skips installation in non-interactive sessions",
   {
+  testthat::skip_if_not_installed("mockery")
+
     mockery::stub(ensure_packages, "interactive", function() FALSE)
     mockery::stub(ensure_packages, "requireNamespace", function(pkg, ...) FALSE)
     mockery::stub(ensure_packages, "cli::cli_alert_warning", function(...) NULL)
@@ -57,8 +69,11 @@ testthat::test_that(
 )
 
 testthat::test_that(
+
   "ensure_packages handles invalid package names gracefully",
   {
+  testthat::skip_if_not_installed("mockery")
+
     mockery::stub(ensure_packages, "interactive", function() TRUE)
     mockery::stub(ensure_packages, "readline", function(...) "y")
     mockery::stub(

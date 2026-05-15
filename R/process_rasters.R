@@ -1,90 +1,166 @@
-#' Clean Filenames
+#' Normalize malariaAtlas Raster Filenames
 #'
-#' This function cleans a vector of filenames by removing common standalone
-#' numbers that appear in more than half of the filenames, condensing multiple
-#' separators (dots, underscores, hyphens), and removing leading/trailing
-#' separators.
+#' @description
+#' Strips bounding-box coordinates and download-date metadata appended by
+#' `malariaAtlas::getRaster()`, leaving only `...Rate.YYYY.tiff`. This
+#' function renames files on disk and is idempotent: re-running after a
+#' fresh download only touches newly-added files.
 #'
-#' @param filenames A character vector of full file paths or basenames to clean.
-#' @param rename_files A bolean input to rename files using the new filenames.
-#'    Default is FALSE.
-#' @return A character vector of cleaned filenames with:
-#'   - Common standalone numbers removed
-#'   - Multiple dots/underscores/hyphens condensed to single instances
-#'   - Leading/trailing separators removed
-#'   - Original paths preserved if full paths were provided
-#'   - Files automatically renamed if full paths were provided
+#' This is the **recommended first step** after downloading malariaAtlas
+#' rasters to ensure downstream processing functions can correctly extract
+#' years from filenames.
+#'
+#' @param dir Character scalar. Directory containing downloaded `.tiff` files.
+#' @return Invisibly, a tibble with columns `old_name` and `new_name` for
+#'   files that were renamed. Files already in canonical form are skipped.
 #'
 #' @examples
-#' # Basic usage
-#' clean_filenames(c("file_001.txt", "file_002.txt"))
+#' \dontrun{
+#' # Typical workflow with malariaAtlas
+#' malariaAtlas::getRaster(
+#'   dataset_id = "Malaria__202508_Global_Pf_Parasite_Rate",
+#'   year = 2010:2020,
+#'   file_path = "data/maps",
+#'   shp = admin_boundaries
+#' )
 #'
-#' # With full paths
+#' # Clean the filenames immediately after download
+#' tidy_malaria_raster_names("data/maps")
+#'
+#' # Now process with standard functions
+#' sntutils::process_weighted_raster_collection(...)
+#' }
+#' @export
+tidy_malaria_raster_names <- function(dir) {
+  if (!base::dir.exists(dir)) {
+    cli::cli_abort("Directory {.path {dir}} does not exist.")
+  }
+
+  tiff_files <- base::list.files(
+    path = dir,
+    pattern = "\\.tiff?$",
+    full.names = TRUE,
+    ignore.case = TRUE
+  )
+
+  if (base::length(tiff_files) == 0) {
+    cli::cli_warn("No .tiff files found in {.path {dir}}")
+    return(base::invisible(tibble::tibble(
+      old_name = character(0),
+      new_name = character(0)
+    )))
+  }
+
+  plan <- tibble::tibble(
+    old_path = tiff_files,
+    old_name = base::basename(tiff_files),
+    new_name = stringr::str_replace(
+      base::basename(tiff_files),
+      "(Rate\\.\\d{4}).*(\\.tiff?)$",
+      "\\1\\2"
+    )
+  )
+  plan <- plan[plan$old_name != plan$new_name, , drop = FALSE]
+
+  if (base::nrow(plan) == 0) {
+    cli::cli_alert_info("All filenames already canonical")
+    return(base::invisible(plan))
+  }
+
+  base::file.rename(
+    from = plan$old_path,
+    to = base::file.path(dir, plan$new_name)
+  )
+
+  # remove unwanted artifact folder (created by malariaAtlas::getRaster)
+  get_raster_dir <- base::file.path(dir, "getRaster")
+  if (base::dir.exists(get_raster_dir)) {
+    base::unlink(get_raster_dir, recursive = TRUE)
+    cli::cli_alert_info("Removed getRaster artifact directory")
+  }
+
+  cli::cli_alert_success("Renamed {nrow(plan)} file{?s}")
+  base::invisible(plan[c("old_name", "new_name")])
+}
+
+
+#' Clean Filenames
+#'
+#' Cleans a vector of filenames by removing common standalone numbers
+#' that appear in more than half of the filenames, condensing multiple
+#' separators, and removing leading/trailing separators. This is a
+#' pure string operation — no files are renamed on disk.
+#'
+#' @param filenames A character vector of file paths or basenames.
+#' @param verbose Logical. If `TRUE`, emits an info message when no cleaning
+#'   is performed. Default is `FALSE`.
+#' @return A character vector of cleaned filenames (same length as
+#'   input). Directory paths are preserved if provided.
+#'
+#' @examples
+#' clean_filenames(c("file_001.txt", "file_002.txt"))
 #' clean_filenames(c("/path/to/file_001.txt", "/path/to/file_002.txt"))
 #' @export
-clean_filenames <- function(filenames, rename_files = FALSE) {
-  if (all(dirname(filenames) != ".")) {
-    full_path <- filenames
-    filenames <- basename(filenames)
-    is_full_path <- TRUE
-  } else {
-    is_full_path <- FALSE
-  }
+clean_filenames <- function(filenames, verbose = FALSE) {
+  dirs <- dirname(filenames)
+  fnames <- basename(filenames)
 
-  all_numbers <- filenames |>
-    stringr::str_extract_all("(?<![A-Za-z])\\d+(?![A-Za-z])") |>
+  # separate extension before cleaning to protect it
+  extensions <- tools::file_ext(fnames)
+  basenames <- tools::file_path_sans_ext(fnames)
+
+  all_numbers <- basenames |>
+    stringr::str_extract_all(
+      "(?<![A-Za-z])\\d+(?![A-Za-z])"
+    ) |>
     unlist()
 
-  common_numbers <- all_numbers |>
-    table() |>
-    as.data.frame() |>
-    dplyr::rename(Number = all_numbers) |>
-    dplyr::mutate(Number = as.character(Number)) |>
-    dplyr::arrange(dplyr::desc(Freq)) |>
-    dplyr::filter(Freq > length(filenames) / 2) |>
-    dplyr::pull(Number)
+  num_freq <- table(all_numbers)
+  common_numbers <- names(
+    num_freq[num_freq > length(filenames) / 2]
+  )
 
-  # Return original filenames if no common numbers are found
-  if (is.null(common_numbers) || length(common_numbers) == 0) {
-    return(if (is_full_path) full_path else filenames)
+  # never strip 4-digit years (1980-2099)
+  is_year <- grepl("^(19[89]\\d|20\\d{2})$", common_numbers)
+  common_numbers <- common_numbers[!is_year]
+
+  # return originals if no common numbers to strip
+  if (length(common_numbers) == 0) {
+    if (verbose) {
+      cli::cli_alert_info("No common numbers found to clean")
+    }
+    return(filenames)
   }
 
-  pattern_common_numbers <- if (length(common_numbers) > 0) {
-    paste0(
-      "(?<![A-Za-z\\d])(",
-      paste(common_numbers, collapse = "|"),
-      ")(?![A-Za-z\\d])"
-    )
-  } else {
-    NULL
-  }
+  pattern_common_numbers <- paste0(
+    "(?<![A-Za-z\\d])(",
+    paste(common_numbers, collapse = "|"),
+    ")(?![A-Za-z\\d])"
+  )
 
-  cleaned_filenames <- filenames |>
+  cleaned_basenames <- basenames |>
     stringr::str_replace_all(
       pattern = pattern_common_numbers,
       replacement = ""
     ) |>
-    stringr::str_replace_all(pattern = "\\.{2,}", replacement = ".") |>
     stringr::str_replace_all(pattern = "_{2,}", replacement = "_") |>
-    stringr::str_replace_all(pattern = "_+\\.|\\._", replacement = "") |>
+    stringr::str_replace_all(
+      pattern = "_+\\.|\\._+", replacement = "."
+    ) |>
+    stringr::str_replace_all(
+      pattern = "\\.{2,}", replacement = "."
+    ) |>
     stringr::str_replace_all(pattern = "-+", replacement = "-") |>
-    stringr::str_replace_all(pattern = "^[_\\.]+|[_\\.]+$", replacement = "")
+    stringr::str_replace_all(
+      pattern = "^[_\\.]+|[_\\.]+$", replacement = ""
+    )
 
-  if (is_full_path) {
-    cleaned_filenames <- file.path(dirname(full_path), cleaned_filenames)
+  # reattach extension and directory
+  cleaned <- paste0(cleaned_basenames, ".", extensions)
+  has_dir <- dirs != "."
+  cleaned[has_dir] <- file.path(dirs[has_dir], cleaned[has_dir])
 
-    if (rename_files) {
-      # Rename actual files if they differ from cleaned names
-      for (i in seq_along(full_path)) {
-        if (full_path[i] != cleaned_filenames[i] && file.exists(
-          full_path[i])) {
-          file.rename(full_path[i], cleaned_filenames[i])
-        }
-      }
-    }
-  }
-
-  return(cleaned_filenames)
+  cleaned
 }
 
 
@@ -107,20 +183,45 @@ detect_time_pattern <- function(filenames) {
   patterns <- list(
     daily = "\\d{4}[._-]\\d{2}[._-]\\d{2}",
     monthly_iso = "\\d{4}[._-]\\d{2}", # YYYY-MM
+    monthly_compact = "(?<!\\d)\\d{6}(?!\\d)", # YYYYMM
     monthly_euro = "\\d{2}[._-]\\d{4}", # MM-YYYY
-    yearly = "\\d{4}"
+    yearly = "(?<!\\d)(19[89]\\d|20\\d{2})(?!\\d)" # plausible years with word boundaries
   )
 
   # Check patterns in order of specificity
-  if (any(grepl(patterns$daily, b))) {
+  # Use all() to ensure ALL files match the pattern (prevent one outlier
+  # from misclassifying the entire batch)
+  is_daily <- base::all(grepl(patterns$daily, b))
+  is_monthly <- base::all(
+    grepl(patterns$monthly_iso, b, perl = TRUE) |
+      grepl(patterns$monthly_compact, b, perl = TRUE) |
+      grepl(patterns$monthly_euro, b)
+  )
+  is_yearly <- base::all(grepl(patterns$yearly, b, perl = TRUE))
+
+  if (is_daily) {
     pattern <- "daily"
-  } else if (any(grepl(patterns$monthly_iso, b)) ||
-             any(grepl(patterns$monthly_euro, b))) {
+  } else if (is_monthly) {
     pattern <- "monthly"
-  } else if (any(grepl(patterns$yearly, b))) {
+  } else if (is_yearly) {
     pattern <- "yearly"
   } else {
-    cli::cli_abort("No date pattern found in filenames")
+    # Mixed or inconsistent patterns - list files for debugging
+    daily_files <- b[grepl(patterns$daily, b)]
+    monthly_files <- b[
+      grepl(patterns$monthly_iso, b, perl = TRUE) |
+        grepl(patterns$monthly_compact, b, perl = TRUE) |
+        grepl(patterns$monthly_euro, b)
+    ]
+    yearly_files <- b[grepl(patterns$yearly, b, perl = TRUE)]
+
+    cli::cli_abort(c(
+      "Inconsistent date patterns detected in filenames",
+      "i" = "Daily files ({length(daily_files)}): {.file {daily_files}}",
+      "i" = "Monthly files ({length(monthly_files)}): {.file {monthly_files}}",
+      "i" = "Yearly files ({length(yearly_files)}): {.file {yearly_files}}",
+      "x" = "All files in a directory must use the same time pattern"
+    ))
   }
 
   parser <- function(x) {
@@ -151,6 +252,11 @@ detect_time_pattern <- function(filenames) {
 #'     \item{pattern}{One of \code{"monthly"} or \code{"yearly"}.}
 #'     \item{parser}{Function to parse character dates into Date/POSIXct.}
 #'   }
+#' @param year_extractor Optional function to extract year from filename.
+#'   If provided, this function is used instead of automatic year detection
+#'   for yearly data. Should take a character string (filename) and return
+#'   a character string (year). Useful for filenames with multiple 4-digit
+#'   numbers where heuristics may fail.
 #' @return A list with:
 #'   \describe{
 #'     \item{year}{Integer year}
@@ -159,13 +265,23 @@ detect_time_pattern <- function(filenames) {
 #'     \item{quarter}{Integer quarter (1–4) or \code{NA}}
 #'     \item{date}{Date object for the first day of the period}
 #'   }
+#' @note For yearly data, when multiple plausible years (1980-2099) are
+#'   present in the filename, the last one is returned. This heuristic
+#'   assumes dataset version stamps appear early in the filename and data
+#'   years appear later. For deterministic control, pass a custom
+#'   \code{year_extractor} function.
 #' @examples
 #' info <- detect_time_pattern("rainfall_2022-01.tif")
 #' extract_time_components("rainfall_2022-01.tif", info)
 #' info <- detect_time_pattern("temp_2020.tif")
 #' extract_time_components("temp_2020.tif", info)
+#' # Custom year extractor for complex filenames
+#' my_extractor <- function(f) {
+#'   stringr::str_extract(f, "Rate\\.(\\d{4})\\.tiff$", group = 1)
+#' }
+#' extract_time_components("Malaria_Rate.2020.tiff", info, my_extractor)
 #' @export
-extract_time_components <- function(filename, info) {
+extract_time_components <- function(filename, info, year_extractor = NULL) {
   # Enhanced pattern matching for both ISO and European formats
   if (info$pattern == "monthly") {
     # Try European format first (since that's our input)
@@ -179,18 +295,45 @@ extract_time_components <- function(filename, info) {
       year <- stringr::str_extract(euro_match, "\\d{4}$")
       ds <- paste(year, month, sep = "-")
     } else {
-      # Try ISO format
+      # Try ISO format (YYYY-MM)
       iso_match <- stringr::str_extract(
         basename(filename),
         "(\\d{4})[._-](\\d{2})"
       )
-      ds <- iso_match
+      if (!is.na(iso_match)) {
+        ds <- iso_match
+      } else {
+        # Try compact format (YYYYMM)
+        compact <- stringr::str_extract(
+          basename(filename), "\\d{6}"
+        )
+        ds <- paste0(
+          substr(compact, 1, 4), "-", substr(compact, 5, 6)
+        )
+      }
     }
   } else {
-    ds <- stringr::str_extract(
-      basename(filename),
-      "\\d{4}"
-    )
+    # Yearly data - use custom extractor if provided
+    if (!base::is.null(year_extractor)) {
+      ds <- year_extractor(base::basename(filename))
+    } else {
+      # Extract all 4-digit numbers with word boundaries
+      candidates <- base::basename(filename) |>
+        stringr::str_extract_all("(?<!\\d)\\d{4}(?!\\d)") |>
+        base::unlist() |>
+        base::as.integer()
+
+      # Filter to plausible years (1980-2099)
+      plausible <- candidates[candidates >= 1980 & candidates <= 2099]
+
+      if (base::length(plausible) == 0) {
+        ds <- NA_character_
+      } else {
+        # Take the last plausible year (data years typically appear
+        # later in filenames, version stamps earlier)
+        ds <- base::as.character(dplyr::last(plausible))
+      }
+    }
   }
 
   d <- info$parser(ds)
@@ -247,6 +390,10 @@ extract_time_components <- function(filename, info) {
 #'   multi-layer raster to extract. If the raster contains multiple layers
 #'   (e.g., different years or indicators), this argument selects the layer to
 #'   be processed. Default is 1
+#' @param pattern_info Optional. Pre-parsed time pattern from
+#'   \code{detect_time_pattern()}. If NULL, detected from filename.
+#' @param time_components Optional. Pre-parsed time components from
+#'   \code{extract_time_components()}. If NULL, extracted from filename.
 #'
 #' @return A data frame containing:
 #'   \itemize{
@@ -285,15 +432,25 @@ process_raster_with_boundaries <- function(raster_file,
                                            id_cols = c("adm0", "adm1"),
                                            aggregations = c("mean"),
                                            raster_is_density = FALSE,
-                                           layer_to_process = 1) {
+                                           layer_to_process = 1,
+                                           pattern_info = NULL,
+                                           time_components = NULL) {
 
   valid_aggs <- c("mean", "sum", "median")
   if (!all(aggregations %in% valid_aggs)) {
     cli::cli_abort("Invalid aggregation method. Use: {valid_aggs}")
   }
 
-  pattern_info <- detect_time_pattern(raster_file)
-  components <- extract_time_components(raster_file, pattern_info)
+  # use pre-parsed time info if provided, otherwise detect
+  if (is.null(pattern_info)) {
+    pattern_info <- detect_time_pattern(raster_file)
+  }
+  if (is.null(time_components)) {
+    time_components <- extract_time_components(
+      raster_file, pattern_info
+    )
+  }
+  components <- time_components
 
   rast <- terra::rast(raster_file)[[layer_to_process]]
   rast[rast == -9999] <- NA
@@ -385,6 +542,12 @@ process_raster_with_boundaries <- function(raster_file,
 #'   multi-layer raster to extract. If the raster contains multiple layers
 #'   (e.g., different years or indicators), this argument selects the layer to
 #'   be processed. Default is 1.
+#' @param year_extractor Optional function. A custom function that accepts a
+#'   filename (character) and returns a year as integer or character. Passed
+#'   through to [extract_time_components()]. Use this when the default
+#'   "last plausible 4-digit year in 1980-2099" heuristic picks the wrong
+#'   year (for example with malariaAtlas filenames that contain multiple
+#'   year-like tokens). Defaults to `NULL`, which uses the built-in extractor.
 #'
 #' @return A combined data frame containing results from all processed files,
 #'   sorted by time unit if available. Has the same structure as output from
@@ -417,48 +580,50 @@ process_raster_collection <- function(directory,
                                       pattern = "\\.tif$",
                                       aggregations = c("mean"),
                                       layer_to_process = 1,
-                                      raster_is_density = FALSE) {
+                                      raster_is_density = FALSE,
+                                      year_extractor = NULL) {
 
-  # Get list of raster files in directory
-  raster_files <- list.files(directory, pattern = pattern, full.names = TRUE)
-
-  # Apply the cleaning function to filenames if there are multiple files
-  # then change the names accordingly
-  if (length(raster_files) > 1) {
-    cleaned_filenames <- clean_filenames(raster_files, rename_files = TRUE)
-
-    # Update raster_files with the cleaned filenames
-    raster_files <- cleaned_filenames
-  }
-
-  if (length(raster_files) == 0) {
-    cli::cli_abort("No files matching pattern found in: {directory}")
-  }
-
-  # Create progress bar
-  pb <- progress::progress_bar$new(
-    format = "Processing raster files [:bar] :percent | ETA: :eta",
-    total = length(raster_files)
+  # get raster files (original paths stay untouched)
+  raster_files <- base::list.files(
+    directory, pattern = pattern, full.names = TRUE
   )
 
-  # Process each file and combine results
-  results <- lapply(raster_files, function(x) {
-    result <- process_raster_with_boundaries(
-      x,
-      shapefile = shapefile,
-      id_cols = id_cols,
-      aggregations = aggregations,
-      raster_is_density = raster_is_density,
-      layer_to_process = layer_to_process
-    )
-    pb$tick()
-    result
-  }) |> dplyr::bind_rows()
+  if (base::length(raster_files) == 0) {
+    cli::cli_abort("No files matching pattern found in: {.path {directory}}")
+  }
 
-  # Sort by appropriate time unit
+  # clean names for date detection only; never rename on disk
+  cleaned_names <- clean_filenames(raster_files)
+  pattern_info <- detect_time_pattern(cleaned_names)
+
+  # process each file with a built-in progress bar
+  results <- purrr::map(
+    base::seq_along(raster_files),
+    function(i) {
+      components <- extract_time_components(
+        cleaned_names[i],
+        pattern_info,
+        year_extractor = year_extractor
+      )
+      process_raster_with_boundaries(
+        raster_file = raster_files[i],
+        shapefile = shapefile,
+        id_cols = id_cols,
+        aggregations = aggregations,
+        raster_is_density = raster_is_density,
+        layer_to_process = layer_to_process,
+        pattern_info = pattern_info,
+        time_components = components
+      )
+    },
+    .progress = "Processing raster files"
+  ) |>
+    purrr::list_rbind()
+
+  # sort by appropriate time unit
   sort_cols <- c("year", "month")
 
-  if (all(sort_cols %in% names(results))) {
+  if (base::all(sort_cols %in% base::names(results))) {
     results |>
       dplyr::arrange(dplyr::across(dplyr::all_of(sort_cols)))
   } else {
@@ -491,6 +656,10 @@ process_raster_collection <- function(directory,
 #'     below and 50% above, interpolating between pixel values when needed
 #'   - "both": Returns both weighted mean and weighted median statistics
 #'   (default: "mean")
+#' @param pattern_info Optional. Pre-parsed time pattern from
+#'   \code{detect_time_pattern()}. If NULL, detected from filename.
+#' @param time_components Optional. Pre-parsed time components from
+#'   \code{extract_time_components()}. If NULL, extracted from filename.
 #'
 #' @return Data frame with id_cols and population-weighted mean values
 batch_extract_weighted_stats <- function(
@@ -500,18 +669,25 @@ batch_extract_weighted_stats <- function(
   id_cols = c("adm0", "adm1", "adm2"),
   value_layer_to_process = 1,
   weight_na_as_zero = TRUE,
-  stat_type = "mean"
+  stat_type = "mean",
+  pattern_info = NULL,
+  time_components = NULL
 ) {
   # validate stat_type input
   if (!stat_type %in% c("mean", "median", "both")) {
     cli::cli_abort("stat_type must be 'mean', 'median', or 'both'")
   }
 
-  # detect time pattern in filename
-  pattern_info <- detect_time_pattern(value_raster_file)
-
-  # extract year/month components
-  components <- extract_time_components(value_raster_file, pattern_info)
+  # use pre-parsed time info if provided, otherwise detect
+  if (is.null(pattern_info)) {
+    pattern_info <- detect_time_pattern(value_raster_file)
+  }
+  if (is.null(time_components)) {
+    time_components <- extract_time_components(
+      value_raster_file, pattern_info
+    )
+  }
+  components <- time_components
 
   # load rasters
   value_rast <- terra::rast(value_raster_file)[[value_layer_to_process]]
@@ -688,6 +864,12 @@ batch_extract_weighted_stats <- function(
 #'     below and 50% above, interpolating between pixel values when needed
 #'   - "both": Returns both weighted mean and weighted median statistics
 #'   (default: "mean")
+#' @param year_extractor Optional function. A custom function that accepts a
+#'   filename (character) and returns a year as integer or character. Passed
+#'   through to [extract_time_components()]. Use this when the default
+#'   "last plausible 4-digit year in 1980-2099" heuristic picks the wrong
+#'   year (for example with malariaAtlas filenames that contain multiple
+#'   year-like tokens). Defaults to `NULL`, which uses the built-in extractor.
 #'
 #' @return A data frame containing:
 #'   - Spatial identifiers from id_cols
@@ -713,104 +895,113 @@ process_weighted_raster_collection <- function(
   pop_pattern = "\\.tif$",
   value_layer_to_process = 1,
   weight_na_as_zero = TRUE,
-  stat_type = "mean"
+  stat_type = "mean",
+  year_extractor = NULL
 ) {
   # input validation
   if (!stat_type %in% c("mean", "median", "both")) {
     cli::cli_abort("stat_type must be 'mean', 'median', or 'both'")
   }
 
-  # list and clean value raster filenames
-  value_raster_files <- list.files(
+  # list value rasters (original paths stay untouched)
+  value_raster_files <- base::list.files(
     value_raster_dir,
     pattern = value_pattern,
     full.names = TRUE
-  ) |>
-    clean_filenames(rename_files = TRUE)
+  )
 
-  if (length(value_raster_files) == 0) {
-    cli::cli_abort("No value raster files found in '{value_raster_dir}'.")
+  if (base::length(value_raster_files) == 0) {
+    cli::cli_abort(
+      "No value raster files found in {.path {value_raster_dir}}."
+    )
   }
 
-  # list and clean population raster filenames
-  pop_raster_files <- list.files(
+  # list population rasters (original paths stay untouched)
+  pop_raster_files <- base::list.files(
     pop_raster_dir,
     pattern = pop_pattern,
     full.names = TRUE
-  ) |>
-    clean_filenames(rename_files = TRUE)
-
-  if (length(pop_raster_files) == 0) {
-    cli::cli_abort("No population raster files found in '{pop_raster_dir}'.")
-  }
-
-  # detect time pattern once for value rasters
-  pattern_info <- detect_time_pattern(value_raster_files)
-
-  # initialize progress bar
-  cli::cli_progress_bar(
-    "Extracting population-weighted statistics",
-    total = length(value_raster_files)
   )
 
-  # process each value raster using for loop for progress tracking
-  results <- vector("list", length(value_raster_files))
-
-  for (i in seq_along(value_raster_files)) {
-    value_file <- value_raster_files[i]
-
-    # extract time components
-    time_components <- extract_time_components(value_file, pattern_info)
-    year_str <- as.character(time_components$year)
-
-    # find matching population raster by year
-    matched_pop <- pop_raster_files[grepl(year_str, basename(pop_raster_files))]
-
-    if (length(matched_pop) == 0) {
-      cli::cli_abort(
-        paste0(
-          "No population raster matching year {year_str} found",
-          " for {basename(value_file)}."
-        )
-      )
-    } else if (length(matched_pop) > 1) {
-      cli::cli_abort(
-        paste0(
-          "Multiple population rasters found for year {year_str}. ",
-          "Please resolve duplicates."
-        )
-      )
-    }
-
-    # process with matched population raster
-    results[[i]] <- batch_extract_weighted_stats(
-      value_raster_file = value_file,
-      pop_raster_file = matched_pop,
-      shapefile = shapefile,
-      id_cols = id_cols,
-      value_layer_to_process = value_layer_to_process,
-      weight_na_as_zero = weight_na_as_zero,
-      stat_type = stat_type
+  if (base::length(pop_raster_files) == 0) {
+    cli::cli_abort(
+      "No population raster files found in {.path {pop_raster_dir}}."
     )
-
-    # update progress
-    cli::cli_progress_update()
   }
 
-  # complete progress bar
-  cli::cli_progress_done()
+  # clean names for date detection only; never rename on disk
+  cleaned_value_names <- clean_filenames(value_raster_files)
+  pattern_info <- detect_time_pattern(cleaned_value_names)
+
+  single_pop <- base::length(pop_raster_files) == 1
+  pop_basenames <- base::basename(pop_raster_files)
+
+  # helper: find the population raster that matches a given year
+  match_pop_for_year <- function(year_str, value_file) {
+    if (single_pop) {
+      return(pop_raster_files)
+    }
+
+    # word-boundary match so "2020" does not match inside "202005"
+    year_pattern <- base::paste0("(?<!\\d)", year_str, "(?!\\d)")
+    matched <- pop_raster_files[
+      base::grepl(year_pattern, pop_basenames, perl = TRUE)
+    ]
+
+    if (base::length(matched) == 0) {
+      cli::cli_abort(c(
+        "No population raster matching year {year_str} found for \\
+         {.file {base::basename(value_file)}}.",
+        "i" = "Checked {base::length(pop_raster_files)} file(s) in the \\
+               population directory."
+      ))
+    } else if (base::length(matched) > 1) {
+      cli::cli_abort(c(
+        "Multiple population rasters found for year {year_str}.",
+        "i" = "Matched: {.file {base::basename(matched)}}"
+      ))
+    }
+
+    matched
+  }
+
+  # use lapply so matching errors are not wrapped by purrr.
+  results <- base::lapply(
+    base::seq_along(value_raster_files),
+    function(i) {
+      components <- extract_time_components(
+        cleaned_value_names[i],
+        pattern_info,
+        year_extractor = year_extractor
+      )
+      year_str <- base::as.character(components$year)
+      matched_pop <- match_pop_for_year(year_str, value_raster_files[i])
+
+      batch_extract_weighted_stats(
+        value_raster_file = value_raster_files[i],
+        pop_raster_file = matched_pop,
+        shapefile = shapefile,
+        id_cols = id_cols,
+        value_layer_to_process = value_layer_to_process,
+        weight_na_as_zero = weight_na_as_zero,
+        stat_type = stat_type,
+        pattern_info = pattern_info,
+        time_components = components
+      )
+    }
+  )
 
   # combine and sort results
-  combined_results <- dplyr::bind_rows(results)
+  combined_results <- purrr::list_rbind(results)
   sort_cols <- c("year", "month", id_cols)
-  sort_cols <- sort_cols[sort_cols %in% names(combined_results)]
+  sort_cols <- sort_cols[sort_cols %in% base::names(combined_results)]
 
-  if (length(sort_cols) > 0) {
+  if (base::length(sort_cols) > 0) {
     combined_results <- combined_results |>
       dplyr::arrange(dplyr::across(dplyr::all_of(sort_cols)))
   }
 
-  return(combined_results)
+  combined_results
 }
 
 #' Normalize Raster Values by Polygon Regions
