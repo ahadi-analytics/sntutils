@@ -85,9 +85,11 @@
   }
 
   fname <- paste0(data_name, suffix, ".", file_format)
-  # normalize the directory first (which exists), then append filename
+  # normalize the directory first (which exists), then append filename.
+  # return a plain character so the path round-trips cleanly through
+  # data.frame/tibble (fs_path can degrade to factor in older code paths).
   norm_dir <- normalizePath(path, winslash = "/", mustWork = FALSE)
-  fs::path(norm_dir, fname)
+  base::as.character(fs::path(norm_dir, fname))
 }
 
 # encoding ---------------------------------------------------------------------
@@ -461,9 +463,16 @@
                                   final_path,
                                   attempts = 6L,
                                   sleep_seconds = 0.25) {
+  tmp_path <- base::as.character(tmp_path)
+  final_path <- base::as.character(final_path)
   last_error <- NULL
 
   for (attempt in base::seq_len(attempts)) {
+    # release any file handles still held by the writer (esp. windows
+    # where openxlsx zip writes may keep brief locks on the new file)
+    invisible(base::gc(verbose = FALSE))
+
+    # primary path: rename within same directory
     ok <- base::tryCatch(
       {
         fs::file_move(tmp_path, final_path)
@@ -475,11 +484,47 @@
       }
     )
 
-    if (base::isTRUE(ok)) {
+    if (base::isTRUE(ok) && fs::file_exists(final_path)) {
       return(NULL)
     }
 
     if (!fs::file_exists(tmp_path) && fs::file_exists(final_path)) {
+      return(NULL)
+    }
+
+    # fallback: copy + delete (works across volumes and survives
+    # transient sharing-violation errors from antivirus on windows)
+    ok <- base::tryCatch(
+      {
+        if (fs::file_exists(final_path)) {
+          base::tryCatch(
+            fs::file_delete(final_path),
+            error = function(e) NULL
+          )
+        }
+        copied <- base::file.copy(
+          from = tmp_path,
+          to = final_path,
+          overwrite = TRUE,
+          copy.mode = TRUE
+        )
+        if (base::isTRUE(copied) && fs::file_exists(final_path)) {
+          base::tryCatch(
+            fs::file_delete(tmp_path),
+            error = function(e) NULL
+          )
+          TRUE
+        } else {
+          FALSE
+        }
+      },
+      error = function(error) {
+        last_error <<- base::conditionMessage(error)
+        FALSE
+      }
+    )
+
+    if (base::isTRUE(ok)) {
       return(NULL)
     }
 
@@ -507,18 +552,30 @@
 #' @keywords internal
 #' @noRd
 .atomic_write <- function(write_fun, final_path) {
+  final_path <- base::as.character(final_path)
   dir <- fs::path_dir(final_path)
   ext <- fs::path_ext(final_path)
   ext <- if (nzchar(ext)) paste0(".", ext) else ".tmp"
-  tmp <- fs::file_temp(tmp_dir = dir, pattern = ".snt.", ext = ext)
-  on.exit(try(fs::file_delete(tmp), silent = TRUE), add = TRUE)
+  tmp <- base::as.character(
+    fs::file_temp(tmp_dir = dir, pattern = ".snt.", ext = ext)
+  )
+  on.exit(
+    base::tryCatch(
+      {
+        if (fs::file_exists(tmp)) fs::file_delete(tmp)
+      },
+      error = function(e) NULL
+    ),
+    add = TRUE
+  )
   write_fun(tmp)
 
-  # Windows can briefly lock fresh xlsx files after openxlsx writes them.
+  # Windows can briefly lock fresh xlsx files after openxlsx writes them;
+  # .move_file_with_retry handles rename + copy-fallback with backoff.
   move_error <- .move_file_with_retry(tmp, final_path)
   if (!base::is.null(move_error)) {
     cli::cli_abort(c(
-      "Failed to move temp file to final path: {final_path}.",
+      "Failed to move temp file to final path: {.file {final_path}}.",
       "x" = move_error
     ))
   }
@@ -878,7 +935,7 @@ write_snt_data <- function(
       }
       rows[[i]] <- list(
         format = fmt,
-        path = write_path,
+        path = base::as.character(write_path),
         ok = FALSE,
         bytes = NA_real_,
         message = cli::format_message(msg)
@@ -915,18 +972,21 @@ write_snt_data <- function(
     }
 
     if (!quiet) {
+      # use just the filename; fs::path_rel() produces ugly cross-drive
+      # paths like '../../../C:/...' on the windows runner where tempdir
+      # and the working directory live on different volumes.
+      display_name <- fs::path_file(write_path)
       if (ok) {
         cli::cli_alert_success(
-          "Wrote {fmt} -> {fs::path_rel(write_path)}"
+          "Wrote {fmt} -> {display_name}"
         )
       } else {
         cli::cli_alert_danger(
           if (is.null(err_msg)) {
-            paste0("Failed {fmt} -> {fs::path_rel(write_path)}")
+            paste0("Failed ", fmt, " -> ", display_name)
           } else {
             paste0(
-              "Failed {fmt} -> {fs::path_rel(write_path)}\nReason: ",
-              err_msg
+              "Failed ", fmt, " -> ", display_name, "\nReason: ", err_msg
             )
           }
         )
@@ -935,18 +995,26 @@ write_snt_data <- function(
 
     rows[[i]] <- list(
       format = fmt,
-      path = write_path,
+      path = base::as.character(write_path),
       ok = ok,
       bytes = bytes,
       message = if (ok) "ok" else (rlang::`%||%`(err_msg, "error"))
     )
   }
 
-  # always build the summary; return it invisibly to avoid clutter
+  # always build the summary; return it invisibly to avoid clutter.
+  # force stringsAsFactors = FALSE so `path` always stays plain character
+  # (avoids factor coercion when consumers index res$path[[1]]).
+  to_df <- function(row) {
+    base::as.data.frame(row, stringsAsFactors = FALSE)
+  }
   res_df <- if (requireNamespace("tibble", quietly = TRUE)) {
-    tibble::as_tibble(do.call(rbind, lapply(rows, as.data.frame)))
+    tibble::as_tibble(do.call(rbind, lapply(rows, to_df)))
   } else {
-    as.data.frame(do.call(rbind, lapply(rows, as.data.frame)))
+    base::as.data.frame(
+      do.call(rbind, lapply(rows, to_df)),
+      stringsAsFactors = FALSE
+    )
   }
   invisible(res_df)
 }
