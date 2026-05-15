@@ -1,6 +1,7 @@
 # test helpers ----
 
 skip_if_no_internet <- function() {
+  skip_if_not_integration("NASA POWER integration test skipped.")
   testthat::skip_if_not(curl::has_internet(), "No internet connection")
 }
 

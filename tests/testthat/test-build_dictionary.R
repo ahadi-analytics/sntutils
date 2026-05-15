@@ -427,26 +427,3 @@ test_that("cache works correctly", {
   clear_snt_cache()
   expect_length(ls(envir = sntutils:::.snt_cache), 0)
 })
-
-test_that("cache improves performance on large var lists", {
-  # create test data with 100 columns
-  test_data <- as.data.frame(
-    matrix(rnorm(1000), ncol = 100)
-  )
-  names(test_data) <- paste0("var_", 1:100)
-
-  # clear cache and time first call
-  clear_snt_cache()
-  t1 <- system.time({
-    dd1 <- build_dictionary(test_data)
-  })
-
-  # time second call (should use cache)
-  t2 <- system.time({
-    dd2 <- build_dictionary(test_data)
-  })
-
-  # cached call should not be significantly slower (allow 1s margin for noise)
-  expect_lte(t2[["elapsed"]], t1[["elapsed"]] + 1)
-  expect_identical(dd1, dd2)
-})

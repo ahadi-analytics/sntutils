@@ -11,6 +11,7 @@ validate_process_spatial(
   adm1_col = NULL,
   adm2_col = NULL,
   adm3_col = NULL,
+  adm4_col = NULL,
   fix_issues = TRUE,
   quiet = FALSE,
   geometry_crs = 4326,
@@ -29,6 +30,8 @@ validate_process_spatial(
 \item{adm2_col}{Character string, column name for district level}
 
 \item{adm3_col}{Character string, column name for chiefdom/commune level}
+
+\item{adm4_col}{Character string, column name for sub-chiefdom/village level}
 
 \item{fix_issues}{Logical, whether to attempt automatic fixes}
 
@@ -55,7 +58,7 @@ shared geometry.
 \item \code{checks$self_intersecting}: Rows with self-intersecting geometries.
 \item \code{column_dictionary}: Data frame with column_name and description.
 \item \code{final_spat_vec}: List of admin-level aggregations
-(adm0, adm1, adm2, adm3).
+(adm0, adm1, adm2, adm3, adm4).
 \item \code{geometry_types}: Tibble summarizing geometry types and counts.
 \item \code{spatial_extent}: Named vector with xmin, ymin, xmax, ymax.
 }
@@ -67,7 +70,7 @@ validate_process_coordinates() with modular checks and standardized outputs.
 }
 \examples{
 \dontrun{
-# Basic validation with Sierra Leone data
+# Basic validation with Sierra Leone data (adm3)
 result <- validate_process_spatial(
   shp = shp_raw,
   name = "Sierra Leone boundaries",
@@ -77,11 +80,23 @@ result <- validate_process_spatial(
   adm3_col = "chiefdom"
 )
 
+# Validation with adm4
+result <- validate_process_spatial(
+  shp = shp_raw,
+  name = "Sierra Leone boundaries",
+  adm0_col = "country",
+  adm1_col = "region",
+  adm2_col = "district",
+  adm3_col = "chiefdom",
+  adm4_col = "village"
+)
+
 # Access cleaned admin levels
 shp_adm0 <- result$final_spat_vec$adm0
 shp_adm1 <- result$final_spat_vec$adm1
 shp_adm2 <- result$final_spat_vec$adm2
 shp_adm3 <- result$final_spat_vec$adm3
+shp_adm4 <- result$final_spat_vec$adm4
 
 # Check validation status
 if (length(result$issues) == 0) {

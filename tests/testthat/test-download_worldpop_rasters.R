@@ -264,6 +264,8 @@ testthat::test_that("download_worldpop: handles multiple countries and years", {
 # note: these tests use legacy dataset (years < 2015) for reliability
 
 testthat::test_that("age band: handles multiple countries and years (legacy)", {
+  skip_if_not_integration("WorldPop age-band integration test skipped.")
+
   temp_dir <- tempdir()
   test_dir <- file.path(temp_dir, "worldpop_multi_test")
 
@@ -295,6 +297,8 @@ testthat::test_that("age band: handles multiple countries and years (legacy)", {
 })
 
 testthat::test_that("age band: combines multiple bands correctly (legacy)", {
+  skip_if_not_integration("WorldPop age-band integration test skipped.")
+
   temp_dir <- tempdir()
   test_dir <- file.path(temp_dir, "worldpop_bands_test")
 
@@ -314,6 +318,8 @@ testthat::test_that("age band: combines multiple bands correctly (legacy)", {
 })
 
 testthat::test_that("age band: handles edge cases in age ranges (legacy)", {
+  skip_if_not_integration("WorldPop age-band integration test skipped.")
+
   temp_dir <- tempdir()
   test_dir <- file.path(temp_dir, "worldpop_edge_test")
 
@@ -345,6 +351,8 @@ testthat::test_that("age band: handles edge cases in age ranges (legacy)", {
 })
 
 testthat::test_that("age band: skips existing files", {
+  skip_if_not_integration("WorldPop age-band integration test skipped.")
+
   temp_dir <- tempdir()
   test_dir <- file.path(temp_dir, "worldpop_skip_test")
 
@@ -382,6 +390,8 @@ testthat::test_that("age band: skips existing files", {
 })
 
 testthat::test_that("age band: creates output directory", {
+  skip_if_not_integration("WorldPop age-band integration test skipped.")
+
   temp_dir <- tempdir()
   test_dir <- file.path(temp_dir, "new_worldpop_dir", "subdir")
 

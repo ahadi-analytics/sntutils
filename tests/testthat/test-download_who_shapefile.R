@@ -1,3 +1,7 @@
+skip_who_integration <- function() {
+  skip_if_not_integration("WHO shapefile integration test skipped.")
+}
+
 testthat::test_that("download_shapefile validates admin_level parameter", {
   testthat::expect_error(
     download_shapefile("KEN", admin_level = "ADM5"),
@@ -18,6 +22,7 @@ testthat::test_that("download_shapefile validates admin_level parameter", {
 testthat::test_that("download_shapefile accepts valid admin levels", {
   testthat::skip_on_cran()
   testthat::skip_if_offline()
+  skip_who_integration()
 
   # Test that function doesn't error with valid levels
   testthat::expect_no_error({
@@ -36,6 +41,7 @@ testthat::test_that("download_shapefile accepts valid admin levels", {
 testthat::test_that("download_shapefile returns sf object without saving when dest_path is NULL", {
   testthat::skip_on_cran()
   testthat::skip_if_offline()
+  skip_who_integration()
 
   result <- download_shapefile("COM", admin_level = "ADM0")
 
@@ -48,6 +54,7 @@ testthat::test_that("download_shapefile returns sf object without saving when de
 testthat::test_that("download_shapefile returns correct columns for each admin level", {
   testthat::skip_on_cran()
   testthat::skip_if_offline()
+  skip_who_integration()
 
   # ADM0 level
   result_adm0 <- download_shapefile("COM", admin_level = "ADM0")
@@ -78,6 +85,7 @@ testthat::test_that("download_shapefile returns correct columns for each admin l
 testthat::test_that("download_shapefile saves to file when dest_path is provided", {
   testthat::skip_on_cran()
   testthat::skip_if_offline()
+  skip_who_integration()
 
   temp_dir <- tempdir()
   expected_file <- file.path(temp_dir, "who_shapefile_com_adm0_latest.gpkg")
@@ -110,6 +118,7 @@ testthat::test_that("download_shapefile saves to file when dest_path is provided
 testthat::test_that("download_shapefile handles incremental updates correctly", {
   testthat::skip_on_cran()
   testthat::skip_if_offline()
+  skip_who_integration()
 
   temp_dir <- tempdir()
   # File names include _latest suffix when latest = TRUE (default)
@@ -163,6 +172,7 @@ testthat::test_that("download_shapefile handles incremental updates correctly", 
 testthat::test_that("download_shapefile handles multiple country codes", {
   testthat::skip_on_cran()
   testthat::skip_if_offline()
+  skip_who_integration()
 
   result <- download_shapefile(
     c("COM", "SYC", "MUS"),
@@ -191,6 +201,7 @@ testthat::test_that("download_shapefile requires httr2 package", {
 testthat::test_that("download_shapefile creates directory if it doesn't exist", {
   testthat::skip_on_cran()
   testthat::skip_if_offline()
+  skip_who_integration()
 
   temp_dir <- file.path(tempdir(), "new_test_dir", "nested")
   expected_file <- file.path(temp_dir, "who_shapefile_com_adm0_latest.gpkg")
@@ -214,6 +225,7 @@ testthat::test_that("download_shapefile creates directory if it doesn't exist", 
 testthat::test_that("download_shapefile handles case-insensitive admin_level", {
   testthat::skip_on_cran()
   testthat::skip_if_offline()
+  skip_who_integration()
 
   result_lower <- download_shapefile("COM", admin_level = "adm0")
   result_upper <- download_shapefile("COM", admin_level = "ADM0")
@@ -228,6 +240,7 @@ testthat::test_that("download_shapefile handles case-insensitive admin_level", {
 testthat::test_that("download_shapefile filters by ENDDATE correctly when latest = TRUE", {
   testthat::skip_on_cran()
   testthat::skip_if_offline()
+  skip_who_integration()
 
   # Test with latest = TRUE (default)
   result_latest <- download_shapefile("COM", admin_level = "ADM2", latest = TRUE)
@@ -245,6 +258,7 @@ testthat::test_that("download_shapefile filters by ENDDATE correctly when latest
 testthat::test_that("download_shapefile returns all boundaries when latest = FALSE", {
   testthat::skip_on_cran()
   testthat::skip_if_offline()
+  skip_who_integration()
 
   # Get all boundaries including historical
   result_all <- download_shapefile("COM", admin_level = "ADM0", latest = FALSE)
@@ -279,6 +293,7 @@ testthat::test_that("download_shapefile handles network errors gracefully", {
 testthat::test_that("download_shapefile validates geometries", {
   testthat::skip_on_cran()
   testthat::skip_if_offline()
+  skip_who_integration()
 
   result <- download_shapefile("COM", admin_level = "ADM0")
 

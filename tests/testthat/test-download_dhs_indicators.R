@@ -1,6 +1,7 @@
 # setup test environment ----
 skip_if_no_internet <- function() {
   # helper to skip tests if no internet connection
+  skip_if_not_integration("DHS API integration test skipped.")
   testthat::skip_if_not(curl::has_internet(), "No internet connection")
 }
 
