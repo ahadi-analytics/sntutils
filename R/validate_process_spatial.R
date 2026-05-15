@@ -10,6 +10,7 @@
 #' @param adm1_col Character string, column name for region/province level
 #' @param adm2_col Character string, column name for district level
 #' @param adm3_col Character string, column name for chiefdom/commune level
+#' @param adm4_col Character string, column name for sub-chiefdom/village level
 #' @param fix_issues Logical, whether to attempt automatic fixes
 #' @param quiet Logical, whether to suppress progress messages
 #' @param geometry_crs Target CRS for output geometry (default EPSG:4326).
@@ -30,13 +31,13 @@
 #'   - `checks$self_intersecting`: Rows with self-intersecting geometries.
 #'   - `column_dictionary`: Data frame with column_name and description.
 #'   - `final_spat_vec`: List of admin-level aggregations
-#'     (adm0, adm1, adm2, adm3).
+#'     (adm0, adm1, adm2, adm3, adm4).
 #'   - `geometry_types`: Tibble summarizing geometry types and counts.
 #'   - `spatial_extent`: Named vector with xmin, ymin, xmax, ymax.
 #'
 #' @examples
 #' \dontrun{
-#' # Basic validation with Sierra Leone data
+#' # Basic validation with Sierra Leone data (adm3)
 #' result <- validate_process_spatial(
 #'   shp = shp_raw,
 #'   name = "Sierra Leone boundaries",
@@ -46,11 +47,23 @@
 #'   adm3_col = "chiefdom"
 #' )
 #'
+#' # Validation with adm4
+#' result <- validate_process_spatial(
+#'   shp = shp_raw,
+#'   name = "Sierra Leone boundaries",
+#'   adm0_col = "country",
+#'   adm1_col = "region",
+#'   adm2_col = "district",
+#'   adm3_col = "chiefdom",
+#'   adm4_col = "village"
+#' )
+#'
 #' # Access cleaned admin levels
 #' shp_adm0 <- result$final_spat_vec$adm0
 #' shp_adm1 <- result$final_spat_vec$adm1
 #' shp_adm2 <- result$final_spat_vec$adm2
 #' shp_adm3 <- result$final_spat_vec$adm3
+#' shp_adm4 <- result$final_spat_vec$adm4
 #'
 #' # Check validation status
 #' if (length(result$issues) == 0) {
@@ -78,6 +91,7 @@ validate_process_spatial <- function(
   adm1_col = NULL,
   adm2_col = NULL,
   adm3_col = NULL,
+  adm4_col = NULL,
   fix_issues = TRUE,
   quiet = FALSE,
   geometry_crs = 4326,
@@ -109,6 +123,7 @@ validate_process_spatial <- function(
     adm1_col,
     adm2_col,
     adm3_col,
+    adm4_col,
     quiet
   )
 
@@ -247,6 +262,7 @@ validate_process_spatial <- function(
 # @param adm1_col Character, ADM1 column name (or NULL)
 # @param adm2_col Character, ADM2 column name (or NULL)
 # @param adm3_col Character, ADM3 column name (or NULL)
+# @param adm4_col Character, ADM4 column name (or NULL)
 # @param quiet Logical, whether to suppress progress messages
 # @return List mapping standard admin names to actual column names
 .validate_admin_columns <- function(
@@ -255,6 +271,7 @@ validate_process_spatial <- function(
   adm1_col,
   adm2_col,
   adm3_col,
+  adm4_col,
   quiet
 ) {
   available_cols <- names(shp_clean)
@@ -272,6 +289,9 @@ validate_process_spatial <- function(
   }
   if (!is.null(adm3_col) && adm3_col %in% available_cols) {
     admin_mapping$adm3 <- adm3_col
+  }
+  if (!is.null(adm4_col) && adm4_col %in% available_cols) {
+    admin_mapping$adm4 <- adm4_col
   }
 
   if (length(admin_mapping) == 0) {
@@ -323,12 +343,14 @@ validate_process_spatial <- function(
     if (!quiet) cli::cli_alert_success("CRS: {crs_info$input}")
   }
 
-  # Transform to target CRS if needed
-  if (
-    !is.na(sf::st_crs(shp)$epsg) &&
-      !is.na(geometry_crs) &&
-      sf::st_crs(shp)$epsg != geometry_crs
-  ) {
+  # Use st_crs() object comparison instead of $epsg — the $epsg slot returns NA
+  # for shapefiles whose CRS is stored as proj4string or WKT (common with GADM,
+  # HDX, etc.), causing the transform to be silently skipped even when a valid
+  # CRS is set. st_crs() object comparison handles all representation types.
+  target_crs <- sf::st_crs(geometry_crs)
+  current_crs <- sf::st_crs(shp)
+
+  if (!is.na(current_crs$input) && current_crs != target_crs) {
     shp <- sf::st_transform(shp, geometry_crs)
     if (!quiet) {
       cli::cli_alert_info("Transformed geometries to EPSG:{geometry_crs}")
@@ -647,9 +669,9 @@ validate_process_spatial <- function(
   )
   results$spatial_extent <- sf::st_bbox(shp_std)
 
-  # Create admin level aggregations (includes hole removal and validation)
+  # Create admin level aggregations
   results$final_spat_vec <-
-    .create_admin_aggregations(shp_std, admin_mapping, quiet)
+    .create_admin_aggregations(shp_std, admin_mapping, geometry_crs, quiet)
 
   # Create column dictionary
   results$column_dictionary <- .create_spatial_column_dictionary(
@@ -694,7 +716,6 @@ validate_process_spatial <- function(
   }
 
   # Add country codes (iso3, iso2, dhs) via spatial join
-
   shp_clean <- .add_country_codes(shp_clean)
 
   shp_clean
@@ -798,7 +819,7 @@ validate_process_spatial <- function(
 
   # Ensure proper column ordering: iso3, iso2, dhs first, then admin levels
   admin_cols_ordered <- c()
-  for (admin_level in c("adm0", "adm1", "adm2", "adm3")) {
+  for (admin_level in c("adm0", "adm1", "adm2", "adm3", "adm4")) {
     if (admin_level %in% names(shp)) {
       admin_cols_ordered <- c(
         admin_cols_ordered,
@@ -820,13 +841,14 @@ validate_process_spatial <- function(
 # Create admin level aggregations
 # @param shp sf object with standardized columns and identifiers
 # @param admin_mapping List mapping admin levels
+# @param geometry_crs Target CRS — enforced on every aggregated output layer
+#   to guard against st_union() silently dropping or altering CRS metadata
 # @param quiet Logical, whether to suppress progress messages
 # @return List of admin-level sf objects
-.create_admin_aggregations <- function(shp, admin_mapping, quiet) {
+.create_admin_aggregations <- function(shp, admin_mapping, geometry_crs, quiet) {
   if (!quiet) {
     cli::cli_progress_step("Creating admin level aggregations...")
   }
-
 
   # Temporarily disable s2 to avoid edge-crossing errors in st_union
   s2_was_on <- sf::sf_use_s2()
@@ -847,6 +869,8 @@ validate_process_spatial <- function(
   if (any(!sf::st_is_valid(shp))) {
     shp <- sf::st_make_valid(shp)
   }
+  # Enforce target CRS on base level — st_union() can alter CRS metadata
+  shp <- sf::st_transform(shp, geometry_crs)
   spat_vec[[base_level_name]] <- shp
 
   # Create higher-level aggregations
@@ -919,7 +943,9 @@ validate_process_spatial <- function(
               geometry_hash,
               geometry
             ) |>
-            sf::st_sf()
+            sf::st_sf() |>
+            # Enforce target CRS — st_union() can silently drop or alter CRS
+            sf::st_transform(geometry_crs)
 
           spat_vec[[level_name]] <- agg_shp
         }
@@ -1016,6 +1042,8 @@ validate_process_spatial <- function(
     "adm2_guid",
     "adm3",
     "adm3_guid",
+    "adm4",
+    "adm4_guid",
     "geometry_hash",
     "geometry"
   )
@@ -1141,14 +1169,14 @@ validate_process_spatial <- function(
     .print_spatial_fixed_actions(results$issues)
   }
 
- # Report column dictionary
+  # Report admin shapefiles availability
   if (!is.null(results$column_dictionary)) {
     cli::cli_alert_info(
       "All admin shapefiles are available in results$final_spat_vec"
     )
   }
 
-   # Report column dictionary
+  # Report column dictionary
   if (!is.null(results$column_dictionary)) {
     cli::cli_alert_info(
       "Column dictionary available in results$column_dictionary"
@@ -1167,7 +1195,7 @@ validate_process_spatial <- function(
     )
   }
 
-    # Report checks if any
+  # Report checks if any
   if (!is.null(results$checks) && length(results$checks) > 0) {
     cli::cli_alert_info(
       paste0(
@@ -1177,15 +1205,7 @@ validate_process_spatial <- function(
     )
   }
 
-  # Report column dictionary
-  if (!is.null(results$column_dictionary)) {
-    cli::cli_alert_info(
-      "Column dictionary available in results$column_dictionary"
-    )
-  }
-
   cat("\n")
-
 }
 
 # Print actions taken during spatial fixes
