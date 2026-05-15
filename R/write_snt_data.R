@@ -463,7 +463,15 @@
   tmp <- fs::file_temp(tmp_dir = dir, pattern = ".snt.", ext = ext)
   on.exit(try(fs::file_delete(tmp), silent = TRUE), add = TRUE)
   write_fun(tmp)
-  ok <- file.rename(tmp, final_path)
+  # use fs::file_move so the move overwrites an existing destination on
+  # Windows (base file.rename() returns FALSE if target exists there).
+  ok <- tryCatch(
+    {
+      fs::file_move(tmp, final_path)
+      TRUE
+    },
+    error = function(e) FALSE
+  )
   if (!ok) {
     cli::cli_abort("Failed to move temp file to final path: {final_path}.")
   }
