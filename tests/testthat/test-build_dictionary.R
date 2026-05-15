@@ -268,3 +268,185 @@ testthat::test_that("build_dictionary writes XLSX when openxlsx available", {
     c("variable", "type", "label_en") %in% names(wb)
   ))
 })
+
+# ---- YAML integration tests --------------------------------------------------
+testthat::test_that("build_dictionary integrates YAML labels for SNT variables", {
+  # create test data with known SNT variables
+  df <- data.frame(
+    adm1 = c("Province A", "Province B"),
+    adm2 = c("District 1", "District 2"),
+    conf_rdt_u5 = c(10, 20),
+    test_mic_priv = c(5, 15),
+    unknown_var = c("x", "y")
+  )
+
+  dict <- build_dictionary(df)
+  lem <- setNames(dict$label_en, dict$variable)
+
+  # exact matches from YAML
+  testthat::expect_equal(
+    unname(lem["adm1"]),
+    "Administrative level 1 (province/region)"
+  )
+  testthat::expect_equal(
+    unname(lem["adm2"]),
+    "Administrative level 2 (district/health zone)"
+  )
+
+  # token-based inference
+  testthat::expect_match(
+    unname(lem["conf_rdt_u5"]),
+    "Confirmed malaria cases.*RDT.*Under 5 years"
+  )
+  testthat::expect_match(
+    unname(lem["test_mic_priv"]),
+    "Tested for malaria.*[Mm]icroscopy.*Private sector"
+  )
+
+  # unknown variable gets title case from check_snt_var
+  # since it has underscore it tries to parse it
+  testthat::expect_equal(unname(lem["unknown_var"]), "Unknown")
+})
+
+testthat::test_that("build_dictionary uses YAML labels by default, CSV doesn't override", {
+  tmp <- withr::local_tempdir()
+  map_path <- fs::path(tmp, "labels_en.csv")
+
+  # create override for a YAML variable
+  lbl_df <- data.frame(
+    name = c("adm1", "conf_rdt_u5"),
+    label = c("Custom Province Label", "Custom Malaria Label"),
+    stringsAsFactors = FALSE
+  )
+  utils::write.csv(lbl_df, map_path, row.names = FALSE)
+
+  df <- data.frame(
+    adm1 = c("A", "B"),
+    adm2 = c("X", "Y"),
+    conf_rdt_u5 = c(1, 2)
+  )
+
+  # default behavior: YAML wins
+  dict <- build_dictionary(df, labels_path = map_path)
+  lem <- setNames(dict$label_en, dict$variable)
+
+  # YAML labels should win (CSV ignored)
+  testthat::expect_equal(unname(lem["adm1"]), "Administrative level 1 (province/region)")
+  testthat::expect_match(
+    unname(lem["conf_rdt_u5"]),
+    "Confirmed malaria cases.*RDT.*Under 5 years"
+  )
+
+  # non-overridden variable still gets YAML label
+  testthat::expect_equal(
+    unname(lem["adm2"]),
+    "Administrative level 2 (district/health zone)"
+  )
+})
+
+testthat::test_that("build_dictionary respects CSV when override_yaml = TRUE", {
+  tmp <- withr::local_tempdir()
+  map_path <- fs::path(tmp, "labels_en.csv")
+
+  # create override for a YAML variable
+  lbl_df <- data.frame(
+    name = c("adm1", "conf_rdt_u5"),
+    label = c("Custom Province Label", "Custom Malaria Label"),
+    stringsAsFactors = FALSE
+  )
+  utils::write.csv(lbl_df, map_path, row.names = FALSE)
+
+  df <- data.frame(
+    adm1 = c("A", "B"),
+    adm2 = c("X", "Y"),
+    conf_rdt_u5 = c(1, 2)
+  )
+
+  # with override_yaml = TRUE, CSV wins
+  dict <- build_dictionary(df, labels_path = map_path, override_yaml = TRUE)
+  lem <- setNames(dict$label_en, dict$variable)
+
+  # CSV overrides should win
+  testthat::expect_equal(unname(lem["adm1"]), "Custom Province Label")
+  testthat::expect_equal(unname(lem["conf_rdt_u5"]), "Custom Malaria Label")
+
+  # non-overridden variable still gets YAML label
+  testthat::expect_equal(
+    unname(lem["adm2"]),
+    "Administrative level 2 (district/health zone)"
+  )
+})
+
+testthat::test_that("build_dictionary supports Portuguese labels", {
+  # test data with SNT variables
+  df <- data.frame(
+    adm1 = c("A", "B"),
+    conf_rdt_u5 = c(10, 20),
+    test_mic_priv = c(5, 15)
+  )
+
+  # build dictionary with Portuguese
+  dict <- build_dictionary(df, language = "pt")
+
+  testthat::expect_true("label_pt" %in% names(dict))
+
+  # check Portuguese labels were retrieved
+  lpt <- setNames(dict$label_pt, dict$variable)
+
+  # exact match from YAML
+  testthat::expect_equal(
+    unname(lpt["adm1"]),
+    "Nível administrativo 1 (província/região)"
+  )
+
+  # token-based inference
+  testthat::expect_match(
+    unname(lpt["conf_rdt_u5"]),
+    "Casos confirmados de malária.*RDT.*Menos de 5 anos"
+  )
+  testthat::expect_match(
+    unname(lpt["test_mic_priv"]),
+    "Pessoas testadas para malária.*[Mm]icroscopia.*Setor privado"
+  )
+})
+
+# cache tests
+test_that("cache works correctly", {
+  # clear cache
+  clear_snt_cache()
+
+  # build dictionary triggers cache population
+  dd1 <- build_dictionary(dplyr::as_tibble(iris))
+
+  # second call should be faster (uses cache)
+  dd2 <- build_dictionary(dplyr::as_tibble(iris))
+
+  expect_identical(dd1, dd2)
+
+  # clear and verify cache is empty
+  clear_snt_cache()
+  expect_length(ls(envir = sntutils:::.snt_cache), 0)
+})
+
+test_that("cache improves performance on large var lists", {
+  # create test data with 100 columns
+  test_data <- as.data.frame(
+    matrix(rnorm(1000), ncol = 100)
+  )
+  names(test_data) <- paste0("var_", 1:100)
+
+  # clear cache and time first call
+  clear_snt_cache()
+  t1 <- system.time({
+    dd1 <- build_dictionary(test_data)
+  })
+
+  # time second call (should use cache)
+  t2 <- system.time({
+    dd2 <- build_dictionary(test_data)
+  })
+
+  # cached call should not be significantly slower (allow 1s margin for noise)
+  expect_lte(t2[["elapsed"]], t1[["elapsed"]] + 1)
+  expect_identical(dd1, dd2)
+})

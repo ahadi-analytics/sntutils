@@ -32,6 +32,7 @@ get_expected_data_structure <- function() {
       "1.1d_community_health_workers",
       "1.1e_population/1.1ei_national",
       "1.1e_population/1.1eii_worldpop_rasters",
+      "1.1e_population/1.1eiii_displaced_pop",
       "1.1f_cache_files"
     ),
     epidemiology = c(
@@ -50,7 +51,8 @@ get_expected_data_structure <- function() {
     simple_domains = c(
       "1.4_drug_efficacy_resistance",
       "1.7_entomology",
-      "1.8_commodities"
+      "1.8_commodities",
+      "1.9_finance"
     ),
     environment = c(
       "1.5a_climate",
@@ -84,7 +86,9 @@ testthat::test_that("create_data_structure creates correct folder hierarchy", {
     "1.5_environment",
     "1.6_health_systems",
     "1.7_entomology",
-    "1.8_commodities"
+    "1.8_commodities",
+    "1.9_finance",
+    "1.10_final"
   )
 
   for (domain in expected_domains) {
@@ -125,7 +129,11 @@ testthat::test_that("create_data_structure creates foundational subfolders", {
 
   # check nested population folders
   pop_base <- fs::path(foundational_base, "1.1e_population")
-  nested_folders <- c("1.1ei_national", "1.1eii_worldpop_rasters")
+  nested_folders <- c(
+    "1.1ei_national",
+    "1.1eii_worldpop_rasters",
+    "1.1eiii_displaced_pop"
+  )
 
   for (nested in nested_folders) {
     nested_path <- fs::path(pop_base, nested)
@@ -149,7 +157,8 @@ testthat::test_that("create_data_structure creates raw and processed folders", {
   simple_domains <- c(
     "1.4_drug_efficacy_resistance",
     "1.7_entomology",
-    "1.8_commodities"
+    "1.8_commodities",
+    "1.9_finance"
   )
 
   for (domain in simple_domains) {
@@ -176,6 +185,7 @@ testthat::test_that("create_data_structure creates raw and processed folders", {
     "1.1_foundational/1.1d_community_health_workers",
     "1.1_foundational/1.1e_population/1.1ei_national",
     "1.1_foundational/1.1e_population/1.1eii_worldpop_rasters",
+    "1.1_foundational/1.1e_population/1.1eiii_displaced_pop",
     "1.1_foundational/1.1f_cache_files",
     "1.2_epidemiology/1.2a_routine_surveillance",
     "1.3_interventions/1.3a_itns",
@@ -207,6 +217,36 @@ testthat::test_that("create_data_structure creates raw and processed folders", {
   cleanup_test_dir(test_dir)
 })
 
+testthat::test_that("create_data_structure creates final folder without subfolders", {
+  test_dir <- create_temp_test_dir()
+
+  create_data_structure(base_path = test_dir)
+
+  data_dir <- fs::path(test_dir, "01_data")
+  final_path <- fs::path(data_dir, "1.10_final")
+
+  # check that 1.10_final folder exists
+  testthat::expect_true(
+    fs::dir_exists(final_path),
+    info = "1.10_final folder should exist"
+  )
+
+  # check that raw and processed subfolders do NOT exist
+  raw_path <- fs::path(final_path, "raw")
+  processed_path <- fs::path(final_path, "processed")
+
+  testthat::expect_false(
+    fs::dir_exists(raw_path),
+    info = "1.10_final should NOT have raw subfolder"
+  )
+  testthat::expect_false(
+    fs::dir_exists(processed_path),
+    info = "1.10_final should NOT have processed subfolder"
+  )
+
+  cleanup_test_dir(test_dir)
+})
+
 testthat::test_that("create_data_structure creates other standard folders", {
   test_dir <- create_temp_test_dir()
 
@@ -215,7 +255,10 @@ testthat::test_that("create_data_structure creates other standard folders", {
   # check other standard project folders
   standard_folders <- c(
     "02_scripts",
-    "03_outputs/plots",
+    "03_outputs/3.1_validation/figures",
+    "03_outputs/3.1_validation/tables",
+    "03_outputs/3.2_intermediate_products/figures",
+    "03_outputs/3.3_final_snt_outputs/figures",
     "04_reports",
     "05_metadata_docs"
   )
@@ -330,7 +373,7 @@ testthat::test_that("initialize_project_structure creates base_path if missing",
   key_paths <- c(
     "01_data/1.1_foundational/1.1a_admin_boundaries",
     "02_scripts",
-    "03_outputs/plots"
+    "03_outputs/3.1_validation/figures"
   )
 
   for (path in key_paths) {
@@ -360,7 +403,7 @@ testthat::test_that("initialize_project_structure handles existing directories",
     fs::dir_exists(fs::path(test_dir, "01_data", "1.2_epidemiology"))
   )
   testthat::expect_true(
-    fs::dir_exists(fs::path(test_dir, "03_outputs", "plots"))
+    fs::dir_exists(fs::path(test_dir, "03_outputs", "3.1_validation", "figures"))
   )
 
   cleanup_test_dir(test_dir)
@@ -463,7 +506,9 @@ testthat::test_that("functions work together in typical workflow", {
     "01_data/1.2_epidemiology/1.2b_pfpr_estimates/processed",
     "01_data/1.3_interventions/1.3a_itns/raw",
     "02_scripts",
-    "03_outputs/plots",
+    "03_outputs/3.1_validation/figures",
+    "03_outputs/3.2_intermediate_products/tables",
+    "03_outputs/3.3_final_snt_outputs/figures",
     "04_reports",
     "05_metadata_docs"
   )
@@ -490,13 +535,18 @@ testthat::test_that("folder structure matches ahadi project standards", {
     "01_data/1.1_foundational/1.1d_community_health_workers",
     "01_data/1.1_foundational/1.1e_population/1.1ei_national",
     "01_data/1.1_foundational/1.1e_population/1.1eii_worldpop_rasters",
+    "01_data/1.1_foundational/1.1e_population/1.1eiii_displaced_pop",
     # domain-specific organization
     "01_data/1.2_epidemiology/1.2a_routine_surveillance",
     "01_data/1.5_environment/1.5b_accessibility",
     "01_data/1.6_health_systems/1.6a_dhs",
     # consistent raw/processed structure
     "01_data/1.7_entomology/raw",
-    "01_data/1.8_commodities/processed"
+    "01_data/1.8_commodities/processed",
+    "01_data/1.9_finance/raw",
+    "01_data/1.9_finance/processed",
+    # final folder without subfolders
+    "01_data/1.10_final"
   )
 
   for (path in ahadi_specific_paths) {

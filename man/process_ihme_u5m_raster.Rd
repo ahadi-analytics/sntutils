@@ -4,8 +4,7 @@
 \alias{process_ihme_u5m_raster}
 \title{Extract Under-5 Mortality Values from IHME Raster Stack}
 \source{
-\url{https://ghdx.healthdata.org/record/ihme-data/
-     lmic-under5-mortality-rate-geospatial-estimates-2000-2017}
+\url{https://ghdx.healthdata.org/record/ihme-data/lmic-under5-mortality-rate-geospatial-estimates-2000-2017}
 }
 \usage{
 process_ihme_u5m_raster(

@@ -1,5 +1,25 @@
 # helpers ----------------------------------------------------------------------
 
+#' smart round: 2 decimals for doubles, preserve integers (internal)
+#'
+#' @param x numeric scalar to format.
+#'
+#' @return character string.
+#'
+#' @keywords internal
+#' @noRd
+.smart_round <- function(x) {
+  if (base::is.numeric(x) && !base::inherits(x, c("Date", "POSIXt"))) {
+    base::ifelse(
+      x == base::floor(x),
+      base::as.character(base::as.integer(x)),
+      base::as.character(base::round(x, 2))
+    )
+  } else {
+    base::as.character(x)
+  }
+}
+
 #' guess a compact semantic type (internal)
 #'
 #' @description
@@ -121,9 +141,17 @@
     base::unique(utils::head(x, n))
   }
 
+  # apply smart rounding for numeric values
+  formatted_vals <- if (base::is.numeric(vals) &&
+                        !base::inherits(vals, c("Date", "POSIXt"))) {
+    base::vapply(vals, .smart_round, character(1))
+  } else {
+    base::as.character(vals)
+  }
+
   # collapse into a string
   out <- base::paste(
-    utils::head(base::as.character(vals), n),
+    utils::head(formatted_vals, n),
     collapse = ", "
   )
 
@@ -160,8 +188,8 @@
   # compute range
   rng <- base::range(x2)
 
-  # return as character
-  c(base::as.character(rng[1L]), base::as.character(rng[2L]))
+  # return as character with smart rounding
+  c(.smart_round(rng[1L]), .smart_round(rng[2L]))
 }
 
 #' read a name/label mapping from csv (internal)
@@ -373,9 +401,17 @@
     base::unique(utils::head(x, n))
   }
 
+  # apply smart rounding for numeric values
+  formatted_vals <- if (base::is.numeric(vals) &&
+                        !base::inherits(vals, c("Date", "POSIXt"))) {
+    base::vapply(vals, .smart_round, character(1))
+  } else {
+    base::as.character(vals)
+  }
+
   # collapse into a string
   out <- base::paste(
-    utils::head(base::as.character(vals), n),
+    utils::head(formatted_vals, n),
     collapse = ", "
   )
 
@@ -412,8 +448,8 @@
   # compute range
   rng <- base::range(x2)
 
-  # return as character
-  c(base::as.character(rng[1L]), base::as.character(rng[2L]))
+  # return as character with smart rounding
+  c(.smart_round(rng[1L]), .smart_round(rng[2L]))
 }
 
 #' read a name/label mapping from csv (internal)
@@ -502,6 +538,85 @@
   out
 }
 
+#' match SNT variables with multilingual labels (internal)
+#'
+#' @description
+#' matches variable names against the snt_var_tree dataset using vectorized
+#' exact match first, then batch token structure detection for unmatched.
+#'
+#' @param vars character vector of variable names
+#' @param target_lang target language ("en", "fr", "pt")
+#' @param tree_data optional snt_var_tree data object (unused, for compatibility)
+#' @param verbose logical; if TRUE, prints fuzzy match info messages
+#'
+#' @return tibble with variable and label columns
+#' @noRd
+.match_snt_labels <- function(vars,
+                              target_lang = "en",
+                              tree_data = NULL,
+                              verbose = TRUE) {
+  # get cached lookup vectors for all languages
+  lookup_en <- .get_lookup_vector_cached("en")
+  lookup_fr <- .get_lookup_vector_cached("fr")
+  lookup_pt <- .get_lookup_vector_cached("pt")
+
+  # vectorized exact match
+  results <- tibble::tibble(
+    variable = vars,
+    label_en = lookup_en[vars],
+    label_fr = lookup_fr[vars],
+    label_pt = lookup_pt[vars]
+  )
+
+  # find unmatched variables with underscores (potential SNT vars)
+  unmatched_idx <- base::which(
+    base::is.na(results$label_en) & base::grepl("_", vars)
+  )
+
+  if (base::length(unmatched_idx) > 0) {
+    # batch process unmatched variables
+    unmatched_vars <- vars[unmatched_idx]
+
+    # use cached flat tree and schema
+    flat_tree <- .get_flat_tree_cached()
+    schema <- .get_schema_cached()
+
+    for (i in base::seq_along(unmatched_idx)) {
+      idx <- unmatched_idx[i]
+      nm <- unmatched_vars[i]
+
+      # try check_snt_var with pre-loaded data
+      det <- tryCatch(
+        check_snt_var(
+          nm,
+          return = TRUE,
+          schema = schema,
+          var_tree = list(schema = schema, flat_tree = flat_tree),
+          verbose = verbose
+        ),
+        error = function(e) NULL
+      )
+
+      if (!base::is.null(det)) {
+        results$label_en[idx] <- det$label_en
+        results$label_fr[idx] <- det$label_fr
+        if ("label_pt" %in% base::names(det)) {
+          results$label_pt[idx] <- det$label_pt
+        }
+      }
+    }
+  }
+
+  # select target language
+  lang_col <- base::paste0("label_", target_lang)
+  if (!lang_col %in% base::names(results)) {
+    lang_col <- "label_en"
+  }
+
+  results$label <- results[[lang_col]]
+  dplyr::select(results, variable, label)
+}
+
 # main -------------------------------------------------------------------------
 
 #' build a compact data dictionary
@@ -520,6 +635,10 @@
 #' @param max_levels max factor levels to summarize in notes. default 50.
 #' @param n_examples number of example values to show. default 3.
 #' @param trans_cache_path optional cache dir for translate_text_vec().
+#' @param override_yaml logical; if TRUE, CSV labels override YAML labels.
+#'   default FALSE (YAML takes precedence).
+#' @param verbose logical; if TRUE (default), prints info messages such as
+#'   fuzzy match notifications.
 #'
 #' @return tibble with:
 #'   variable, type, label_en, n, n_missing, pct_missing, n_unique,
@@ -528,6 +647,10 @@
 #' @details
 #' english labels are merged as: internal defaults, then csv overrides.
 #' unknown variables fall back to their column name.
+#'
+#' performance: the snt variable tree is cached in a package environment on
+#' first use. subsequent calls reuse the flattened tree. the cache automatically
+#' refreshes when the tree version changes (tracked via _meta$last_updated).
 #'
 #' @examples
 #' dd <- build_dictionary(dplyr::as_tibble(iris))
@@ -540,11 +663,13 @@ build_dictionary <- function(
   language = NULL,
   max_levels = 50L,
   n_examples = 3L,
-  trans_cache_path = NULL
+  trans_cache_path = NULL,
+  override_yaml = FALSE,
+  verbose = TRUE
 ) {
-  # validate input
-  if (!base::inherits(data, "data.frame")) {
-    cli::cli_abort("`data` must be a data.frame or tibble.")
+  # validate input (sf objects inherit from data.frame)
+  if (!base::inherits(data, "data.frame") && !base::inherits(data, "sf")) {
+    cli::cli_abort("`data` must be a data.frame, tibble, or sf object.")
   }
   if (!base::is.null(language) && !base::is.character(language)) {
     cli::cli_abort("`language` must be NULL or a character scalar.")
@@ -697,13 +822,31 @@ build_dictionary <- function(
     base::do.call(base::rbind, base::lapply(rows, base::as.data.frame))
   )
 
-  # attach english labels; fall back to variable name
+  # step 1: YAML-based SNT auto-labelling
+  snt_lbls <- .match_snt_labels(dict$variable, target_lang = "en", verbose = verbose)
+  dict <- dplyr::left_join(dict, snt_lbls, by = "variable") |>
+    dplyr::rename(label_yaml = label)
+
+  # step 2: combine with user-provided or base map labels
   label_en <- base::unname(lbl_map[dict$variable])
-  fill_name <- base::is.na(label_en) | !base::nzchar(label_en)
-  if (base::any(fill_name)) {
-    label_en[fill_name] <- dict$variable[fill_name]
+
+  if (override_yaml) {
+    # CSV takes precedence over YAML
+    dict$label_en <- dplyr::coalesce(
+      label_en,         # CSV first
+      dict$label_yaml,  # then YAML
+      dict$variable     # fallback to variable name
+    )
+  } else {
+    # YAML takes precedence over CSV (default)
+    dict$label_en <- dplyr::coalesce(
+      dict$label_yaml,  # YAML first
+      label_en,         # then CSV
+      dict$variable     # fallback to variable name
+    )
   }
-  dict$label_en <- label_en
+
+  dict$label_yaml <- NULL  # remove temp column
 
   # optional translation
   if (!base::is.null(language) && base::nzchar(language)) {
@@ -715,84 +858,102 @@ build_dictionary <- function(
       # set column name
       coln <- base::paste0("label_", trg)
 
-      # use package translator if present (resolve from package namespace)
-      tr_fn <- tryCatch(
-        utils::getFromNamespace("translate_text_vec", "sntutils"),
-        error = function(e) NULL
+      # step 1: check snt_var_tree for existing translations
+      snt_lbls_trg <- .match_snt_labels(
+        dict$variable,
+        target_lang = trg,
+        verbose = FALSE
       )
+      existing_trans <- snt_lbls_trg$label
 
-      # translate unique english labels in small chunks
-      # on chunk error, fall back per‑item; keep others intact
-      if (base::is.function(tr_fn)) {
-        # deduplicate english labels to reduce calls
-        en_labels <- base::as.character(dict$label_en)
-        uniq_labels <- base::unique(en_labels)
+      # step 2: only translate labels not found in snt_var_tree
+      en_labels <- base::as.character(dict$label_en)
+      needs_translation <- base::is.na(existing_trans) | !base::nzchar(existing_trans)
 
-        # storage for translated values keyed by english label
-        translated_map <- stats::setNames(
-          object = base::rep(NA_character_, base::length(uniq_labels)),
-          nm = uniq_labels
+      # start with existing translations
+      final_labels <- existing_trans
+
+      # translate missing labels via API if any
+      if (base::any(needs_translation)) {
+        # use package translator if present
+        tr_fn <- tryCatch(
+          utils::getFromNamespace("translate_text_vec", "sntutils"),
+          error = function(e) NULL
         )
 
-        # chunk parameters (small by default to reduce rate limits)
-        chunk_size <- 25L
-        starts <- base::seq.int(1L, base::length(uniq_labels), by = chunk_size)
+        if (base::is.function(tr_fn)) {
+          # get unique labels that need translation
+          labels_to_translate <- en_labels[needs_translation]
+          uniq_to_translate <- base::unique(labels_to_translate)
 
-        # helper: translate a character vector with safe fallback
-        safe_translate_vec <- function(items) {
-          # try vector call first
-          args <- list(text = items, target_language = trg)
-          if (!base::is.null(trans_cache_path)) {
-            args$cache_path <- trans_cache_path
-          }
-          out <- tryCatch(
-            base::do.call(tr_fn, args),
-            error = function(e) NULL
+          # storage for translated values
+          translated_map <- stats::setNames(
+            object = base::rep(NA_character_, base::length(uniq_to_translate)),
+            nm = uniq_to_translate
           )
-          if (!base::is.null(out)) {
-            out_chr <- base::as.character(out)
-            out_chr[base::is.na(out_chr) | !base::nzchar(out_chr)] <-
-              items
-            return(out_chr)
-          }
-          # per‑item fallback on vector error
-          per <- base::character(base::length(items))
-          for (k in base::seq_along(items)) {
-            one <- tryCatch(
-              {
-                args1 <- list(text = items[k], target_language = trg)
-                if (!base::is.null(trans_cache_path)) {
-                  args1$cache_path <- trans_cache_path
-                }
-                base::do.call(tr_fn, args1)
-              },
-              error = function(e) items[k]
-            )
-            if (base::length(one) == 0L || base::is.na(one)) {
-              one <- items[k]
+
+          # chunk parameters
+          chunk_size <- 25L
+          starts <- base::seq.int(
+            1L,
+            base::length(uniq_to_translate),
+            by = chunk_size
+          )
+
+          # helper: translate with safe fallback
+          safe_translate_vec <- function(items) {
+            args <- list(text = items, target_language = trg)
+            if (!base::is.null(trans_cache_path)) {
+              args$cache_path <- trans_cache_path
             }
-            per[k] <- base::as.character(one)
+            out <- tryCatch(
+              base::do.call(tr_fn, args),
+              error = function(e) NULL
+            )
+            if (!base::is.null(out)) {
+              out_chr <- base::as.character(out)
+              out_chr[base::is.na(out_chr) | !base::nzchar(out_chr)] <- items
+              return(out_chr)
+            }
+            # per-item fallback
+            per <- base::character(base::length(items))
+            for (k in base::seq_along(items)) {
+              one <- tryCatch(
+                {
+                  args1 <- list(text = items[k], target_language = trg)
+                  if (!base::is.null(trans_cache_path)) {
+                    args1$cache_path <- trans_cache_path
+                  }
+                  base::do.call(tr_fn, args1)
+                },
+                error = function(e) items[k]
+              )
+              if (base::length(one) == 0L || base::is.na(one)) one <- items[k]
+              per[k] <- base::as.character(one)
+            }
+            per
           }
-          per
-        }
 
-        # process chunks
-        for (s in starts) {
-          e <- base::min(s + chunk_size - 1L, base::length(uniq_labels))
-          chunk <- uniq_labels[s:e]
-          tr_chunk <- safe_translate_vec(chunk)
-          translated_map[chunk] <- tr_chunk
-        }
+          # process chunks
+          for (s in starts) {
+            e <- base::min(s + chunk_size - 1L, base::length(uniq_to_translate))
+            chunk <- uniq_to_translate[s:e]
+            tr_chunk <- safe_translate_vec(chunk)
+            translated_map[chunk] <- tr_chunk
+          }
 
-        # map back to full vector; fill any NAs with english
-        fr_labels <- translated_map[en_labels]
-        miss <- base::is.na(fr_labels) | !base::nzchar(fr_labels)
-        if (base::any(miss)) fr_labels[miss] <- en_labels[miss]
-        dict[[coln]] <- base::unname(fr_labels)
-      } else {
-        # translator not available: mirror english labels
-        dict[[coln]] <- dict$label_en
+          # fill in translated values for missing entries
+          final_labels[needs_translation] <- translated_map[labels_to_translate]
+        }
       }
+
+      # fallback to english for any remaining NAs
+      still_missing <- base::is.na(final_labels) | !base::nzchar(final_labels)
+      if (base::any(still_missing)) {
+        final_labels[still_missing] <- en_labels[still_missing]
+      }
+
+      dict[[coln]] <- base::unname(final_labels)
     }
   }
 

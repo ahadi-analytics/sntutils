@@ -10,7 +10,12 @@ reporting_rate_plot(
   y_var = NULL,
   vars_of_interest = NULL,
   hf_col = NULL,
+  reprate_col = NULL,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  method = 3,
+  nonreport_window = 6,
+  reporting_rule = "any_non_na",
+  require_all = FALSE,
   use_reprate = TRUE,
   full_range = TRUE,
   weighting = FALSE,
@@ -31,7 +36,10 @@ reporting_rate_plot(
   plot_height = NULL,
   plot_dpi = 300,
   show_plot = TRUE,
-  y_axis_label = NULL
+  include_plot_title = FALSE,
+  y_axis_label = NULL,
+  x_axis_breaks = 6,
+  ...
 )
 }
 \arguments{
@@ -46,11 +54,39 @@ reporting_rate_plot(
 to be visualized in 'data'. If NULL, all variables except 'x_var' and
 'y_var' will be used.}
 
-\item{hf_col}{Facility variable name if needed}
+\item{hf_col}{Character. Optional (defaults to NULL). Name of the column
+containing unique health facility IDs. When provided with key_indicators,
+enables facility-level analysis and proper exclusion of inactive facilities
+from denominators, resulting in more accurate missing rates.}
+
+\item{reprate_col}{Character. Optional (defaults to NULL). Name of a column
+containing pre-calculated facility-level reporting rates. When provided, the
+function aggregates this column by x_var (and y_var if specified) instead of
+calculating reporting rates from raw indicators. The column should contain
+numeric values in decimal (0-1) or percentage (0-100) format. When using this
+parameter, vars_of_interest and calculation-related parameters (key_indicators,
+method, nonreport_window, reporting_rule, require_all, weighting, etc.) are
+ignored. The hf_col parameter can still be used for counting facilities.}
 
 \item{key_indicators}{Optional. Character vector of indicators used to define
 facility activity in scenario 1. Defaults to
 \code{c("allout", "conf", "test", "treat", "pres")}.}
+
+\item{method}{Character or numeric. Classification method for facility activity
+status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
+Defaults to 3. See \code{\link{classify_facility_activity}} for details.}
+
+\item{nonreport_window}{Integer. Minimum number of consecutive non-reporting
+months to classify a facility as inactive in method 3. Defaults to 6.}
+
+\item{reporting_rule}{Character. Defines what counts as reporting:
+\code{"any_non_na"} (default, counts NA as non-reporting, 0 counts as reported)
+or \code{"positive_only"} (requires >0 value to count as reported).}
+
+\item{require_all}{Logical. When TRUE and multiple vars_of_interest are
+provided, calculates the proportion of facilities reporting ALL variables
+(complete data). When FALSE (default), calculates per-variable reporting
+rates. Only applies to facility-level analysis (when hf_col is provided).}
 
 \item{use_reprate}{A logical value. If TRUE, the reporting rate is
 visualized; otherwise, the proportion of missing data is visualized.
@@ -114,8 +150,16 @@ Default is 300.}
 \item{show_plot}{Logical. If FALSE, the plot is returned invisibly (not displayed).
 Useful when only saving plots. Default is TRUE.}
 
+\item{include_plot_title}{Logical. If TRUE, plot titles and subtitles are included.
+If FALSE, titles are hidden. Default is FALSE.}
+
 \item{y_axis_label}{Optional character string for y-axis label. If NULL,
 defaults to y_var name or "Variable" for variable scenario.}
+
+\item{x_axis_breaks}{Numeric value specifying the interval for x-axis breaks.
+Default \code{6}. For example, \code{2} shows every second tick and \code{6} every sixth.}
+
+\item{...}{Additional arguments passed to internal functions.}
 }
 \value{
 A ggplot2 object. When show_plot is FALSE, returns invisibly.
@@ -134,7 +178,7 @@ can handle three different scenarios:
 \examples{
 # Sample data
 hf_data <- data.frame(
-  month = rep(c("Jan", "Feb", "Mar"), each = 10),
+  month = rep(as.Date(c("2024-01-01", "2024-02-01", "2024-03-01")), each = 10),
   district = rep(c("North", "South"), each = 5, times = 3),
   facility_id = rep(1:5, times = 6),
   malaria = c(
@@ -154,7 +198,8 @@ reporting_rate_plot(
   data = hf_data,
   x_var = "month",
   y_var = "district",
-  vars_of_interest = c("malaria", "pneumonia")
+  vars_of_interest = c("malaria", "pneumonia"),
+  hf_col = NULL
 )
 
 # Scenario 2: Variable-level analysis - missing rate by variable over time
@@ -162,15 +207,34 @@ reporting_rate_plot(
   data = hf_data,
   x_var = "month",
   vars_of_interest = c("malaria", "pneumonia"),
-  use_reprate = FALSE
+  use_reprate = FALSE,
+  hf_col = NULL
 )
 
 # Scenario 3: Facility-level analysis - reporting rate by facility
+# This properly excludes inactive facilities from denominators
 reporting_rate_plot(
   data = hf_data,
   x_var = "month",
   y_var = "district",
-  vars_of_interest = "malaria",
-  hf_col = "facility_id"
+  vars_of_interest = c("malaria", "pneumonia"),  # Multiple variables now allowed!
+  hf_col = "facility_id",
+  key_indicators = c("malaria", "pneumonia"),  # Define activity based on these
+  method = 3,  # Dynamic activation method
+  nonreport_window = 6  # Facilities inactive after 6 months of non-reporting
+)
+
+# Scenario 4: Using pre-calculated reporting rates
+# When data already has facility-level reporting rates calculated
+hf_data_with_reprate <- hf_data
+hf_data_with_reprate$reporting_rate <- runif(nrow(hf_data_with_reprate), 0, 1)
+
+reporting_rate_plot(
+  data = hf_data_with_reprate,
+  x_var = "month",
+  y_var = "district",
+  reprate_col = "reporting_rate",  # Use pre-calculated rates
+  hf_col = "facility_id",
+  use_reprate = TRUE
 )
 }

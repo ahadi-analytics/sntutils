@@ -1,0 +1,43 @@
+{
+  "R": {
+    "Version": "4.5.0",
+    "Repositories": [
+      {
+        "Name": "CRAN",
+        "URL": "https://packagemanager.posit.co/cran/latest"
+      }
+    ]
+  },
+  "Packages": {
+    "devtools": {
+      "Package": "devtools",
+      "Version": "2.4.5",
+      "Source": "Repository"
+    },
+    "testthat": {
+      "Package": "testthat",
+      "Version": "3.2.3",
+      "Source": "Repository"
+    },
+    "roxygen2": {
+      "Package": "roxygen2",
+      "Version": "7.3.2",
+      "Source": "Repository"
+    },
+    "pkgdown": {
+      "Package": "pkgdown",
+      "Version": "2.1.2",
+      "Source": "Repository"
+    },
+    "wesanderson": {
+      "Package": "wesanderson",
+      "Version": "0.3.7",
+      "Source": "Repository"
+    },
+    "shadowtext": {
+      "Package": "shadowtext",
+      "Version": "0.1.5",
+      "Source": "Repository"
+    }
+  }
+}

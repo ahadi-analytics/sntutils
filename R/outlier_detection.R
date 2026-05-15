@@ -1,28 +1,28 @@
-# sntutils/R/outlier_detection.R
-# orchestrates outlier detection and reporting utilities.
-# anchors the public API for identifying anomalous malaria indicators.
-# RELEVANT FILES:R/write_snt_data.R,R/process_rasters.R
-#' Detect outliers with guardrails, consensus, and seasonal fallbacks
+#' Detect outliers with guardrails and consensus
 #'
 #' @description
 #' `detect_outliers()` evaluates a numeric indicator by administrative unit and
-#' time using three methods (mean +/- SD, median +/- MAD, Tukey IQR).
-#' It enforces reporting and sample-size guardrails, supports strictness
-#' presets, and when requested applies a seasonality ladder
-#' (same-month -> neighbours -> residual -> across-time) to select stable
-#' comparison pools. It returns per-method flags (optional), a consensus
-#' classification, scale statistics, and metadata recording any fallback used.
+#' time using three methods (mean + SD, median + MAD, Tukey upper fence) to
+#' identify unusually HIGH values only (potential outbreaks or data anomalies).
+#' Low values are NOT flagged as outliers. It enforces reporting and sample-size
+#' guardrails, supports strictness presets. Optional outbreak classification
+#' distinguishes between isolated outliers and sustained outbreak patterns using
+#' gap-aware clustering that can bridge short interruptions in the outbreak
+#' signal. It returns per-method flags (optional), a consensus classification,
+#' scale statistics, and metadata.
 #'
 #' @param data Data frame containing the indicator to analyse.
 #' @param column Name of the numeric column to evaluate.
 #' @param record_id Unique record identifier column.
 #' @param admin_level Character vector of administrative level columns for
 #'   parallel grouping, ordered from higher to lower resolution.
-#'   Defaults to `c("adm1", "adm2")`. Used for efficient data.table grouping.
+#'   Defaults to `c("adm1", "adm2")`.
 #' @param date Date column (Date, POSIXt, or parseable character string).
 #'   Year, month, and yearmon are automatically derived from this column.
 #' @param time_mode Pooling strategy: `"across_time"`, `"within_year"`, or
-#'   `"by_month"`. `"by_month"` activates the seasonal fallback ladder.
+#'   `"seasonal"`. Seasonal mode groups by month across all years (e.g., all
+#'   Januaries together), useful for detecting values that are unusual for a
+#'   specific month regardless of year.
 #' @param value_type Indicator type: `"count"` or `"rate"`. Counts floor lower
 #'   bounds at 0.
 #'
@@ -45,10 +45,10 @@
 #'   threshold receive `reason = "low_reporting"` and are not flagged.
 #'
 #' @param key_indicators_hf Optional character vector of indicator names used to
-#'   determine facility activeness. If supplied, the function calls
-#'   `classify_facility_activity()` internally to exclude inactive health
-#'   facilities from outlier detection. Inactive facility-months are tagged with
-#'   `reason = "inactive_facility"` and excluded from detection. If `NULL`
+#'   determine facility activeness. If supplied, the function uses a fast path
+#'   to filter out inactive facility-months. A facility-month is considered
+#'   active if ANY of the specified key indicators have non-NA values.
+#'   Inactive facility-months are excluded from outlier detection. If `NULL`
 #'   (default), activeness filtering is skipped. Typical indicators include
 #'   `"allout"`, `"test"`, or `"conf"`. This adjustment prevents false positives
 #'   caused by facilities that start or stop reporting mid-period.
@@ -65,24 +65,31 @@
 #'   `"standard"` (lean + per-method flags + bounds + seasonality mode),
 #'   `"audit"` (all columns for full reproducibility). Default `"standard"`.
 #'
-#' @param seasonal_pool_years Rolling history window (in years) for same-month
-#'   pooling when `time_mode = "by_month"`. Default `5`.
-#' @param min_years_per_month Minimum distinct years required in the same-month
-#'   pool before moving to a fallback. Default `3`.
-#'
 #' @param verbose Logical. When `TRUE`, prints an informative summary showing
 #'   which methods are being applied, the pooling strategy, strictness settings,
 #'   guardrails, and consensus rule. Default is `FALSE`.
-#' @param cache_stats Logical. Cache intermediate statistical calculations
-#'   to improve performance across seasonal pools. Default is `TRUE`.
-#' @param cache_dir Character string specifying directory for file-based cache.
-#'   If NULL (default), uses project cache directory or tempdir(). Cache persists
-#'   across R sessions for reproducible performance gains.
 #' @param spatial_level Character string specifying the finest spatial unit
 #'   for analysis (e.g., "hf_uid" for facility-level). When specified,
-#'   `admin_levels` defines grouping boundaries while `spatial_level` defines
+#'   `admin_level` defines grouping boundaries while `spatial_level` defines
 #'   the unit of analysis. This prevents excessive grouping while maintaining
-#'   spatial granularity. Default is `NULL` (uses most granular admin level).
+#'   spatial granularity. Default is `hf_uid`.
+#' @param classify_outbreaks Logical. When `TRUE` (default), applies outbreak
+#'   classification to distinguish between isolated outliers and sustained
+#'   outbreak patterns. Consecutive outliers meeting the outbreak criteria are
+#'   reclassified from "outlier" to "outbreak". This is particularly useful
+#'   for epidemiological surveillance to identify disease outbreak patterns.
+#'   Set to `FALSE` to disable outbreak classification.
+#' @param outbreak_min_run Integer. Minimum number of consecutive outliers
+#'   required to classify as an outbreak (default `2`). Must be >= 2.
+#' @param outbreak_prop_tolerance Numeric. Proportional tolerance for outbreak
+#'   consistency (default `0.9`). Values within this tolerance of the run
+#'   median are considered consistent. Range: (0, 1).
+#' @param outbreak_max_gap Integer. Maximum allowed gap (non-outlier months)
+#'   between outliers that can still be considered part of the same outbreak
+#'   (default `1`). For example, with `outbreak_max_gap = 12`, the pattern
+#'   "outlier-normal-outlier-outlier" would be classified as one outbreak
+#'   of length 3, rather than separate incidents. Set to `0` for strict
+#'   consecutive-only outbreaks. Useful for real-world data with reporting gaps.
 #'
 #' @details
 #' **Workflow**
@@ -97,15 +104,11 @@
 #'    one step toward lenient.
 #' 4) Guardrails: rows failing `reporting_rate_min` or `min_n` bypass flagging
 #'    and record `reason` (`low_reporting`, `insufficient_n`,
-#'    `insufficient_seasonal_history`).
-#' 5) Seasonality (if `time_mode = "by_month"`): ladder applied in order:
-#'    same-month (rolling `seasonal_pool_years`), neighbours (m +/- 1 with
-#'    weights 2:1), residual (remove month fixed effects), across-time (with
-#'    strictness shift), then exclusion if still inadequate. Each row records
-#'    `seasonality_mode_used`, window text, and any fallback reason.
-#' 6) Flagging: each method classifies rows respecting guardrails and unstable
-#'    scales (when `sd`, `mad`, or `iqr` equals zero the method is suppressed
-#'    and marked `unstable_scale`).
+#'    `insufficient_data`).
+#' 6) Flagging: each method checks if values exceed the UPPER threshold only
+#'    (e.g., mean + multiplier x SD). Low values are never flagged. Methods
+#'    are suppressed when scales are unstable (`sd`, `mad`, or `iqr`
+#'    equals zero).
 #' 7) Consensus: final `outlier_flag_consensus` requires at least
 #'    `consensus_rule` methods to agree over available (non-suppressed) methods.
 #'
@@ -116,59 +119,68 @@
 #' epidemiological changes. For example, if ten new facilities start reporting
 #' in Matoto in mid-2022, the total number of confirmed cases rises even if
 #' incidence per facility remains constant. To prevent such artefacts,
-#' `detect_outliers()` can optionally apply activeness filtering using
-#' `classify_facility_activity()`. Only active facilities (those that reported
-#' at least one of the specified key indicators in a given month) contribute to
-#' the comparison pool for outlier detection. This step improves
-#' interpretability of results and reduces false positives in areas with
-#' variable reporting completeness or frequent facility additions.
+#' `detect_outliers()` uses a fast, optimized approach for activeness filtering.
+#' When `key_indicators_hf` is specified, the function checks if each
+#' facility-month has ANY non-NA values in the specified key indicators.
+#' Only facility-months with at least one reported key indicator contribute to
+#' the comparison pool for outlier detection. This lightweight approach avoids
+#' the computational overhead of full activity classification while still
+#' preventing false positives from inactive facilities.
 #'
-#' **Presets**
-#' - lenient: SD 4.0; MAD constant 1.4826, MAD mult 12; IQR 3.0
-#' - balanced: SD 3.0; MAD constant 1.4826, MAD mult 9; IQR 2.0
-#' - strict: SD 2.5; MAD constant 1.4826, MAD mult 6; IQR 1.5
+#' **Presets** (for high outliers only)
+#' - lenient: values > mean + 4.0 x SD, median + 12 x MAD,
+#'   or Q3 + 3.0 x IQR
+#' - balanced: values > mean + 3.0 x SD, median + 9 x MAD,
+#'   or Q3 + 2.0 x IQR
+#' - strict: values > mean + 2.5 x SD, median + 6 x MAD,
+#'   or Q3 + 1.5 x IQR
 #' - advanced: use user-supplied multipliers
 #'
-#' **Seasonality ladder thresholds**
-#' - same-month requires `min_years_per_month` and `min_n` within the
-#'   `seasonal_pool_years` window; otherwise fall back as above.
+#' Note: Only values ABOVE the upper thresholds are flagged. Low values are
+#' always classified as "normal" regardless of how far below the mean/median.
 #'
 #' The returned tibble always contains identifiers, scale statistics, bounds,
-#' strictness and seasonality metadata, and the guardrail reason. When
-#' `output_profile = "standard"` or `"audit"`, method-specific flags are
-#' included alongside the consensus.
+#' strictness metadata, and the guardrail reason. When `output_profile =
+#' "standard"` or `"audit"`, method-specific flags are included alongside
+#' the consensus.
 #'
 #' @return Tibble with outlier classifications and metadata. Columns include:
 #'   identifiers (`record_id`, admin levels, `yearmon`, `year`, derived
 #'   `month`), `column_name`, `value`, `value_type`, scale stats (`mean`,
-#'   `sd`, `median`, `mad`, `q1`, `q3`, `iqr`), method bounds, residual stats
-#'   (if residual fallback), `n_in_group`, guardrail `reason`, method flags
-#'   (optional), `outlier_flag_consensus`, seasonality descriptors, strictness
-#'   multipliers, fallback information, and (if activeness filtering was
-#'   applied) `activeness_applied` and `key_indicators_used`.
+#'   `sd`, `median`, `mad`, `q1`, `q3`, `iqr`), method bounds, `n_in_group`,
+#'   guardrail `reason`, method flags (optional), `outlier_flag_consensus`,
+#'   strictness multipliers, and (if activeness filtering was applied)
+#'   `activeness_applied` and `key_indicators_used`.
+#'
+#'   **Outlier flag categories are simplified to three intuitive groups:**
+#'   - `"normal"`: Values within expected statistical bounds
+#'   - `"outlier"`: Values exceeding thresholds (potential anomalies/outbreaks)
+#'   - `"insufficient_data"`: Various data quality issues preventing
+#'    determination (consolidates insufficient_n, insufficient_evidence,
+#'    unstable_scale, etc.)
 #'
 #' @examples
 #' \dontrun{
+#' # NOTE: Only HIGH values are flagged as outliers (e.g., disease outbreaks).
+#' # Low values are always considered "normal".
+#'
 #' # 1) Minimal consensus output at adm1-only level
 #' detect_outliers(
 #'   data = malaria_data,
 #'   column = "confirmed_cases",
 #'   date = "date",
 #'   record_id = "facility_id",
-#'   admin_levels = c("adm1"),        # ignore adm2 if not present
+#'   admin_level = c("adm1"),        # ignore adm2 if not present
 #'   time_mode = "across_time"
 #' )
 #'
-#' # 2) Seasonality with fallbacks
-#' #    (same-month -> neighbours -> residual -> across-time)
+#' # 2) Within-year comparison
 #' detect_outliers(
 #'   data = malaria_data,
 #'   column = "confirmed_cases",
 #'   date = "date",
-#'   admin_levels = c("adm1"),
-#'   time_mode = "by_month",
-#'   seasonal_pool_years = 5,
-#'   min_years_per_month = 3,
+#'   admin_level = c("adm1"),
+#'   time_mode = "within_year",
 #'   consensus_rule = 2,
 #'   output_profile = "audit"
 #' )
@@ -192,42 +204,64 @@
 #'   data = malaria_data,
 #'   column = "conf",
 #'   date = "date",
-#'   admin_levels = c("adm1", "adm2"),
-#'   time_mode = "by_month",
+#'   admin_level = c("adm1", "adm2"),
+#'   time_mode = "across_time",
 #'   key_indicators_hf = c("allout", "test", "conf")
+#' )
+#'
+#' # 5) With binary activeness classification
+#' detect_outliers(
+#'   data = malaria_data,
+#'   column = "conf",
+#'   date = "date",
+#'   admin_level = c("adm1", "adm2"),
+#'   time_mode = "across_time",
+#'   key_indicators_hf = c("allout", "test", "conf")
+#' )
+#'
+#' # 6) Seasonal comparison (same month across years)
+#' # Compares all Januaries together, all Februaries together, etc.
+#' # Useful for detecting values unusual for a specific month
+#' detect_outliers(
+#'   data = malaria_data,
+#'   column = "conf",
+#'   date = "date",
+#'   admin_level = c("adm1", "adm2"),
+#'   time_mode = "seasonal"
 #' )
 #' }
 #' @export
 detect_outliers <- function(
-    data,
-    column,
-    record_id = "record_id",
-    admin_level = c("adm1", "adm2"),
-    date = "date",
-    time_mode = c("by_month", "across_time", "within_year"),
-    value_type = c("count", "rate"),
-    strictness = c("balanced", "lenient", "strict", "advanced"),
-    sd_multiplier = 3,
-    mad_constant = 1.4826,
-    mad_multiplier = 9,
-    iqr_multiplier = 2,
-    min_n = 8,
-    reporting_rate_col = NULL,
-    reporting_rate_min = 0.5,
-    key_indicators_hf = NULL,
-    methods = c("iqr", "median", "mean", "consensus"),
-    consensus_rule = 2,
-    output_profile = c("standard", "lean", "audit"),
-    seasonal_pool_years = 5,
-    min_years_per_month = 3,
-    verbose = TRUE,
-    cache_stats = TRUE,
-    cache_dir = NULL,
-    spatial_level = NULL) {
+  data,
+  column,
+  record_id = "record_id",
+  admin_level = c("adm1", "adm2"),
+  spatial_level = "hf_uid",
+  date = "date",
+  time_mode = c("across_time", "within_year", "seasonal"),
+  value_type = c("count", "rate"),
+  strictness = c("balanced", "lenient", "strict", "advanced"),
+  methods = c("iqr", "median", "mean", "consensus"),
+  sd_multiplier = 3,
+  mad_constant = 1.4826,
+  mad_multiplier = 9,
+  iqr_multiplier = 2,
+  consensus_rule = 3,
+  output_profile = c("standard", "lean", "audit"),
+  min_n = 8,
+  reporting_rate_col = NULL,
+  reporting_rate_min = 0.5,
+  key_indicators_hf = NULL,
+  classify_outbreaks = FALSE,
+  outbreak_min_run = 2,
+  outbreak_prop_tolerance = 0.9,
+  outbreak_max_gap = 12,
+  verbose = TRUE
+) {
   if (column %in% names(data) && !is.numeric(data[[column]])) {
-    cli::cli_abort("Column {.val {column}} must be numeric.")
+    cli::cli_warn("Skipping column {.val {column}}: not numeric.")
+    return(invisible(NULL))
   }
-
 
   activeness_applied <- FALSE
   n_inactive_skipped <- 0L
@@ -240,78 +274,40 @@ detect_outliers <- function(
         "key_indicators_hf columns missing: {.val {missing_indicators}}"
       )
     }
-    if (!record_id %in% names(data)) {
-      cli::cli_abort(
-        "record_id {.val {record_id}} not found in data."
-      )
-    }
-    activeness_data <- classify_facility_activity(
-      data = data,
-      hf_col = record_id,
-      date_col = date,
-      key_indicators = key_indicators_hf
-    )
+
+    # Fast path for outlier detection: simply check if ANY key indicator is non-NA
+    # This avoids the expensive classify_facility_activity() function which creates
+    # cartesian products and computes 3 different classification methods
     data <- data |>
-      dplyr::left_join(
-        activeness_data |>
-          dplyr::select(
-            dplyr::all_of(c(record_id, date)),
-            activity_status
-          ),
-        by = c(record_id, date)
-      ) |>
       dplyr::mutate(
-        .is_active = activity_status == "Active Reporting"
+        # Check if any of the key indicators have non-NA values
+        .has_any_indicator = dplyr::if_any(
+          dplyr::all_of(key_indicators_hf),
+          ~ !is.na(.)
+        ),
+        # Facility is active if it reported any key indicator
+        .is_active = .has_any_indicator
       )
+
+    # Defensive check: ensure we're not about to filter out all data
+    n_active_with_values <- sum(data$.is_active & !is.na(data[[column]]), na.rm = TRUE)
+    if (n_active_with_values == 0) {
+      cli::cli_abort(c(
+        "No non-missing {.field {column}} values found in active facilities.",
+        "i" = "Check if {.field {column}} is one of your key_indicators_hf.",
+        "i" = "Consider including {.field {column}} in key_indicators_hf or removing activity filtering."
+      ))
+    }
+
     n_inactive_skipped <- sum(!data$.is_active, na.rm = TRUE)
     data <- data |>
       dplyr::filter(.is_active) |>
-      dplyr::select(-.is_active, -activity_status)
+      dplyr::select(-.has_any_indicator, -.is_active)
     activeness_applied <- TRUE
     key_indicators_used <- paste(key_indicators_hf, collapse = ", ")
   }
 
-  # setup caching if enabled - cache the entire detection process
-  if (cache_stats && !is.null(cache_dir)) {
-    cache_config <- .setup_outlier_cache(cache_stats = cache_stats, cache_dir = cache_dir)
-
-    # Create a cached version of the core detection logic
-    if (!is.null(cache_config) && cache_config$enabled) {
-      cached_detection <- memoise::memoise(.core_outlier_detection, cache = cache_config$backend)
-
-      # Call the cached detection with all parameters as cache key
-      return(cached_detection(
-        data = data,
-        column = column,
-        record_id = record_id,
-        admin_level = admin_level,
-        date = date,
-        time_mode = time_mode,
-        value_type = value_type,
-        strictness = strictness,
-        sd_multiplier = sd_multiplier,
-        mad_constant = mad_constant,
-        mad_multiplier = mad_multiplier,
-        iqr_multiplier = iqr_multiplier,
-        min_n = min_n,
-        reporting_rate_col = reporting_rate_col,
-        reporting_rate_min = reporting_rate_min,
-        key_indicators_hf = key_indicators_hf,
-        methods = methods,
-        consensus_rule = consensus_rule,
-        output_profile = output_profile,
-        seasonal_pool_years = seasonal_pool_years,
-        min_years_per_month = min_years_per_month,
-        verbose = verbose,
-        spatial_level = spatial_level,
-        activeness_applied = activeness_applied,
-        n_inactive_skipped = n_inactive_skipped,
-        key_indicators_used = key_indicators_used
-      ))
-    }
-  }
-
-  # fallback to non-cached execution
+  # execute detection
   .core_outlier_detection(
     data = data,
     column = column,
@@ -332,13 +328,15 @@ detect_outliers <- function(
     methods = methods,
     consensus_rule = consensus_rule,
     output_profile = output_profile,
-    seasonal_pool_years = seasonal_pool_years,
-    min_years_per_month = min_years_per_month,
     verbose = verbose,
     spatial_level = spatial_level,
     activeness_applied = activeness_applied,
     n_inactive_skipped = n_inactive_skipped,
-    key_indicators_used = key_indicators_used
+    key_indicators_used = key_indicators_used,
+    classify_outbreaks = classify_outbreaks,
+    outbreak_min_run = outbreak_min_run,
+    outbreak_prop_tolerance = outbreak_prop_tolerance,
+    outbreak_max_gap = outbreak_max_gap
   )
 }
 
@@ -363,7 +361,7 @@ detect_outliers <- function(
     output_profile) {
   resolved_time_mode <- base::match.arg(
     time_mode,
-    c("by_month", "across_time", "within_year")
+    c("across_time", "within_year", "seasonal")
   )
   resolved_value_type <- base::match.arg(
     value_type,
@@ -411,7 +409,7 @@ detect_outliers <- function(
 #' @param data raw input data
 #' @param column numeric column to evaluate
 #' @param record_id unique record identifier
-#' @param admin_levels admin hierarchy columns
+#' @param admin_level admin hierarchy columns
 #' @param date_column date column name
 #' @param options normalized option list
 #' @param consensus_rule integer consensus rule
@@ -422,8 +420,6 @@ detect_outliers <- function(
 #' @param min_n minimum observations per bucket
 #' @param reporting_rate_col optional reporting rate column
 #' @param reporting_rate_min minimum reporting rate threshold
-#' @param seasonal_pool_years seasonal history window
-#' @param min_years_per_month minimum seasonal years per month
 #' @return list containing prepared data and pipeline context
 #' @keywords internal
 #' @noRd
@@ -442,9 +438,6 @@ detect_outliers <- function(
     min_n,
     reporting_rate_col,
     reporting_rate_min,
-    seasonal_pool_years,
-    min_years_per_month,
-    cache_stats = TRUE,
     spatial_level = NULL) {
   if (!date_column %in% names(data)) {
     cli::cli_abort("Date column {.val {date_column}} not found in data.")
@@ -480,12 +473,13 @@ detect_outliers <- function(
   month_col <- ".detect_month"
   yearmon_col <- ".detect_yearmon"
 
-  prepared <- data |>
-    dplyr::mutate(
-      .detect_year = parsed_dates$year,
-      .detect_month = parsed_dates$month,
-      .detect_yearmon = parsed_dates$yearmon
-    )
+prepared <- data |>
+  dplyr::mutate(
+    value = .data[[column]],
+    .detect_year = parsed_dates$year,
+    .detect_month = parsed_dates$month,
+    .detect_yearmon = parsed_dates$yearmon
+  )
 
   validated <- .validate_outlier_inputs(
     data = prepared,
@@ -508,25 +502,37 @@ detect_outliers <- function(
   prepared_data <- validated$data
 
   # Handle spatial_level parameter for proper detection vs grouping
-  if (!is.null(spatial_level)) {
+  if (!is.null(spatial_level) && spatial_level %in% names(prepared_data)) {
     # Detection happens at spatial_level, grouping for efficiency at admin_level
-    detection_admin_levels <- c(admin_level, spatial_level)
-    parallel_grouping_levels <- admin_level  # For data.table parallel efficiency
+    detection_admin_level <- c(admin_level, spatial_level)
+    parallel_grouping_levels <- admin_level
   } else {
     # Original behavior - use all admin_level for both detection and grouping
-    detection_admin_levels <- admin_level
+    # (either spatial_level is NULL or the column doesn't exist)
+    detection_admin_level <- admin_level
     parallel_grouping_levels <- admin_level
+    if (!is.null(spatial_level) && !spatial_level %in% names(prepared_data)) {
+      cli::cli_warn(
+        "spatial_level column {.field {spatial_level}} not found in data, using admin_level only"
+      )
+    }
   }
 
-  admin_info <- .resolve_admin_levels(
+  admin_info <- .resolve_admin_level(
     prepared_data,
-    detection_admin_levels,
+    detection_admin_level,
     record_id
   )
 
-  # Store both levels for different purposes
-  admin_info$detection_levels <- detection_admin_levels      # What we detect outliers on
-  admin_info$parallel_grouping_levels <- parallel_grouping_levels  # How we group for efficiency
+  # Store both levels for different purposes - preserve our carefully
+  # crafted levels
+  admin_info$detection_levels <- detection_admin_level   # What we detect outliers on
+  admin_info$parallel_grouping_levels <- parallel_grouping_levels
+  # How we group for efficiency
+
+  # Override admin_level with detection_levels to ensure consistency
+  # (.resolve_admin_level adds record_id which we don't want in our levels)
+  admin_info$admin_level <- detection_admin_level
 
   strictness_info <- .resolve_strictness(
     options$strictness,
@@ -544,25 +550,16 @@ detect_outliers <- function(
     validated$month
   )
 
-  seasonality_params <- list(
-    seasonal_pool_years = seasonal_pool_years,
-    min_years_per_month = min_years_per_month,
-    min_obs_per_seasonal_bucket = min_n,
-    mad_constant = strictness_info$mad_constant
-  )
-
   list(
     prepared_data = prepared_data,
     admin_info = admin_info,
     strictness = strictness_info,
     grouping_cols = grouping_cols,
-    seasonality_params = seasonality_params,
     options = options,
     constraints = list(
       min_n = min_n,
       reporting_rate_min = reporting_rate_min
     ),
-    cache_stats = cache_stats,
     spatial_level = spatial_level
   )
 }
@@ -583,27 +580,12 @@ detect_outliers <- function(
     consensus_rule) {
   time_mode <- context$options$time_mode
 
-  if (time_mode == "by_month") {
-    return(
-      .run_seasonal_detection(
-        data = context$prepared_data,
-        detection_admin_levels = context$admin_info$detection_levels,
-        parallel_grouping_levels = context$admin_info$parallel_grouping_levels,
-        strictness = context$strictness,
-        params = context$seasonality_params,
-        methods = methods,
-        consensus_rule = consensus_rule,
-        min_n = context$constraints$min_n,
-        reporting_rate_min = context$constraints$reporting_rate_min,
-        value_type = context$options$value_type
-      )
-    )
-  }
 
   desc <- switch(
     time_mode,
     within_year = "Within-year pooling",
     across_time = "Across-time pooling",
+    seasonal = "Seasonal pooling (same month across years)",
     ""
   )
   metadata <- list(
@@ -651,7 +633,11 @@ detect_outliers <- function(
     consensus_rule,
     activeness_applied = FALSE,
     n_inactive_skipped = 0L,
-    key_indicators_used = NA_character_) {
+    key_indicators_used = NA_character_,
+    classify_outbreaks = TRUE,
+    outbreak_min_run = 2,
+    outbreak_prop_tolerance = 0.9,
+    outbreak_max_gap = 1) {
   if (!"residual_sd" %in% names(detection)) {
     detection <- detection |>
       dplyr::mutate(
@@ -698,7 +684,7 @@ detect_outliers <- function(
       iqr_multiplier = strictness_info$iqr_multiplier,
       time_mode = time_mode,
       reporting_rate = .outlier_reporting,
-      admin_level_used = paste(admin_info$admin_levels, collapse = ", "),
+      admin_level_used = paste(admin_info$admin_level, collapse = ", "),
       activeness_applied = activeness_applied,
       key_indicators_used = key_indicators_used
     )
@@ -713,26 +699,10 @@ detect_outliers <- function(
     detection <- detection |> dplyr::rename(outlier_flag_iqr = iqr_flag)
   }
 
-  if (isTRUE(verbose)) {
-    .display_outlier_summary_box(
-      detection = detection,
-      methods = methods,
-      column = column,
-      time_mode = time_mode,
-      admin_levels = admin_info$admin_levels,
-      strictness = strictness_label,
-      strictness_info = strictness_info,
-      min_n = min_n,
-      reporting_rate_min = reporting_rate_min,
-      consensus_rule = consensus_rule,
-      activeness_applied = activeness_applied,
-      n_inactive_skipped = n_inactive_skipped,
-      key_indicators_used = key_indicators_used
-    )
-  }
+  # verbose summary will be displayed after outbreak classification
 
   select_cols <- c(
-    admin_info$admin_levels,
+    admin_info$admin_level,
     ".outlier_year",
     ".outlier_month",
     ".outlier_yearmon",
@@ -805,10 +775,80 @@ detect_outliers <- function(
     .filter_by_output_profile(
       output_profile,
       record_id,
-      admin_info$admin_levels,
+      admin_info$admin_level,
       "yearmon",
       "year"
     )
+
+  # Apply outbreak classification if requested
+  flag_columns <- grep("^outlier_flag_", names(final), value = TRUE)
+  if (classify_outbreaks && length(flag_columns) > 0) {
+    # identify grouping columns for outbreak classification
+    # Note: record_id is unique per row, so we use facility-level grouping instead
+    group_columns <- context$admin_info$admin_level
+    if ("hf_uid" %in% names(final)) {
+      group_columns <- c(group_columns, "hf_uid")
+    } else if (record_id %in% names(final) && record_id != "record_id") {
+      # only include record_id if it represents facility/location, not unique row id
+      group_columns <- c(group_columns, record_id)
+    }
+    group_columns <- group_columns[group_columns %in% names(final)]
+
+    if (length(group_columns) > 0) {
+      final <- .classify_outbreaks(
+        data = final,
+        group_by_columns = group_columns,
+        outlier_columns = flag_columns,
+        min_run = outbreak_min_run,
+        prop_tolerance = outbreak_prop_tolerance,
+        outbreak_max_gap = outbreak_max_gap,
+        verbose = verbose
+      )
+
+      # replace original flag column values with outbreak-classified values
+      outbreak_flag_columns <- grep("^outlier_flag_.*_outbreak_classified$", names(final), value = TRUE)
+
+      if (length(outbreak_flag_columns) > 0) {
+        # replace original column values with outbreak-classified values
+        for (outbreak_col in outbreak_flag_columns) {
+          original_col <- stringr::str_replace(outbreak_col, "_outbreak_classified$", "")
+          if (original_col %in% names(final)) {
+            # replace original column values with outbreak-classified values
+            final[[original_col]] <- final[[outbreak_col]]
+            # remove the temporary outbreak-classified column
+            final <- final |> dplyr::select(-dplyr::all_of(outbreak_col))
+          }
+        }
+        # flag_columns remain the same (original column names)
+        flag_columns <- grep("^outlier_flag_", names(final), value = TRUE)
+      }
+    }
+  }
+
+  # Simplify outlier categories for better interpretability
+  if (length(flag_columns) > 0) {
+    final <- .simplify_outlier_categories(final, flag_columns)
+  }
+
+  # Display summary after outbreak classification if verbose
+  if (isTRUE(verbose)) {
+    .display_outlier_summary_box(
+      detection = final,
+      methods = methods,
+      column = column,
+      time_mode = time_mode,
+      admin_level = admin_info$admin_level,
+      strictness = strictness_label,
+      strictness_info = strictness_info,
+      min_n = min_n,
+      reporting_rate_min = reporting_rate_min,
+      consensus_rule = consensus_rule,
+      activeness_applied = activeness_applied,
+      n_inactive_skipped = n_inactive_skipped,
+      key_indicators_used = key_indicators_used,
+      classify_outbreaks = classify_outbreaks
+    )
+  }
 
   final
 }
@@ -880,7 +920,7 @@ detect_outliers <- function(
 #' @param detection data frame with outlier results
 #' @param column character. name of column checked
 #' @param time_mode pooling mode used
-#' @param admin_levels character vector of admin level columns
+#' @param admin_level character vector of admin level columns
 #' @param strictness_info list of sd, mad, and iqr multipliers
 #' @param strictness strictness label used
 #' @param min_n minimum observations for flagging
@@ -894,7 +934,7 @@ detect_outliers <- function(
   detection,
   column,
   time_mode,
-  admin_levels,
+  admin_level,
   strictness_info,
   strictness,
   min_n,
@@ -903,16 +943,18 @@ detect_outliers <- function(
   consensus_rule,
   activeness_applied = FALSE,
   n_inactive_skipped = 0L,
-  key_indicators_used = NA_character_
+  key_indicators_used = NA_character_,
+  classify_outbreaks = TRUE
 ) {
   time_desc <- switch(
     time_mode,
     "by_month" = "months",
     "within_year" = "within each year",
     "across_time" = "across all time",
+    "seasonal" = "same month across years",
     "unknown"
   )
-  level_used <- tail(admin_levels, 1)
+  level_used <- tail(admin_level, 1)
 
   fmt_num <- function(x) {
     cli::col_blue(cli::style_bold(formatC(x, big.mark = ",", digits = 0)))
@@ -922,18 +964,20 @@ detect_outliers <- function(
   }
 
   # guardrail diagnostics
+  yearmon_col <- if (".outlier_yearmon" %in% names(detection)) ".outlier_yearmon" else "yearmon"
+
   n_skipped_n <- detection |>
     dplyr::filter(reason == "insufficient_n") |>
     dplyr::distinct(
-      dplyr::across(all_of(admin_levels)),
-      .data$.outlier_yearmon
+      dplyr::across(all_of(admin_level)),
+      .data[[yearmon_col]]
     ) |>
     nrow()
   n_skipped_rep <- detection |>
     dplyr::filter(reason == "low_reporting") |>
     dplyr::distinct(
-      dplyr::across(all_of(admin_levels)),
-      .data$.outlier_yearmon
+      dplyr::across(all_of(admin_level)),
+      .data[[yearmon_col]]
     ) |>
     nrow()
 
@@ -948,15 +992,6 @@ detect_outliers <- function(
     ""
   )
 
-  if (time_mode == "by_month") {
-    lines <- c(
-      lines,
-      glue::glue(
-        "{cli::col_magenta(cli::style_bold('Seasonality ladder'))}: ",
-        "same-month -> neighbours -> residual -> across-time"
-      )
-    )
-  }
 
   lines <- c(
     lines,
@@ -1036,13 +1071,41 @@ detect_outliers <- function(
 
     glue::glue(
       "  - {cli::style_bold(mdisp)} -> ",
-      "{fmt_num(out_n)}/{fmt_num(eligible_n)} outliers among eligible ",
+      "{fmt_num(out_n)} outliers among eligible ",
       "(total = {fmt_num(total_n)})"
     )
   }
 
   method_lines <- unlist(lapply(methods, .append_method_line))
   lines <- c(lines, method_lines)
+
+  # Add outbreak classification statistics if enabled
+  if (classify_outbreaks) {
+    outbreak_cols <- grep("^outlier_flag_.*_outbreak_classified$", names(detection), value = TRUE)
+    if (length(outbreak_cols) > 0) {
+      lines <- c(lines, "")
+      lines <- c(lines, cli::col_yellow(cli::style_bold('Outbreak classification:')))
+
+      for (outbreak_col in outbreak_cols) {
+        method_name <- stringr::str_extract(outbreak_col, "(?<=outlier_flag_).*(?=_outbreak_classified)")
+        flags <- detection[[outbreak_col]]
+
+        n_outbreak <- sum(flags == "outbreak", na.rm = TRUE)
+        n_isolated <- sum(flags == "outlier", na.rm = TRUE)
+        n_total_outliers <- n_outbreak + n_isolated
+
+        if (n_total_outliers > 0) {
+          outbreak_line <- glue::glue(
+            "  - {cli::style_bold(cli::col_yellow(toupper(method_name)))} outliers: ",
+            "{fmt_num(n_outbreak)} outbreaks, ",
+            "{fmt_num(n_isolated)} isolated ",
+            "(total outliers = {fmt_num(n_total_outliers)})"
+          )
+          lines <- c(lines, outbreak_line)
+        }
+      }
+    }
+  }
 
   is_dark_theme <- .detect_dark_theme()
 
@@ -1083,23 +1146,206 @@ detect_outliers <- function(
   invisible(NULL)
 }
 
+#' Simplify outlier detection categories for better interpretability
+#'
+#' @description
+#' Consolidates detailed outlier detection categories into three intuitive groups:
+#' - "normal": Values within expected statistical bounds
+#' - "outlier": Values exceeding thresholds (potential anomalies)
+#' - "insufficient_data": Various data quality issues preventing determination
+#'
+#' Classify outbreak patterns from outlier flags
+#'
+#' Distinguishes between sustained outbreak patterns and isolated outliers
+#' using run-length encoding to detect consecutive outlier periods.
+#'
+#' @param data Data frame containing outlier flag columns
+#' @param group_by_columns Character vector of grouping columns (admin, facility)
+#' @param outlier_columns Character vector of outlier flag column names
+#' @param min_run Minimum consecutive outlier periods to classify as outbreak
+#' @param prop_tolerance Proportion tolerance for outbreak classification
+#' @param outbreak_max_gap Maximum allowed gap (non-outlier months) between outliers
+#'   that can still be considered part of the same outbreak. Default 1 allows
+#'   one intervening month (e.g., outlier-normal-outlier = one outbreak)
+#' @return Data frame with outbreak classification columns added
+#' @keywords internal
+#' @noRd
+.classify_outbreaks <- function(data, group_by_columns, outlier_columns,
+                               min_run = 2, prop_tolerance = 0.9, outbreak_max_gap = 1, verbose = FALSE) {
+  # classify sustained outbreak patterns vs isolated outliers
+  # uses run-length encoding to detect consecutive outlier periods
+
+  # validate inputs
+  if (!is.data.frame(data)) {
+    cli::cli_abort("data must be a data.frame")
+  }
+
+  missing_cols <- setdiff(c(group_by_columns, outlier_columns), names(data))
+  if (length(missing_cols) > 0) {
+    cli::cli_abort(c("Missing columns in data:", missing_cols))
+  }
+
+  # ensure data is sorted by group and date for run-length encoding
+  # identify date column for temporal sorting
+  date_col <- if ("yearmon" %in% names(data)) {
+    "yearmon"
+  } else if ("year" %in% names(data) && "month" %in% names(data)) {
+    c("year", "month")
+  } else if (".outlier_yearmon" %in% names(data)) {
+    ".outlier_yearmon"
+  } else {
+    NULL
+  }
+
+  if (is.null(date_col)) {
+    cli::cli_warn("No date column found for temporal sorting in outbreak classification")
+    data <- data |>
+      dplyr::arrange(dplyr::across(dplyr::all_of(group_by_columns)))
+  } else {
+    data <- data |>
+      dplyr::arrange(dplyr::across(dplyr::all_of(group_by_columns)),
+                     dplyr::across(dplyr::all_of(date_col)))
+  }
+
+  # classify each outlier column
+  for (col in outlier_columns) {
+    outbreak_col <- paste0(col, "_outbreak_classified")
+
+    data <- data |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(group_by_columns))) |>
+      dplyr::mutate(
+        !!rlang::sym(outbreak_col) := {
+          outlier_flag <- .data[[col]]
+
+          # gap-aware clustering to find outbreak patterns
+          outlier_positions <- which(outlier_flag == "outlier")
+          n_positions <- length(outlier_positions)
+
+          if (n_positions < min_run) {
+            # not enough outliers to form any outbreak
+            outbreak_expanded <- rep(FALSE, length(outlier_flag))
+          } else if (n_positions == 1) {
+            # single outlier cannot be an outbreak
+            outbreak_expanded <- rep(FALSE, length(outlier_flag))
+          } else {
+            # calculate gaps between consecutive outlier positions
+            gaps <- diff(outlier_positions) - 1  # -1 because consecutive positions have gap=0
+
+            # identify cluster boundaries where gap exceeds max_gap
+            cluster_breaks <- which(gaps > outbreak_max_gap)
+
+            # create cluster assignments for outlier positions
+            cluster_ids <- rep(1, n_positions)
+            if (length(cluster_breaks) > 0) {
+              # assign cluster ids based on break points
+              for (i in seq_along(cluster_breaks)) {
+                break_point <- cluster_breaks[i]
+                cluster_ids[(break_point + 1):n_positions] <- i + 1
+              }
+            }
+
+            # determine which clusters meet min_run criteria
+            cluster_sizes <- table(cluster_ids)
+            valid_clusters <- as.numeric(names(cluster_sizes)[cluster_sizes >= min_run])
+
+            # mark full outbreak periods (including gaps) in valid clusters
+            outbreak_expanded <- rep(FALSE, length(outlier_flag))
+            if (length(valid_clusters) > 0) {
+              for (cluster_id in valid_clusters) {
+                # get outlier positions in this cluster
+                cluster_positions <- outlier_positions[cluster_ids == cluster_id]
+                # mark entire period from first to last outlier in cluster
+                outbreak_start <- min(cluster_positions)
+                outbreak_end <- max(cluster_positions)
+                outbreak_expanded[outbreak_start:outbreak_end] <- TRUE
+              }
+            }
+          }
+
+          # final classification with gap handling
+          dplyr::case_when(
+            # positions within outbreak periods but not outliers remain as-is (gaps)
+            outbreak_expanded & outlier_flag != "outlier" ~ outlier_flag,
+            # outlier positions in outbreak periods become "outbreak"
+            outbreak_expanded & outlier_flag == "outlier" ~ "outbreak",
+            # isolated outliers remain "outlier"
+            outlier_flag == "outlier" ~ "outlier",
+            # everything else unchanged
+            .default = outlier_flag
+          )
+        }
+      ) |>
+      dplyr::ungroup()
+  }
+
+  return(data)
+}
+
+#' @param data Data frame containing outlier flag columns
+#' @param flag_columns Character vector of flag column names to simplify
+#' @return Data frame with simplified flag columns
+#' @keywords internal
+#' @noRd
+.simplify_outlier_categories <- function(data, flag_columns) {
+
+  # Define the mapping from detailed to simplified categories
+  category_mapping <- c(
+    "normal" = "normal",
+    "outlier" = "outlier",
+    "outbreak" = "outbreak",
+    "insufficient_n" = "insufficient_data",
+    "insufficient_evidence" = "insufficient_data",
+    "unstable_scale" = "insufficient_data",
+    "insufficient_seasonal_history" = "insufficient_data",
+    "low_reporting" = "insufficient_data",
+    "inactive_facility" = "insufficient_data"
+  )
+
+  # Apply mapping to each flag column
+  for (col in flag_columns) {
+    if (col %in% names(data)) {
+      data[[col]] <- dplyr::recode(data[[col]], !!!category_mapping, .default = "insufficient_data")
+    }
+  }
+
+  data
+}
+
 #' Create Outlier Detection Plots
 #'
 #' This function creates plots to visualize outliers in data using the same
-#' detection methods as `detect_outliers()`. The plotting function inherits
+#' detection methods as `detect_outliers()`. Only values above the upper
+#' thresholds are highlighted as outliers. The plotting function inherits
 #' all parameters from the detection function for seamless integration.
 #'
 #' @inheritParams detect_outliers
-#' @param cache_stats Logical. If TRUE, caches computed statistics to improve
-#'   performance on repeated calls with the same data. Default is TRUE.
-#' @param cache_dir Character string specifying directory for file-based cache.
-#'   If NULL (default), uses project cache directory or tempdir(). Cache persists
-#'   across R sessions for reproducible performance gains.
 #' @param methods Character vector specifying which outlier detection methods
 #'   to plot: "iqr" (Interquartile Range), "median" (Median Absolute
 #'   Deviation), "mean" (Mean +/- SD), and/or "consensus".
 #'   Default is `c("iqr", "median", "mean", "consensus")`.
 #'   For consensus, at least two other methods must be selected.
+#' @param show_outbreaks Logical. When `TRUE`, displays outbreaks separately
+#'   from outliers in the plot using a distinct color (#52AAC2 teal).
+#'   The subtitle will show separate counts for outliers (red) and outbreaks
+#'   (teal). When `FALSE` (default), outbreaks and outliers are shown
+#'   together in red. Only relevant when `classify_outbreaks = TRUE`.
+#' @param consensus_colors Logical. When `TRUE` (default), creates a single plot
+#'   showing consensus strength across all methods using graduated colors. Point
+#'   colors indicate how many methods flagged each observation: grey (normal),
+#'   light red (1 method, weak signal), medium red (2 methods, moderate signal),
+#'   dark red (3 methods, strong signal). Requires at least 2 detection methods
+#'   (excluding "consensus"). When enabled, `show_outbreaks` is automatically set
+#'   to `FALSE` as the two visualization modes are mutually exclusive. A legend
+#'   is displayed showing the color-to-strength mapping. Set to `FALSE` for
+#'   standard multi-method plot behavior (separate plot per method).
+#' @param return_plots Character vector specifying which plots to return.
+#'   Can be any subset of the methods being computed: "iqr", "median",
+#'   "mean", "consensus", or "all" (default). For example, if
+#'   `methods = c("iqr", "median", "consensus")` and
+#'   `return_plots = c("iqr", "consensus")`, only the IQR and consensus
+#'   plots will be returned. All computed plots are still created and
+#'   saved (if `plot_path` is specified), but only the requested ones
+#'   are returned.
 #' @param year_breaks Numeric value specifying the interval for x-axis breaks.
 #'   Default `2`. For example, `2` shows every second tick and `3` every third.
 #' @param verbose Logical. When `TRUE`, prints an informative summary describing
@@ -1139,10 +1385,13 @@ detect_outliers <- function(
 #' @details
 #' The function creates scatter plots showing outliers detected using the
 #' specified statistical methods. Each method produces a separate plot with
-#' points colored by outlier status (red for outliers, grey for normal values).
-#' For consensus plots, the caption shows the consensus rule used.
-#' The plots are faceted by administrative levels and include summary
-#' statistics in the subtitle.
+#' points colored by outlier status. By default, both outliers and outbreaks
+#' are shown in red, with normal values in grey. When `show_outbreaks = TRUE`,
+#' outbreaks are displayed in teal (#52AAC2) to distinguish them from isolated
+#' outliers (red). For consensus plots, the caption shows the consensus rule
+#' used. The plots are faceted by administrative levels and include summary
+#' statistics in the subtitle. Facet labels longer than 15 characters are
+#' automatically truncated with "..." to prevent overcrowding.
 #'
 #' @examples
 #' \dontrun{
@@ -1197,34 +1446,71 @@ detect_outliers <- function(
 #'   admin_level = c("adm1", "adm2"),  # Plot/facet at district level
 #'   methods = c("consensus")
 #' )
+#'
+#' # Show outbreaks separately in teal color
+#' outbreak_plot <- outlier_plot(
+#'   data = malaria_data,
+#'   column = "confirmed_cases",
+#'   date = "date",
+#'   record_id = "facility_id",
+#'   methods = "consensus",
+#'   classify_outbreaks = TRUE,
+#'   show_outbreaks = TRUE  # Outbreaks shown in teal, outliers in red
+#' )
+#'
+#' # Compute multiple methods but return only specific plots
+#' selected <- outlier_plot(
+#'   data = malaria_data,
+#'   column = "confirmed_cases",
+#'   date = "date",
+#'   record_id = "facility_id",
+#'   methods = c("iqr", "median", "mean", "consensus"),
+#'   return_plots = c("iqr", "consensus"),  # Only return these two
+#'   plot_path = "outliers.png"  # All methods still saved to disk
+#' )
+#' # Returns list with only $iqr and $consensus plots
+#'
+#' # Consensus color visualization showing agreement strength
+#' consensus_plot <- outlier_plot(
+#'   data = malaria_data,
+#'   column = "confirmed_cases",
+#'   date = "date",
+#'   record_id = "facility_id",
+#'   methods = c("iqr", "median", "mean"),
+#'   consensus_colors = TRUE  # Single plot with color-coded consensus strength
+#' )
+#' # Returns single ggplot with graduated colors:
+#' # grey = normal, light red = 1 method, medium red = 2 methods, dark red = 3 methods
 #' }
 #' @export
 outlier_plot <- function(
     data,
     column,
     record_id = "record_id",
-    spatial_level = NULL,
     admin_level = c("adm1", "adm2"),
+    spatial_level = "hf_uid",
     date = "date",
-    time_mode = c("by_month", "across_time", "within_year"),
+    time_mode = c("across_time", "within_year", "seasonal"),
     value_type = c("count", "rate"),
     strictness = c("balanced", "lenient", "strict", "advanced"),
+    methods = c("iqr", "median", "mean", "consensus"),
     sd_multiplier = 3,
     mad_constant = 1.4826,
     mad_multiplier = 9,
     iqr_multiplier = 2,
+    consensus_rule = 3,
     min_n = 8,
     reporting_rate_col = NULL,
     reporting_rate_min = 0.5,
     key_indicators_hf = NULL,
-    consensus_rule = 2,
-    seasonal_pool_years = 5,
-    min_years_per_month = 3,
-    methods = c("iqr", "median", "mean", "consensus"),
+    classify_outbreaks = FALSE,
+    outbreak_min_run = 2,
+    outbreak_prop_tolerance = 0.9,
+    outbreak_max_gap = 12,
+    show_outbreaks = FALSE,
+    consensus_colors = TRUE,
+    return_plots = "all",
     year_breaks = 2,
-    cache_stats = TRUE,
-    cache_dir = NULL,
-    verbose = TRUE,
     target_language = "en",
     source_language = "en",
     lang_cache_path = tempdir(),
@@ -1237,7 +1523,8 @@ outlier_plot <- function(
     plot_width = NULL,
     plot_height = NULL,
     plot_dpi = 300,
-    show_plot = TRUE
+    show_plot = TRUE,
+    verbose = TRUE
 ) {
   # match choice arguments
   time_mode <- match.arg(time_mode)
@@ -1248,20 +1535,41 @@ outlier_plot <- function(
   valid_methods <- c("iqr", "median", "mean", "consensus")
   methods <- match.arg(methods, valid_methods, several.ok = TRUE)
 
+  # Validate return_plots parameter
+  if (length(return_plots) == 1 && return_plots == "all") {
+    return_plots <- methods
+  } else {
+    invalid_plots <- setdiff(return_plots, valid_methods)
+    if (length(invalid_plots) > 0) {
+      cli::cli_abort(c(
+        "Invalid plot names in return_plots: {.val {invalid_plots}}",
+        "i" = "Valid options: {.val {valid_methods}} or 'all'"
+      ))
+    }
+    requested_not_computed <- setdiff(return_plots, methods)
+    if (length(requested_not_computed) > 0) {
+      cli::cli_abort(c(
+        "Requested plots not in methods: {.val {requested_not_computed}}",
+        "i" = "Can only return plots that are computed",
+        "i" = "Current methods: {.val {methods}}"
+      ))
+    }
+  }
+
   # Handle backward compatibility and new parameter structure
-  # spatial_level replaces old admin_levels parameter for detection granularity
+  # spatial_level replaces old admin_level parameter for detection granularity
   # admin_level replaces old plot_admin_level parameter for plotting/grouping
 
   # Set up detection admin levels (for calling detect_outliers)
   if (is.null(spatial_level)) {
     # Default to finest granularity available
-    detection_admin_levels <- admin_level
+    detection_admin_level <- admin_level
   } else {
-    detection_admin_levels <- c(admin_level, spatial_level)
+    detection_admin_level <- c(admin_level, spatial_level)
   }
 
   # Set up plotting admin levels (for aggregation/faceting)
-  plot_admin_levels <- admin_level
+  plot_admin_level <- admin_level
 
   # Check if consensus is requested with sufficient other methods
   if ("consensus" %in% methods) {
@@ -1270,6 +1578,51 @@ outlier_plot <- function(
       cli::cli_abort(c(
         "Consensus requires at least 2 other methods.",
         "i" = "Include two of: 'iqr', 'median', 'mean'."
+      ))
+    }
+  }
+
+  # Resolve strictness preset to get actual multiplier values
+  strictness_info <- .resolve_strictness(
+    strictness = strictness,
+    sd_multiplier = sd_multiplier,
+    mad_constant = mad_constant,
+    mad_multiplier = mad_multiplier,
+    iqr_multiplier = iqr_multiplier
+  )
+
+  # Extract resolved values
+  sd_multiplier <- strictness_info$sd_multiplier
+  mad_constant <- strictness_info$mad_constant
+  mad_multiplier <- strictness_info$mad_multiplier
+  iqr_multiplier <- strictness_info$iqr_multiplier
+
+  # Validate consensus_colors requirements
+  if (consensus_colors) {
+    # Check 1: Multiple methods required
+    non_consensus_methods <- setdiff(methods, "consensus")
+    if (length(non_consensus_methods) < 2) {
+      cli::cli_abort(c(
+        "consensus_colors requires at least 2 detection methods",
+        "i" = "Current methods: {.val {methods}}",
+        "i" = "Include at least two of: 'iqr', 'median', 'mean'"
+      ))
+    }
+
+    # Check 2: Force show_outbreaks = FALSE
+    if (show_outbreaks) {
+      cli::cli_warn(c(
+        "!" = "consensus_colors and show_outbreaks are mutually exclusive",
+        "i" = "Setting show_outbreaks = FALSE"
+      ))
+      show_outbreaks <- FALSE
+    }
+
+    # Check 3: Warn about return_plots being ignored
+    if (!identical(return_plots, methods) && length(return_plots) > 1) {
+      cli::cli_inform(c(
+        "i" = "consensus_colors creates a single plot",
+        "i" = "return_plots parameter will be ignored"
       ))
     }
   }
@@ -1299,15 +1652,20 @@ outlier_plot <- function(
       reporting_rate_col = reporting_rate_col,
       reporting_rate_min = reporting_rate_min,
       key_indicators_hf = key_indicators_hf,
-      methods = methods,  # Pass methods to calculate only requested flags
+        methods = methods,  # Pass methods to calculate only requested flags
       consensus_rule = consensus_rule,
       output_profile = "audit",  # Get all flags for individual methods
-      seasonal_pool_years = seasonal_pool_years,
-      min_years_per_month = min_years_per_month,
-      cache_stats = cache_stats,
-      cache_dir = cache_dir,
-      verbose = FALSE  # plot helper prints summary itself
-    )
+      verbose = FALSE,  # plot helper prints summary itself
+      classify_outbreaks = classify_outbreaks,
+      outbreak_min_run = outbreak_min_run,
+      outbreak_prop_tolerance = outbreak_prop_tolerance,
+      outbreak_max_gap = outbreak_max_gap
+      )
+
+    # handle non-numeric columns gracefully
+    if (is.null(outlier_results)) {
+      return(invisible(NULL))
+    }
   }
 
   # Show summary box once before creating plots
@@ -1317,7 +1675,7 @@ outlier_plot <- function(
       methods = methods,
       column = column,
       time_mode = time_mode,
-      admin_levels = admin_level,
+      admin_level = admin_level,
       strictness = strictness,
       strictness_info = list(
         sd_multiplier = sd_multiplier,
@@ -1350,6 +1708,371 @@ outlier_plot <- function(
   # Create list to store plots
   plot_list <- list()
 
+  # Consensus colors mode: create single plot with color-coded consensus strength
+  if (consensus_colors) {
+    # calculate consensus strength for each point
+    # extract flag columns, using NA if they don't exist
+    iqr_flags <- if ("outlier_flag_iqr" %in% names(plot_data_base)) {
+      plot_data_base$outlier_flag_iqr
+    } else {
+      rep(NA_character_, nrow(plot_data_base))
+    }
+    median_flags <- if ("outlier_flag_median" %in% names(plot_data_base)) {
+      plot_data_base$outlier_flag_median
+    } else {
+      rep(NA_character_, nrow(plot_data_base))
+    }
+    mean_flags <- if ("outlier_flag_mean" %in% names(plot_data_base)) {
+      plot_data_base$outlier_flag_mean
+    } else {
+      rep(NA_character_, nrow(plot_data_base))
+    }
+
+    plot_data_consensus <- plot_data_base |>
+      dplyr::mutate(
+        consensus_strength = .calculate_consensus_strength(
+          outlier_flag_iqr = iqr_flags,
+          outlier_flag_median = median_flags,
+          outlier_flag_mean = mean_flags,
+          methods = methods
+        )
+      ) |>
+      # sort so normal plots first, strong plots last (visibility)
+      dplyr::arrange(consensus_strength)
+
+    # define color palette: blue -> yellow -> red for maximum distinction
+    strength_colors <- c(
+      "normal"   = "grey70",      # unchanged
+      "weak"     = "#3288BD",     # medium blue (1 method)
+      "moderate" = "#FDAE61",     # bright yellow-orange (2 methods)
+      "strong"   = "#A50026"      # dark red (3 methods)
+    )
+
+    # calculate summary statistics for subtitle
+    summary_stats <- plot_data_consensus |>
+      dplyr::count(consensus_strength) |>
+      dplyr::mutate(
+        pct = round(100 * n / sum(n), 1),
+        n_fmt = sntutils::big_mark(n)
+      )
+
+    # extract counts for each level
+    strong_n <- summary_stats$n_fmt[summary_stats$consensus_strength == "strong"]
+    strong_pct <- summary_stats$pct[summary_stats$consensus_strength == "strong"]
+    moderate_n <- summary_stats$n_fmt[summary_stats$consensus_strength == "moderate"]
+    moderate_pct <- summary_stats$pct[summary_stats$consensus_strength == "moderate"]
+    weak_n <- summary_stats$n_fmt[summary_stats$consensus_strength == "weak"]
+    weak_pct <- summary_stats$pct[summary_stats$consensus_strength == "weak"]
+
+    # handle missing levels (set to 0 if not present)
+    if (length(strong_n) == 0) {
+      strong_n <- "0"
+      strong_pct <- 0
+    }
+    if (length(moderate_n) == 0) {
+      moderate_n <- "0"
+      moderate_pct <- 0
+    }
+    if (length(weak_n) == 0) {
+      weak_n <- "0"
+      weak_pct <- 0
+    }
+
+    # build subtitle
+    if (target_language != "en") {
+      detected_word <- translate_text(
+        "Detected",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      strong_word <- translate_text(
+        "strong",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      moderate_word <- translate_text(
+        "moderate",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      weak_word <- translate_text(
+        "weak",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      outliers_word <- translate_text(
+        "outliers",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      methods_word <- translate_text(
+        "methods",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      method_word <- translate_text(
+        "method",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+
+      subtitle_text <- glue::glue(
+        "{detected_word}: {strong_n} ",
+        "<b style='color:#A50026'>{strong_word} (3 {methods_word})</b> ({strong_pct}%), ",
+        "{moderate_n} ",
+        "<b style='color:#FDAE61'>{moderate_word} (2 {methods_word})</b> ({moderate_pct}%), ",
+        "{weak_n} ",
+        "<b style='color:#3288BD'>{weak_word} (1 {method_word})</b> ({weak_pct}%) ",
+        "{outliers_word}"
+      )
+    } else {
+      subtitle_text <- glue::glue(
+        "Detected: {strong_n} ",
+        "<b style='color:#A50026'>strong (3 methods)</b> ({strong_pct}%), ",
+        "{moderate_n} ",
+        "<b style='color:#FDAE61'>moderate (2 methods)</b> ({moderate_pct}%), ",
+        "{weak_n} ",
+        "<b style='color:#3288BD'>weak (1 method)</b> ({weak_pct}%) outliers"
+      )
+    }
+
+    # build title
+    if (target_language != "en") {
+      multi_method_text <- translate_text(
+        "Multi-Method Consensus",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      outlier_detection_text <- translate_text(
+        "Outlier Detection for",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      title_text <- glue::glue(
+        "{multi_method_text}: {outlier_detection_text} <b>{column}</b>"
+      )
+    } else {
+      title_text <- glue::glue(
+        "Multi-Method Consensus: Outlier Detection for <b>{column}</b>"
+      )
+    }
+
+    # translate axis labels
+    if (target_language != "en") {
+      x_label <- translate_text(
+        "Date",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      y_label <- translate_text(
+        "Value",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+    } else {
+      x_label <- "Date"
+      y_label <- "Value"
+    }
+
+    # create summary for facet labels
+    percent_summary <- plot_data_consensus |>
+      dplyr::group_by(dplyr::across(dplyr::all_of(facet_column))) |>
+      dplyr::summarise(
+        n_outlier = sum(consensus_strength != "normal", na.rm = TRUE),
+        n_total = dplyr::n(),
+        .groups = "drop"
+      ) |>
+      dplyr::mutate(
+        pct_outlier = round(100 * n_outlier / n_total, 1),
+        n_outlier_fmt = sntutils::big_mark(n_outlier),
+        n_total_fmt = sntutils::big_mark(n_total),
+        facet_value = .data[[facet_column]],
+        # truncate facet value to 15 characters
+        facet_value_display = ifelse(
+          nchar(as.character(facet_value)) > 15,
+          paste0(substr(as.character(facet_value), 1, 15), "..."),
+          as.character(facet_value)
+        ),
+        label = glue::glue(
+          "{facet_value_display}\n {pct_outlier}% ({n_outlier_fmt}/{n_total_fmt})"
+        )
+      )
+
+    facet_labels <- setNames(
+      percent_summary$label,
+      percent_summary[[facet_column]]
+    )
+
+    # build caption showing methods and parameters
+    non_consensus_methods <- setdiff(methods, "consensus")
+    method_details <- c()
+
+    if ("iqr" %in% non_consensus_methods) {
+      method_details <- c(method_details,
+        glue::glue("IQR (Q3 + {iqr_multiplier}*IQR)"))
+    }
+    if ("median" %in% non_consensus_methods) {
+      method_details <- c(method_details,
+        glue::glue("Median (median + {mad_multiplier}*MAD[k={mad_constant}])"))
+    }
+    if ("mean" %in% non_consensus_methods) {
+      method_details <- c(method_details,
+        glue::glue("Mean (mean + {sd_multiplier}*SD)"))
+    }
+
+    # add detection level clarification if levels differ
+    detection_level_text <- ""
+    if (!is.null(spatial_level) && spatial_level != facet_column) {
+      if (target_language != "en") {
+        det_word <- translate_text(
+          "Detection",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        disp_word <- translate_text(
+          "Display",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        level_word <- translate_text(
+          "level",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        detection_level_text <- glue::glue(
+          "{det_word}: {spatial_level} {level_word} | ",
+          "{disp_word}: {facet_column} {level_word}"
+        )
+      } else {
+        detection_level_text <- glue::glue(
+          "Detection: {spatial_level} level | Display: {facet_column} level"
+        )
+      }
+    }
+
+    # build caption with optional detection level note + methods
+    if (detection_level_text != "") {
+      caption_text <- paste0(
+        detection_level_text,
+        "\n",
+        paste(method_details, collapse = "; ")
+      )
+    } else {
+      caption_text <- paste(method_details, collapse = "; ")
+    }
+
+    # create the consensus plot
+    p <- ggplot2::ggplot(plot_data_consensus) +
+      ggplot2::geom_point(
+        ggplot2::aes(
+          x = date_for_plot,
+          y = value,
+          color = consensus_strength
+        ),
+        size = 2,
+        alpha = 0.7
+      ) +
+      ggplot2::scale_color_manual(
+        values = strength_colors,
+        guide = "none"
+      ) +
+      ggplot2::labs(
+        title = title_text,
+        subtitle = subtitle_text,
+        x = NULL,
+        y = paste0(y_label, "\n"),
+        caption = caption_text
+      ) +
+      ggplot2::facet_wrap(
+        stats::as.formula(paste("~", facet_column)),
+        scales = "free_y",
+        labeller = ggplot2::labeller(!!facet_column := facet_labels)
+      ) +
+      ggplot2::scale_x_date(
+        date_breaks = paste(year_breaks, "months"),
+        labels = function(x) {
+          sntutils::translate_yearmon(
+            x,
+            language = target_language,
+            format = "%Y-%m"
+          )
+        },
+        expand = ggplot2::expansion(mult = 0.02)
+      ) +
+      ggplot2::scale_y_continuous(
+        labels = scales::label_number(
+          scale_cut = scales::cut_short_scale()
+        ),
+        expand = ggplot2::expansion(mult = c(0.02, 0.1))
+      ) +
+      ggplot2::theme_minimal() +
+      ggplot2::theme(
+        legend.position = "none",
+        axis.text.x = ggplot2::element_text(
+          size = 8,
+          angle = 70,
+          hjust = 1
+        ),
+        axis.text.y = ggplot2::element_text(size = 8),
+        strip.text = ggplot2::element_text(size = 9),
+        plot.title = ggtext::element_markdown(size = 14),
+        plot.subtitle = ggtext::element_markdown(size = 11),
+        panel.grid.minor = ggplot2::element_blank(),
+        panel.grid.major.x = ggplot2::element_line(
+          color = "grey90",
+          linewidth = 0.5
+        ),
+        panel.grid.major.y = ggplot2::element_line(
+          color = "grey90",
+          linewidth = 0.5
+        ),
+        panel.border = ggplot2::element_rect(fill = NA, linewidth = 0.4)
+      )
+
+    # store plot
+    plot_list[["consensus"]] <- p
+
+    # save plot if path is provided
+    if (!is.null(plot_path)) {
+      .save_outlier_plot(
+        plot = p,
+        plot_path = tools::file_path_sans_ext(plot_path),
+        method_name = "consensus_colors",
+        column = column,
+        yearmon = "yearmon",
+        adm_level = facet_column,
+        data = plot_data_consensus,
+        target_language = target_language,
+        source_language = source_language,
+        lang_cache_path = lang_cache_path,
+        compress_image = compress_image,
+        image_overwrite = image_overwrite,
+        compression_speed = compression_speed,
+        compression_verbose = compression_verbose,
+        plot_scale = plot_scale,
+        plot_width = plot_width,
+        plot_height = plot_height,
+        plot_dpi = plot_dpi
+      )
+    }
+
+  } else {
+    # Standard multi-method mode
+
   # Create plots for each requested method
   for (method in methods) {
     # Determine which flag column to use
@@ -1360,33 +2083,41 @@ outlier_plot <- function(
       "consensus" = "outlier_flag_consensus"
     )
 
-    # Filter data for this method and add binary flag
+    # Filter data for this method and add flag
     plot_data <- plot_data_base |>
       dplyr::filter(
         !is.na(.data[[flag_column]]),
         .data[[flag_column]] != "insufficient_evidence"
       ) |>
       dplyr::mutate(
-        # Convert to binary TRUE/FALSE for outlier status
-        .binary_flag = dplyr::case_when(
-          .data[[flag_column]] == "outlier" ~ "TRUE",
-          TRUE ~ "FALSE"
-        ),
-        # Different alpha values: normal points more transparent
+        # Create flag that distinguishes outbreaks when show_outbreaks = TRUE
+        .plot_flag = if (show_outbreaks) {
+          dplyr::case_when(
+            .data[[flag_column]] == "outbreak" ~ "outbreak",
+            .data[[flag_column]] == "outlier" ~ "outlier",
+            TRUE ~ "normal"
+          )
+        } else {
+          dplyr::case_when(
+            .data[[flag_column]] %in% c("outlier", "outbreak") ~ "outlier",
+            TRUE ~ "normal"
+          )
+        },
+        # Different alpha values: flagged points more opaque
         .alpha_val = dplyr::case_when(
-          .data[[flag_column]] == "outlier" ~ 0.9,  # Outliers more opaque
-          TRUE ~ 0.5  # Normal points more transparent
+          .data[[flag_column]] %in% c("outlier", "outbreak") ~ 0.9,
+          TRUE ~ 0.5
         )
       ) |>
-      # Sort so outliers (TRUE) are plotted on top of normal points (FALSE)
-      dplyr::arrange(.binary_flag)
+      # Sort so flagged points are plotted on top
+      dplyr::arrange(.plot_flag)
 
 
     # Create summary for facet labels
     percent_summary <- plot_data |>
       dplyr::group_by(dplyr::across(dplyr::all_of(facet_column))) |>
       dplyr::summarise(
-        n_outlier = sum(.data[[flag_column]] == "outlier", na.rm = TRUE),
+        n_outlier = sum(.data[[flag_column]] %in% c("outlier", "outbreak"), na.rm = TRUE),
         n_total = dplyr::n(),
         .groups = "drop"
       ) |>
@@ -1412,8 +2143,14 @@ outlier_plot <- function(
     # Create labels without bold formatting
     percent_summary <- percent_summary |>
       dplyr::mutate(
+        # Truncate facet value to 15 characters
+        facet_value_display = ifelse(
+          nchar(as.character(facet_value)) > 15,
+          paste0(substr(as.character(facet_value), 1, 15), "..."),
+          as.character(facet_value)
+        ),
         label = glue::glue(
-          "{facet_value}\n {pct_outlier}% ({n_outlier_fmt}/{n_total_fmt})"
+          "{facet_value_display}\n {pct_outlier}% ({n_outlier_fmt}/{n_total_fmt})"
         )
       )
 
@@ -1422,10 +2159,14 @@ outlier_plot <- function(
       percent_summary[[facet_column]]
     )
 
+    # Calculate counts
     outliers_n <- sntutils::big_mark(
       sum(plot_data[[flag_column]] == "outlier", na.rm = TRUE)
     )
-    total_outliers <- sntutils::big_mark(nrow(plot_data))
+    outbreaks_n <- sntutils::big_mark(
+      sum(plot_data[[flag_column]] == "outbreak", na.rm = TRUE)
+    )
+    total_records <- sntutils::big_mark(nrow(plot_data))
 
     # Method display names
     method_display <- switch(method,
@@ -1506,9 +2247,15 @@ outlier_plot <- function(
         "{method_display_translated}: {outlier_detection_text} <b>{column}</b>"
       )
 
-      # Translate only the word "outliers" for subtitle
+      # Translate words for subtitle
       outliers_word <- translate_text(
         "outliers",
+        target_language = target_language,
+        source_language = source_language,
+        cache_path = lang_cache_path
+      )
+      outbreaks_word <- translate_text(
+        "outbreaks",
         target_language = target_language,
         source_language = source_language,
         cache_path = lang_cache_path
@@ -1525,11 +2272,23 @@ outlier_plot <- function(
         source_language = source_language,
         cache_path = lang_cache_path
       )
-      subtitle_text <- glue::glue(
-        "{there_were} {outliers_n}/{total_outliers}",
-        " <b style='color:red;font-weight:bold'>",
-        "{outliers_word}</b> {detected_word}"
-      )
+
+      # Build subtitle based on show_outbreaks parameter
+      if (show_outbreaks) {
+        subtitle_text <- glue::glue(
+          "{there_were} {outliers_n}/{total_records}",
+          " <b style='color:red;font-weight:bold'>{outliers_word}</b>",
+          " and {outbreaks_n}/{total_records}",
+          " <b style='color:#52AAC2;font-weight:bold'>{outbreaks_word}</b>",
+          " {detected_word}"
+        )
+      } else {
+        subtitle_text <- glue::glue(
+          "{there_were} {outliers_n}/{total_records}",
+          " <b style='color:red;font-weight:bold'>",
+          "{outliers_word}</b> {detected_word}"
+        )
+      }
 
       x_label <- translate_text(
         "Date",
@@ -1548,16 +2307,61 @@ outlier_plot <- function(
       title_text <- glue::glue(
         "{method_display}: Outlier Detection for <b>{column}</b>"
       )
-      subtitle_text <- glue::glue(
-        "There were {outliers_n}/{total_outliers}",
-        " <b style='color:red;font-weight:bold'>outliers</b> detected"
-      )
+
+      # Build subtitle based on show_outbreaks parameter
+      if (show_outbreaks) {
+        subtitle_text <- glue::glue(
+          "There were {outliers_n}/{total_records}",
+          " <b style='color:red;font-weight:bold'>outliers</b>",
+          " and {outbreaks_n}/{total_records}",
+          " <b style='color:#52AAC2;font-weight:bold'>outbreaks</b> detected"
+        )
+      } else {
+        subtitle_text <- glue::glue(
+          "There were {outliers_n}/{total_records}",
+          " <b style='color:red;font-weight:bold'>outliers</b> detected"
+        )
+      }
+
       x_label <- "Date"
       y_label <- "Value"
     }
 
+    # Add detection level clarification if levels differ
+    detection_level_caption <- ""
+    if (!is.null(spatial_level) && spatial_level != facet_column) {
+      if (target_language != "en") {
+        det_word <- translate_text(
+          "Detection",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        disp_word <- translate_text(
+          "Display",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        level_word <- translate_text(
+          "level",
+          target_language = target_language,
+          source_language = source_language,
+          cache_path = lang_cache_path
+        )
+        detection_level_caption <- glue::glue(
+          "{det_word}: {spatial_level} {level_word} | ",
+          "{disp_word}: {facet_column} {level_word}"
+        )
+      } else {
+        detection_level_caption <- glue::glue(
+          "Detection: {spatial_level} level | Display: {facet_column} level"
+        )
+      }
+    }
+
     # Add caption for consensus explaining the rule
-    plot_caption <- if (method == "consensus") {
+    consensus_caption <- if (method == "consensus") {
       if (target_language != "en") {
         consensus_rule_text <- translate_text(
           "Consensus rule",
@@ -1596,6 +2400,17 @@ outlier_plot <- function(
         )
       }
     } else {
+      ""
+    }
+
+    # combine detection level note and method-specific caption
+    plot_caption <- if (detection_level_caption != "" && consensus_caption != "") {
+      paste0(detection_level_caption, "\n ", consensus_caption)
+    } else if (detection_level_caption != "") {
+      detection_level_caption
+    } else if (consensus_caption != "") {
+      consensus_caption
+    } else {
       NULL
     }
 
@@ -1605,13 +2420,17 @@ outlier_plot <- function(
         ggplot2::aes(
           x = date_for_plot,
           y = value,
-          color = .binary_flag,
+          color = .plot_flag,
           alpha = .alpha_val
         ),
         size = 2
       ) +
       ggplot2::scale_color_manual(
-        values = c("TRUE" = "red", "FALSE" = "grey")
+        values = if (show_outbreaks) {
+          c("outbreak" = "#52AAC2", "outlier" = "red", "normal" = "grey")
+        } else {
+          c("outlier" = "red", "normal" = "grey")
+        }
       ) +
       ggplot2::scale_alpha_identity() +  # Use alpha values directly
       ggplot2::labs(
@@ -1640,7 +2459,8 @@ outlier_plot <- function(
       ggplot2::scale_y_continuous(
         labels = scales::label_number(
           scale_cut = scales::cut_short_scale()
-        )
+        ),
+        expand = ggplot2::expansion(mult = c(0.02, 0.1))
       ) +
       ggplot2::theme_minimal() +
       ggplot2::theme(
@@ -1668,7 +2488,8 @@ outlier_plot <- function(
         panel.grid.major.y = ggplot2::element_line(
           color = "grey90",
           linewidth = 0.5
-        )
+        ),
+        panel.border = ggplot2::element_rect(fill = NA, linewidth = 0.4)
       )
 
     # Store plot in list
@@ -1699,23 +2520,27 @@ outlier_plot <- function(
       )
     }
 
-    # Show plot if requested
-    if (show_plot) {
-      print(p)
-    }
   }  # End of methods loop
+  }  # End of else (standard multi-method mode)
+
+  # Filter plots based on return_plots parameter
+  filtered_plot_list <- if (consensus_colors) {
+    plot_list  # return full list (single consensus plot)
+  } else {
+    plot_list[return_plots]  # filter by return_plots
+  }
 
   # Return single plot or list of plots
-  if (length(methods) == 1) {
+  if (length(filtered_plot_list) == 1) {
     if (!show_plot) {
-      return(invisible(plot_list[[1]]))
+      return(invisible(filtered_plot_list[[1]]))
     }
-    return(plot_list[[1]])
+    return(filtered_plot_list[[1]])
   } else {
     if (!show_plot) {
-      return(invisible(plot_list))
+      return(invisible(filtered_plot_list))
     }
-    return(plot_list)
+    return(filtered_plot_list)
   }
 }
 
@@ -1759,35 +2584,23 @@ outlier_plot <- function(
     }
   }
 
-  # Translate terms for filename
-  # Translate "outlier plot" as two separate words for better translation
-  outlier_tr <- .translate_quiet("outlier") |>
-    tolower()
-  plot_tr <- .translate_quiet("plot") |>
-    tolower()
-  outlier_plot_tr <- paste(gsub(" ", "_", outlier_tr), plot_tr, sep = "_")
+  # use abbreviated terms for compact filenames (OneDrive compatibility)
+  outlier_abbrev <- if (target_language == "fr") "aberr" else "outliers"
 
-  method_tr <- .translate_quiet(method_name) |>
-    tolower()
+  method_slug <- tolower(method_name)
 
-  for_tr <- .translate_quiet("for")
+  # abbreviated yearmon label
 
-  by_tr <- .translate_quiet("by")
-
-  # Translate yearmon label
-  yearmon_label <- if (yearmon == "yearmon") {
-    .translate_quiet("year_month") |>
-      tolower() |>
-      gsub(" ", "_", x = _)
+  yearmon_slug <- if (yearmon == "yearmon") {
+    if (target_language == "fr") "an_mois" else "yr_mo"
   } else {
     yearmon
   }
 
-  adm_level_tr <- .translate_quiet(adm_level) |>
-    tolower() |>
+  adm_level_slug <- tolower(adm_level) |>
     gsub(" ", "_", x = _)
 
-  # Get year range
+  # get year range
   year_range <- if (!is.null(data$year) && length(unique(data$year)) > 1) {
     glue::glue("{min(data$year, na.rm = TRUE)}-{max(data$year, na.rm = TRUE)}")
   } else if (!is.null(data$year)) {
@@ -1796,11 +2609,10 @@ outlier_plot <- function(
     format(Sys.Date(), "%Y")
   }
 
-  # Construct filename
+  # construct filename (compact format, no connector words)
   save_path <- glue::glue(
-    "{outlier_plot_tr}_{method_tr}_{for_tr}_{column}_{by_tr}_",
-    "{yearmon_label}_&_{adm_level_tr}_{year_range}_",
-    "v{format(Sys.Date(), '%Y-%m-%d')}.png"
+    "{outlier_abbrev}_{method_slug}_{column}_{yearmon_slug}_",
+    "{adm_level_slug}_{year_range}_v{format(Sys.Date(), '%Y-%m-%d')}.png"
   )
 
   full_path <- file.path(plot_path, save_path)
@@ -1871,7 +2683,7 @@ outlier_plot <- function(
 #' @param data input data frame
 #' @param column target column name
 #' @param record_id record id column name
-#' @param admin_levels admin columns vector
+#' @param admin_level admin columns vector
 #' @param year year column name
 #' @param yearmon year-month column name
 #' @param month optional month column name
@@ -1939,7 +2751,7 @@ outlier_plot <- function(
     )
   }
 
-  allowed_time_mode <- c("within_year", "across_time", "by_month")
+  allowed_time_mode <- c("within_year", "across_time", "seasonal", "by_month")
   if (!time_mode %in% allowed_time_mode) {
     cli::cli_abort(
       "{.arg time_mode} must be one of {.val {allowed_time_mode}}."
@@ -2150,22 +2962,22 @@ outlier_plot <- function(
 #' resolve admin levels and facet fallback
 #'
 #' @param data data frame
-#' @param admin_levels candidate admin columns
+#' @param admin_level candidate admin columns
 #' @param record_id record id column name
 #' @noRd
-.resolve_admin_levels <- function(data, admin_levels, record_id) {
-  if (is.null(admin_levels) || length(admin_levels) == 0) {
-    cli::cli_abort("{.arg admin_levels} must supply at least one column name.")
+.resolve_admin_level <- function(data, admin_level, record_id) {
+  if (is.null(admin_level) || length(admin_level) == 0) {
+    cli::cli_abort("{.arg admin_level} must supply at least one column name.")
   }
 
-  missing_admin <- admin_levels[!admin_levels %in% names(data)]
-  if (length(missing_admin) == length(admin_levels)) {
+  missing_admin <- admin_level[!admin_level %in% names(data)]
+  if (length(missing_admin) == length(admin_level)) {
     cli::cli_abort(
-      "None of the supplied admin columns {.val {admin_levels}} exist."
+      "None of the supplied admin columns {.val {admin_level}} exist."
     )
   }
 
-  available <- admin_levels[admin_levels %in% names(data)]
+  available <- admin_level[admin_level %in% names(data)]
   if (length(available) == 0) {
     cli::cli_abort("No valid admin columns provided.")
   }
@@ -2177,7 +2989,7 @@ outlier_plot <- function(
   }
 
   list(
-    admin_levels = available,
+    admin_level = available,
     facet_column = facet_column,
     grouping_cols = available,
     id_cols = unique(c(record_id, available))
@@ -2226,61 +3038,21 @@ outlier_plot <- function(
   )
 }
 
-#' shift strictness toward lenient by one level
-#'
-#' @param strictness strictness label
-#' @param sd_multiplier numeric multiplier
-#' @param mad_constant numeric constant
-#' @param mad_multiplier numeric multiplier
-#' @param iqr_multiplier numeric multiplier
-#' @noRd
-.shift_strictness_one_level <- function(
-    strictness,
-    sd_multiplier,
-    mad_constant,
-    mad_multiplier,
-    iqr_multiplier) {
-  levels <- c("strict", "balanced", "lenient")
-  if (strictness == "advanced") {
-    # shift multipliers directly toward lenient defaults
-    return(list(
-      strictness = strictness,
-      sd_multiplier = max(sd_multiplier, 4),
-      mad_constant = mad_constant,
-      mad_multiplier = max(mad_multiplier, 12),
-      iqr_multiplier = max(iqr_multiplier, 3),
-      strictness_shifted = TRUE
-    ))
-  }
-
-  position <- match(strictness, levels, nomatch = length(levels))
-  new_position <- min(position + 1, length(levels))
-  new_strictness <- levels[[new_position]]
-  resolved <- .resolve_strictness(
-    new_strictness,
-    sd_multiplier,
-    mad_constant,
-    mad_multiplier,
-    iqr_multiplier
-  )
-  resolved$strictness_shifted <- TRUE
-  resolved
-}
-
 #' build grouping keys based on time_mode
 #'
 #' @param data data frame
-#' @param admin_levels admin columns
+#' @param admin_level admin columns
 #' @param time_mode time mode string
 #' @param year year column name
 #' @param month month column name
 #' @noRd
-.build_group_keys <- function(data, admin_levels, time_mode, year, month) {
-  base_cols <- admin_levels
+.build_group_keys <- function(data, admin_level, time_mode, year, month) {
+  base_cols <- admin_level
   time_cols <- switch(
     time_mode,
     within_year = c(year),
     across_time = character(),
+    seasonal = c(month),
     by_month = c(month),
     character()
   )
@@ -2322,198 +3094,9 @@ outlier_plot <- function(
 #' @noRd
 .apply_lower_bound_floor <- function(lower, value_type) {
   if (value_type == "count") {
-    return(pmax(0, lower))
+    return(as.numeric(pmax(0, lower)))
   }
-  lower
-}
-
-#' compute method bounds for a numeric vector
-#'
-#' @param values numeric vector of pool values
-#' @param strictness list with multipliers
-#' @param value_type type of metric (count/rate)
-#' @noRd
-.calculate_method_bounds <- function(values, strictness, value_type) {
-  cleaned <- values[!is.na(values)]
-  n <- length(cleaned)
-  if (n == 0) {
-    return(list(
-      n = 0,
-      mean = NA_real_,
-      sd = NA_real_,
-      mean_lower = NA_real_,
-      mean_upper = NA_real_,
-      median = NA_real_,
-      mad = NA_real_,
-      median_lower = NA_real_,
-      median_upper = NA_real_,
-      q1 = NA_real_,
-      q3 = NA_real_,
-      iqr = NA_real_,
-      iqr_lower = NA_real_,
-      iqr_upper = NA_real_,
-      unstable_mean = TRUE,
-      unstable_median = TRUE,
-      unstable_iqr = TRUE
-    ))
-  }
-
-  mean_value <- mean(cleaned)
-  sd_value <- stats::sd(cleaned)
-  mean_lower <- mean_value - strictness$sd_multiplier * sd_value
-  mean_upper <- mean_value + strictness$sd_multiplier * sd_value
-  mean_lower <- .apply_lower_bound_floor(mean_lower, value_type)
-
-  median_value <- stats::median(cleaned)
-  mad_value <- stats::mad(
-    cleaned,
-    constant = strictness$mad_constant,
-    na.rm = TRUE
-  )
-  median_lower <- median_value - strictness$mad_multiplier * mad_value
-  median_upper <- median_value + strictness$mad_multiplier * mad_value
-  median_lower <- .apply_lower_bound_floor(median_lower, value_type)
-
-  quantiles <- stats::quantile(cleaned, probs = c(0.25, 0.75), names = FALSE)
-  q1 <- quantiles[1]
-  q3 <- quantiles[2]
-  iqr_value <- q3 - q1
-  iqr_lower <- q1 - strictness$iqr_multiplier * iqr_value
-  iqr_upper <- q3 + strictness$iqr_multiplier * iqr_value
-  iqr_lower <- .apply_lower_bound_floor(iqr_lower, value_type)
-
-  list(
-    n = n,
-    mean = mean_value,
-    sd = sd_value,
-    mean_lower = mean_lower,
-    mean_upper = mean_upper,
-    median = median_value,
-    mad = mad_value,
-    median_lower = median_lower,
-    median_upper = median_upper,
-    q1 = q1,
-    q3 = q3,
-    iqr = iqr_value,
-    iqr_lower = iqr_lower,
-    iqr_upper = iqr_upper,
-    unstable_mean = is.na(sd_value) || sd_value == 0,
-    unstable_median = is.na(mad_value) || mad_value == 0,
-    unstable_iqr = is.na(iqr_value) || iqr_value == 0
-  )
-}
-
-#' apply method flags based on bounds and guardrails
-#'
-#' @param value numeric value for the row
-#' @param bounds list from .calculate_method_bounds
-#' @param guard_reason character reason if guardrail triggered
-#' @param methods character vector of methods to calculate
-#' @noRd
-.flag_outliers_by_method <- function(value, bounds, guard_reason, methods) {
-  result <- list()
-
-  if (!is.na(guard_reason) && guard_reason != "") {
-    if ("mean" %in% methods) result$mean_flag <- guard_reason
-    if ("median" %in% methods) result$median_flag <- guard_reason
-    if ("iqr" %in% methods) result$iqr_flag <- guard_reason
-    return(result)
-  }
-
-  if ("mean" %in% methods) {
-    result$mean_flag <- if (bounds$unstable_mean) {
-      "unstable_scale"
-    } else if (
-        is.na(value) ||
-        is.na(bounds$mean_lower) ||
-        is.na(bounds$mean_upper)
-      ) {
-      "insufficient_evidence"
-    } else if (value < bounds$mean_lower || value > bounds$mean_upper) {
-      "outlier"
-    } else {
-      "normal"
-    }
-  }
-
-  if ("median" %in% methods) {
-    result$median_flag <- if (bounds$unstable_median) {
-      "unstable_scale"
-    } else if (
-        is.na(value) ||
-        is.na(bounds$median_lower) ||
-        is.na(bounds$median_upper)
-      ) {
-      "insufficient_evidence"
-    } else if (value < bounds$median_lower || value > bounds$median_upper) {
-      "outlier"
-    } else {
-      "normal"
-    }
-  }
-
-  if ("iqr" %in% methods) {
-    result$iqr_flag <- if (bounds$unstable_iqr) {
-      "unstable_scale"
-    } else if (
-        is.na(value) ||
-        is.na(bounds$iqr_lower) ||
-        is.na(bounds$iqr_upper)
-      ) {
-      "insufficient_evidence"
-    } else if (value < bounds$iqr_lower || value > bounds$iqr_upper) {
-      "outlier"
-    } else {
-      "normal"
-    }
-  }
-
-  result
-}
-
-#' compute consensus flag given method flags and rule
-#'
-#' @param mean_flag mean method flag (can be NULL if not calculated)
-#' @param median_flag median method flag (can be NULL if not calculated)
-#' @param iqr_flag iqr method flag (can be NULL if not calculated)
-#' @param consensus_rule integer rule
-#' @noRd
-.compute_consensus_flag <- function(
-    mean_flag,
-    median_flag,
-    iqr_flag,
-    consensus_rule) {
-  # only include non-NULL flags
-  flags <- c()
-  if (!is.null(mean_flag)) flags <- c(flags, mean_flag)
-  if (!is.null(median_flag)) flags <- c(flags, median_flag)
-  if (!is.null(iqr_flag)) flags <- c(flags, iqr_flag)
-
-  if (length(flags) == 0) {
-    return("insufficient_evidence")
-  }
-
-  guard_reasons <- c(
-    "low_reporting",
-    "insufficient_n",
-    "insufficient_seasonal_history"
-  )
-  guard_flag <- flags[flags %in% guard_reasons]
-  if (length(guard_flag) > 0) {
-    return(guard_flag[[1]])
-  }
-
-  usable <- flags[!flags %in% c("unstable_scale", guard_reasons)]
-  outlier_votes <- sum(usable == "outlier", na.rm = TRUE)
-  total_votes <- sum(usable %in% c("outlier", "normal"), na.rm = TRUE)
-  if (total_votes == 0) {
-    return("insufficient_evidence")
-  }
-  if (outlier_votes >= consensus_rule) {
-    "outlier"
-  } else {
-    "normal"
-  }
+  as.numeric(lower)
 }
 
 #' run non-seasonal detection path
@@ -2620,8 +3203,7 @@ outlier_plot <- function(
           is.na(.outlier_value) |
             is.na(mean_lower) |
             is.na(mean_upper) ~ "insufficient_evidence",
-          .outlier_value < mean_lower |
-            .outlier_value > mean_upper ~ "outlier",
+          .outlier_value > mean_upper ~ "outlier",
           TRUE ~ "normal"
         )
       )
@@ -2636,8 +3218,7 @@ outlier_plot <- function(
           is.na(.outlier_value) |
             is.na(median_lower) |
             is.na(median_upper) ~ "insufficient_evidence",
-          .outlier_value < median_lower |
-            .outlier_value > median_upper ~ "outlier",
+          .outlier_value > median_upper ~ "outlier",
           TRUE ~ "normal"
         )
       )
@@ -2652,8 +3233,7 @@ outlier_plot <- function(
           is.na(.outlier_value) |
             is.na(iqr_lower) |
             is.na(iqr_upper) ~ "insufficient_evidence",
-          .outlier_value < iqr_lower |
-            .outlier_value > iqr_upper ~ "outlier",
+          .outlier_value > iqr_upper ~ "outlier",
           TRUE ~ "normal"
         )
       )
@@ -2710,751 +3290,6 @@ outlier_plot <- function(
     )
 
   combined
-}
-
-#' build subtitle summarising seasonality and guardrails
-#'
-#' @param data plotted data
-#' @param min_n minimum n
-#' @param reporting_rate_min reporting threshold
-#' @noRd
-.format_seasonality_caption <- function(data, min_n, reporting_rate_min) {
-  if (nrow(data) == 0) {
-    return("No data available")
-  }
-  first_row <- data[1, , drop = FALSE]
-  strictness_shift <- if (isTRUE(first_row$strictness_shifted)) {
-    " (shifted)"
-  } else {
-    ""
-  }
-  glue::glue(
-    "Mode: {first_row$seasonality_mode_used} | ",
-    "Window: {first_row$seasonal_window_desc} | ",
-    "Strictness: {first_row$strictness_label}{strictness_shift} | ",
-    "min_n = {min_n} | reporting >= {reporting_rate_min}"
-  )
-}
-
-#' ensure detection output has required columns for plotting
-#'
-#' @param data detection output
-#' @param admin_levels admin columns expected
-#' @noRd
-.validate_plot_inputs <- function(data, admin_levels) {
-  required <- c(
-    "value",
-    "month",
-    "outlier_flag_consensus",
-    "seasonality_mode_used",
-    "seasonal_window_desc"
-  )
-  missing <- required[!required %in% names(data)]
-  if (length(missing) > 0) {
-    cli::cli_abort(
-      "Detection output missing columns required for plotting: {.val {missing}}"
-    )
-  }
-  facet <- if (length(admin_levels) >= 2 && admin_levels[2] %in% names(data)) {
-    admin_levels[2]
-  } else if (admin_levels[1] %in% names(data)) {
-    admin_levels[1]
-  } else {
-    cli::cli_abort("Could not determine facet column from admin levels.")
-  }
-  list(facet_column = facet)
-}
-
-#' adjust french labels for plots
-#'
-#' @param label text to adjust
-#' @param language target language
-#' @noRd
-.translation_qc_labels <- function(label, language) {
-  if (language != "fr") {
-    return(label)
-  }
-  fixer <- base::get0(".enforce_fr_reporting_terms", mode = "function")
-  if (base::is.function(fixer)) {
-    return(fixer(label))
-  }
-  label
-}
-
-#' build ggplot object with colour scheme
-#'
-#' @param data plotting data
-#' @param facet_column column to facet by
-#' @param column target column name
-#' @param yearmon year-month column name
-#' @param year year column name
-#' @param outlier_column column containing flag to colour
-#' @param caption subtitle string
-#' @noRd
-.build_outlier_plot <- function(
-    data,
-    facet_column,
-    column,
-    yearmon,
-    year,
-    outlier_column,
-    caption,
-    target_language,
-    date_breaks = "3 months") {
-  # Binary outlier classification with your specified colors
-  color_values <- c(
-    "TRUE" = "red",      # Outliers
-    "FALSE" = "grey"  # Normal points
-  )
-
-  data <- data |>
-    dplyr::mutate(
-      # Binary classification: TRUE = outlier, FALSE = normal
-      .plot_flag = dplyr::case_when(
-        outlier_flag_consensus == "outlier" ~ "TRUE",
-        TRUE ~ "FALSE"
-      ),
-      .plot_date = lubridate::ymd(paste0(.data[[yearmon]], "-01"))
-    ) |>
-    # Sort so outliers (TRUE) are plotted on top
-    dplyr::arrange(.plot_flag)
-
-  title_text <- glue::glue(
-    "Outlier Detection for <b>{column}</b>"
-  )
-
-  subtitle_text <- .translation_qc_labels(caption, target_language)
-
-  ggplot2::ggplot(data) +
-    ggplot2::geom_point(
-      ggplot2::aes(
-        x = .plot_date,
-        y = value,
-        color = .plot_flag
-      ),
-      alpha = 0.7,  # Add transparency to show density patterns
-      size = 2
-    ) +
-    ggplot2::scale_color_manual(
-      name = .translation_qc_labels(
-        "Outlier classification",
-        target_language
-      ),
-      values = color_values,
-      breaks = names(color_values)
-    ) +
-    ggplot2::scale_x_date(
-      date_breaks = date_breaks,
-      labels = function(x) {
-        sntutils::translate_yearmon(
-          x,
-          language = target_language,
-          format = "%Y-%m"
-        )
-      }
-    ) +
-    ggplot2::labs(
-      title = title_text,
-      subtitle = subtitle_text,
-      x = paste0("\n", yearmon),
-      y = paste0(column, "\n")
-    ) +
-    ggplot2::facet_wrap(
-      stats::as.formula(paste("~", facet_column)),
-      scales = "free_y"
-    ) +
-    ggplot2::theme_minimal() +
-    ggplot2::theme(
-      legend.position = "bottom",
-      plot.title = ggtext::element_markdown(),
-      plot.subtitle = ggplot2::element_text(size = 9)
-    )
-}
-
-
-# seasonality helpers extracted from outlier_detection_seasonality.R
-# implements seasonal pooling ladder with audit metadata
-# RELEVANT FILES:R/outlier_detection.R,R/outlier_detection_helpers.R
-
-#' select seasonal pool using fallback ladder
-#'
-#' @param group_data data for a single admin group
-#' @param row_index row index within group_data
-#' @param params list of tuning parameters
-#' @param strictness list with multiplier settings
-#' @noRd
-.select_seasonal_pool <- function(group_data, row_index, params, strictness) {
-  target <- group_data[row_index, , drop = FALSE]
-  pool_primary <- .seasonality_primary_pool(group_data, target, params)
-  if (pool_primary$eligible) {
-    return(.seasonality_result(
-      mode_used = "same_month",
-      pool = pool_primary$pool,
-      desc = pool_primary$desc,
-      strictness = strictness,
-      fallback = FALSE
-    ))
-  }
-
-  pool_neighbors <- .seasonality_neighbors_pool(group_data, target, params)
-  if (pool_neighbors$eligible) {
-    return(.seasonality_result(
-      mode_used = "neighbors",
-      pool = pool_neighbors$pool,
-      desc = pool_neighbors$desc,
-      strictness = strictness,
-      fallback = TRUE,
-      fallback_reason = "same_month_insufficient"
-    ))
-  }
-
-  pool_residual <- .seasonality_residual_pool(group_data, target, params)
-  if (pool_residual$eligible) {
-    return(.seasonality_result(
-      mode_used = "residual",
-      pool = pool_residual$pool,
-      desc = pool_residual$desc,
-      strictness = strictness,
-      fallback = TRUE,
-      fallback_reason = "neighbors_insufficient",
-      residual_stats = pool_residual$residual_stats
-    ))
-  }
-
-  pool_across <- .seasonality_across_time_pool(
-    group_data,
-    target,
-    params,
-    strictness
-  )
-  if (pool_across$eligible) {
-    return(pool_across$result)
-  }
-
-  list(
-    pool = NULL,
-    mode_used = "none",
-    desc = pool_primary$desc,
-    strictness = strictness,
-    strictness_shifted = pool_across$strictness_shifted,
-    fallback_applied = TRUE,
-    fallback_reason = "insufficient_seasonal_history",
-    residual_stats = NULL
-  )
-}
-
-#' default seasonality result structure
-#'
-#' @param mode_used character
-#' @param pool data frame or NULL
-#' @param desc description text
-#' @param strictness list with multipliers
-#' @param fallback logical
-#' @param fallback_reason character
-#' @param residual_stats optional list
-#' @noRd
-.seasonality_result <- function(
-    mode_used,
-    pool,
-    desc,
-    strictness,
-    fallback,
-    fallback_reason = NA_character_,
-    residual_stats = NULL) {
-  list(
-    pool = pool,
-    mode_used = mode_used,
-    desc = desc,
-    strictness = strictness,
-    strictness_shifted = isTRUE(strictness$strictness_shifted),
-    fallback_applied = fallback,
-    fallback_reason = fallback_reason,
-    residual_stats = residual_stats
-  )
-}
-
-#' same-month seasonal pool
-#'
-#' @param group_data data frame
-#' @param target row data
-#' @param params list
-#' @noRd
-.seasonality_primary_pool <- function(group_data, target, params) {
-  window_start <- target$.outlier_year - params$seasonal_pool_years + 1
-  pool <- dplyr::filter(
-    group_data,
-    .outlier_month == target$.outlier_month,
-    .outlier_year >= window_start,
-    .outlier_year <= target$.outlier_year
-  )
-  if (nrow(pool) == 0) {
-    return(list(
-      pool = pool,
-      eligible = FALSE,
-      desc = glue::glue(
-        "Month {target$.outlier_month}, no same-month history"
-      )
-    ))
-  }
-  years_available <- unique(pool$.outlier_year)
-  eligible <- nrow(pool) >= params$min_obs_per_seasonal_bucket &&
-    length(years_available) >= params$min_years_per_month
-  desc <- glue::glue(
-    "Month {target$.outlier_month}, {min(pool$.outlier_year, na.rm = TRUE)}-",
-    "{max(pool$.outlier_year, na.rm = TRUE)}; same-month window"
-  )
-  list(pool = pool, eligible = eligible, desc = desc)
-}
-
-#' neighbor seasonal pool with weights
-#'
-#' @param group_data data frame
-#' @param target row data
-#' @param params list
-#' @noRd
-.seasonality_neighbors_pool <- function(group_data, target, params) {
-  window_start <- target$.outlier_year - params$seasonal_pool_years + 1
-  neighbor_months <- ((target$.outlier_month + c(-1, 0, 1) - 1) %% 12) + 1
-  pool <- dplyr::filter(
-    group_data,
-    .outlier_month %in% neighbor_months,
-    .outlier_year >= window_start,
-    .outlier_year <= target$.outlier_year
-  )
-  if (nrow(pool) == 0) {
-    return(list(pool = pool, eligible = FALSE, desc = "No neighbor data"))
-  }
-  pool <- pool |>
-    dplyr::mutate(
-      .season_weight = dplyr::if_else(
-        .outlier_month == target$.outlier_month,
-        2L,
-        1L
-      )
-    )
-  obs <- sum(pool$.season_weight)
-  eligible <- obs >= params$min_obs_per_seasonal_bucket
-  month_names <- paste(sort(unique(neighbor_months)), collapse = "/")
-  desc <- glue::glue(
-    "Months {month_names}, {min(pool$.outlier_year, na.rm = TRUE)}-",
-    "{max(pool$.outlier_year, na.rm = TRUE)}; neighbors weights 2/1"
-  )
-  list(pool = pool, eligible = eligible, desc = desc)
-}
-
-#' residual seasonal pool
-#'
-#' @param group_data data frame
-#' @param target row data
-#' @param params list
-#' @noRd
-.seasonality_residual_pool <- function(group_data, target, params) {
-  if (nrow(group_data) < params$min_obs_per_seasonal_bucket) {
-    return(list(
-      pool = NULL,
-      eligible = FALSE,
-      desc = "Insufficient residual data"
-    ))
-  }
-
-  month_means <- dplyr::summarise(
-    dplyr::group_by(group_data, .outlier_month),
-    month_mean = mean(.outlier_value, na.rm = TRUE),
-    .groups = "drop"
-  )
-  residuals <- dplyr::left_join(
-    group_data,
-    month_means,
-    by = ".outlier_month"
-  ) |>
-    dplyr::mutate(
-      .residual_value = .outlier_value - month_mean
-    )
-  row_month_mean <- dplyr::filter(
-    month_means,
-    .outlier_month == target$.outlier_month
-  )$month_mean
-  if (length(row_month_mean) == 0 || is.na(row_month_mean)) {
-    row_residual <- NA_real_
-  } else {
-    row_residual <- target$.outlier_value - row_month_mean
-  }
-  # Safe min/max calculation for year range
-  years <- group_data$.outlier_year[!is.na(group_data$.outlier_year)]
-  if (length(years) > 0) {
-    year_range <- paste0(min(years), "-", max(years))
-  } else {
-    year_range <- "unknown"
-  }
-
-  desc <- glue::glue(
-    "Residual pooled, months fixed; {year_range}"
-  )
-  residual_stats <- list(
-    residual_sd = stats::sd(residuals$.residual_value, na.rm = TRUE),
-    residual_mad = stats::mad(
-      residuals$.residual_value,
-      constant = params$mad_constant,
-      na.rm = TRUE
-    ),
-    residual_iqr = stats::IQR(residuals$.residual_value, na.rm = TRUE)
-  )
-  list(
-    pool = residuals,
-    eligible = nrow(residuals) >= params$min_obs_per_seasonal_bucket,
-    desc = desc,
-    residual_stats = c(residual_stats, list(row_residual = row_residual))
-  )
-}
-
-#' across-time fallback pool
-#'
-#' @param group_data data frame
-#' @param target row data
-#' @param params list
-#' @param strictness list
-#' @noRd
-.seasonality_across_time_pool <- function(
-    group_data,
-    target,
-    params,
-    strictness) {
-  if (nrow(group_data) < params$min_obs_per_seasonal_bucket) {
-    return(list(
-      eligible = FALSE,
-      result = list(
-        pool = NULL,
-        mode_used = "none",
-        desc = "Across-time insufficient",
-        strictness_shifted = FALSE
-      )
-    ))
-  }
-  shifted <- .shift_strictness_one_level(
-    strictness$strictness,
-    strictness$sd_multiplier,
-    strictness$mad_constant,
-    strictness$mad_multiplier,
-    strictness$iqr_multiplier
-  )
-  # Safe min/max calculation for year range
-  years <- group_data$.outlier_year[!is.na(group_data$.outlier_year)]
-  if (length(years) > 0) {
-    year_range <- paste0(min(years), "-", max(years))
-  } else {
-    year_range <- "unknown"
-  }
-
-  desc <- glue::glue(
-    "Across-time fallback, {year_range}"
-  )
-  list(
-    eligible = TRUE,
-    strictness_shifted = TRUE,
-    result = .seasonality_result(
-      mode_used = "across_time_fallback",
-      pool = group_data,
-      desc = desc,
-      strictness = shifted,
-      fallback = TRUE,
-      fallback_reason = "residual_insufficient"
-    )
-  )
-}
-
-#' run seasonal detection with fallback ladder
-#'
-#' @param data prepared data with derived columns
-#' @param admin_levels character vector of admin columns
-#' @param strictness list with multiplier settings
-#' @param params list of seasonality parameters
-#' @param methods character vector of methods to calculate
-#' @param consensus_rule integer consensus rule
-#' @param min_n minimum observations per bucket
-#' @param reporting_rate_min minimum reporting rate
-#' @param value_type value type string
-#' @noRd
-.run_seasonal_detection <- function(
-    data,
-    detection_admin_levels,
-    parallel_grouping_levels = detection_admin_levels,
-    strictness,
-    params,
-    methods,
-    consensus_rule,
-    min_n,
-    reporting_rate_min,
-    value_type) {
-  # Setup data.table threading for improved performance
-  if (requireNamespace("data.table", quietly = TRUE)) {
-    .setup_dt_threads()
-    on.exit(.reset_dt_threads())
-  }
-
-  # Use parallel_grouping_levels for efficient grouping (e.g., by district)
-  # This avoids creating 188k+ facility-level groups for better performance
-  grouped <- dplyr::group_by(
-    data,
-    dplyr::across(dplyr::all_of(parallel_grouping_levels))
-  )
-
-  # Debug: Show how many groups we're processing
-  n_groups <- dplyr::n_groups(grouped)
-  level_desc <- if (length(parallel_grouping_levels) > 0) {
-    paste(parallel_grouping_levels, collapse="/")
-  } else {
-    "admin"
-  }
-  cli::cli_inform("Processing {n_groups} groups at {level_desc} level")
-
-  dplyr::group_modify(grouped, function(group_data, key) {
-    # Sort data within this geographic group
-    group_data <- dplyr::arrange(
-      group_data,
-      .outlier_year,
-      .outlier_month,
-      .outlier_yearmon
-    )
-
-    # Within this geographic group, we need to detect outliers at the spatial level
-    # Get the spatial level column (e.g., facility ID)
-    spatial_col <- setdiff(detection_admin_levels, parallel_grouping_levels)
-
-    if (length(spatial_col) > 0) {
-      # Group by spatial level within this geographic group
-      spatial_grouped <- dplyr::group_by(
-        group_data,
-        dplyr::across(dplyr::all_of(spatial_col))
-      )
-
-      # Process each spatial unit (e.g., facility) within this geographic group
-      dplyr::group_modify(spatial_grouped, function(spatial_data, spatial_key) {
-        # For each facility, compute seasonal caches using the full group context
-        same_month_cache <- .cache_same_month_pools(
-          spatial_data,
-          params,
-          strictness,
-          value_type
-        )
-        neighbors_cache <- .cache_neighbors_pools(
-          same_month_cache,
-          params,
-          strictness,
-          value_type
-        )
-        residual_cache <- .cache_residual_pools(
-          spatial_data,
-          params,
-          strictness,
-          value_type
-        )
-        across_time_cache <- .cache_across_time_pools(
-          spatial_data,
-          strictness,
-          value_type
-        )
-
-        # Apply outlier detection to this spatial unit
-        .select_pools_vectorized(
-          spatial_data,
-          same_month_cache,
-          neighbors_cache,
-          residual_cache,
-          across_time_cache,
-          params,
-          methods,
-          reporting_rate_min,
-          min_n,
-          consensus_rule
-        )
-      }) |> dplyr::ungroup()
-    } else {
-      # No spatial level specified, use original logic
-      same_month_cache <- .cache_same_month_pools(
-        group_data,
-        params,
-        strictness,
-        value_type
-      )
-      neighbors_cache <- .cache_neighbors_pools(
-        same_month_cache,
-        params,
-        strictness,
-        value_type
-      )
-      residual_cache <- .cache_residual_pools(
-        group_data,
-        params,
-        strictness,
-        value_type
-      )
-      across_time_cache <- .cache_across_time_pools(
-        group_data,
-        strictness,
-        value_type
-      )
-
-      .select_pools_vectorized(
-        group_data,
-        same_month_cache,
-        neighbors_cache,
-        residual_cache,
-        across_time_cache,
-        params,
-        methods,
-        reporting_rate_min,
-        min_n,
-        consensus_rule
-      )
-    }
-  }) |>
-    dplyr::ungroup() |>
-    dplyr::mutate(
-      seasonality_mode_requested = "by_month"
-    )
-}
-
-
-#' setup data.table threads for optimal performance
-#'
-#' @keywords internal
-#' @noRd
-.setup_dt_threads <- function() {
-  if (!requireNamespace("data.table", quietly = TRUE)) {
-    cli::cli_inform("data.table not available - parallel processing disabled")
-    return(invisible(NULL))
-  }
-
-  # Get number of cores safely
-  n_cores <- .get_cores_safe()
-
-  # Use n-1 cores to leave one for system
-  threads_to_use <- max(1, n_cores - 1)
-
-  # Set data.table threads
-  data.table::setDTthreads(threads_to_use)
-
-  # Verify and report
-  actual_threads <- data.table::getDTthreads()
-  cli::cli_inform("data.table threading: {actual_threads}/{n_cores} threads (detected {n_cores} cores)")
-}
-
-#' safely detect number of cores across platforms
-#'
-#' @return integer number of cores
-#' @keywords internal
-#' @noRd
-.get_cores_safe <- function() {
-  tryCatch({
-    # Try parallel package first
-    if (requireNamespace("parallel", quietly = TRUE)) {
-      cores <- parallel::detectCores(logical = FALSE)
-      if (!is.na(cores) && cores > 0) return(cores)
-    }
-
-    # Platform-specific fallbacks
-    if (.Platform$OS.type == "windows") {
-      cores <- as.integer(Sys.getenv("NUMBER_OF_PROCESSORS"))
-      if (!is.na(cores) && cores > 0) return(cores)
-    } else {
-      # Unix-like (Linux/macOS)
-      cores <- system("nproc 2>/dev/null || sysctl -n hw.ncpu 2>/dev/null || echo 1", intern = TRUE)
-      cores <- as.integer(cores[1])
-      if (!is.na(cores) && cores > 0) return(cores)
-    }
-
-    return(1L)
-  }, error = function(e) 1L)
-}
-
-#' reset data.table threads to default
-#'
-#' @keywords internal
-#' @noRd
-.reset_dt_threads <- function() {
-  if (requireNamespace("data.table", quietly = TRUE)) {
-    data.table::setDTthreads(0)  # 0 = reset to default
-  }
-}
-
-#' setup file-based caching for outlier detection functions
-#'
-#' @param cache_stats logical flag to enable caching
-#' @param cache_dir path to cache directory (if NULL, uses default)
-#' @return list with cache objects or NULL if caching disabled
-#' @keywords internal
-#' @noRd
-.setup_outlier_cache <- function(cache_stats = TRUE, cache_dir = NULL) {
-  if (!cache_stats) {
-    return(NULL)
-  }
-
-  if (!requireNamespace("memoise", quietly = TRUE)) {
-    cli::cli_warn("memoise package not available - caching disabled")
-    return(NULL)
-  }
-
-  # Set default cache directory if not provided
-  if (is.null(cache_dir)) {
-    if (requireNamespace("here", quietly = TRUE)) {
-      cache_dir <- here::here("cache", "outlier_cache")
-    } else {
-      cache_dir <- file.path(tempdir(), "outlier_cache")
-    }
-  }
-
-  # Create cache directory if it doesn't exist
-  if (!dir.exists(cache_dir)) {
-    dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
-  }
-
-  # Create filesystem cache backend
-  cache_backend <- memoise::cache_filesystem(cache_dir)
-
-  # Create list of cached function names to return
-  list(
-    backend = cache_backend,
-    dir = cache_dir,
-    enabled = TRUE
-  )
-}
-
-#' apply caching to key outlier detection functions
-#'
-#' @param cache_config cache configuration from .setup_outlier_cache
-#' @return invisible NULL (functions are memoised in parent environment)
-#' @keywords internal
-#' @noRd
-.apply_outlier_caching <- function(cache_config) {
-  if (is.null(cache_config) || !cache_config$enabled) {
-    return(invisible(NULL))
-  }
-
-  # Apply caching to expensive functions that exist
-  cache_backend <- cache_config$backend
-  parent_env <- parent.frame()
-
-  # Cache the main expensive detection functions
-  if (exists(".run_seasonal_detection", envir = parent_env, inherits = FALSE)) {
-    assign(".run_seasonal_detection",
-           memoise::memoise(.run_seasonal_detection, cache = cache_backend),
-           envir = parent_env)
-  }
-
-  if (exists(".run_non_seasonal_detection", envir = parent_env, inherits = FALSE)) {
-    assign(".run_non_seasonal_detection",
-           memoise::memoise(.run_non_seasonal_detection, cache = cache_backend),
-           envir = parent_env)
-  }
-
-  # Cache utility functions
-  if (exists(".parse_date_column", envir = parent_env, inherits = FALSE)) {
-    assign(".parse_date_column",
-           memoise::memoise(.parse_date_column, cache = cache_backend),
-           envir = parent_env)
-  }
-
-  invisible(NULL)
 }
 
 #' parse date column into year, month, and yearmon components
@@ -3521,7 +3356,7 @@ outlier_plot <- function(
 #' @param data detection results tibble
 #' @param output_profile profile string (lean/standard/audit)
 #' @param record_id record id column name
-#' @param admin_levels admin column names
+#' @param admin_level admin column names
 #' @param yearmon yearmon column name
 #' @param year year column name
 #' @noRd
@@ -3529,11 +3364,11 @@ outlier_plot <- function(
     data,
     output_profile,
     record_id,
-    admin_levels,
+    admin_level,
     yearmon,
     year) {
   # core columns always included
-  core_cols <- c(record_id, admin_levels, yearmon, year, "month")
+  core_cols <- c(record_id, admin_level, yearmon, year, "month")
 
   if (output_profile[1] == "lean") {
     # minimal: record id, admin levels, yearmon, derived year/month,
@@ -3602,9 +3437,14 @@ outlier_plot <- function(
     spatial_level,
     activeness_applied,
     n_inactive_skipped,
-    key_indicators_used) {
+    key_indicators_used,
+    classify_outbreaks = TRUE,
+    outbreak_min_run = 2,
+    outbreak_prop_tolerance = 0.9,
+    outbreak_max_gap = 1) {
 
   # detection orchestrator ---------------------------------------------------
+
   options <- .normalize_outlier_options(
     time_mode = time_mode,
     value_type = value_type,
@@ -3617,11 +3457,11 @@ outlier_plot <- function(
   # Handle spatial_level parameter for proper detection vs grouping
   if (!is.null(spatial_level)) {
     # Detection happens at spatial_level, grouping for efficiency at admin_level
-    detection_admin_levels <- c(admin_level, spatial_level)
+    detection_admin_level <- c(admin_level, spatial_level)
     parallel_grouping_levels <- admin_level  # For data.table parallel efficiency
   } else {
     # Original behavior - use all admin_level for both detection and grouping
-    detection_admin_levels <- admin_level
+    detection_admin_level <- admin_level
     parallel_grouping_levels <- admin_level
   }
 
@@ -3629,7 +3469,7 @@ outlier_plot <- function(
     data = data,
     column = column,
     record_id = record_id,
-    admin_level = detection_admin_levels,
+    admin_level = admin_level,  # Pass original admin_level, not detection_admin_level
     date_column = date,
     options = options,
     consensus_rule = consensus_rule,
@@ -3640,41 +3480,15 @@ outlier_plot <- function(
     min_n = min_n,
     reporting_rate_col = reporting_rate_col,
     reporting_rate_min = reporting_rate_min,
-    seasonal_pool_years = seasonal_pool_years,
-    min_years_per_month = min_years_per_month,
-    cache_stats = FALSE,  # Don't cache within cached function
     spatial_level = spatial_level
   )
 
-  if (options$time_mode == "by_month") {
-    detection <- .run_seasonal_detection(
-      data = context$prepared_data,
-      detection_admin_levels = detection_admin_levels,
-      parallel_grouping_levels = parallel_grouping_levels,
-      strictness = context$strictness,
-      params = context$seasonality_params,
-      methods = methods,
-      consensus_rule = consensus_rule,
-      min_n = context$constraints$min_n,
-      reporting_rate_min = context$constraints$reporting_rate_min,
-      value_type = options$value_type
-    )
-  } else {
-    detection <- .run_non_seasonal_detection(
-      data = context$prepared_data,
-      grouping_cols = context$grouping_cols,
-      strictness = context$strictness,
-      min_n = context$constraints$min_n,
-      reporting_rate_min = context$constraints$reporting_rate_min,
-      methods = methods,
-      consensus_rule = consensus_rule,
-      value_type = options$value_type,
-      metadata = list(
-        seasonality_mode_used = options$time_mode,
-        seasonal_window_desc = NA_character_
-      )
-    )
-  }
+  # Use execute_outlier_detection to handle data.table decision
+  detection <- .execute_outlier_detection(
+    context = context,
+    methods = methods,
+    consensus_rule = consensus_rule
+  )
 
   result <- .finalize_outlier_detection(
     detection = detection,
@@ -3687,14 +3501,18 @@ outlier_plot <- function(
     consensus_rule = consensus_rule,
     activeness_applied = activeness_applied,
     n_inactive_skipped = n_inactive_skipped,
-    key_indicators_used = key_indicators_used
+    key_indicators_used = key_indicators_used,
+    classify_outbreaks = classify_outbreaks,
+    outbreak_min_run = outbreak_min_run,
+    outbreak_prop_tolerance = outbreak_prop_tolerance,
+    outbreak_max_gap = outbreak_max_gap
   )
 
   .filter_by_output_profile(
     result,
     output_profile,
     record_id,
-    context$admin_info$admin_levels,
+    context$admin_info$admin_level,
     context$yearmon_col,
     context$year_col
   )
@@ -3799,800 +3617,122 @@ outlier_plot <- function(
   )
 }
 
-# optimized seasonal detection cache functions ============================
+# Calculate consensus strength across methods for consensus color visualization
+# @param data tibble with outlier_flag_* columns
+# @param methods character vector of detection methods used
+# @return ordered factor with levels: normal, weak, moderate, strong
+# @noRd
+.calculate_consensus_strength <- function(outlier_flag_iqr = NA_character_,
+                                          outlier_flag_median = NA_character_,
+                                          outlier_flag_mean = NA_character_,
+                                          methods) {
+  # extract only non-consensus methods
+  detection_methods <- setdiff(methods, "consensus")
 
-#' cache same-month pools for all (month, year) combinations
-#'
-#' @param group_data data for one admin group
-#' @param params seasonality parameters
-#' @param strictness strictness settings
-#' @param value_type value type string
-#' @noRd
-.cache_same_month_pools <- function(
-    group_data,
-    params,
-    strictness,
-    value_type) {
-  group_data |>
-    dplyr::group_by(.outlier_month, .outlier_year) |>
-    dplyr::group_modify(function(year_month_data, key) {
-      target_year <- key$.outlier_year
-      window_start <- target_year - params$seasonal_pool_years + 1
+  # count outlier + outbreak flags across methods (vectorized)
+  count_col <- 0L
 
-      # get pool data for this month within the rolling window
-      pool_data <- group_data |>
-        dplyr::filter(
-          .outlier_month == key$.outlier_month,
-          .outlier_year >= window_start,
-          .outlier_year <= target_year
-        )
+  if ("iqr" %in% detection_methods && !all(is.na(outlier_flag_iqr))) {
+    count_col <- count_col +
+      as.integer(outlier_flag_iqr %in% c("outlier", "outbreak"))
+  }
+  if ("median" %in% detection_methods && !all(is.na(outlier_flag_median))) {
+    count_col <- count_col +
+      as.integer(outlier_flag_median %in% c("outlier", "outbreak"))
+  }
+  if ("mean" %in% detection_methods && !all(is.na(outlier_flag_mean))) {
+    count_col <- count_col +
+      as.integer(outlier_flag_mean %in% c("outlier", "outbreak"))
+  }
 
-      if (nrow(pool_data) == 0) {
-        return(dplyr::tibble(
-          eligible = FALSE,
-          n_in_group = 0L,
-          desc = paste0(
-            "Month ",
-            key$.outlier_month,
-            ", no same-month history"
-          ),
-          mean = NA_real_,
-          sd = NA_real_,
-          mean_lower = NA_real_,
-          mean_upper = NA_real_,
-          median = NA_real_,
-          mad = NA_real_,
-          median_lower = NA_real_,
-          median_upper = NA_real_,
-          q1 = NA_real_,
-          q3 = NA_real_,
-          iqr = NA_real_,
-          iqr_lower = NA_real_,
-          iqr_upper = NA_real_,
-          unstable_mean = TRUE,
-          unstable_median = TRUE,
-          unstable_iqr = TRUE
-        ))
-      }
-
-      years_available <- length(unique(pool_data$.outlier_year))
-      eligible <- nrow(pool_data) >= params$min_obs_per_seasonal_bucket &
-        years_available >= params$min_years_per_month
-
-      # compute statistics directly
-      n_vals <- nrow(pool_data)
-      mean_val <- mean(pool_data$.outlier_value, na.rm = TRUE)
-      sd_val <- stats::sd(pool_data$.outlier_value, na.rm = TRUE)
-      median_val <- stats::median(pool_data$.outlier_value, na.rm = TRUE)
-      mad_val <- stats::mad(
-        pool_data$.outlier_value,
-        constant = strictness$mad_constant,
-        na.rm = TRUE
-      )
-      q1_val <- stats::quantile(
-        pool_data$.outlier_value,
-        probs = 0.25,
-        na.rm = TRUE,
-        names = FALSE
-      )
-      q3_val <- stats::quantile(
-        pool_data$.outlier_value,
-        probs = 0.75,
-        na.rm = TRUE,
-        names = FALSE
-      )
-      iqr_val <- q3_val - q1_val
-
-      dplyr::tibble(
-        eligible = eligible,
-        n_in_group = as.integer(n_vals),
-        desc = paste0(
-          "Month ",
-          key$.outlier_month,
-          ", ",
-          min(pool_data$.outlier_year, na.rm = TRUE),
-          "-",
-          max(pool_data$.outlier_year, na.rm = TRUE),
-          "; same-month window"
-        ),
-        mean = mean_val,
-        sd = sd_val,
-        mean_lower = .apply_lower_bound_floor(
-          mean_val - strictness$sd_multiplier * sd_val,
-          value_type
-        ),
-        mean_upper = mean_val + strictness$sd_multiplier * sd_val,
-        median = median_val,
-        mad = mad_val,
-        median_lower = .apply_lower_bound_floor(
-          median_val - strictness$mad_multiplier * mad_val,
-          value_type
-        ),
-        median_upper = median_val + strictness$mad_multiplier * mad_val,
-        q1 = q1_val,
-        q3 = q3_val,
-        iqr = iqr_val,
-        iqr_lower = .apply_lower_bound_floor(
-          q1_val - strictness$iqr_multiplier * iqr_val,
-          value_type
-        ),
-        iqr_upper = q3_val + strictness$iqr_multiplier * iqr_val,
-        unstable_mean = is.na(sd_val) | sd_val == 0,
-        unstable_median = is.na(mad_val) | mad_val == 0,
-        unstable_iqr = is.na(iqr_val) | iqr_val == 0
-      )
-    }) |>
-    dplyr::ungroup()
-}
-
-#' cache neighbor pools using weighted formulas (no vector replication)
-#'
-#' @param same_month_cache output from .cache_same_month_pools
-#' @param params seasonality parameters
-#' @param strictness strictness settings
-#' @param value_type value type string
-#' @noRd
-.cache_neighbors_pools <- function(
-    same_month_cache,
-    params,
-    strictness,
-    value_type) {
-  same_month_cache |>
-    dplyr::group_by(.outlier_year) |>
-    dplyr::group_modify(function(year_data, key) {
-      target_year <- key$.outlier_year
-
-      # get neighbor months for each target month
-      year_data |>
-        dplyr::rowwise() |>
-        dplyr::mutate(
-          neighbor_months = list(
-            ((.outlier_month + c(-1, 0, 1) - 1) %% 12) + 1
-          ),
-          # get stats from same-month cache for neighbors
-          neighbor_stats = list({
-            neighbor_data <- same_month_cache |>
-              dplyr::filter(
-                .outlier_month %in% neighbor_months,
-                .outlier_year == target_year,
-                eligible
-              )
-
-            if (nrow(neighbor_data) == 0) {
-              list(
-                eligible = FALSE,
-                n_in_group = 0L,
-                desc = "No neighbor data",
-                mean = NA_real_,
-                median = NA_real_,
-                mean_lower = NA_real_,
-                mean_upper = NA_real_,
-                median_lower = NA_real_,
-                median_upper = NA_real_,
-                q1 = NA_real_,
-                q3 = NA_real_,
-                iqr_lower = NA_real_,
-                iqr_upper = NA_real_,
-                unstable_mean = TRUE,
-                unstable_median = TRUE,
-                unstable_iqr = TRUE
-              )
-            } else {
-              # weighted combination: same month weight 2, others weight 1
-              weights <- ifelse(
-                neighbor_data$.outlier_month == .outlier_month,
-                2,
-                1
-              )
-              total_weight <- sum(weights)
-
-              if (total_weight >= params$min_obs_per_seasonal_bucket) {
-                # weighted means for bounds calculation
-                weighted_mean <- sum(
-                  neighbor_data$mean * weights,
-                  na.rm = TRUE
-                ) / total_weight
-                weighted_median <- sum(
-                  neighbor_data$median * weights,
-                  na.rm = TRUE
-                ) / total_weight
-
-                month_names <- paste(
-                  sort(unique(neighbor_data$.outlier_month)),
-                  collapse = "/"
-                )
-
-                list(
-                  eligible = TRUE,
-                  n_in_group = as.integer(total_weight),
-                  desc = paste0(
-                    "Months ",
-                    month_names,
-                    "; neighbors weights 2/1"
-                  ),
-                  mean = weighted_mean,
-                  median = weighted_median,
-                  # use approximate bounds from weighted centers
-                  mean_lower = .apply_lower_bound_floor(
-                    weighted_mean -
-                      strictness$sd_multiplier *
-                        mean(neighbor_data$sd, na.rm = TRUE),
-                    value_type
-                  ),
-                  mean_upper = weighted_mean +
-                    strictness$sd_multiplier *
-                      mean(neighbor_data$sd, na.rm = TRUE),
-                  median_lower = .apply_lower_bound_floor(
-                    weighted_median -
-                      strictness$mad_multiplier *
-                        mean(neighbor_data$mad, na.rm = TRUE),
-                    value_type
-                  ),
-                  median_upper = weighted_median +
-                    strictness$mad_multiplier *
-                      mean(neighbor_data$mad, na.rm = TRUE),
-                  q1 = mean(neighbor_data$q1, na.rm = TRUE),
-                  q3 = mean(neighbor_data$q3, na.rm = TRUE),
-                  iqr_lower = .apply_lower_bound_floor(
-                    mean(neighbor_data$q1, na.rm = TRUE) -
-                      strictness$iqr_multiplier *
-                        mean(neighbor_data$iqr, na.rm = TRUE),
-                    value_type
-                  ),
-                  iqr_upper = mean(neighbor_data$q3, na.rm = TRUE) +
-                    strictness$iqr_multiplier *
-                      mean(neighbor_data$iqr, na.rm = TRUE),
-                  unstable_mean = any(neighbor_data$unstable_mean),
-                  unstable_median = any(neighbor_data$unstable_median),
-                  unstable_iqr = any(neighbor_data$unstable_iqr)
-                )
-              } else {
-                list(
-                  eligible = FALSE,
-                  n_in_group = as.integer(total_weight),
-                  desc = "Insufficient neighbor data",
-                  mean = NA_real_,
-                  median = NA_real_,
-                  mean_lower = NA_real_,
-                  mean_upper = NA_real_,
-                  median_lower = NA_real_,
-                  median_upper = NA_real_,
-                  q1 = NA_real_,
-                  q3 = NA_real_,
-                  iqr_lower = NA_real_,
-                  iqr_upper = NA_real_,
-                  unstable_mean = TRUE,
-                  unstable_median = TRUE,
-                  unstable_iqr = TRUE
-                )
-              }
-            }
-          })
-        ) |>
-        dplyr::ungroup() |>
-        tidyr::unnest_wider(neighbor_stats, names_sep = "_") |>
-        dplyr::select(-neighbor_months)
-    }) |>
-    dplyr::ungroup()
-}
-
-#' cache residual pools by year (computed once per group)
-#'
-#' @param group_data data for one admin group
-#' @param params seasonality parameters
-#' @param strictness strictness settings
-#' @param value_type value type string
-#' @noRd
-.cache_residual_pools <- function(group_data, params, strictness, value_type) {
-  # compute month means once for the whole group
-  month_means <- group_data |>
-    dplyr::group_by(.outlier_month) |>
-    dplyr::summarise(
-      month_mean = mean(.outlier_value, na.rm = TRUE),
-      .groups = "drop"
-    )
-
-  # add residuals to group_data
-  group_with_residuals <- group_data |>
-    dplyr::left_join(month_means, by = ".outlier_month") |>
-    dplyr::mutate(.residual_value = .outlier_value - month_mean)
-
-  # compute residual stats by year
-  group_with_residuals |>
-    dplyr::group_by(.outlier_year) |>
-    dplyr::summarise(
-      eligible = dplyr::n() >= params$min_obs_per_seasonal_bucket,
-      n_in_group = as.integer(dplyr::n()),
-      desc = paste0("Residual pooled, months fixed; ",
-                   min(.outlier_year, na.rm = TRUE), "-",
-                   max(.outlier_year, na.rm = TRUE)),
-      residual_sd = stats::sd(.residual_value, na.rm = TRUE),
-      residual_mad = stats::mad(
-        .residual_value,
-        constant = strictness$mad_constant,
-        na.rm = TRUE
-      ),
-      residual_iqr = stats::IQR(.residual_value, na.rm = TRUE),
-      residual_mean = mean(.residual_value, na.rm = TRUE),
-      residual_median = stats::median(.residual_value, na.rm = TRUE),
-      residual_q1 = stats::quantile(
-        .residual_value,
-        probs = 0.25,
-        na.rm = TRUE,
-        names = FALSE
-      ),
-      residual_q3 = stats::quantile(
-        .residual_value,
-        probs = 0.75,
-        na.rm = TRUE,
-        names = FALSE
-      ),
-      .groups = "drop"
-    ) |>
-    dplyr::mutate(
-      mean_lower = residual_mean - strictness$sd_multiplier * residual_sd,
-      mean_upper = residual_mean + strictness$sd_multiplier * residual_sd,
-      median_lower = residual_median - strictness$mad_multiplier * residual_mad,
-      median_upper = residual_median + strictness$mad_multiplier * residual_mad,
-      iqr_lower = residual_q1 - strictness$iqr_multiplier * residual_iqr,
-      iqr_upper = residual_q3 + strictness$iqr_multiplier * residual_iqr,
-      unstable_mean = is.na(residual_sd) | residual_sd == 0,
-      unstable_median = is.na(residual_mad) | residual_mad == 0,
-      unstable_iqr = is.na(residual_iqr) | residual_iqr == 0
-    )
-}
-
-#' cache across-time pools (one per group)
-#'
-#' @param group_data data for one admin group
-#' @param strictness strictness settings
-#' @param value_type value type string
-#' @noRd
-.cache_across_time_pools <- function(group_data, strictness, value_type) {
-  # shift strictness toward lenient
-  shifted_strictness <- .shift_strictness_one_level(
-    strictness$strictness,
-    strictness$sd_multiplier,
-    strictness$mad_constant,
-    strictness$mad_multiplier,
-    strictness$iqr_multiplier
+  # map count to strength factor
+  strength <- dplyr::case_when(
+    count_col == 0L ~ "normal",
+    count_col == 1L ~ "weak",
+    count_col == 2L ~ "moderate",
+    count_col >= 3L ~ "strong",
+    TRUE ~ "normal"
   )
 
-  # compute across-time stats for the whole group
-  n_vals <- nrow(group_data)
-  mean_val <- mean(group_data$.outlier_value, na.rm = TRUE)
-  sd_val <- stats::sd(group_data$.outlier_value, na.rm = TRUE)
-  median_val <- stats::median(group_data$.outlier_value, na.rm = TRUE)
-  mad_val <- stats::mad(
-    group_data$.outlier_value,
-    constant = shifted_strictness$mad_constant,
-    na.rm = TRUE
-  )
-  q1_val <- stats::quantile(
-    group_data$.outlier_value,
-    probs = 0.25,
-    na.rm = TRUE,
-    names = FALSE
-  )
-  q3_val <- stats::quantile(
-    group_data$.outlier_value,
-    probs = 0.75,
-    na.rm = TRUE,
-    names = FALSE
-  )
-  iqr_val <- q3_val - q1_val
-
-  dplyr::tibble(
-    eligible = TRUE,
-    n_in_group = as.integer(n_vals),
-    desc = paste0(
-      "Across-time fallback, ",
-      if (length(group_data$.outlier_year[!is.na(group_data$.outlier_year)]) > 0) {
-        paste0(
-          min(group_data$.outlier_year, na.rm = TRUE),
-          "-",
-          max(group_data$.outlier_year, na.rm = TRUE)
-        )
-      } else {
-        "unknown-years"
-      }
-    ),
-    mean = mean_val,
-    sd = sd_val,
-    mean_lower = .apply_lower_bound_floor(
-      mean_val - shifted_strictness$sd_multiplier * sd_val,
-      value_type
-    ),
-    mean_upper = mean_val + shifted_strictness$sd_multiplier * sd_val,
-    median = median_val,
-    mad = mad_val,
-    median_lower = .apply_lower_bound_floor(
-      median_val - shifted_strictness$mad_multiplier * mad_val,
-      value_type
-    ),
-    median_upper = median_val + shifted_strictness$mad_multiplier * mad_val,
-    q1 = q1_val,
-    q3 = q3_val,
-    iqr = iqr_val,
-    iqr_lower = .apply_lower_bound_floor(
-      q1_val - shifted_strictness$iqr_multiplier * iqr_val,
-      value_type
-    ),
-    iqr_upper = q3_val + shifted_strictness$iqr_multiplier * iqr_val,
-    unstable_mean = is.na(sd_val) | sd_val == 0,
-    unstable_median = is.na(mad_val) | mad_val == 0,
-    unstable_iqr = is.na(iqr_val) | iqr_val == 0,
-    strictness_label = shifted_strictness$strictness,
-    strictness_shifted = TRUE,
-    sd_multiplier = shifted_strictness$sd_multiplier,
-    mad_constant = shifted_strictness$mad_constant,
-    mad_multiplier = shifted_strictness$mad_multiplier,
-    iqr_multiplier = shifted_strictness$iqr_multiplier
+  # return as ordered factor for proper legend ordering
+  factor(
+    strength,
+    levels = c("normal", "weak", "moderate", "strong"),
+    ordered = TRUE
   )
 }
 
-#' vectorized pool selection using precomputed caches
+#' Impute outliers using moving average from adjacent time points
 #'
-#' @param group_data original group data
-#' @param same_month_cache same-month pool cache
-#' @param neighbors_cache neighbors pool cache
-#' @param residual_cache residual pool cache
-#' @param across_time_cache across-time pool cache
-#' @param params seasonality parameters
-#' @param methods character vector of methods to calculate
-#' @param reporting_rate_min minimum reporting rate
-#' @param min_n minimum observations
-#' @param consensus_rule consensus rule
-#' @noRd
-.select_pools_vectorized <- function(
-  group_data,
-  same_month_cache,
-  neighbors_cache,
-  residual_cache,
-  across_time_cache,
-  params,
-  methods,
-  reporting_rate_min,
-  min_n,
-  consensus_rule
-) {
-  # join all pool caches to group_data
-  combined <- group_data |>
-    # same-month pool
-    dplyr::left_join(
-      same_month_cache |>
-        dplyr::select(
-          .outlier_month,
-          .outlier_year,
-          same_eligible = eligible,
-          same_n = n_in_group,
-          same_desc = desc,
-          same_mean_lower = mean_lower,
-          same_mean_upper = mean_upper,
-          same_median_lower = median_lower,
-          same_median_upper = median_upper,
-          same_iqr_lower = iqr_lower,
-          same_iqr_upper = iqr_upper,
-          same_unstable_mean = unstable_mean,
-          same_unstable_median = unstable_median,
-          same_unstable_iqr = unstable_iqr
-        ),
-      by = c(".outlier_month", ".outlier_year")
-    ) |>
-    # neighbors pool
-    dplyr::left_join(
-      neighbors_cache |>
-        dplyr::select(
-          .outlier_month,
-          .outlier_year,
-          neighbor_eligible = neighbor_stats_eligible,
-          neighbor_n = neighbor_stats_n_in_group,
-          neighbor_desc = neighbor_stats_desc,
-          neighbor_mean_lower = neighbor_stats_mean_lower,
-          neighbor_mean_upper = neighbor_stats_mean_upper,
-          neighbor_median_lower = neighbor_stats_median_lower,
-          neighbor_median_upper = neighbor_stats_median_upper,
-          neighbor_iqr_lower = neighbor_stats_iqr_lower,
-          neighbor_iqr_upper = neighbor_stats_iqr_upper,
-          neighbor_unstable_mean = neighbor_stats_unstable_mean,
-          neighbor_unstable_median = neighbor_stats_unstable_median,
-          neighbor_unstable_iqr = neighbor_stats_unstable_iqr
-        ),
-      by = c(".outlier_month", ".outlier_year")
-    ) |>
-    # residual pool
-    dplyr::left_join(
-      residual_cache |>
-        dplyr::select(
-          .outlier_year,
-          residual_eligible = eligible,
-          residual_n = n_in_group,
-          residual_desc = desc,
-          residual_mean_lower = mean_lower,
-          residual_mean_upper = mean_upper,
-          residual_median_lower = median_lower,
-          residual_median_upper = median_upper,
-          residual_iqr_lower = iqr_lower,
-          residual_iqr_upper = iqr_upper,
-          residual_unstable_mean = unstable_mean,
-          residual_unstable_median = unstable_median,
-          residual_unstable_iqr = unstable_iqr,
-          residual_sd,
-          residual_mad,
-          residual_iqr
-        ),
-      by = ".outlier_year"
-    ) |>
-    # across-time pool (same for all rows)
-    dplyr::mutate(
-      across_eligible = across_time_cache$eligible,
-      across_n = across_time_cache$n_in_group,
-      across_desc = across_time_cache$desc,
-      across_mean_lower = across_time_cache$mean_lower,
-      across_mean_upper = across_time_cache$mean_upper,
-      across_median_lower = across_time_cache$median_lower,
-      across_median_upper = across_time_cache$median_upper,
-      across_iqr_lower = across_time_cache$iqr_lower,
-      across_iqr_upper = across_time_cache$iqr_upper,
-      across_unstable_mean = across_time_cache$unstable_mean,
-      across_unstable_median = across_time_cache$unstable_median,
-      across_unstable_iqr = across_time_cache$unstable_iqr,
-      across_strictness_label = across_time_cache$strictness_label,
-      across_strictness_shifted = across_time_cache$strictness_shifted,
-      across_sd_multiplier = across_time_cache$sd_multiplier,
-      across_mad_constant = across_time_cache$mad_constant,
-      across_mad_multiplier = across_time_cache$mad_multiplier,
-      across_iqr_multiplier = across_time_cache$iqr_multiplier
-    ) |>
-    # vectorized pool selection using ladder logic
-    dplyr::mutate(
-      # reporting guardrail first
-      reporting_reason = .guardrail_reason(
-        n = rep(Inf, dplyr::n()),
-        reporting = .outlier_reporting,
-        min_n = NA_real_,
-        reporting_threshold = reporting_rate_min
-      ),
+#' @description
+#' Replaces outlier values (those exceeding a threshold) with the moving average
+#' of adjacent non-outlier values. Useful for smoothing time series data where
+#' outliers should be replaced with locally consistent values rather than removed.
+#'
+#' @param x Numeric vector of values. Should be sorted by time within groups
+#'   before calling this function.
+#' @param threshold Numeric scalar. Values strictly greater than this threshold
+#'   are considered outliers and will be imputed.
+#'
+#' @return Numeric vector of the same length as `x`, with outliers replaced by
+#'   the rounded moving average of valid adjacent values. If no valid adjacent
+#'   values exist, the original value is retained.
+#'
+#' @details
+#' The function works as follows:
+#' 1. For each value, it checks if the previous and next values are non-outliers
+#'    (i.e., <= threshold)
 
-      # select first eligible pool in ladder order
-      pool_mode = dplyr::case_when(
-        !is.na(reporting_reason) ~ "guard",
-        same_eligible & same_n >= min_n ~ "same_month",
-        neighbor_eligible & neighbor_n >= min_n ~ "neighbors",
-        residual_eligible & residual_n >= min_n ~ "residual",
-        across_eligible & across_n >= min_n ~ "across_time",
-        TRUE ~ "insufficient_seasonal_history"
-      ),
+#' 2. If a value exceeds the threshold, it calculates the mean of valid adjacent
+#'    values (previous and/or next)
+#' 3. The outlier is replaced with the rounded moving average
+#' 4. If no valid adjacent values exist (both neighbors are also outliers or NA),
+#'    the original value is kept
+#'
+#' This approach preserves local trends while removing spike anomalies. It's
+#' particularly useful for time series where outliers represent data errors
+#' rather than true signal.
+#'
+#' @examples
+#' # simple example with one outlier
+#' x <- c(10, 12, 100, 14, 11)
+#' impute_outlier_ma(x, threshold = 50)
+#' # Returns: c(10, 12, 13, 14, 11) - the 100 is replaced with mean(12, 14) = 13
+#'
+#' # consecutive outliers - only outer edges get imputed
+#' x <- c(10, 100, 200, 15)
+#' impute_outlier_ma(x, threshold = 50)
+#' # Returns: c(10, 10, 15, 15) - each outlier uses its one valid neighbor
+#'
+#' # use with dplyr for grouped time series
+#' \dontrun{
+#' data |>
+#'   dplyr::arrange(adm2, date) |>
+#'   dplyr::group_by(adm2) |>
+#'   dplyr::mutate(
+#'     cases_imputed = impute_outlier_ma(cases, threshold = upper_bound)
+#'   ) |>
+#'   dplyr::ungroup()
+#' }
+#'
+#' @export
+impute_outlier_ma <- function(x, threshold) {
+  # validate inputs
 
-      # pick bounds based on selected pool
-      mean_lower = dplyr::case_when(
-        pool_mode == "same_month" ~ same_mean_lower,
-        pool_mode == "neighbors" ~ neighbor_mean_lower,
-        pool_mode == "residual" ~ residual_mean_lower,
-        pool_mode == "across_time" ~ across_mean_lower,
-        TRUE ~ NA_real_
-      ),
-      mean_upper = dplyr::case_when(
-        pool_mode == "same_month" ~ same_mean_upper,
-        pool_mode == "neighbors" ~ neighbor_mean_upper,
-        pool_mode == "residual" ~ residual_mean_upper,
-        pool_mode == "across_time" ~ across_mean_upper,
-        TRUE ~ NA_real_
-      ),
-      median_lower = dplyr::case_when(
-        pool_mode == "same_month" ~ same_median_lower,
-        pool_mode == "neighbors" ~ neighbor_median_lower,
-        pool_mode == "residual" ~ residual_median_lower,
-        pool_mode == "across_time" ~ across_median_lower,
-        TRUE ~ NA_real_
-      ),
-      median_upper = dplyr::case_when(
-        pool_mode == "same_month" ~ same_median_upper,
-        pool_mode == "neighbors" ~ neighbor_median_upper,
-        pool_mode == "residual" ~ residual_median_upper,
-        pool_mode == "across_time" ~ across_median_upper,
-        TRUE ~ NA_real_
-      ),
-      iqr_lower = dplyr::case_when(
-        pool_mode == "same_month" ~ same_iqr_lower,
-        pool_mode == "neighbors" ~ neighbor_iqr_lower,
-        pool_mode == "residual" ~ residual_iqr_lower,
-        pool_mode == "across_time" ~ across_iqr_lower,
-        TRUE ~ NA_real_
-      ),
-      iqr_upper = dplyr::case_when(
-        pool_mode == "same_month" ~ same_iqr_upper,
-        pool_mode == "neighbors" ~ neighbor_iqr_upper,
-        pool_mode == "residual" ~ residual_iqr_upper,
-        pool_mode == "across_time" ~ across_iqr_upper,
-        TRUE ~ NA_real_
-      ),
+  if (!is.numeric(x)) {
+    cli::cli_abort("{.arg x} must be a numeric vector.")
+  }
+  if (!is.numeric(threshold) || length(threshold) != 1) {
+    cli::cli_abort("{.arg threshold} must be a single numeric value.")
+  }
 
-      # pick unstable flags
-      unstable_mean = dplyr::case_when(
-        pool_mode == "same_month" ~ same_unstable_mean,
-        pool_mode == "neighbors" ~ neighbor_unstable_mean,
-        pool_mode == "residual" ~ residual_unstable_mean,
-        pool_mode == "across_time" ~ across_unstable_mean,
-        TRUE ~ TRUE
-      ),
-      unstable_median = dplyr::case_when(
-        pool_mode == "same_month" ~ same_unstable_median,
-        pool_mode == "neighbors" ~ neighbor_unstable_median,
-        pool_mode == "residual" ~ residual_unstable_median,
-        pool_mode == "across_time" ~ across_unstable_median,
-        TRUE ~ TRUE
-      ),
-      unstable_iqr = dplyr::case_when(
-        pool_mode == "same_month" ~ same_unstable_iqr,
-        pool_mode == "neighbors" ~ neighbor_unstable_iqr,
-        pool_mode == "residual" ~ residual_unstable_iqr,
-        pool_mode == "across_time" ~ across_unstable_iqr,
-        TRUE ~ TRUE
-      ),
+  # get adjacent values only if they're not outliers themselves
+  x_prev <- dplyr::if_else(dplyr::lag(x) <= threshold, dplyr::lag(x), NA_real_)
+  x_next <- dplyr::if_else(dplyr::lead(x) <= threshold, dplyr::lead(x), NA_real_)
 
-      # pick n_in_group
-      n_in_group = dplyr::case_when(
-        pool_mode == "same_month" ~ same_n,
-        pool_mode == "neighbors" ~ neighbor_n,
-        pool_mode == "residual" ~ residual_n,
-        pool_mode == "across_time" ~ across_n,
-        TRUE ~ 0L
-      ),
+  # calculate moving average of valid adjacent values
+  x_ma <- base::rowMeans(base::cbind(x_prev, x_next), na.rm = TRUE)
 
-      # pick descriptions and metadata
-      seasonal_window_desc = dplyr::case_when(
-        pool_mode == "same_month" ~ same_desc,
-        pool_mode == "neighbors" ~ neighbor_desc,
-        pool_mode == "residual" ~ residual_desc,
-        pool_mode == "across_time" ~ across_desc,
-        TRUE ~ "Insufficient seasonal history"
-      ),
-
-      seasonality_mode_used = pool_mode,
-
-      fallback_applied = pool_mode != "same_month" & pool_mode != "guard",
-      fallback_reason = dplyr::case_when(
-        pool_mode == "neighbors" ~ "same_month_insufficient",
-        pool_mode == "residual" ~ "neighbors_insufficient",
-        pool_mode == "across_time" ~ "residual_insufficient",
-        pool_mode == "insufficient_seasonal_history" ~
-          "insufficient_seasonal_history",
-        TRUE ~ NA_character_
-      ),
-
-      strictness_label = dplyr::case_when(
-        pool_mode == "across_time" ~ across_strictness_label,
-        TRUE ~ "balanced" # default for other modes
-      ),
-      strictness_shifted = pool_mode == "across_time",
-
-      sd_multiplier = dplyr::case_when(
-        pool_mode == "across_time" ~ across_sd_multiplier,
-        TRUE ~ 3.0 # default
-      ),
-      mad_constant = dplyr::case_when(
-        pool_mode == "across_time" ~ across_mad_constant,
-        TRUE ~ 1.4826
-      ),
-      mad_multiplier = dplyr::case_when(
-        pool_mode == "across_time" ~ across_mad_multiplier,
-        TRUE ~ 9.0
-      ),
-      iqr_multiplier = dplyr::case_when(
-        pool_mode == "across_time" ~ across_iqr_multiplier,
-        TRUE ~ 2.0
-      ),
-
-      # guardrail reason
-      reason = dplyr::case_when(
-        !is.na(reporting_reason) ~ reporting_reason,
-        pool_mode == "insufficient_seasonal_history" ~
-          "insufficient_seasonal_history",
-        n_in_group < min_n ~ "insufficient_n",
-        TRUE ~ NA_character_
-      )
-    ) |>
-    # vectorized flag calculations using the selected bounds
-    dplyr::mutate(
-      # adjust comparison value for residual mode
-      comparison_value = dplyr::case_when(
-        pool_mode == "residual" ~
-          {
-            # compute residual for each row
-            month_means_lookup <- group_data |>
-              dplyr::group_by(.outlier_month) |>
-              dplyr::summarise(
-                month_mean = mean(.outlier_value, na.rm = TRUE),
-                .groups = "drop"
-              )
-
-            row_month_mean <- month_means_lookup$month_mean[match(
-              .outlier_month,
-              month_means_lookup$.outlier_month
-            )]
-            .outlier_value - row_month_mean
-          },
-        TRUE ~ .outlier_value
-      ),
-
-      # vectorized flag calculations
-      mean_flag = dplyr::case_when(
-        !is.na(reason) & reason != "" ~ reason,
-        unstable_mean ~ "unstable_scale",
-        is.na(comparison_value) |
-          is.na(mean_lower) |
-          is.na(mean_upper) ~
-          "insufficient_evidence",
-        comparison_value < mean_lower |
-          comparison_value > mean_upper ~
-          "outlier",
-        TRUE ~ "normal"
-      ),
-      median_flag = dplyr::case_when(
-        !is.na(reason) & reason != "" ~ reason,
-        unstable_median ~ "unstable_scale",
-        is.na(comparison_value) | is.na(median_lower) | is.na(median_upper) ~
-          "insufficient_evidence",
-        comparison_value < median_lower |
-          comparison_value > median_upper ~
-          "outlier",
-        TRUE ~ "normal"
-      ),
-      iqr_flag = dplyr::case_when(
-        !is.na(reason) & reason != "" ~ reason,
-        unstable_iqr ~ "unstable_scale",
-        is.na(comparison_value) | is.na(iqr_lower) | is.na(iqr_upper) ~
-          "insufficient_evidence",
-        comparison_value < iqr_lower |
-          comparison_value > iqr_upper ~
-          "outlier",
-        TRUE ~ "normal"
-      )
-    ) |>
-    # vectorized consensus calculation
-    dplyr::mutate(
-      outlier_flag_consensus = .vectorized_consensus_flag(
-        mean_flag,
-        median_flag,
-        iqr_flag,
-        consensus_rule
-      ),
-
-      # add missing columns with defaults
-      mean = NA_real_,
-      sd = NA_real_,
-      median = NA_real_,
-      mad = NA_real_,
-      q1 = NA_real_,
-      q3 = NA_real_,
-      iqr = NA_real_,
-      mean_upper = dplyr::coalesce(mean_upper, NA_real_),
-      median_upper = dplyr::coalesce(median_upper, NA_real_),
-      iqr_upper = dplyr::coalesce(iqr_upper, NA_real_),
-      residual_sd = dplyr::coalesce(residual_sd, NA_real_),
-      residual_mad = dplyr::coalesce(residual_mad, NA_real_),
-      residual_iqr = dplyr::coalesce(residual_iqr, NA_real_),
-
-      # finalize reason
-      reason = dplyr::case_when(
-        !is.na(reason) ~ reason,
-        mean_flag == "unstable_scale" &
-          median_flag == "unstable_scale" &
-          iqr_flag == "unstable_scale" ~
-          "unstable_scale",
-        TRUE ~ NA_character_
-      )
-    ) |>
-    # keep all columns from original data plus outlier detection results
-    dplyr::select(
-      .outlier_value,
-      .outlier_year,
-      .outlier_month,
-      .outlier_yearmon,
-      .outlier_reporting,
-      dplyr::everything()
-    )
-
-  combined
+  # replace outliers with moving average (keep original if no valid adjacent)
+  dplyr::if_else(x > threshold & !base::is.nan(x_ma), base::round(x_ma), x)
 }

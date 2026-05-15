@@ -4,7 +4,13 @@
 \alias{create_common_elements}
 \title{Create common ggplot elements}
 \usage{
-create_common_elements(fill_var, fill_limits, use_reprate = TRUE)
+create_common_elements(
+  fill_var,
+  fill_limits,
+  use_reprate = TRUE,
+  target_language = "en",
+  fill_label = NULL
+)
 }
 \arguments{
 \item{fill_var}{Fill variable name}
@@ -12,6 +18,10 @@ create_common_elements(fill_var, fill_limits, use_reprate = TRUE)
 \item{fill_limits}{Limits for the fill scale}
 
 \item{use_reprate}{Whether to use reporting rate colors}
+
+\item{target_language}{Target language for translation}
+
+\item{fill_label}{Label for the fill legend}
 }
 \value{
 List of ggplot elements to apply to plots

@@ -65,7 +65,8 @@ testthat::test_that("clean_filenames removes scattered common numbers", {
 })
 
 
-testthat::test_that("clean_filenames deals with inconsistent naming patterns", {
+testthat::test_that("clean_filenames preserves year-like numbers (1980-2099)", {
+  # 2020 is a year, so it should NOT be stripped even if common
   filenames <- c(
     "backup_2020_file_01.png",
     "restore_2020_file_02.log",
@@ -73,9 +74,9 @@ testthat::test_that("clean_filenames deals with inconsistent naming patterns", {
   )
 
   expected_filenames <- c(
-    "backup_file_01.png",
-    "restore_file_02.log",
-    "log_report_03.pdf"
+    "backup_2020_file_01.png",
+    "restore_2020_file_02.log",
+    "log_2020_report_03.pdf"
   )
 
   cleaned_filenames <- clean_filenames(filenames)
@@ -207,13 +208,15 @@ testthat::test_that("detect_time_pattern handles edge cases", {
   pattern_info <- detect_time_pattern(single_file)
   testthat::expect_equal(pattern_info$pattern, "monthly")
 
-  # Test mixed yearly and monthly files - should prefer more specific pattern
+  # Mixed yearly and monthly files: previous behaviour (any()) reported
+  # "monthly". With all() semantics, a batch where not every file has a
+  # month component falls back to "yearly" instead of misclassifying.
   mixed_files <- c(
     "chirps-v2.0.2020.01.tif",
     "annual_2020.tif"
   )
   pattern_info <- detect_time_pattern(mixed_files)
-  testthat::expect_equal(pattern_info$pattern, "monthly")
+  testthat::expect_equal(pattern_info$pattern, "yearly")
 })
 
 testthat::test_that("detect_time_pattern handles international date formats", {
@@ -296,11 +299,13 @@ testthat::test_that("detect_time_pattern fails gracefully with invalid input", {
 
   testthat::expect_error(
     detect_time_pattern(invalid_formats),
-    "No date pattern found in filenames"
+    "Inconsistent date patterns"
   )
 })
 
 testthat::test_that("process_raster_with_boundaries works with basic inputs", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock raster data
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -374,6 +379,8 @@ testthat::test_that("process_raster_with_boundaries works with basic inputs", {
 })
 
 testthat::test_that("process_raster_with_boundaries handles multiple aggregations", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock raster data
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -438,6 +445,8 @@ testthat::test_that("process_raster_with_boundaries handles multiple aggregation
 })
 
 testthat::test_that("process_raster_with_boundaries handles density conversion", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock raster data
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -497,6 +506,8 @@ testthat::test_that("process_raster_with_boundaries handles density conversion",
 })
 
 testthat::test_that("process_raster_with_boundaries handles no-data values", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock raster with no-data values
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -619,6 +630,8 @@ testthat::test_that("process_raster_with_boundaries validates aggregation method
 })
 
 testthat::test_that("process_raster_with_boundaries handles crs transformation", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock raster in different crs
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -678,6 +691,8 @@ testthat::test_that("process_raster_with_boundaries handles crs transformation",
 })
 
 testthat::test_that("process_raster_with_boundaries handles custom id columns", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock data
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -742,6 +757,8 @@ testthat::test_that("process_raster_with_boundaries handles custom id columns", 
 })
 
 testthat::test_that("process_raster_with_boundaries returns correct time columns", {
+  testthat::skip_if_not_installed("mockery")
+
   # create mock data
   temp_raster <- tempfile(fileext = ".tif")
 
@@ -821,6 +838,8 @@ testthat::test_that("process_raster_with_boundaries returns correct time columns
 })
 
 testthat::test_that("process_raster_collection works with multiple files", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory with mock raster files
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "test_rasters")
@@ -877,7 +896,8 @@ testthat::test_that("process_raster_collection works with multiple files", {
     id_cols,
     aggregations,
     raster_is_density,
-    layer_to_process
+    layer_to_process,
+    ...
   ) {
     # extract month from filename for testing
     month_num <- as.numeric(gsub(
@@ -929,13 +949,15 @@ testthat::test_that("process_raster_collection works with multiple files", {
 })
 
 testthat::test_that("process_raster_collection handles single file", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory with single file
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "single_raster")
   dir.create(test_subdir, showWarnings = FALSE)
 
   # create single mock raster file
-  raster_file <- file.path(test_subdir, "single_raster.tif")
+  raster_file <- file.path(test_subdir, "data_2022.tif")
   raster_data <- terra::rast(
     nrows = 2,
     ncols = 2,
@@ -971,7 +993,8 @@ testthat::test_that("process_raster_collection handles single file", {
     id_cols,
     aggregations,
     raster_is_density,
-    layer_to_process
+    layer_to_process,
+    ...
   ) {
     data.frame(
       file_name = basename(raster_file),
@@ -989,7 +1012,7 @@ testthat::test_that("process_raster_collection handles single file", {
     mock_process_function
   )
 
-  # test single file processing (should not call clean_filenames)
+  # test single file processing
   result <- process_raster_collection(
     directory = test_subdir,
     shapefile = mock_shapefile
@@ -998,7 +1021,7 @@ testthat::test_that("process_raster_collection handles single file", {
   # check result structure
   testthat::expect_s3_class(result, "data.frame")
   testthat::expect_equal(nrow(result), 1)
-  testthat::expect_equal(result$file_name, "single_raster.tif")
+  testthat::expect_equal(result$file_name, "data_2022.tif")
 
   # cleanup
   unlink(test_subdir, recursive = TRUE)
@@ -1038,13 +1061,15 @@ testthat::test_that("process_raster_collection handles empty directory", {
 })
 
 testthat::test_that("process_raster_collection respects file pattern", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory with mixed file types
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "mixed_files")
   dir.create(test_subdir, showWarnings = FALSE)
 
   # create files with different extensions
-  tif_file <- file.path(test_subdir, "data.tif")
+  tif_file <- file.path(test_subdir, "data_2022.tif")
   txt_file <- file.path(test_subdir, "readme.txt")
   nc_file <- file.path(test_subdir, "data.nc")
 
@@ -1088,7 +1113,8 @@ testthat::test_that("process_raster_collection respects file pattern", {
     id_cols,
     aggregations,
     raster_is_density,
-    layer_to_process
+    layer_to_process,
+    ...
   ) {
     data.frame(
       file_name = basename(raster_file),
@@ -1114,13 +1140,15 @@ testthat::test_that("process_raster_collection respects file pattern", {
 
   # should only process .tif file
   testthat::expect_equal(nrow(result), 1)
-  testthat::expect_equal(result$file_name, "data.tif")
+  testthat::expect_equal(result$file_name, "data_2022.tif")
 
   # cleanup
   unlink(test_subdir, recursive = TRUE)
 })
 
 testthat::test_that("process_raster_collection handles multiple aggregations", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory with raster files
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "multi_agg")
@@ -1128,8 +1156,8 @@ testthat::test_that("process_raster_collection handles multiple aggregations", {
 
   # create two mock raster files
   raster_files <- c(
-    file.path(test_subdir, "raster1.tif"),
-    file.path(test_subdir, "raster2.tif")
+    file.path(test_subdir, "data_2022_01.tif"),
+    file.path(test_subdir, "data_2022_02.tif")
   )
 
   for (i in seq_along(raster_files)) {
@@ -1176,9 +1204,10 @@ testthat::test_that("process_raster_collection handles multiple aggregations", {
     id_cols,
     aggregations,
     raster_is_density,
-    layer_to_process
+    layer_to_process,
+    ...
   ) {
-    file_num <- ifelse(grepl("raster1", raster_file), 1, 2)
+    file_num <- ifelse(grepl("01", raster_file), 1, 2)
 
     data.frame(
       file_name = basename(raster_file),
@@ -1217,6 +1246,8 @@ testthat::test_that("process_raster_collection handles multiple aggregations", {
 })
 
 testthat::test_that("process_raster_collection sorts results correctly", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory with files in non-chronological order
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "sort_test")
@@ -1273,7 +1304,8 @@ testthat::test_that("process_raster_collection sorts results correctly", {
     id_cols,
     aggregations,
     raster_is_density,
-    layer_to_process
+    layer_to_process,
+    ...
   ) {
     # extract month from filename pattern
     month_num <- as.numeric(gsub(
@@ -1314,13 +1346,15 @@ testthat::test_that("process_raster_collection sorts results correctly", {
 })
 
 testthat::test_that("process_raster_collection handles custom parameters", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "custom_params")
   dir.create(test_subdir, showWarnings = FALSE)
 
   # create mock raster file
-  raster_file <- file.path(test_subdir, "test_raster.tif")
+  raster_file <- file.path(test_subdir, "data_2022.tif")
   raster_data <- terra::rast(
     nrows = 2,
     ncols = 2,
@@ -1355,7 +1389,8 @@ testthat::test_that("process_raster_collection handles custom parameters", {
     id_cols,
     aggregations,
     raster_is_density,
-    layer_to_process
+    layer_to_process,
+    ...
   ) {
     # verify custom parameters are passed through
     testthat::expect_equal(id_cols, c("country_name", "district_name"))
@@ -1401,13 +1436,15 @@ testthat::test_that("process_raster_collection handles custom parameters", {
 })
 
 testthat::test_that("process_raster_collection handles results without time columns", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directory
   temp_dir <- tempdir()
   test_subdir <- file.path(temp_dir, "no_time")
   dir.create(test_subdir, showWarnings = FALSE)
 
   # create mock raster file
-  raster_file <- file.path(test_subdir, "no_time_raster.tif")
+  raster_file <- file.path(test_subdir, "data_2022.tif")
   raster_data <- terra::rast(
     nrows = 2,
     ncols = 2,
@@ -1443,7 +1480,8 @@ testthat::test_that("process_raster_collection handles results without time colu
     id_cols,
     aggregations,
     raster_is_density,
-    layer_to_process
+    layer_to_process,
+    ...
   ) {
     data.frame(
       file_name = basename(raster_file),
@@ -1485,6 +1523,8 @@ testthat::test_that("process_raster_collection handles results without time colu
 
 
 testthat::test_that("process_weighted_raster_collection handles no value files", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directories
   temp_dir <- tempdir()
   value_dir <- file.path(temp_dir, "empty_values")
@@ -1577,22 +1617,8 @@ testthat::test_that("process_weighted_raster_collection handles no population fi
     geometry = sf::st_sfc(polygon, crs = 4326)
   )
 
-  # mock clean_filenames - first call returns value file, second call empty
-  call_count <- 0
-  mock_clean_filenames <- function(files, rename_files = TRUE) {
-    call_count <<- call_count + 1
-    if (call_count == 1) {
-      return(files) # return value files
-    } else {
-      return(character(0)) # return empty for population files
-    }
-  }
-
-  mockery::stub(
-    process_weighted_raster_collection,
-    "clean_filenames",
-    mock_clean_filenames
-  )
+  # pop rasters are validated via list.files before clean_filenames
+  # is called, so no mock needed for clean_filenames here
 
   # test empty population directory error
   testthat::expect_error(
@@ -1609,6 +1635,8 @@ testthat::test_that("process_weighted_raster_collection handles no population fi
 })
 
 testthat::test_that("process_weighted_raster_collection handles unmatched years", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directories
   temp_dir <- tempdir()
   value_dir <- file.path(temp_dir, "values")
@@ -1630,19 +1658,25 @@ testthat::test_that("process_weighted_raster_collection handles unmatched years"
   terra::values(raster_data) <- c(0.1, 0.2, 0.3, 0.4)
   terra::writeRaster(raster_data, value_file, overwrite = TRUE)
 
-  # create population file for different year (2021)
-  pop_file <- file.path(pop_dir, "population_2021.tif")
-  raster_data <- terra::rast(
-    nrows = 2,
-    ncols = 2,
-    xmin = 0,
-    xmax = 2,
-    ymin = 0,
-    ymax = 2,
-    crs = "EPSG:4326"
-  )
-  terra::values(raster_data) <- c(100, 200, 300, 400)
-  terra::writeRaster(raster_data, pop_file, overwrite = TRUE)
+  # create population files for different years (2021 and 2022)
+  # neither matches the value year (2020), and with 2+ pop files
+  # the single-pop fallback does NOT apply
+  for (pop_year in c(2021, 2022)) {
+    pop_file <- file.path(
+      pop_dir, paste0("population_", pop_year, ".tif")
+    )
+    raster_data <- terra::rast(
+      nrows = 2,
+      ncols = 2,
+      xmin = 0,
+      xmax = 2,
+      ymin = 0,
+      ymax = 2,
+      crs = "EPSG:4326"
+    )
+    terra::values(raster_data) <- c(100, 200, 300, 400)
+    terra::writeRaster(raster_data, pop_file, overwrite = TRUE)
+  }
 
   # create mock shapefile
   polygon <- sf::st_polygon(list(rbind(
@@ -1694,6 +1728,8 @@ testthat::test_that("process_weighted_raster_collection handles unmatched years"
 })
 
 testthat::test_that("process_weighted_raster_collection handles multiple population matches", {
+  testthat::skip_if_not_installed("mockery")
+
   # create temporary directories
   temp_dir <- tempdir()
   value_dir <- file.path(temp_dir, "values")
@@ -1777,7 +1813,7 @@ testthat::test_that("process_weighted_raster_collection handles multiple populat
       pop_raster_dir = pop_dir,
       shapefile = mock_shapefile
     ),
-    "Multiple population rasters found for year 2020"
+    "Multiple population rasters found for year 2020\\."
   )
 
   # cleanup
@@ -1872,6 +1908,8 @@ testthat::test_that("process_ihme_u5m_raster works with rates using mean", {
 })
 
 testthat::test_that("process_ihme_u5m_raster works with rates using median", {
+  testthat::skip_if_not_installed("matrixStats")
+
   # create simple 2x2 raster with known values
   raster_layer <- terra::rast(
     nrows = 2,
@@ -1916,6 +1954,8 @@ testthat::test_that("process_ihme_u5m_raster works with rates using median", {
 })
 
 testthat::test_that("process_ihme_u5m_raster works with rates using both stats", {
+  testthat::skip_if_not_installed("matrixStats")
+
   # create simple raster
   raster_layer <- terra::rast(
     nrows = 2,
@@ -2226,6 +2266,8 @@ testthat::test_that("process_weighted_raster_stacks works with mean", {
 })
 
 testthat::test_that("process_weighted_raster_stacks works with median", {
+  testthat::skip_if_not_installed("matrixStats")
+
   # create simple value and population rasters
   value_layer <- terra::rast(
     nrows = 2,
@@ -2281,6 +2323,8 @@ testthat::test_that("process_weighted_raster_stacks works with median", {
 })
 
 testthat::test_that("process_weighted_raster_stacks works with both stats", {
+  testthat::skip_if_not_installed("matrixStats")
+
   # create simple rasters
   value_layer <- terra::rast(
     nrows = 2,
@@ -2477,4 +2521,436 @@ testthat::test_that("process_weighted_raster_stacks handles multiple shapes", {
   testthat::expect_equal(unique(result$shape_id), c("region_001", "region_002"))
   testthat::expect_equal(unique(result$shape_name), c("north", "south"))
   testthat::expect_true(all(is.numeric(result$indicator)))
+})
+
+
+# ============================================================================
+# edge case tests for clean_filenames and path mapping
+# ============================================================================
+
+testthat::test_that("clean_filenames preserves file extensions", {
+  # extension must never be eaten by cleanup, even when numbers sit
+  # right before the dot (e.g. coordinate-like "20.tif")
+  filenames <- c(
+    "data_123_result_20.tif",
+    "data_123_result_30.tif",
+    "data_123_result_40.tif"
+  )
+
+  cleaned <- clean_filenames(filenames)
+
+  # all files must still end with .tif
+
+  purrr::walk(cleaned, function(f) {
+    testthat::expect_true(
+      grepl("\\.tif$", f),
+      info = paste("extension lost in:", f)
+    )
+  })
+})
+
+testthat::test_that("clean_filenames handles TSI filenames with bbox coords", {
+  # real-world TSI filenames with embedded coordinates and dates
+  filenames <- c(
+    paste0(
+      "Explorer__2010_TempSuitability.Pf.Index.1k.global",
+      "_Decompressed_latest_29.00_.4.46_30.84_.2.30",
+      "_2026_02_20.tiff"
+    ),
+    paste0(
+      "Explorer__2015_TempSuitability.Pf.Index.1k.global",
+      "_Decompressed_latest_29.00_.4.46_30.84_.2.30",
+      "_2026_02_20.tiff"
+    ),
+    paste0(
+      "Explorer__2020_TempSuitability.Pf.Index.1k.global",
+      "_Decompressed_latest_29.00_.4.46_30.84_.2.30",
+      "_2026_02_20.tiff"
+    )
+  )
+
+  cleaned <- clean_filenames(filenames)
+
+  # years (2010, 2015, 2020, 2026) must survive cleaning
+  testthat::expect_true(grepl("2010", cleaned[1]))
+  testthat::expect_true(grepl("2015", cleaned[2]))
+  testthat::expect_true(grepl("2020", cleaned[3]))
+
+  # extension must survive
+  purrr::walk(cleaned, function(f) {
+    testthat::expect_true(grepl("\\.tiff$", f))
+  })
+})
+
+testthat::test_that("clean_filenames is a pure string operation", {
+  # create real files, clean the names, verify originals untouched
+  temp_dir <- tempdir()
+  test_dir <- file.path(temp_dir, "clean_test")
+  dir.create(test_dir, showWarnings = FALSE)
+
+  paths <- c(
+    file.path(test_dir, "data_999_2020.tif"),
+    file.path(test_dir, "data_999_2021.tif")
+  )
+  purrr::walk(paths, ~ writeLines("test", .x))
+
+  # clean_filenames should NOT rename anything on disk
+  cleaned <- clean_filenames(paths)
+
+  # original files must still exist
+  purrr::walk(paths, function(p) {
+    testthat::expect_true(file.exists(p))
+  })
+
+  # cleaned names should differ from originals (999 stripped)
+  testthat::expect_false(identical(cleaned, paths))
+
+  # there should be no rename_files parameter
+  testthat::expect_error(
+    clean_filenames(paths, rename_files = TRUE),
+    "unused argument"
+  )
+
+  unlink(test_dir, recursive = TRUE)
+})
+
+testthat::test_that("clean_filenames preserves BDI pop raster year", {
+  # the exact filename that was getting broken before:
+  # bdi_ppp_2010_1km_Aggregated_UNadj.tif → year stripped
+  filenames <- c(
+    "bdi_ppp_2010_1km_Aggregated_UNadj.tif"
+  )
+
+  cleaned <- clean_filenames(filenames)
+
+  # with only 1 file, nothing should be stripped at all
+  testthat::expect_equal(cleaned, filenames)
+})
+
+testthat::test_that(
+  "detect_time_pattern finds yearly pattern in cleaned TSI names", {
+  # after clean_filenames, TSI names still contain year-like numbers
+  cleaned_names <- c(
+    paste0(
+      "Explorer_2010_TempSuitability.Pf.Index.1k.global",
+      "_Decompressed_latest_2026.tiff"
+    ),
+    paste0(
+      "Explorer_2015_TempSuitability.Pf.Index.1k.global",
+      "_Decompressed_latest_2026.tiff"
+    ),
+    paste0(
+      "Explorer_2020_TempSuitability.Pf.Index.1k.global",
+      "_Decompressed_latest_2026.tiff"
+    )
+  )
+
+  pattern_info <- detect_time_pattern(cleaned_names)
+  testthat::expect_equal(pattern_info$pattern, "yearly")
+
+  # default heuristic ("last plausible year") picks the trailing download
+  # stamp 2026; demonstrate the year_extractor workaround for this case
+  data_year_extractor <- function(f) {
+    stringr::str_extract(f, "Explorer_(\\d{4})_", group = 1)
+  }
+  years <- purrr::map_int(cleaned_names, function(f) {
+    extract_time_components(
+      f, pattern_info, year_extractor = data_year_extractor
+    )$year
+  })
+  testthat::expect_equal(years, c(2010L, 2015L, 2020L))
+})
+
+testthat::test_that(
+
+  "process_weighted_raster_collection uses single pop for all years", {
+  testthat::skip_if_not_installed("mockery")
+
+  # when only 1 pop raster exists, it should be used for all value years
+  temp_dir <- tempdir()
+  value_dir <- file.path(temp_dir, "tsi_values")
+  pop_dir <- file.path(temp_dir, "single_pop")
+  dir.create(value_dir, showWarnings = FALSE)
+  dir.create(pop_dir, showWarnings = FALSE)
+
+  # create 3 value raster files for different years
+  for (yr in c(2010, 2015, 2020)) {
+    raster_data <- terra::rast(
+      nrows = 2, ncols = 2,
+      xmin = 0, xmax = 2, ymin = 0, ymax = 2,
+      crs = "EPSG:4326"
+    )
+    terra::values(raster_data) <- c(0.1, 0.2, 0.3, 0.4)
+    terra::writeRaster(
+      raster_data,
+      file.path(value_dir, paste0("value_", yr, ".tiff")),
+      overwrite = TRUE
+    )
+  }
+
+  # create single pop raster (year 2010 only)
+  pop_rast <- terra::rast(
+    nrows = 2, ncols = 2,
+    xmin = 0, xmax = 2, ymin = 0, ymax = 2,
+    crs = "EPSG:4326"
+  )
+  terra::values(pop_rast) <- c(100, 200, 300, 400)
+  terra::writeRaster(
+    pop_rast,
+    file.path(pop_dir, "bdi_ppp_2010_1km.tif"),
+    overwrite = TRUE
+  )
+
+  polygon <- sf::st_polygon(list(rbind(
+    c(0, 0), c(2, 0), c(2, 2), c(0, 2), c(0, 0)
+  )))
+
+  mock_shapefile <- sf::st_sf(
+    adm0 = "test_country",
+    adm1 = "test_district",
+    adm2 = "test_subdistrict",
+    geometry = sf::st_sfc(polygon, crs = 4326)
+  )
+
+  # mock batch_extract_weighted_stats to return predictable results
+  mock_extract <- function(
+    value_raster_file,
+    pop_raster_file,
+    shapefile,
+    id_cols,
+    value_layer_to_process,
+    weight_na_as_zero,
+    stat_type,
+    pattern_info,
+    time_components
+  ) {
+    data.frame(
+      adm0 = "test_country",
+      adm1 = "test_district",
+      adm2 = "test_subdistrict",
+      year = time_components$year,
+      pop_sum = 1000,
+      weighted_mean = 0.25
+    )
+  }
+
+  mockery::stub(
+    process_weighted_raster_collection,
+    "batch_extract_weighted_stats",
+    mock_extract
+  )
+
+  # this should NOT error — single pop used for all 3 years
+  result <- process_weighted_raster_collection(
+    value_raster_dir = value_dir,
+    pop_raster_dir = pop_dir,
+    shapefile = mock_shapefile,
+    value_pattern = "\\.tiff$",
+    pop_pattern = "\\.tif$"
+  )
+
+  # should have 3 rows (one per value year)
+  testthat::expect_equal(nrow(result), 3)
+  testthat::expect_equal(sort(result$year), c(2010, 2015, 2020))
+
+  unlink(c(value_dir, pop_dir), recursive = TRUE)
+})
+
+# ---- tidy_malaria_raster_names ----
+
+testthat::test_that("tidy_malaria_raster_names renames malariaAtlas files", {
+  temp_dir <- base::file.path(base::tempdir(), "tidy_malaria_test")
+  base::dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
+  base::on.exit(base::unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  # simulate malariaAtlas::getRaster output
+  messy_files <- c(
+    paste0(
+      "Malaria__202508_Global_Pf_Parasite_Rate.2020.",
+      "200028_300045_310050_400.tiff"
+    ),
+    paste0(
+      "Malaria__202508_Global_Pf_Parasite_Rate.2021.",
+      "200028_300045_310050_400.tiff"
+    )
+  )
+  for (nm in messy_files) {
+    base::file.create(base::file.path(temp_dir, nm))
+  }
+
+  renamed <- tidy_malaria_raster_names(temp_dir)
+
+  # should rename both files
+  testthat::expect_equal(base::nrow(renamed), 2)
+
+  # canonical names should now exist
+  final_names <- base::list.files(temp_dir)
+  testthat::expect_true(
+    "Malaria__202508_Global_Pf_Parasite_Rate.2020.tiff" %in% final_names
+  )
+  testthat::expect_true(
+    "Malaria__202508_Global_Pf_Parasite_Rate.2021.tiff" %in% final_names
+  )
+})
+
+testthat::test_that("tidy_malaria_raster_names is idempotent", {
+  temp_dir <- base::file.path(base::tempdir(), "tidy_malaria_idempotent")
+  base::dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
+  base::on.exit(base::unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  # already canonical filenames
+  base::file.create(base::file.path(
+    temp_dir, "Malaria_Global_Pf_Parasite_Rate.2020.tiff"
+  ))
+
+  result <- tidy_malaria_raster_names(temp_dir)
+  testthat::expect_equal(base::nrow(result), 0)
+})
+
+testthat::test_that("tidy_malaria_raster_names aborts if directory missing", {
+  testthat::expect_error(
+    tidy_malaria_raster_names(
+      base::file.path(base::tempdir(), "nonexistent_dir_xyz_123")
+    ),
+    "does not exist"
+  )
+})
+
+testthat::test_that("tidy_malaria_raster_names removes getRaster artifact", {
+  temp_dir <- base::file.path(base::tempdir(), "tidy_malaria_getraster")
+  base::dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
+  base::on.exit(base::unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  # need at least one file that will be renamed to trigger the cleanup
+  messy <- paste0(
+    "Malaria__202508_Global_Pf_Parasite_Rate.2020.",
+    "1_2_3_4.tiff"
+  )
+  base::file.create(base::file.path(temp_dir, messy))
+
+  artifact_dir <- base::file.path(temp_dir, "getRaster")
+  base::dir.create(artifact_dir, showWarnings = FALSE)
+  base::file.create(base::file.path(artifact_dir, "junk.txt"))
+
+  tidy_malaria_raster_names(temp_dir)
+
+  testthat::expect_false(base::dir.exists(artifact_dir))
+})
+
+# ---- extract_time_components with year_extractor and plausibility ----
+
+testthat::test_that("extract_time_components picks last plausible year", {
+  # download stamp "202508" contains no 4-digit run at a word boundary
+  # (it's 6 digits), so only "2020" is a candidate
+  info <- list(pattern = "yearly", parser = function(x) {
+    base::as.Date(base::paste0(x, "-01-01"))
+  })
+
+  components <- extract_time_components(
+    "Malaria_Global_Pf_Parasite_Rate.2020.tiff", info
+  )
+  testthat::expect_equal(components$year, 2020L)
+})
+
+testthat::test_that("extract_time_components filters implausible years", {
+  info <- list(pattern = "yearly", parser = function(x) {
+    base::as.Date(base::paste0(x, "-01-01"))
+  })
+
+  # 1234 is out of plausible range (1980-2099), 2020 is in range
+  components <- extract_time_components(
+    "bbox_1234_file_2020.tiff", info
+  )
+  testthat::expect_equal(components$year, 2020L)
+})
+
+testthat::test_that("extract_time_components returns NA when no plausible year", {
+  info <- list(pattern = "yearly", parser = function(x) {
+    if (base::is.na(x)) {
+      return(base::as.Date(NA))
+    }
+    base::as.Date(base::paste0(x, "-01-01"))
+  })
+
+  components <- extract_time_components(
+    "bbox_1234_file_5678.tiff", info
+  )
+  testthat::expect_true(base::is.na(components$year))
+})
+
+testthat::test_that("extract_time_components respects custom year_extractor", {
+  info <- list(pattern = "yearly", parser = function(x) {
+    base::as.Date(base::paste0(x, "-01-01"))
+  })
+
+  # custom extractor that grabs the "Rate.YYYY" year specifically
+  my_extractor <- function(f) {
+    stringr::str_extract(f, "Rate\\.(\\d{4})", group = 1)
+  }
+
+  components <- extract_time_components(
+    "Malaria__202508_Global_Pf_Parasite_Rate.2015.tiff",
+    info,
+    year_extractor = my_extractor
+  )
+  testthat::expect_equal(components$year, 2015L)
+})
+
+# ---- detect_time_pattern with all() logic ----
+
+testthat::test_that("detect_time_pattern uses all() not any() semantics", {
+  # when NOT all files match the more specific monthly pattern, the function
+  # must NOT report "monthly". Here the first file is yearly-only; previously
+  # (with any()) the whole batch would be misclassified as monthly.
+  mixed <- c("file_2020.tif", "file_2021_05.tif")
+  info <- detect_time_pattern(mixed)
+  testthat::expect_false(info$pattern == "monthly")
+  testthat::expect_equal(info$pattern, "yearly")
+})
+
+testthat::test_that("detect_time_pattern rejects substring year matches", {
+  # "202005" should NOT match the yearly pattern because of word boundaries
+  names_with_ym_compact <- c("rain_202005.tif", "rain_202006.tif")
+  info <- detect_time_pattern(names_with_ym_compact)
+  testthat::expect_equal(info$pattern, "monthly")
+})
+
+# ---- year_extractor pass-through integration ----
+
+testthat::test_that(
+  "tidy + extract_time_components pipeline parses malariaAtlas files", {
+  temp_dir <- base::file.path(base::tempdir(), "tidy_extract_pipeline")
+  base::dir.create(temp_dir, showWarnings = FALSE, recursive = TRUE)
+  base::on.exit(base::unlink(temp_dir, recursive = TRUE), add = TRUE)
+
+  # raw malariaAtlas output
+  raw_files <- c(
+    paste0(
+      "Malaria__202508_Global_Pf_Parasite_Rate.2019.",
+      "200028_300045_310050_400.tiff"
+    ),
+    paste0(
+      "Malaria__202508_Global_Pf_Parasite_Rate.2020.",
+      "200028_300045_310050_400.tiff"
+    )
+  )
+  for (nm in raw_files) {
+    base::file.create(base::file.path(temp_dir, nm))
+  }
+
+  # step 1: tidy
+  tidy_malaria_raster_names(temp_dir)
+
+  # step 2: detect and extract
+  final_paths <- base::list.files(temp_dir, full.names = TRUE)
+  cleaned <- clean_filenames(final_paths)
+  info <- detect_time_pattern(cleaned)
+
+  testthat::expect_equal(info$pattern, "yearly")
+
+  years <- purrr::map_int(cleaned, function(f) {
+    extract_time_components(f, info)$year
+  })
+
+  testthat::expect_equal(base::sort(years), c(2019L, 2020L))
 })

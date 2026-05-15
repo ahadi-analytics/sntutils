@@ -7,7 +7,8 @@
 create_data_structure(base_path = ".")
 }
 \arguments{
-\item{base_path}{Character. base_path project directory (default = current directory)}
+\item{base_path}{Character. base_path project directory
+(default = current directory)}
 }
 \value{
 NULL (creates folders on disk)
@@ -16,7 +17,10 @@ Initialize Full Project Folder Structure
 This function sets up a clean, hierarchical folder system for Ahadi projects:
 \itemize{
 \item 01_data/ with nested numbered folders and raw/processed subfolders
-\item 02_scripts/, 03_outputs/plots/, 04_reports/, 05_metadata_docs/
+\item 02_scripts/
+\item 03_outputs/ with 3.1_validation/, 3.2_intermediate_products/,
+3.3_final_snt_outputs/, 3.4_model/ (each with figures/ and tables/)
+\item 04_reports/, 05_metadata_docs/
 }
 
 NULL (folders created on disk)

@@ -1,7 +1,7 @@
 testthat::test_that("picks most recent mtime among versioned of same format", {
   tmp <- withr::local_tempdir()
 
-  # older csv (v1) — different content to avoid dedupe
+  # older csv (v1) — adjust content to track selection
   df_old <- head(iris)
   df_new <- df_old
   df_new$Sepal.Length[1] <- df_new$Sepal.Length[1] + 0.1
@@ -13,7 +13,6 @@ testthat::test_that("picks most recent mtime among versioned of same format", {
     file_formats = "csv",
     version_tag = "2025-01-01",
     include_date = FALSE,
-    dedupe_identical = FALSE,
     quiet = TRUE
   )
   testthat::expect_true(r1$ok[[1]])
@@ -25,7 +24,6 @@ testthat::test_that("picks most recent mtime among versioned of same format", {
     file_formats = "csv",
     version_tag = "2025-01-02",
     include_date = FALSE,
-    dedupe_identical = FALSE,
     quiet = TRUE
   )
   testthat::expect_true(r2$ok[[1]])
@@ -54,7 +52,6 @@ testthat::test_that("picks most recent mtime across formats when multiple allowe
     file_formats = "rds",
     version_tag = "v1",
     include_date = FALSE,
-    dedupe_identical = FALSE,
     quiet = TRUE
   )
   testthat::expect_true(r_rds$ok[[1]])
@@ -67,7 +64,6 @@ testthat::test_that("picks most recent mtime across formats when multiple allowe
     file_formats = "csv",
     version_tag = "v2",
     include_date = FALSE,
-    dedupe_identical = FALSE,
     quiet = TRUE
   )
   testthat::expect_true(r_csv$ok[[1]])
@@ -102,7 +98,6 @@ testthat::test_that("falls back to unversioned when no versioned files exist", {
     data_name = "plain",
     file_formats = "tsv",
     include_date = FALSE,
-    dedupe_identical = FALSE,
     overwrite = TRUE,
     quiet = TRUE
   )
@@ -149,7 +144,6 @@ testthat::test_that("tie on mtime resolves deterministically to one of the ties"
     file_formats = "rds",
     version_tag = "a",
     include_date = FALSE,
-    dedupe_identical = FALSE,
     quiet = TRUE
   )
   r2 <- write_snt_data(
@@ -159,7 +153,6 @@ testthat::test_that("tie on mtime resolves deterministically to one of the ties"
     file_formats = "csv",
     version_tag = "b",
     include_date = FALSE,
-    dedupe_identical = FALSE,
     quiet = TRUE
   )
   testthat::expect_true(all(c(r1$ok[[1]], r2$ok[[1]])))
@@ -192,7 +185,6 @@ testthat::test_that("works when file_formats = NULL (any supported)", {
     file_formats = "csv",
     version_tag = "x1",
     include_date = FALSE,
-    dedupe_identical = FALSE,
     quiet = TRUE
   )
   r_rds <- write_snt_data(
@@ -202,7 +194,6 @@ testthat::test_that("works when file_formats = NULL (any supported)", {
     file_formats = "rds",
     version_tag = "x2",
     include_date = FALSE,
-    dedupe_identical = FALSE,
     quiet = TRUE
   )
   testthat::expect_true(all(c(r_csv$ok[[1]], r_rds$ok[[1]])))

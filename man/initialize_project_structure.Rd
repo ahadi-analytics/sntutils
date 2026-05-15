@@ -16,7 +16,9 @@ NULL (folders created on disk)
 Sets up a clean Ahadi-style project hierarchy:
 \itemize{
 \item 01_data/ with numbered domain folders
-\item 02_scripts/, 03_outputs/plots/validation, 03_outputs/tables/validation,
-04_reports/, 05_metadata_docs/
+\item 02_scripts/
+\item 03_outputs/ with 3.1_validation/, 3.2_intermediate_products/,
+3.3_final_snt_outputs/, 3.4_model/ (each with figures/ and tables/)
+\item 04_reports/, 05_metadata_docs/
 }
 }

@@ -11,6 +11,10 @@ calculate_reporting_metrics(
   y_var = NULL,
   hf_col = NULL,
   key_indicators = c("allout", "conf", "test", "treat", "pres"),
+  method = 3,
+  nonreport_window = 6,
+  reporting_rule = "any_non_na",
+  require_all = FALSE,
   weighting = FALSE,
   weight_var = NULL,
   weight_window = 12,
@@ -28,14 +32,32 @@ reporting (used for numerator).}
 period).}
 
 \item{y_var}{Character. Optional. Name of the second grouping variable
-(e.g., district). Required for scenarios 1 and 3.}
+(e.g., district).}
 
-\item{hf_col}{Character. Name of the column containing unique health facility
-IDs. Required only for scenario 1.}
+\item{hf_col}{Character. Optional (defaults to NULL). Name of the column
+containing unique health facility IDs. When provided, enables facility-level
+analysis and filtering of inactive facilities (if key_indicators are specified).
+Can be used with or without y_var. Required when weighting = TRUE.}
 
 \item{key_indicators}{Optional. Character vector of indicators used to define
 facility activity in scenario 1. Defaults to
 \code{c("allout", "conf", "test", "treat", "pres")}.}
+
+\item{method}{Character or numeric. Classification method for facility activity
+status. Can be numeric (1, 2, 3) or character ("method1", "method2", "method3").
+Defaults to 3. See \code{\link{classify_facility_activity}} for details.}
+
+\item{nonreport_window}{Integer. Minimum number of consecutive non-reporting
+months to classify a facility as inactive in method 3. Defaults to 6.}
+
+\item{reporting_rule}{Character. Defines what counts as reporting:
+\code{"any_non_na"} (default, counts NA as non-reporting, 0 counts as reported)
+or \code{"positive_only"} (requires >0 value to count as reported).}
+
+\item{require_all}{Logical. When TRUE and multiple vars_of_interest are
+provided, calculates the proportion of facilities reporting ALL variables
+(complete data). When FALSE (default), calculates per-variable reporting
+rates. Only applies to facility-level analysis (when hf_col is provided).}
 
 \item{weighting}{Logical. Whether to use weighted reporting rates. When TRUE,
 facilities are weighted by their typical size, giving more importance to
@@ -69,6 +91,19 @@ same y_var group (e.g., same district)
 A tibble with the number of reporting (\code{rep}) and expected (\code{exp})
 facilities or records, and the computed \code{reprate} and \code{missrate}.
 
+\strong{Understanding the metrics:}
+\itemize{
+\item \code{exp} (expected): When \code{hf_col} is provided with \code{key_indicators}, this is
+the count of ACTIVE facilities only. Without \code{hf_col}, it's the count of
+all data rows (including inactive facilities).
+\item \code{rep} (reported): Count of facilities/rows that reported (non-NA values).
+\item \code{reprate}: Reporting rate (rep/exp). With proper facility identification,
+this is the percentage of ACTIVE facilities that reported.
+\item \code{missrate}: Missing rate (1 - reprate). With proper facility identification,
+this is the percentage of ACTIVE facilities that failed to report.
+\strong{Without \code{hf_col}, this may be artificially high due to inactive facilities.}
+}
+
 If weighting is TRUE, additional columns are included:
 \itemize{
 \item \code{reprate_w}: Weighted reporting rate (0-1)
@@ -80,25 +115,36 @@ If weighting is TRUE, additional columns are included:
 }
 \description{
 This function calculates reporting metrics for health facility data across
-three common scenarios:
+three common scenarios. \strong{IMPORTANT}: When facility identification (\code{hf_col})
+and \code{key_indicators} are provided, the function excludes inactive facilities
+from denominators, ensuring that missing rates reflect only the proportion
+of ACTIVE facilities that failed to report, not all facilities in the dataset.
 }
 \details{
 \enumerate{
-\item \strong{Proportion of facilities reporting any data}
+\item \strong{Proportion of facilities reporting a single variable}
 \itemize{
+\item When \code{vars_of_interest} contains a single variable:
 \item Calculates the proportion of active facilities (as defined by reporting
-on \code{key_indicators}) that reported at least one of the
-\code{vars_of_interest} in a given period and group.
+on \code{key_indicators}) that reported the variable in a given period.
+\item Requires \code{hf_col}. Can be used with or without \code{y_var}.
 }
-\item \strong{Reporting rate by group (x_var, y_var)}
+\item \strong{Per-variable facility reporting rates}
 \itemize{
-\item Computes reporting/missing rates for each variable in
-\code{vars_of_interest}, grouped by \code{x_var} and \code{y_var}.
+\item When \code{vars_of_interest} contains multiple variables and \code{hf_col} is provided:
+\item Calculates reporting/missing rates for EACH variable separately, counting
+distinct facilities that reported each specific variable.
+\item Uses facility-level analysis, filtering to active facilities only
+(if \code{key_indicators} specified).
+\item Can be used with or without \code{y_var}.
 }
-\item \strong{Reporting trends over time (x_var only)}
+\item \strong{Row-level reporting rates (without facility filtering)}
 \itemize{
-\item Computes reporting/missing rates for each variable over time
-(x_var only).
+\item When \code{hf_col} is NOT provided:
+\item Computes reporting/missing rates based on data rows, not facilities.
+\item \strong{WARNING}: This counts all data rows including inactive facilities,
+potentially inflating missing rates.
+\item Use scenarios 1 or 2 (with \code{hf_col}) for accurate facility-based metrics.
 }
 }
 \subsection{Weighted Reporting Rate Calculation}{
@@ -146,8 +192,9 @@ Then:
 }
 }
 \examples{
+# Example with dates instead of month names for compatibility
 hf_data <- data.frame(
-  month = rep(c("Jan", "Feb", "Mar"), each = 10),
+  month = rep(as.Date(c("2024-01-01", "2024-02-01", "2024-03-01")), each = 10),
   district = rep(c("North", "South"), each = 5, times = 3),
   facility_id = rep(1:5, times = 6),
   conf = c(
@@ -168,14 +215,15 @@ hf_data <- data.frame(
 )
 
 # Scenario 1: Proportion of active facilities reporting
-# any data
+# any data (using numeric method)
 calculate_reporting_metrics(
   data = hf_data,
   vars_of_interest = c("conf"),
   x_var = "month",
   y_var = "district",
   hf_col = "facility_id",
-  key_indicators = c("allout", "conf", "pres")
+  key_indicators = c("allout", "conf", "pres"),
+  method = 3  # Can also use "method3"
 )
 
 # Scenario 2: Reporting rate by month and district
@@ -183,15 +231,18 @@ calculate_reporting_metrics(
   data = hf_data,
   vars_of_interest = c("conf"),
   x_var = "month",
-  y_var = "district"
+  y_var = "district",
+  hf_col = NULL
 )
 
 # Scenario 3: Reporting trends over time
 calculate_reporting_metrics(
   data = hf_data,
   vars_of_interest = c("conf"),
-  x_var = "month"
+  x_var = "month",
+  hf_col = NULL
 )
+
 
 # Example with weighted reporting rate
 # Create data with facilities of different sizes

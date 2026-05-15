@@ -61,7 +61,8 @@ testthat::test_that(
     metrics <- calculate_reporting_metrics(
       data = test_data,
       vars_of_interest = "malaria",
-      x_var = "month"
+      x_var = "month",
+      hf_col = NULL
     )
 
     testthat::expect_equal(

@@ -1,13 +1,9 @@
-# tests for extrapolate_pop function
-# objective: comprehensive testing of population extrapolation functionality
-# author: assistant
-# date: 2025-07-10
-
 # setup test data ----
 create_pop_test_data <- function(
   years = 2018:2020,
   n_regions = 2,
-  n_districts = 2
+  n_districts = 2,
+  include_multiple_cols = FALSE
 ) {
   # create realistic population test dataset
   set.seed(42)
@@ -25,6 +21,17 @@ create_pop_test_data <- function(
     ) |>
     dplyr::arrange(adm0, adm1, adm2, year)
 
+  # add multiple population columns if requested
+  if (include_multiple_cols) {
+    base_data <- base_data |>
+      dplyr::mutate(
+        pop_0_11m = round(total_pop * 0.08),
+        pop_0_4y = round(total_pop * 0.15),
+        pop_u15 = round(total_pop * 0.45),
+        pop_15plus = total_pop - pop_u15
+      )
+  }
+
   return(base_data)
 }
 
@@ -35,7 +42,7 @@ testthat::test_that("extrapolate_pop returns correct structure", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(2021, 2022),
     multiplier = 1.5
@@ -60,7 +67,7 @@ testthat::test_that("extrapolate_pop handles unnamed years with multiplier", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(2021, 2022),
     multiplier = 1.5
@@ -90,7 +97,7 @@ testthat::test_that("extrapolate_pop handles named years with multipliers", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(`2021` = 1.5, `2022` = 1.3)
   )
@@ -130,7 +137,7 @@ testthat::test_that("extrapolate_pop expands year range correctly", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(2021),
     multiplier = 1.2
@@ -156,7 +163,7 @@ testthat::test_that("extrapolate_pop preserves grouping structure", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(2021),
     multiplier = 1.1
@@ -195,7 +202,7 @@ testthat::test_that("extrapolate_pop handles different column names", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "yr",
-    pop_col = "population",
+    pop_cols = "population",
     group_cols = c("adm0", "region", "district", "adm3"),
     years_to_extrap = c(2021),
     multiplier = 1.2
@@ -215,7 +222,7 @@ testthat::test_that("extrapolate_pop handles single group column", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0"),
     years_to_extrap = c(2021),
     multiplier = 1.3
@@ -232,7 +239,7 @@ testthat::test_that("extrapolate_pop handles multiple extrapolation years", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(2021, 2022, 2023, 2024),
     multiplier = 1.05
@@ -274,7 +281,7 @@ testthat::test_that("extrapolate_pop extrapolates backward when needed", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = 2020:2023,
     multiplier = 1.5
@@ -298,7 +305,7 @@ testthat::test_that("extrapolate_pop handles single year input", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(2021),
     multiplier = 1.2
@@ -331,7 +338,7 @@ testthat::test_that("extrapolate_pop handles missing population values", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(2021),
     multiplier = 1.1
@@ -354,7 +361,7 @@ testthat::test_that("extrapolate_pop handles zero multiplier", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(2021),
     multiplier = 0
@@ -375,7 +382,7 @@ testthat::test_that("extrapolate_pop handles negative multiplier", {
     result <- extrapolate_pop(
       data = test_data,
       year_col = "year",
-      pop_col = "total_pop",
+      pop_cols = "total_pop",
       group_cols = c("adm0", "adm1", "adm2", "adm3"),
       years_to_extrap = c(2021),
       multiplier = -0.5
@@ -391,21 +398,24 @@ testthat::test_that("extrapolate_pop handles negative multiplier", {
 })
 
 # test error conditions ----
-testthat::test_that("extrapolate_pop requires multiplier for unnamed years", {
+testthat::test_that("extrapolate_pop auto-calculates growth when multiplier is NULL", {
   test_data <- create_pop_test_data()
 
-  testthat::expect_error(
-    extrapolate_pop(
+  # should not error and should auto-calculate growth rates
+  testthat::expect_no_error(
+    result <- extrapolate_pop(
       data = test_data,
       year_col = "year",
-      pop_col = "total_pop",
+      pop_cols = "total_pop",
       group_cols = c("adm0", "adm1", "adm2", "adm3"),
       years_to_extrap = c(2021, 2022),
       multiplier = NULL
-    ),
-    "`multiplier` must be provided when `years_to_extrap` is unnamed.",
-    fixed = TRUE
+    )
   )
+
+  # should have extrapolated data
+  testthat::expect_true(2021 %in% result$year)
+  testthat::expect_true(2022 %in% result$year)
 })
 
 testthat::test_that("extrapolate_pop handles invalid column names", {
@@ -415,7 +425,7 @@ testthat::test_that("extrapolate_pop handles invalid column names", {
     extrapolate_pop(
       data = test_data,
       year_col = "nonexistent_year",
-      pop_col = "total_pop",
+      pop_cols = "total_pop",
       group_cols = c("adm0", "adm1", "adm2", "adm3"),
       years_to_extrap = c(2021),
       multiplier = 1.1
@@ -432,7 +442,7 @@ testthat::test_that("extrapolate_pop preserves original data", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(2021),
     multiplier = 1.1
@@ -459,7 +469,7 @@ testthat::test_that("extrapolate_pop rounds population values", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(2021),
     multiplier = 1.33 # will create decimals
@@ -479,7 +489,7 @@ testthat::test_that("extrapolate_pop maintains proper grouping", {
   result <- extrapolate_pop(
     data = test_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(2021, 2022),
     multiplier = 1.1
@@ -507,7 +517,7 @@ testthat::test_that("extrapolate_pop works in typical workflow", {
   step1 <- extrapolate_pop(
     data = base_data,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(2020),
     multiplier = 1.02
@@ -517,7 +527,7 @@ testthat::test_that("extrapolate_pop works in typical workflow", {
   final_result <- extrapolate_pop(
     data = step1,
     year_col = "year",
-    pop_col = "total_pop",
+    pop_cols = "total_pop",
     group_cols = c("adm0", "adm1", "adm2", "adm3"),
     years_to_extrap = c(`2021` = 1.03, `2022` = 1.025),
     multiplier = NULL
@@ -543,4 +553,238 @@ testthat::test_that("extrapolate_pop works in typical workflow", {
 
   # 2020 should be 2019 * 1.02, 2021 should be 2020 * 1.03
   testthat::expect_equal(pop_2021, round(pop_2020 * 1.03))
+})
+
+# tests for multiple population columns ----
+testthat::test_that("extrapolate_pop handles multiple population columns", {
+  test_data <- create_pop_test_data(include_multiple_cols = TRUE)
+
+  result <- extrapolate_pop(
+    data = test_data,
+    year_col = "year",
+    pop_cols = c("total_pop", "pop_0_11m", "pop_0_4y", "pop_u15"),
+    group_cols = c("adm0", "adm1", "adm2", "adm3"),
+    years_to_extrap = c(2021, 2022),
+    multiplier = 1.05
+  )
+
+  # check that all population columns are present
+  expected_cols <- c("total_pop", "pop_0_11m", "pop_0_4y", "pop_u15")
+  testthat::expect_true(all(expected_cols %in% names(result)))
+
+  # check that extrapolation worked for all columns
+  extrap_2021 <- result |>
+    dplyr::filter(year == 2021) |>
+    dplyr::slice_head(n = 1)
+
+  base_2020 <- result |>
+    dplyr::filter(
+      year == 2020,
+      adm0 == extrap_2021$adm0,
+      adm1 == extrap_2021$adm1,
+      adm2 == extrap_2021$adm2,
+      adm3 == extrap_2021$adm3
+    )
+
+  for (col in expected_cols) {
+    expected_val <- round(base_2020[[col]] * 1.05)
+    testthat::expect_equal(extrap_2021[[col]], expected_val)
+  }
+})
+
+testthat::test_that("extrapolate_pop handles column-specific multipliers", {
+  test_data <- create_pop_test_data(include_multiple_cols = TRUE)
+
+  result <- extrapolate_pop(
+    data = test_data,
+    year_col = "year",
+    pop_cols = c("total_pop", "pop_0_11m", "pop_u15"),
+    group_cols = c("adm0", "adm1", "adm2", "adm3"),
+    years_to_extrap = c(2021),
+    multiplier = list(
+      total_pop = 1.025,
+      pop_0_11m = 1.035,
+      pop_u15 = 1.020
+    )
+  )
+
+  # test one location
+  test_location <- result |>
+    dplyr::filter(
+      adm0 == "country_x",
+      adm1 == "region_a",
+      adm2 == "district_1",
+      adm3 == "district_1_subarea"
+    )
+
+  base_2020 <- test_location |> dplyr::filter(year == 2020)
+  extrap_2021 <- test_location |> dplyr::filter(year == 2021)
+
+  # check each column has correct multiplier applied
+  testthat::expect_equal(
+    extrap_2021$total_pop,
+    round(base_2020$total_pop * 1.025)
+  )
+  testthat::expect_equal(
+    extrap_2021$pop_0_11m,
+    round(base_2020$pop_0_11m * 1.035)
+  )
+  testthat::expect_equal(
+    extrap_2021$pop_u15,
+    round(base_2020$pop_u15 * 1.020)
+  )
+})
+
+testthat::test_that("extrapolate_pop handles year-specific multipliers by column", {
+  test_data <- create_pop_test_data(include_multiple_cols = TRUE)
+
+  result <- extrapolate_pop(
+    data = test_data,
+    year_col = "year",
+    pop_cols = c("total_pop", "pop_0_11m"),
+    group_cols = c("adm0", "adm1", "adm2", "adm3"),
+    years_to_extrap = c(2021, 2022),
+    multiplier = list(
+      total_pop = c(`2021` = 1.03, `2022` = 1.025),
+      pop_0_11m = c(`2021` = 1.035, `2022` = 1.030)
+    )
+  )
+
+  # test specific location
+  test_location <- result |>
+    dplyr::filter(
+      adm0 == "country_x",
+      adm1 == "region_a",
+      adm2 == "district_1",
+      adm3 == "district_1_subarea"
+    ) |>
+    dplyr::arrange(year)
+
+  # check year-specific multipliers
+  pop_2020_total <- test_location |> dplyr::filter(year == 2020) |> dplyr::pull(total_pop)
+  pop_2021_total <- test_location |> dplyr::filter(year == 2021) |> dplyr::pull(total_pop)
+  pop_2022_total <- test_location |> dplyr::filter(year == 2022) |> dplyr::pull(total_pop)
+
+  pop_2020_0_11m <- test_location |> dplyr::filter(year == 2020) |> dplyr::pull(pop_0_11m)
+  pop_2021_0_11m <- test_location |> dplyr::filter(year == 2021) |> dplyr::pull(pop_0_11m)
+  pop_2022_0_11m <- test_location |> dplyr::filter(year == 2022) |> dplyr::pull(pop_0_11m)
+
+  # 2021 calculations
+  testthat::expect_equal(pop_2021_total, round(pop_2020_total * 1.03))
+  testthat::expect_equal(pop_2021_0_11m, round(pop_2020_0_11m * 1.035))
+
+  # 2022 calculations
+  testthat::expect_equal(pop_2022_total, round(pop_2021_total * 1.025))
+  testthat::expect_equal(pop_2022_0_11m, round(pop_2021_0_11m * 1.030))
+})
+
+# tests for automatic growth rate calculation ----
+testthat::test_that("extrapolate_pop calculates automatic growth rates", {
+  # create data with known growth pattern
+  growth_data <- tibble::tibble(
+    adm0 = "country_x",
+    adm1 = "region_a",
+    adm2 = "district_1",
+    adm3 = "district_1_subarea",
+    year = c(2018, 2019, 2020),
+    total_pop = c(1000, 1050, 1102),  # ~5% growth
+    pop_0_11m = c(80, 85, 90)         # ~6% growth
+  )
+
+  result <- extrapolate_pop(
+    data = growth_data,
+    year_col = "year",
+    pop_cols = c("total_pop", "pop_0_11m"),
+    group_cols = c("adm0", "adm1", "adm2", "adm3"),
+    years_to_extrap = c(2021),
+    multiplier = NULL  # trigger automatic calculation
+  )
+
+  # should extrapolate using calculated growth rates
+  extrap_2021 <- result |> dplyr::filter(year == 2021)
+  base_2020 <- result |> dplyr::filter(year == 2020)
+
+  # should have extrapolated values (not zero)
+  testthat::expect_true(extrap_2021$total_pop > base_2020$total_pop)
+  testthat::expect_true(extrap_2021$pop_0_11m > base_2020$pop_0_11m)
+
+  # growth should be reasonable (between 1% and 10%)
+  total_growth <- extrap_2021$total_pop / base_2020$total_pop
+  pop_0_11m_growth <- extrap_2021$pop_0_11m / base_2020$pop_0_11m
+
+  testthat::expect_true(total_growth > 1.01 && total_growth < 1.10)
+  testthat::expect_true(pop_0_11m_growth > 1.01 && pop_0_11m_growth < 1.10)
+})
+
+testthat::test_that("extrapolate_pop handles single year with explicit multiplier", {
+  # single year data - use explicit multiplier instead of auto-calculation
+  single_year_data <- tibble::tibble(
+    adm0 = "country_x",
+    adm1 = "region_a",
+    adm2 = "district_1",
+    adm3 = "district_1_subarea",
+    year = 2020,
+    total_pop = 1000,
+    pop_0_11m = 80
+  )
+
+  result <- extrapolate_pop(
+    data = single_year_data,
+    year_col = "year",
+    pop_cols = c("total_pop", "pop_0_11m"),
+    group_cols = c("adm0", "adm1", "adm2", "adm3"),
+    years_to_extrap = c(2021),
+    multiplier = 1.02  # explicit 2% growth
+  )
+
+  # check 2% growth applied
+  extrap_2021 <- result |> dplyr::filter(year == 2021)
+  base_2020 <- result |> dplyr::filter(year == 2020)
+
+  testthat::expect_equal(extrap_2021$total_pop, round(base_2020$total_pop * 1.02))
+  testthat::expect_equal(extrap_2021$pop_0_11m, round(base_2020$pop_0_11m * 1.02))
+})
+
+# tests for error handling with new functionality ----
+testthat::test_that("extrapolate_pop validates population column names", {
+  test_data <- create_pop_test_data(include_multiple_cols = TRUE)
+
+  testthat::expect_error(
+    extrapolate_pop(
+      data = test_data,
+      year_col = "year",
+      pop_cols = c("total_pop", "nonexistent_col"),
+      group_cols = c("adm0", "adm1", "adm2", "adm3"),
+      years_to_extrap = c(2021),
+      multiplier = 1.05
+    ),
+    "Missing population columns: nonexistent_col"
+  )
+})
+
+testthat::test_that("extrapolate_pop handles mixed column multipliers correctly", {
+  test_data <- create_pop_test_data(include_multiple_cols = TRUE)
+
+  # some columns have multipliers, others don't (should use fallback)
+  result <- extrapolate_pop(
+    data = test_data,
+    year_col = "year",
+    pop_cols = c("total_pop", "pop_0_11m", "pop_u15"),
+    group_cols = c("adm0", "adm1", "adm2", "adm3"),
+    years_to_extrap = c(2021),
+    multiplier = list(
+      total_pop = 1.05,
+      # pop_0_11m missing - should use fallback
+      pop_u15 = 1.03
+    )
+  )
+
+  testthat::expect_s3_class(result, "data.frame")
+  testthat::expect_true(2021 %in% result$year)
+
+  # all columns should have extrapolated values (no NAs)
+  extrap_2021 <- result |> dplyr::filter(year == 2021)
+  testthat::expect_false(any(is.na(extrap_2021$total_pop)))
+  testthat::expect_false(any(is.na(extrap_2021$pop_0_11m)))
+  testthat::expect_false(any(is.na(extrap_2021$pop_u15)))
 })

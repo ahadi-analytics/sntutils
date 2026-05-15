@@ -1,4 +1,6 @@
 testthat::test_that("fuzzy_match_facilities handles full pipeline options", {
+  testthat::skip_if_not_installed("mockery")
+
   cache_dir <- withr::local_tempdir("cache")
   save_dir <- withr::local_tempdir("save")
 

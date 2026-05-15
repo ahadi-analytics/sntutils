@@ -11,7 +11,8 @@ process_raster_collection(
   pattern = "\\\\.tif$",
   aggregations = c("mean"),
   layer_to_process = 1,
-  raster_is_density = FALSE
+  raster_is_density = FALSE,
+  year_extractor = NULL
 )
 }
 \arguments{
@@ -37,6 +38,13 @@ be processed. Default is 1.}
 \item{raster_is_density}{Logical indicating if raster values represent density.
 If TRUE, values are converted from density to counts using cell area.
 Default is FALSE.}
+
+\item{year_extractor}{Optional function. A custom function that accepts a
+filename (character) and returns a year as integer or character. Passed
+through to \code{\link[=extract_time_components]{extract_time_components()}}. Use this when the default
+"last plausible 4-digit year in 1980-2099" heuristic picks the wrong
+year (for example with malariaAtlas filenames that contain multiple
+year-like tokens). Defaults to \code{NULL}, which uses the built-in extractor.}
 }
 \value{
 A combined data frame containing results from all processed files,

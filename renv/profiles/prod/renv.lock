@@ -1,0 +1,93 @@
+{
+  "R": {
+    "Version": "4.5.0",
+    "Repositories": [
+      {
+        "Name": "CRAN",
+        "URL": "https://packagemanager.posit.co/cran/latest"
+      }
+    ]
+  },
+  "Packages": {
+    "cli": {
+      "Package": "cli",
+      "Version": "3.6.5",
+      "Source": "Repository"
+    },
+    "dplyr": {
+      "Package": "dplyr",
+      "Version": "1.1.4",
+      "Source": "Repository"
+    },
+    "ggplot2": {
+      "Package": "ggplot2",
+      "Version": "4.0.0",
+      "Source": "Repository"
+    },
+    "rio": {
+      "Package": "rio",
+      "Version": "1.2.4",
+      "Source": "Repository"
+    },
+    "rlang": {
+      "Package": "rlang",
+      "Version": "1.1.6",
+      "Source": "Repository"
+    },
+    "sf": {
+      "Package": "sf",
+      "Version": "1.0-21",
+      "Source": "Repository"
+    },
+    "stringr": {
+      "Package": "stringr",
+      "Version": "1.5.2",
+      "Source": "Repository"
+    },
+    "tibble": {
+      "Package": "tibble",
+      "Version": "3.3.0",
+      "Source": "Repository"
+    },
+    "tidyr": {
+      "Package": "tidyr",
+      "Version": "1.3.1",
+      "Source": "Repository"
+    },
+    "terra": {
+      "Package": "terra",
+      "Version": "1.8-70",
+      "Source": "Repository"
+    },
+    "exactextractr": {
+      "Package": "exactextractr",
+      "Version": "0.10.0",
+      "Source": "Repository"
+    },
+    "digest": {
+      "Package": "digest",
+      "Version": "0.6.37",
+      "Source": "Repository"
+    },
+    "tools": {
+      "Package": "tools",
+      "Version": "4.5.0",
+      "Source": "Repository"
+    },
+    "fs": {
+      "Package": "fs",
+      "Version": "1.6.6",
+      "Source": "Repository"
+    },
+    "readr": {
+      "Package": "readr",
+      "Version": "2.1.5",
+      "Source": "Repository"
+    },
+    "lubridate": {
+      "Package": "lubridate",
+      "Version": "1.9.4",
+      "Source": "Repository"
+    }
+  }
+}

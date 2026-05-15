@@ -248,10 +248,10 @@ testthat::test_that("comprehensive validation with all issue types", {
     requireNamespace("parzer", quietly = TRUE),
     message = "parzer not installed for DMS parsing"
   )
-  
-  # Approximate ADM0 rectangle for Burundi (EPSG:4326)
+
+  # Approximate ADM0 rectangle (EPSG:4326)
   adm0_bdi <- sf::st_as_sfc(
-    sf::st_bbox(c(xmin = 29.0, ymin = -4.5, xmax = 30.9, ymax = -2.3), 
+    sf::st_bbox(c(xmin = 29.0, ymin = -4.5, xmax = 30.9, ymax = -2.3),
                 crs = sf::st_crs(4326))
   ) |> sf::st_sf()
 
@@ -260,12 +260,12 @@ testthat::test_that("comprehensive validation with all issue types", {
     id = c(
       # Valid, inside
       "ID_valid",
-      # DMS (needs parzer), inside  
+      # DMS (needs parzer), inside
       "ID_dms",
       # Flipped lon/lat (should be corrected)
       "ID_flip",
       # Out-of-range lon
-      "ID_out_range_lon", 
+      "ID_out_range_lon",
       # Out-of-range lat
       "ID_out_range_lat",
       # Zero coords
@@ -273,7 +273,7 @@ testthat::test_that("comprehensive validation with all issue types", {
       # Missing lon
       "ID_missing_lon",
       # Missing lat (empty string)
-      "ID_missing_lat", 
+      "ID_missing_lat",
       # Non-numeric
       "ID_nonnumeric",
       # Low precision decimals
@@ -287,7 +287,7 @@ testthat::test_that("comprehensive validation with all issue types", {
     ),
     hf = c(
       "Valid HF", "DMS HF", "Flip HF", "OutRange Lon HF", "OutRange Lat HF",
-      "Zero HF", "Missing Lon HF", "Missing Lat HF", "NonNumeric HF", "LowPrecision HF", 
+      "Zero HF", "Missing Lon HF", "Missing Lat HF", "NonNumeric HF", "LowPrecision HF",
       "Dup HF A", "Dup HF B", "Shared Loc A", "Shared Loc B", "Outside ADM0 HF"
     ),
     lon = c(
@@ -326,7 +326,7 @@ testthat::test_that("comprehensive validation with all issue types", {
   res <- validate_process_coordinates(
     data = df,
     name = "comprehensive_test",
-    id_col = "id", 
+    id_col = "id",
     adm0_sf = adm0_bdi,
     min_decimals = 3,
     fix_issues = TRUE,
@@ -338,11 +338,11 @@ testthat::test_that("comprehensive validation with all issue types", {
   testthat::expect_true("issues" %in% names(res))
   pts <- res$final_points_df
   testthat::expect_s3_class(pts, "sf")
-  
+
   # Test that some rows are preserved (current behavior may vary)
   testthat::expect_true(nrow(pts) > 0)
   testthat::expect_true(nrow(pts) <= nrow(df))
-  
+
   # Test that all expected issue types are detected
   issues_str <- paste(res$issues, collapse = " ")
   testthat::expect_true(grepl("missing coordinates", issues_str))
@@ -355,24 +355,132 @@ testthat::test_that("comprehensive validation with all issue types", {
   testthat::expect_true(grepl("duplicates by ID and coordinates|duplicate", issues_str))
   testthat::expect_true(grepl("shared locations|duplicate", issues_str))
   testthat::expect_true(grepl("outside ADM0|outside country", issues_str))
-  
+
   # Test that coordinates exist (behavior may vary for NA handling)
   testthat::expect_true("lon" %in% names(pts))
   testthat::expect_true("lat" %in% names(pts))
-  
+
   # Test that at least some coordinates are valid
   if (nrow(pts) > 0) {
     testthat::expect_true(sum(!is.na(pts$lon)) >= 0)
     testthat::expect_true(sum(!is.na(pts$lat)) >= 0)
   }
-  
+
   # Test output structure
   testthat::expect_true("lon" %in% names(pts))
   testthat::expect_true("lat" %in% names(pts))
   testthat::expect_equal(names(pts)[ncol(pts)], "geometry")
-  
+
   # Test checks structure
   if (!is.null(res$checks)) {
     testthat::expect_type(res$checks, "list")
   }
+})
+
+testthat::test_that(".clean_coord_string handles common formatting issues", {
+  clean <- sntutils:::.clean_coord_string
+
+  # whitespace, including non-breaking space
+  testthat::expect_equal(clean("  12.5 "), "12.5")
+  testthat::expect_equal(clean("\u00A012.5\u00A0"), "12.5")
+
+  # comma as decimal separator (European)
+  testthat::expect_equal(clean("12,5"), "12.5")
+  testthat::expect_equal(clean("-12,3456"), "-12.3456")
+
+  # `?` typo for decimal point
+  testthat::expect_equal(clean("12?5"), "12.5")
+
+  # unicode minus variants
+  testthat::expect_equal(clean("\u221212.5"), "-12.5")
+  testthat::expect_equal(clean("\u201312.5"), "-12.5")
+  testthat::expect_equal(clean("\u201412.5"), "-12.5")
+
+  # stray characters and degree symbols
+  testthat::expect_equal(clean("12.5\u00B0"), "12.5")
+  testthat::expect_equal(clean("lon: -12.5"), "-12.5")
+
+  # multiple decimal points collapse to a single one
+  testthat::expect_equal(clean("12.34.56"), "12.3456")
+
+  # trailing separators trimmed
+  testthat::expect_equal(clean("12.5."), "12.5")
+  testthat::expect_equal(clean("12.5,"), "12.5")
+
+  # multiple minus signs reduced to a leading one
+  testthat::expect_equal(clean("--12.5"), "-12.5")
+  testthat::expect_equal(clean("12-.5"), "12.5")
+
+  # plus sign prefix dropped silently
+  testthat::expect_equal(clean("+12.5"), "12.5")
+
+  # null-like placeholders become NA
+  testthat::expect_true(is.na(clean("")))
+  testthat::expect_true(is.na(clean("  ")))
+  testthat::expect_true(is.na(clean("NA")))
+  testthat::expect_true(is.na(clean("n/a")))
+  testthat::expect_true(is.na(clean("null")))
+  testthat::expect_true(is.na(clean("None")))
+  testthat::expect_true(is.na(clean("-")))
+  testthat::expect_true(is.na(clean(".")))
+  testthat::expect_true(is.na(clean("???")))
+
+  # NA in, NA out
+  testthat::expect_true(is.na(clean(NA)))
+  testthat::expect_true(is.na(clean(NA_character_)))
+
+  # already clean values pass through unchanged
+  testthat::expect_equal(clean("12.5"), "12.5")
+  testthat::expect_equal(clean("-180"), "-180")
+  testthat::expect_equal(clean("0"), "0")
+
+  # vectorized over inputs
+  out <- clean(c("12,5", " -8.0 ", "NA", "1?5"))
+  testthat::expect_equal(out, c("12.5", "-8.0", NA, "1.5"))
+})
+
+testthat::test_that("validate_process_coordinates cleans comma decimals", {
+  df <- data.frame(
+    hf = paste0("HF_", 1:3),
+    lon = c("-12,5000", "-12,6000", "-12,7000"),
+    lat = c("8,0000", "8,1000", "8,2000"),
+    stringsAsFactors = FALSE
+  )
+
+  res <- validate_process_coordinates(
+    data = df,
+    lon_col = "lon",
+    lat_col = "lat",
+    fix_issues = TRUE,
+    quiet = TRUE
+  )
+
+  pts <- res$final_points_df
+  testthat::expect_s3_class(pts, "sf")
+  testthat::expect_equal(pts$lon, c(-12.5, -12.6, -12.7))
+  testthat::expect_equal(pts$lat, c(8.0, 8.1, 8.2))
+  # comma decimals should not be flagged as non-numeric
+  testthat::expect_false(any(grepl("non-numeric coordinates", res$issues)))
+})
+
+testthat::test_that("validate_process_coordinates trims whitespace and typos", {
+  df <- data.frame(
+    hf = paste0("HF_", 1:3),
+    lon = c(" -12.5000 ", "-12?6000", "-12.7000"),
+    lat = c("8.0000\u00A0", "8.1000", " 8.2000 "),
+    stringsAsFactors = FALSE
+  )
+
+  res <- validate_process_coordinates(
+    data = df,
+    lon_col = "lon",
+    lat_col = "lat",
+    fix_issues = TRUE,
+    quiet = TRUE
+  )
+
+  pts <- res$final_points_df
+  testthat::expect_equal(pts$lon, c(-12.5, -12.6, -12.7))
+  testthat::expect_equal(pts$lat, c(8.0, 8.1, 8.2))
+  testthat::expect_false(any(grepl("non-numeric coordinates", res$issues)))
 })

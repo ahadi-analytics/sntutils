@@ -117,14 +117,6 @@ translate_text <- function(text,
   }
   # Check if source and target languages are the same
   if (source_language == target_language) {
-    cli::cli_inform(
-      c(
-        "i" = paste0(
-          "Source and target languages are the ",
-          "same. Returning original text."
-        )
-      )
-    )
     return(text)
   }
 
@@ -319,8 +311,8 @@ translate_text_vec <- function(text, ...) {
 #' in malaria program contexts. the first French acronym listed is treated
 #' as the preferred one when enforcing acronyms.
 #'
-#' @return tibble with columns: english_acronyms (list), english_full,
-#'   french_acronyms (list), french_full, preferred_french_acronym
+#' @return tibble with columns: english_acronyms, english_full,
+#'   french_acronyms, french_full, preferred_french_acronym
 #'
 #' @examples
 #' tbl <- french_malaria_acronyms()
@@ -370,7 +362,7 @@ french_malaria_acronyms <- function() {
     list("RDT", "rapid diagnostic test", "TDR", "test diagnostique rapide"),
     list("NSP", "national strategic plan", "PSN", "plan strat\u00e9gique national"),
     list("FR", "(GFATM) funding request", "DF", "demande de financement"),
-    list("HF", "health facility", "FS", "formation sanitaire")
+    list("HF; Health Facility", "health facility", "FOSA", "Formation sanitaire")
   )
 
   # convert into columns
@@ -392,9 +384,17 @@ french_malaria_acronyms <- function() {
   )
 
   tibble::tibble(
-    english_acronyms = english_acronyms,
+    english_acronyms = vapply(
+      english_acronyms,
+      function(x) paste(x, collapse = "; "),
+      character(1)
+    ),
     english_full = english_full,
-    french_acronyms = french_acronyms,
+    french_acronyms = vapply(
+      french_acronyms,
+      function(x) paste(x, collapse = "; "),
+      character(1)
+    ),
     french_full = french_full,
     preferred_french_acronym = preferred
   )
@@ -421,6 +421,14 @@ french_malaria_acronyms <- function() {
   out <- base::gsub(
     "(?i)reporting\\s+rate(s?)",
     "taux de rapport",
+    out,
+    perl = TRUE
+  )
+  
+  # Handle "Mean" translation to "Moyenne"  
+  out <- base::gsub(
+    "\\b[Mm][Ee][Aa][Nn]\\b",
+    "Moyenne",
     out,
     perl = TRUE
   )

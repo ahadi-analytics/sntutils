@@ -4,7 +4,7 @@
 \alias{dhis2_map}
 \title{Crosswalk DHIS2 dataset using dictionary}
 \usage{
-dhis2_map(data, dict, new_col, old_col, verbose = TRUE)
+dhis2_map(data, dict, new_col, old_col, verbose = TRUE, drop_unmatched = FALSE)
 }
 \arguments{
 \item{data}{a data.frame with DHIS2 columns to be renamed.}
@@ -16,6 +16,8 @@ dhis2_map(data, dict, new_col, old_col, verbose = TRUE)
 \item{old_col}{column in \code{dict} with raw/source names (name or index).}
 
 \item{verbose}{logical; if TRUE (default) prints CLI messages.}
+
+\item{drop_unmatched}{logical; if TRUE, drops columns that are not found in the dictionary. Default is FALSE.}
 }
 \value{
 the input dataset with renamed columns.

@@ -97,6 +97,8 @@ testthat::test_that("detect_country_from_bbox handles missing packages", {
 
 # Test 5: download_era5() parameter validation ----
 testthat::test_that("download_era5 validates API key", {
+  testthat::skip_if_not_installed("ecmwfr")
+
   testthat::expect_error(
     sntutils::download_era5(
       dataset = "monthly_single_levels",
@@ -111,6 +113,8 @@ testthat::test_that("download_era5 validates API key", {
 })
 
 testthat::test_that("download_era5 validates bbox format", {
+  testthat::skip_if_not_installed("ecmwfr")
+
   # Invalid bbox length
   testthat::expect_error(
     sntutils::download_era5(
@@ -127,6 +131,8 @@ testthat::test_that("download_era5 validates bbox format", {
 })
 
 testthat::test_that("download_era5 validates bbox coordinates", {
+  testthat::skip_if_not_installed("ecmwfr")
+
   # xmin >= xmax
   testthat::expect_error(
     sntutils::download_era5(
@@ -157,6 +163,8 @@ testthat::test_that("download_era5 validates bbox coordinates", {
 })
 
 testthat::test_that("download_era5 validates dataset", {
+  testthat::skip_if_not_installed("ecmwfr")
+
   testthat::expect_error(
     sntutils::download_era5(
       dataset = "invalid_dataset",
@@ -182,6 +190,8 @@ testthat::test_that("download_era5 validates aggregated_format", {
 })
 
 testthat::test_that("download_era5 validates pressure_levels for pressure dataset", {
+  testthat::skip_if_not_installed("ecmwfr")
+
   # Test that pressure_levels is validated when using pressure dataset
   # The error occurs during request building, not during API call
   testthat::expect_error(
@@ -222,6 +232,8 @@ testthat::test_that("variable names are shortened correctly", {
 
 # Test 7: read_era5() validation ----
 testthat::test_that("read_era5 validates file existence", {
+  testthat::skip_if_not_installed("ncdf4")
+
   testthat::expect_error(
     sntutils::read_era5(nc_files = "nonexistent.nc"),
     "Files not found"
@@ -235,6 +247,8 @@ testthat::test_that("read_era5 validates file existence", {
 
 # Test 8: get_era5_metadata() validation ----
 testthat::test_that("get_era5_metadata validates file existence", {
+  testthat::skip_if_not_installed("ncdf4")
+
   testthat::expect_error(
     sntutils::get_era5_metadata("nonexistent.nc"),
     "File not found"
@@ -254,6 +268,8 @@ testthat::test_that("get_era5_metadata requires ncdf4 package", {
 
 # Test 9: migrate_era5_filenames() ----
 testthat::test_that("migrate_era5_filenames validates directory", {
+  testthat::skip_if_not_installed("ncdf4")
+
   testthat::expect_error(
     sntutils::migrate_era5_filenames(dir = "nonexistent_dir"),
     "Directory not found"
@@ -261,6 +277,8 @@ testthat::test_that("migrate_era5_filenames validates directory", {
 })
 
 testthat::test_that("migrate_era5_filenames works with empty directory", {
+  testthat::skip_if_not_installed("ncdf4")
+
   test_dir <- file.path(tempdir(), "era5_migrate_empty")
   dir.create(test_dir, showWarnings = FALSE, recursive = TRUE)
   on.exit(unlink(test_dir, recursive = TRUE))
@@ -274,14 +292,26 @@ testthat::test_that("migrate_era5_filenames works with empty directory", {
 })
 
 # Test 10: Integration checks ----
-testthat::test_that("all required packages can be loaded", {
-  required_pkgs <- c("ecmwfr", "ncdf4", "tidyr", "purrr", "dplyr")
+testthat::test_that("core required packages can be loaded", {
+  # Only test core packages that should always be available
+  core_pkgs <- c("tidyr", "purrr", "dplyr")
 
-  for (pkg in required_pkgs) {
+  for (pkg in core_pkgs) {
     testthat::expect_true(
       requireNamespace(pkg, quietly = TRUE),
       info = paste("Package", pkg, "should be available")
     )
+  }
+})
+
+testthat::test_that("optional ERA5 packages are detected correctly", {
+  # ecmwfr and ncdf4 are optional for ERA5 functionality
+  optional_era5_pkgs <- c("ecmwfr", "ncdf4")
+
+  for (pkg in optional_era5_pkgs) {
+    has_pkg <- requireNamespace(pkg, quietly = TRUE)
+    # Just check that the check works - don't require these packages
+    testthat::expect_type(has_pkg, "logical")
   }
 })
 

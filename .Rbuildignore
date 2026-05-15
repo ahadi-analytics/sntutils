@@ -1,3 +1,7 @@
+^renv$
+^renv\.lock$
+^renv-guide\.md$
+^setup-renv\.R$
 ^.*\.Rproj$
 ^\.Rproj\.user$
 ^README\.qmd$
@@ -9,8 +13,10 @@ CLAUDE\.md$
 generate_svg_badge.R
 .nanocoder
 .Rbuildignore
-.clau*
+^\.clau.*$
 AGENTS.md
 ^test-changed\.sh$
 ^test-changed-smart\.sh$
 agents.config.json
+^src$
+^data-raw

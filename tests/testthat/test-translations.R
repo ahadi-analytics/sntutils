@@ -1,6 +1,8 @@
 # tests/testthat/test-translate_yearmon.R
 
 testthat::test_that("translate_yearmon works with default parameters", {
+  testthat::skip_if_not_installed("mockery")
+
   # Use a fixed date to make tests reproducible
   test_date <- as.Date("2023-04-15")
 
@@ -30,6 +32,8 @@ testthat::test_that("translate_yearmon works with default parameters", {
 })
 
 testthat::test_that("translate_yearmon handles different formats", {
+  testthat::skip_if_not_installed("mockery")
+
   test_date <- as.Date("2023-04-15")
 
   # Mock the system call
@@ -91,6 +95,8 @@ testthat::test_that("translate_yearmon handles different formats", {
 })
 
 testthat::test_that("translate_yearmon handles character date input", {
+  testthat::skip_if_not_installed("mockery")
+
   # Mock the system call
   mockery::stub(translate_yearmon, "system", function(...) {
     c("en_US.UTF-8", "fr_FR.UTF-8")
@@ -107,6 +113,8 @@ testthat::test_that("translate_yearmon handles character date input", {
 })
 
 testthat::test_that("translate_yearmon falls back when locale not available", {
+  testthat::skip_if_not_installed("mockery")
+
   # Mock system call to return available locales without the requested one
   mockery::stub(translate_yearmon, "system", function(...) {
     c("en_US.UTF-8") # Only English available
@@ -135,6 +143,8 @@ testthat::test_that("translate_yearmon falls back when locale not available", {
 })
 
 testthat::test_that("translate_yearmon handles all supported languages", {
+  testthat::skip_if_not_installed("mockery")
+
   # Mock the system call to return all locales
   mockery::stub(translate_yearmon, "system", function(...) {
     c("en_US.UTF-8", "fr_FR.UTF-8", "es_ES.UTF-8", "de_DE.UTF-8",
@@ -174,6 +184,31 @@ testthat::test_that("translate_yearmon handles all supported languages", {
     result <- translate_yearmon(test_date, lang)
     testthat::expect_equal(result, expected_formats[[lang]])
   }
+})
+
+testthat::test_that("preprocess_en_to_fr_acronyms handles Mean to Moyenne", {
+  # Test that "mean" is translated to "Moyenne"
+  result <- sntutils:::.preprocess_en_to_fr_acronyms("Mean")
+  testthat::expect_equal(result, "Moyenne")
+  
+  # Test case-insensitive
+  result <- sntutils:::.preprocess_en_to_fr_acronyms("mean")
+  testthat::expect_equal(result, "Moyenne")
+  
+  result <- sntutils:::.preprocess_en_to_fr_acronyms("MEAN")
+  testthat::expect_equal(result, "Moyenne")
+  
+  # Test within sentences
+  result <- sntutils:::.preprocess_en_to_fr_acronyms("The mean value is 5")
+  testthat::expect_equal(result, "The Moyenne value is 5")
+  
+  # Test that it doesn't replace partial matches
+  result <- sntutils:::.preprocess_en_to_fr_acronyms("meaning of life")
+  testthat::expect_equal(result, "meaning of life")
+  
+  # Test with Mean in method context
+  result <- sntutils:::.preprocess_en_to_fr_acronyms("Mean (+/- 2 SD)")
+  testthat::expect_equal(result, "Moyenne (+/- 2 SD)")
 })
 
 

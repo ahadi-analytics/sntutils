@@ -9,6 +9,10 @@ facility_reporting_plot(
   hf_col,
   date_col = "date",
   key_indicators = c("test", "pres", "conf"),
+  method = 1,
+  nonreport_window = 6,
+  reporting_rule = "any_non_na",
+  binary_classification = FALSE,
   facet_col = NULL,
   facet_ncol = 2,
   year_breaks = NULL,
@@ -26,7 +30,8 @@ facility_reporting_plot(
   plot_width = 22,
   plot_height = 15,
   plot_dpi = 300,
-  show_plot = TRUE
+  show_plot = TRUE,
+  ...
 )
 }
 \arguments{
@@ -39,6 +44,21 @@ facility_reporting_plot(
 
 \item{key_indicators}{Character vector with columns defining reporting
 activity. Defaults to \code{c("test", "pres", "conf")}.}
+
+\item{method}{Character or numeric. Classification method - can be numeric
+(1, 2, 3) or character ("method1", "method2", "method3", "all").
+Defaults to 1.}
+
+\item{nonreport_window}{Integer. Minimum number of consecutive non-reporting
+months to classify a facility as inactive in method 3. Defaults to 6.}
+
+\item{reporting_rule}{Character. Defines what counts as reporting:
+\code{"any_non_na"} (default, counts NA as non-reporting, 0 counts as reported)
+or \code{"positive_only"} (requires >0 value to count as reported).}
+
+\item{binary_classification}{Logical. If TRUE, uses binary classification
+("Active", "Inactive") instead of three-level classification. Defaults to
+FALSE.}
 
 \item{facet_col}{Character. Optional column name to use for faceting the plot.
 When provided, creates separate panels for each unique value in this column
@@ -93,6 +113,8 @@ Default is 300.}
 
 \item{show_plot}{Logical. If FALSE, the plot is returned invisibly (not
 displayed). Useful when only saving plots. Default is TRUE.}
+
+\item{...}{Additional arguments passed to internal functions.}
 }
 \value{
 A ggplot object visualising facility reporting activity.
@@ -121,5 +143,12 @@ toy_data <- tibble::tibble(
 facility_reporting_plot(
   data = toy_data,
   hf_col = "hf_uid_new"
+)
+
+# Binary classification example
+facility_reporting_plot(
+  data = toy_data,
+  hf_col = "hf_uid_new",
+  binary_classification = TRUE
 )
 }
