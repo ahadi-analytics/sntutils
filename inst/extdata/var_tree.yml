@@ -3,7 +3,7 @@ _meta:
   author: "Mohamed Yusuf"
   maintainer: "myusuf@appliedhealthanalytics.org"
   date_created: "2025-10-21"
-  last_updated: "2025-10-21"
+  last_updated: "2026-05-18"
   description: "Unified variable reference for SNT workflows (malaria, anemia, HMIS, population, and campaigns)."
 
 metadata:
@@ -96,6 +96,12 @@ metadata:
     label_en: "Catchment area name"
     label_fr: "Nom de la zone de couverture"
     label_pt: "Nome da área de cobertura"
+
+  hf:
+    snt_var_name: hf
+    label_en: "Health facility name"
+    label_fr: "Nom de la formation sanitaire"
+    label_pt: "Nome da unidade sanitária"
 
   hf_uid:
     snt_var_name: hf_uid
@@ -645,6 +651,12 @@ interventions:
     label_fr: "Programme élargi de vaccination"
     label_pt: "Programa Alargado de Imunização (PAI)"
 
+    penta1:
+      snt_var_name: penta1
+      label_en: "Penta1 doses administered"
+      label_fr: "Doses de Penta1 administrées"
+      label_pt: "Doses de Penta1 administradas"
+
     penta1_targ:
       snt_var_name: penta1_targ
       label_en: "Children targeted for Penta1 vaccine"
@@ -717,6 +729,30 @@ interventions:
       label_fr: "Couverture MR2 (%)"
       label_pt: "Cobertura MR2 (%)"
 
+    rr2:
+      snt_var_name: rr2
+      label_en: "Rubella dose 2 administered"
+      label_fr: "Rubéole 2e dose administrée"
+      label_pt: "Rubéola 2ª dose administrada"
+
+    rtss1:
+      snt_var_name: rtss1
+      label_en: "RTS,S dose 1 administered"
+      label_fr: "RTS,S dose 1 administrée"
+      label_pt: "RTS,S dose 1 administrada"
+
+    rtss2:
+      snt_var_name: rtss2
+      label_en: "RTS,S dose 2 administered"
+      label_fr: "RTS,S dose 2 administrée"
+      label_pt: "RTS,S dose 2 administrada"
+
+    rtss3:
+      snt_var_name: rtss3
+      label_en: "RTS,S dose 3 administered"
+      label_fr: "RTS,S dose 3 administrée"
+      label_pt: "RTS,S dose 3 administrada"
+
   # ── Antenatal care (ANC) and IPTp ─────────────────────────────────────────────
   anc_iptp:
     label_en: "Antenatal care (ANC) and IPTp"
@@ -788,6 +824,18 @@ interventions:
       label_en: "LLINs distributed through EPI"
       label_fr: "MII distribuées via PEV"
       label_pt: "MILD distribuídas via PAI"
+
+    itn_num_anc:
+      snt_var_name: itn_num_anc
+      label_en: "Number of ITN recipients at ANC visits"
+      label_fr: "Nombre de bénéficiaires de MILDA lors des visites CPN"
+      label_pt: "Número de beneficiários de MILDA em visitas CPN"
+
+    itn_num_epi:
+      snt_var_name: itn_num_epi
+      label_en: "Number of ITN recipients through EPI"
+      label_fr: "Nombre de bénéficiaires de MILDA via le PEV"
+      label_pt: "Número de beneficiários de MILDA através do PAV"
 
   # ── LLIN campaign distribution ────────────────────────────────────────────────
   llins_campaign:
