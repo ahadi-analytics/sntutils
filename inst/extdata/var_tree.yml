@@ -429,6 +429,12 @@ population:
     label_fr: "Nombre total de ménages"
     label_pt: "Total de agregados familiares"
 
+  avg_hh_size:
+    snt_var_name: avg_hh_size
+    label_en: "Average household size"
+    label_fr: "Taille moyenne du ménage"
+    label_pt: "Tamanho médio do agregado familiar"
+
   pop_density:
     snt_var_name: pop_density
     label_en: "Population density (per km²)"
@@ -897,6 +903,12 @@ interventions:
       label_fr: "Couverture des ménages (%)"
       label_pt: "Cobertura dos agregados familiares (%)"
 
+    net_type:
+      snt_var_name: net_type
+      label_en: "Net type"
+      label_fr: "Type de moustiquaire"
+      label_pt: "Tipo de mosquiteiro"
+
   # ── LLIN mass campaign (CDM) ─────────────────────────────────────────────────
   mc_campaign:
     label_en: "LLIN mass campaign data"
@@ -994,6 +1006,18 @@ interventions:
       label_en: "Household coverage (%)"
       label_fr: "Couverture des ménages (%)"
       label_pt: "Cobertura dos agregados familiares (%)"
+
+    irs_hh_coverage:
+      snt_var_name: irs_hh_coverage
+      label_en: "IRS household coverage (%)"
+      label_fr: "Couverture PID des ménages (%)"
+      label_pt: "Cobertura PID dos agregados familiares (%)"
+
+    irs_hh_coverage_pop_based:
+      snt_var_name: irs_hh_coverage_pop_based
+      label_en: "IRS household coverage, population-based (%)"
+      label_fr: "Couverture PID des ménages, basée sur la population (%)"
+      label_pt: "Cobertura PID dos agregados familiares, baseada na população (%)"
 
     irs_pop_targ:
       snt_var_name: irs_pop_targ
