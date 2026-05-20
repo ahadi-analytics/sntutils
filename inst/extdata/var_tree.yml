@@ -3,7 +3,7 @@ _meta:
   author: "Mohamed Yusuf"
   maintainer: "myusuf@appliedhealthanalytics.org"
   date_created: "2025-10-21"
-  last_updated: "2026-05-18"
+  last_updated: "2026-05-20"
   description: "Unified variable reference for SNT workflows (malaria, anemia, HMIS, population, and campaigns)."
 
 metadata:
@@ -1124,7 +1124,8 @@ interventions:
   # ── Incidence Cascade ──────────────────────────────────────────────────────────
   # Stepwise adjustments to estimate true malaria burden from routine data.
   # N0-N2: Available at monthly and annual levels
-  # N3-N4: Annual level only (requires care-seeking data)
+  # N3-N5: Annual level only (require care-seeking data)
+  # Ordering invariant: N2 < N5 < N4 < N3
   incidence_cascade:
     label_en: "Incidence cascade adjustments"
     label_fr: "Ajustements en cascade de l'incidence"
@@ -1148,6 +1149,31 @@ interventions:
       label_en: "Proportion seeking no care"
       label_fr: "Proportion ne recourant pas aux soins"
       label_pt: "Proporção que não procura cuidados"
+
+    # ── Care-seeking adjustment factors (intermediates for N3/N4/N5) ───────────
+    cs_none_divisor:
+      snt_var_name: cs_none_divisor
+      label_en: "Non-seekers divisor for N5 (default 2; larger = more conservative)"
+      label_fr: "Diviseur des non-recours pour N5 (par défaut 2 ; plus grand = plus conservateur)"
+      label_pt: "Divisor de não-procura para N5 (padrão 2; maior = mais conservador)"
+
+    adj_none:
+      snt_var_name: adj_none
+      label_en: "Non-seeker adjustment factor (cs_none / cs_public); used in N3/N4"
+      label_fr: "Facteur d'ajustement des non-recours (cs_none / cs_public) ; utilisé pour N3/N4"
+      label_pt: "Fator de ajuste para não-procura (cs_none / cs_public); usado em N3/N4"
+
+    adj_none_reduced:
+      snt_var_name: adj_none_reduced
+      label_en: "Reduced non-seeker adjustment factor ((cs_none / cs_none_divisor) / cs_public); used in N5"
+      label_fr: "Facteur d'ajustement réduit des non-recours ((cs_none / cs_none_divisor) / cs_public) ; utilisé pour N5"
+      label_pt: "Fator de ajuste reduzido para não-procura ((cs_none / cs_none_divisor) / cs_public); usado em N5"
+
+    adj_priv:
+      snt_var_name: adj_priv
+      label_en: "Private-sector adjustment factor (cs_private / cs_public); used in N3 only"
+      label_fr: "Facteur d'ajustement du secteur privé (cs_private / cs_public) ; utilisé uniquement pour N3"
+      label_pt: "Fator de ajuste do setor privado (cs_private / cs_public); usado apenas em N3"
 
     # ── N0: Crude (raw counts, no adjustments) ─────────────────────────────────
     n0_cases:
@@ -1213,6 +1239,20 @@ interventions:
       label_en: "N4 incidence: Conservative estimate excluding private (per 1,000) [ANNUAL]"
       label_fr: "Incidence N4 : Estimation conservatrice excluant le privé (pour 1 000) [ANNUEL]"
       label_pt: "Incidência N4: Estimativa conservadora excluindo privado (por 1.000) [ANUAL]"
+
+    # ── N5: Conservative non-seekers estimate (ANNUAL ONLY) ────────────────────
+    # N2 scaled by (1 + (cs_none / cs_none_divisor) / cs_public). N2 < N5 < N4.
+    n5_cases:
+      snt_var_name: n5_cases
+      label_en: "N5 cases: Conservative non-seekers adjustment (between N2 and N4) [ANNUAL]"
+      label_fr: "Cas N5 : Ajustement conservateur des non-recours (entre N2 et N4) [ANNUEL]"
+      label_pt: "Casos N5: Ajuste conservador para não-procura (entre N2 e N4) [ANUAL]"
+
+    n5_incidence:
+      snt_var_name: n5_incidence
+      label_en: "N5 incidence: Conservative non-seekers estimate (per 1,000) [ANNUAL]"
+      label_fr: "Incidence N5 : Estimation conservatrice des non-recours (pour 1 000) [ANNUEL]"
+      label_pt: "Incidência N5: Estimativa conservadora para não-procura (por 1.000) [ANUAL]"
 
     # ── Under-5 routine data ─────────────────────────────────────────────────────
     conf_u5:
@@ -1293,6 +1333,18 @@ interventions:
       label_en: "N4 incidence - Under 5 years"
       label_fr: "Incidence N4 - Moins de 5 ans"
       label_pt: "Incidência N4 - Menores de 5 anos"
+
+    n5_cases_u5:
+      snt_var_name: n5_cases_u5
+      label_en: "N5 cases - Under 5 years"
+      label_fr: "Cas N5 - Moins de 5 ans"
+      label_pt: "Casos N5 - Menores de 5 anos"
+
+    n5_incidence_u5:
+      snt_var_name: n5_incidence_u5
+      label_en: "N5 incidence - Under 5 years"
+      label_fr: "Incidence N5 - Moins de 5 ans"
+      label_pt: "Incidência N5 - Menores de 5 anos"
 
 stock_management:
   _description: "Commodity availability, usage, and reporting."
