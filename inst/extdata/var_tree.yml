@@ -609,6 +609,36 @@ routine_data:
     snt_var_name: treated_rate
     disagg: ["age_groups", "population_groups", "sectors", "service_levels"]
 
+  testing_rate:
+    snt_var_name: testing_rate
+    label_en: "Malaria testing rate (% of suspected cases tested)"
+    label_fr: "Taux de test du paludisme (% des cas suspects testés)"
+    label_pt: "Taxa de testagem para malária (% dos casos suspeitos testados)"
+
+  treatment_rate:
+    snt_var_name: treatment_rate
+    label_en: "Malaria treatment rate (% of confirmed cases treated)"
+    label_fr: "Taux de traitement du paludisme (% des cas confirmés traités)"
+    label_pt: "Taxa de tratamento da malária (% dos casos confirmados tratados)"
+
+  severe_malaria_incidence:
+    snt_var_name: severe_malaria_incidence
+    label_en: "Severe malaria incidence (per 100,000 population)"
+    label_fr: "Incidence du paludisme grave (pour 100 000 habitants)"
+    label_pt: "Incidência de malária grave (por 100.000 habitantes)"
+
+  uncomplicated_to_severe_ratio:
+    snt_var_name: uncomplicated_to_severe_ratio
+    label_en: "Ratio of uncomplicated to severe malaria cases"
+    label_fr: "Rapport entre paludisme simple et paludisme grave"
+    label_pt: "Rácio entre malária não complicada e malária grave"
+
+  mortality:
+    snt_var_name: mortality
+    label_en: "Malaria mortality rate (per 100,000 population)"
+    label_fr: "Taux de mortalité du paludisme (pour 100 000 habitants)"
+    label_pt: "Taxa de mortalidade por malária (por 100.000 habitantes)"
+
   # ── Outpatient vs Inpatient malaria differentiation ───────────────────────────
   conf_opd:
     label_en: "Outpatient confirmed malaria cases"
@@ -819,6 +849,24 @@ interventions:
       label_fr: "Femmes ayant reçu le SP5"
       label_pt: "Mulheres que receberam IPTp5"
 
+    iptp1_coverage:
+      snt_var_name: iptp1_coverage
+      label_en: "IPTp1 coverage (% of ANC1 attendees who received IPTp1)"
+      label_fr: "Couverture TPIp1 (% des femmes ayant fait CPN1 ayant reçu SP1)"
+      label_pt: "Cobertura IPTp1 (% das mulheres em CPN1 que receberam IPTp1)"
+
+    iptp2_coverage:
+      snt_var_name: iptp2_coverage
+      label_en: "IPTp2 coverage (% of ANC1 attendees who received IPTp2)"
+      label_fr: "Couverture TPIp2 (% des femmes ayant fait CPN1 ayant reçu SP2)"
+      label_pt: "Cobertura IPTp2 (% das mulheres em CPN1 que receberam IPTp2)"
+
+    iptp3_coverage:
+      snt_var_name: iptp3_coverage
+      label_en: "IPTp3 coverage (% of ANC1 attendees who received IPTp3)"
+      label_fr: "Couverture TPIp3 (% des femmes ayant fait CPN1 ayant reçu SP3)"
+      label_pt: "Cobertura IPTp3 (% das mulheres em CPN1 que receberam IPTp3)"
+
     llins_anc:
       snt_var_name: llins_anc
       label_en: "LLINs distributed during ANC visits"
@@ -842,6 +890,18 @@ interventions:
       label_en: "Number of ITN recipients through EPI"
       label_fr: "Nombre de bénéficiaires de MILDA via le PEV"
       label_pt: "Número de beneficiários de MILDA através do PAV"
+
+    itn_anc_coverage:
+      snt_var_name: itn_anc_coverage
+      label_en: "ITN coverage through ANC (% of ANC1 attendees receiving ITN)"
+      label_fr: "Couverture MILDA via CPN (% des femmes CPN1 ayant reçu une MILDA)"
+      label_pt: "Cobertura MILD via CPN (% das mulheres em CPN1 que receberam MILD)"
+
+    itn_epi_coverage:
+      snt_var_name: itn_epi_coverage
+      label_en: "ITN coverage through EPI (% of EPI attendees receiving ITN)"
+      label_fr: "Couverture MILDA via PEV (% des enfants PEV ayant reçu une MILDA)"
+      label_pt: "Cobertura MILD via PAI (% das crianças do PAI que receberam MILD)"
 
   # ── LLIN campaign distribution ────────────────────────────────────────────────
   llins_campaign:
