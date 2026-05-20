@@ -903,6 +903,12 @@ interventions:
       label_fr: "Couverture MILDA via PEV (% des enfants PEV ayant reçu une MILDA)"
       label_pt: "Cobertura MILD via PAI (% das crianças do PAI que receberam MILD)"
 
+    iptp_comm_pilot:
+      snt_var_name: iptp_comm_pilot
+      label_en: "Community IPTp pilot area (1 = yes, 0 = no)"
+      label_fr: "Zone pilote TPIp communautaire (1 = oui, 0 = non)"
+      label_pt: "Área piloto de IPTp comunitário (1 = sim, 0 = não)"
+
   # ── LLIN campaign distribution ────────────────────────────────────────────────
   llins_campaign:
     label_en: "LLIN campaign distribution"
@@ -968,6 +974,18 @@ interventions:
       label_en: "Net type"
       label_fr: "Type de moustiquaire"
       label_pt: "Tipo de mosquiteiro"
+
+    net_type_used:
+      snt_var_name: net_type_used
+      label_en: "Net type used in distribution (e.g. Standard, PBO, IG2)"
+      label_fr: "Type de moustiquaire utilisé lors de la distribution (ex. Standard, PBO, IG2)"
+      label_pt: "Tipo de mosquiteiro utilizado na distribuição (ex. Standard, PBO, IG2)"
+
+    insect_resist:
+      snt_var_name: insect_resist
+      label_en: "Insecticide resistance status"
+      label_fr: "Statut de résistance aux insecticides"
+      label_pt: "Estado de resistência aos inseticidas"
 
   # ── LLIN mass campaign (CDM) ─────────────────────────────────────────────────
   mc_campaign:
@@ -1096,6 +1114,30 @@ interventions:
       label_en: "Population coverage (%)"
       label_fr: "Couverture de la population (%)"
       label_pt: "Cobertura populacional (%)"
+
+    irsyn:
+      snt_var_name: irsyn
+      label_en: "IRS implemented (1 = yes, 0 = no)"
+      label_fr: "PID mise en œuvre (1 = oui, 0 = non)"
+      label_pt: "PID implementada (1 = sim, 0 = não)"
+
+    irs_lastyear:
+      snt_var_name: irs_lastyear
+      label_en: "Last year IRS was implemented"
+      label_fr: "Dernière année de mise en œuvre de la PID"
+      label_pt: "Último ano em que a PID foi implementada"
+
+    irs_last_insec:
+      snt_var_name: irs_last_insec
+      label_en: "Insecticide used in the last IRS round"
+      label_fr: "Insecticide utilisé lors du dernier cycle de PID"
+      label_pt: "Inseticida utilizado na última rodada de PID"
+
+    irs_numyears:
+      snt_var_name: irs_numyears
+      label_en: "Number of years IRS has been implemented"
+      label_fr: "Nombre d'années de mise en œuvre de la PID"
+      label_pt: "Número de anos em que a PID foi implementada"
 
   # ── Seasonal Malaria Chemoprevention (SMC) ────────────────────────────────────
   smc_campaign:
@@ -1274,6 +1316,12 @@ interventions:
       label_fr: "Incidence N2 : Taux d'incidence ajusté pour la notification (pour 1 000)"
       label_pt: "Incidência N2: Taxa de incidência ajustada para notificação (por 1.000)"
 
+    n2_incidence_median:
+      snt_var_name: n2_incidence_median
+      label_en: "N2 incidence: Median over a year range (per 1,000)"
+      label_fr: "Incidence N2 : Médiane sur une plage d'années (pour 1 000)"
+      label_pt: "Incidência N2: Mediana ao longo de um intervalo de anos (por 1.000)"
+
     # ── N3: Care-seeking-adjusted (ANNUAL ONLY) ────────────────────────────────
     n3_cases:
       snt_var_name: n3_cases
@@ -1369,6 +1417,12 @@ interventions:
       label_en: "N2 incidence - Under 5 years"
       label_fr: "Incidence N2 - Moins de 5 ans"
       label_pt: "Incidência N2 - Menores de 5 anos"
+
+    n2_incidence_u5_median:
+      snt_var_name: n2_incidence_u5_median
+      label_en: "N2 incidence median over year range - Under 5 years"
+      label_fr: "Médiane d'incidence N2 sur une plage d'années - Moins de 5 ans"
+      label_pt: "Mediana de incidência N2 ao longo de um intervalo - Menores de 5 anos"
 
     n3_cases_u5:
       snt_var_name: n3_cases_u5
@@ -5594,6 +5648,12 @@ survey_indicators:
     label_en: "Severe anemia prevalence"
     label_fr: "Prévalence de l'anémie sévère"
     label_pt: "Prevalência de anemia grave"
+
+  severe_anemia_adm1:
+    snt_var_name: severe_anemia_adm1
+    label_en: "Severe anemia prevalence (adm1-level estimate)"
+    label_fr: "Prévalence de l'anémie sévère (estimation au niveau adm1)"
+    label_pt: "Prevalência de anemia grave (estimativa ao nível adm1)"
 
   # ── Care-seeking ─────────────────────────────────────────────────────────────
   n_fever:
