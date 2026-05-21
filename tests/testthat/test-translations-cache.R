@@ -2,14 +2,18 @@
 
 testthat::test_that(
   "build_dictionary uses pre-seeded cache for EN->FR labels", {
+  # use variable names that are NOT in inst/extdata/var_tree.yml so the
+  # cache fallback path is exercised. `hf` lives in var_tree.yml (added in
+  # 261ea6a) and would otherwise pre-empt the cache via the canonical
+  # YAML translation.
   data_tbl <- tibble::tibble(
-    chw = 1:2,
-    hf  = 3:4
+    chw    = 1:2,
+    clinic = 3:4
   )
 
   # english labels map
   label_map <- tibble::tibble(
-    name  = c("chw", "hf"),
+    name  = c("chw", "clinic"),
     label = c("Community health worker", "Health facility")
   )
 
@@ -48,7 +52,7 @@ testthat::test_that(
     dplyr::select(variable, label_fr)
 
   expect <- tibble::tibble(
-    variable = c("chw", "hf"),
+    variable = c("chw", "clinic"),
     label_fr = c("ASBC", "FS")
   )
 

@@ -652,3 +652,183 @@ get_worldpop_paths <- function(
 
   result
 }
+
+# internal helper to build worldpop DUG urbanicity url and filename
+#' @noRd
+.build_worldpop_urbanicity_url <- function(cc, year, layer, release, version) {
+  base_url <- "https://data.worldpop.org/GIS/DUG/Global_2015_2030"
+  cc_up <- toupper(cc)
+
+  fn <- sprintf(
+    "%s_DUG_%s_GRID_%s_%s_%s.tif",
+    cc_up, year, layer, release, version
+  )
+  url <- sprintf(
+    "%s/%s/%s/%s/%s/%s",
+    base_url, release, version, year, cc_up, fn
+  )
+
+  list(url = url, filename = fn)
+}
+
+#' Download WorldPop DUG Urbanicity Rasters
+#'
+#' Downloads Degree of Urbanisation Grid (DUG) rasters from WorldPop for
+#' the specified countries, years, and classification layers. Both L1
+#' (DEGURBA 3-class) and L2 (sub-classified) layers are downloaded by
+#' default.
+#'
+#' @param country_codes Character vector of ISO3 country codes (e.g.,
+#'   "DZA", "GIN"). Case-insensitive; uppercased for URL building.
+#' @param years Numeric vector of years to download (2015-2030).
+#'   Default: 2015:2024 (full available historical range).
+#' @param layers Character vector. Subset of `c("L1", "L2")`.
+#'   Default: both. L1 is the DEGURBA 3-class scheme endorsed by the
+#'   UN Statistical Commission (3 = urban centre, 2 = urban cluster,
+#'   1 = rural). L2 is the finer-grained sub-classification.
+#' @param release Character. WorldPop release tag. Default: "R2025A".
+#' @param version Character. WorldPop version tag. Default: "v1".
+#' @param dest_dir Destination directory for downloaded files
+#'   (default: `here::here()`).
+#' @param quiet Logical; if TRUE, suppresses per-file progress messages
+#'   (default: FALSE).
+#'
+#' @return Invisible list containing:
+#'   \itemize{
+#'     \item files: Character vector of paths to downloaded/existing files
+#'     \item counts: Named integer vector of successful files per country
+#'   }
+#'
+#' @details
+#' Files are pulled from
+#' `https://data.worldpop.org/GIS/DUG/Global_2015_2030/{release}/{version}/{year}/{ISO3}/`
+#' with filenames of the form
+#' `{ISO3}_DUG_{year}_GRID_{layer}_{release}_{version}.tif`.
+#'
+#' Coverage on the WorldPop mirror is limited to **2015-2030**. Pre-2015
+#' historical years and post-2030 projections from the underlying JRC /
+#' Copernicus GHS-DUG product are hosted elsewhere and are out of scope
+#' for this function.
+#'
+#' Existing files are skipped (idempotent). Per-file failures (e.g., a
+#' transient 404 for one country/year combination) are soft-failed with
+#' a warning so the rest of the batch completes.
+#'
+#' @examples
+#' \dontrun{
+#' # Download both L1 and L2 for Algeria, full historical range
+#' download_worldpop_urbanicity("DZA")
+#'
+#' # Multiple countries, narrower year range, L1 only
+#' download_worldpop_urbanicity(
+#'   country_codes = c("DZA", "GIN"),
+#'   years = 2020:2024,
+#'   layers = "L1",
+#'   dest_dir = here::here("data/worldpop/dug")
+#' )
+#' }
+#' @export
+download_worldpop_urbanicity <- function(
+    country_codes,
+    years = 2015:2024,
+    layers = c("L1", "L2"),
+    release = "R2025A",
+    version = "v1",
+    dest_dir = here::here(),
+    quiet = FALSE) {
+
+  if (!is.character(country_codes) || length(country_codes) == 0) {
+    cli::cli_abort("{.arg country_codes} must be a non-empty character vector")
+  }
+
+  if (!all(layers %in% c("L1", "L2"))) {
+    cli::cli_abort(c(
+      "{.arg layers} must be a subset of {.val {c('L1', 'L2')}}",
+      "i" = "Got: {.val {layers}}"
+    ))
+  }
+
+  if (min(years) < 2015 || max(years) > 2030) {
+    cli::cli_abort(c(
+      "WorldPop DUG is only available for years 2015-2030",
+      "i" = "Pre-2015 / post-2030 data lives on the JRC/Copernicus server"
+    ))
+  }
+
+  if (!dir.exists(dest_dir)) {
+    dir.create(dest_dir, recursive = TRUE, showWarnings = FALSE)
+  }
+
+  country_codes <- toupper(country_codes)
+
+  if (!quiet) {
+    cli::cli_alert_info(
+      paste0(
+        "Downloading WorldPop DUG urbanicity rasters ",
+        "({min(years)}-{max(years)}) for layers {.val {layers}}"
+      )
+    )
+  }
+
+  jobs <- tidyr::expand_grid(
+    iso3 = country_codes,
+    year = years,
+    layer = layers
+  )
+
+  results <- purrr::pmap_chr(jobs, function(iso3, year, layer) {
+    url_info <- .build_worldpop_urbanicity_url(
+      iso3, year, layer, release, version
+    )
+    dest <- file.path(dest_dir, url_info$filename)
+
+    if (file.exists(dest)) {
+      if (!quiet) cli::cli_alert_info("Exists: {url_info$filename}")
+      return(dest)
+    }
+
+    if (!quiet) {
+      cli::cli_alert_info("Downloading {iso3} DUG {year} {layer}")
+    }
+
+    tryCatch(
+      {
+        httr2::request(url_info$url) |>
+          httr2::req_timeout(600) |>
+          httr2::req_retry(max_tries = 3, backoff = ~ 5) |>
+          httr2::req_progress() |>
+          httr2::req_perform(path = dest)
+        dest
+      },
+      error = function(e) {
+        if (file.exists(dest)) unlink(dest)
+        cli::cli_alert_warning(
+          "Failed to download {iso3} DUG {year} {layer}: {conditionMessage(e)}"
+        )
+        NA_character_
+      }
+    )
+  })
+
+  jobs$success <- !is.na(results) & file.exists(results)
+  counts <- tapply(jobs$success, jobs$iso3, sum)
+
+  if (!quiet) {
+    cli::cli_alert_success(
+      "Download of WorldPop DUG urbanicity rasters is complete!"
+    )
+    total_per_country <- length(years) * length(layers)
+    for (cc in names(counts)) {
+      cli::cli_alert_info(
+        glue::glue(
+          "{cc}: {counts[[cc]]} of {total_per_country} files downloaded"
+        )
+      )
+    }
+  }
+
+  invisible(list(
+    files = results[!is.na(results)],
+    counts = counts
+  ))
+}

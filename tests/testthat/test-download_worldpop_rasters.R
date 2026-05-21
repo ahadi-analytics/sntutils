@@ -477,3 +477,124 @@ testthat::test_that("filename generation works correctly", {
     "gmb_total_00_00_2021.tif"
   )
 })
+
+# download_worldpop_urbanicity tests -----------------------------------------
+
+testthat::test_that("download_worldpop_urbanicity: url construction is correct", {
+  # uppercase iso3 input
+  result <- sntutils:::.build_worldpop_urbanicity_url(
+    "DZA", 2015, "L1", "R2025A", "v1"
+  )
+  expected_url <- paste0(
+    "https://data.worldpop.org/GIS/DUG/Global_2015_2030/R2025A/v1/",
+    "2015/DZA/DZA_DUG_2015_GRID_L1_R2025A_v1.tif"
+  )
+  testthat::expect_equal(result$url, expected_url)
+  testthat::expect_equal(result$filename, "DZA_DUG_2015_GRID_L1_R2025A_v1.tif")
+
+  # lowercase iso3 input still produces uppercase url + filename
+  result_lower <- sntutils:::.build_worldpop_urbanicity_url(
+    "dza", 2024, "L2", "R2025A", "v1"
+  )
+  testthat::expect_true(grepl("/DZA/DZA_DUG_2024_GRID_L2_", result_lower$url))
+  testthat::expect_equal(
+    result_lower$filename, "DZA_DUG_2024_GRID_L2_R2025A_v1.tif"
+  )
+})
+
+testthat::test_that("download_worldpop_urbanicity: input validation works", {
+  temp_dir <- setup_temp_dir()
+  on.exit(unlink(temp_dir, recursive = TRUE))
+
+  testthat::expect_true(exists("download_worldpop_urbanicity"))
+
+  # invalid layer
+  testthat::expect_error(
+    download_worldpop_urbanicity(
+      "DZA", years = 2020, layers = "L3", dest_dir = temp_dir, quiet = TRUE
+    ),
+    "must be a subset"
+  )
+
+  # year below supported range
+  testthat::expect_error(
+    download_worldpop_urbanicity(
+      "DZA", years = 2014, dest_dir = temp_dir, quiet = TRUE
+    ),
+    "2015-2030"
+  )
+
+  # year above supported range
+  testthat::expect_error(
+    download_worldpop_urbanicity(
+      "DZA", years = 2031, dest_dir = temp_dir, quiet = TRUE
+    ),
+    "2015-2030"
+  )
+
+  # empty country_codes
+  testthat::expect_error(
+    download_worldpop_urbanicity(
+      character(0), dest_dir = temp_dir, quiet = TRUE
+    ),
+    "non-empty character vector"
+  )
+
+  # non-character country_codes
+  testthat::expect_error(
+    download_worldpop_urbanicity(
+      123, dest_dir = temp_dir, quiet = TRUE
+    ),
+    "non-empty character vector"
+  )
+})
+
+testthat::test_that("download_worldpop_urbanicity: existing files are skipped", {
+  temp_dir <- setup_temp_dir()
+  on.exit(unlink(temp_dir, recursive = TRUE))
+
+  # pre-stage both layer files for one country/year so no network call is made
+  for (layer in c("L1", "L2")) {
+    fn <- sprintf("DZA_DUG_2015_GRID_%s_R2025A_v1.tif", layer)
+    writeLines("mock tif content", file.path(temp_dir, fn))
+  }
+
+  result <- download_worldpop_urbanicity(
+    "DZA", years = 2015, dest_dir = temp_dir, quiet = TRUE
+  )
+
+  # both files reported as available
+  testthat::expect_length(result$files, 2L)
+  testthat::expect_true(all(file.exists(result$files)))
+
+  # count for DZA should be 2 (L1 + L2)
+  testthat::expect_equal(unname(result$counts[["DZA"]]), 2)
+
+  # cached content untouched (no re-download)
+  for (path in result$files) {
+    testthat::expect_equal(readLines(path), "mock tif content")
+  }
+})
+
+testthat::test_that(
+  "download_worldpop_urbanicity: lowercase country_codes accepted",
+  {
+    temp_dir <- setup_temp_dir()
+    on.exit(unlink(temp_dir, recursive = TRUE))
+
+    # pre-stage so no network. Local filename uses uppercase ISO3.
+    fn <- "DZA_DUG_2020_GRID_L1_R2025A_v1.tif"
+    writeLines("mock", file.path(temp_dir, fn))
+
+    result <- download_worldpop_urbanicity(
+      "dza",
+      years = 2020,
+      layers = "L1",
+      dest_dir = temp_dir,
+      quiet = TRUE
+    )
+
+    testthat::expect_true(file.exists(file.path(temp_dir, fn)))
+    testthat::expect_equal(unname(result$counts[["DZA"]]), 1)
+  }
+)
