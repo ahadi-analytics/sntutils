@@ -382,7 +382,9 @@ extract_time_components <- function(filename, info, year_extractor = NULL) {
 #' @param id_cols Vector of column names from the shapefile to include in
 #'   output. Default is c("adm0", "adm1") for country and first admin level
 #' @param aggregations Vector of aggregation methods to calculate. Supported
-#'   values are "mean", "sum", and "median". Default is c("mean")
+#'   values are "mean", "sum", "median", "weighted_mean", and
+#'   "weighted_median". The two weighted options require `pop_raster_file`.
+#'   Default is c("mean")
 #' @param raster_is_density Logical indicating if raster values represent density.
 #'   If TRUE, values are converted from density to counts using cell area.
 #'   Default is FALSE.
@@ -390,6 +392,12 @@ extract_time_components <- function(filename, info, year_extractor = NULL) {
 #'   multi-layer raster to extract. If the raster contains multiple layers
 #'   (e.g., different years or indicators), this argument selects the layer to
 #'   be processed. Default is 1
+#' @param pop_raster_file Optional path to a population raster used as weights
+#'   for `"weighted_mean"` and `"weighted_median"` aggregations. Reprojected
+#'   and resampled to match `raster_file`. Default is `NULL`.
+#' @param weight_na_as_zero Logical. If `TRUE`, missing weights are treated
+#'   as zero; if `FALSE`, as `NA`. Only used when weighted aggregations are
+#'   requested. Default is `TRUE`.
 #' @param pattern_info Optional. Pre-parsed time pattern from
 #'   \code{detect_time_pattern()}. If NULL, detected from filename.
 #' @param time_components Optional. Pre-parsed time components from
@@ -411,7 +419,9 @@ extract_time_components <- function(filename, info, year_extractor = NULL) {
 #' 2. Detects and extracts date information from filename
 #' 3. Loads raster data and handles no-data values (-9999)
 #' 4. If raster_is_density is TRUE, converts density to counts using cell area
-#' 5. Calculates zonal statistics using exactextractr
+#' 5. Calculates zonal statistics using exactextractr. When weighted
+#'    aggregations are requested, loads the population raster, reprojects and
+#'    resamples it to match the value raster, then uses it as per-cell weights
 #' 6. Combines results with shapefile attributes
 #' 7. Returns a clean data frame without geometry
 #'
@@ -425,6 +435,15 @@ extract_time_components <- function(filename, info, year_extractor = NULL) {
 #'   id_cols = c("COUNTRY", "DISTRICT"),
 #'   aggregations = c("mean", "sum", "median")
 #' )
+#'
+#' # Population-weighted statistics alongside plain ones
+#' results_weighted <- process_raster_with_boundaries(
+#'   raster_file = "pfpr_2022.tif",
+#'   shapefile = districts,
+#'   id_cols = c("COUNTRY", "DISTRICT"),
+#'   aggregations = c("mean", "weighted_mean", "weighted_median"),
+#'   pop_raster_file = "worldpop_2022.tif"
+#' )
 #' }
 #' @export
 process_raster_with_boundaries <- function(raster_file,
@@ -433,12 +452,24 @@ process_raster_with_boundaries <- function(raster_file,
                                            aggregations = c("mean"),
                                            raster_is_density = FALSE,
                                            layer_to_process = 1,
+                                           pop_raster_file = NULL,
+                                           weight_na_as_zero = TRUE,
                                            pattern_info = NULL,
                                            time_components = NULL) {
 
-  valid_aggs <- c("mean", "sum", "median")
+  valid_aggs <- c(
+    "mean", "sum", "median", "weighted_mean", "weighted_median"
+  )
   if (!all(aggregations %in% valid_aggs)) {
     cli::cli_abort("Invalid aggregation method. Use: {valid_aggs}")
+  }
+
+  weighted_aggs <- c("weighted_mean", "weighted_median")
+  needs_weights <- base::any(aggregations %in% weighted_aggs)
+  if (needs_weights && base::is.null(pop_raster_file)) {
+    cli::cli_abort(
+      "{.arg pop_raster_file} is required for weighted aggregations."
+    )
   }
 
   # use pre-parsed time info if provided, otherwise detect
@@ -468,24 +499,78 @@ process_raster_with_boundaries <- function(raster_file,
     shapefile <- sf::st_transform(shapefile, rast_crs)
   }
 
-  zonal_stats <- exactextractr::exact_extract(
-    rast, shapefile,
-    fun = aggregations,
-    progress = FALSE
-  )
+  # split aggregations into unweighted vs weighted
+  unweighted <- base::setdiff(aggregations, weighted_aggs)
+  weighted <- base::intersect(aggregations, weighted_aggs)
 
-  if (length(aggregations) == 1) {
-    extracted <- unlist(zonal_stats)
-    if (length(extracted) != nrow(shapefile)) {
-      cli::cli_abort("Mismatch in extracted values and shapefile rows.")
+  stats_df <- tibble::tibble(.rows = base::nrow(shapefile))
+
+  if (base::length(unweighted) > 0) {
+    zonal_stats <- exactextractr::exact_extract(
+      rast, shapefile,
+      fun = unweighted,
+      progress = FALSE
+    )
+
+    if (base::length(unweighted) == 1) {
+      extracted <- base::unlist(zonal_stats)
+      if (base::length(extracted) != base::nrow(shapefile)) {
+        cli::cli_abort("Mismatch in extracted values and shapefile rows.")
+      }
+      stats_df[[unweighted]] <- extracted
+    } else {
+      zonal_df <- base::as.data.frame(zonal_stats)
+      zonal_df <- zonal_df[
+        , !base::grepl("coverage_fraction", base::names(zonal_df)),
+        drop = FALSE
+      ]
+      stats_df <- dplyr::bind_cols(stats_df, tibble::as_tibble(zonal_df))
     }
-    result_df <- shapefile |>
-      dplyr::mutate(!!rlang::sym(aggregations) := extracted)
-  } else {
-    stats_df <- as.data.frame(
-      zonal_stats)[, !grepl("coverage_fraction", names(zonal_stats))]
-    result_df <- dplyr::bind_cols(shapefile, stats_df)
   }
+
+  if (base::length(weighted) > 0) {
+    # align population raster to value raster
+    pop_rast <- terra::rast(pop_raster_file)[[1]]
+    pop_rast <- terra::project(pop_rast, terra::crs(rast))
+    pop_rast <- terra::resample(pop_rast, rast, method = "bilinear")
+
+    default_w <- if (weight_na_as_zero) 0 else NA
+
+    weighted_median_fun <- function(values, coverage_fractions, weights) {
+      total_weights <- weights * coverage_fractions
+      valid_idx <- !base::is.na(values) &
+        !base::is.na(total_weights) &
+        total_weights > 0 &
+        coverage_fractions > 0
+      if (base::sum(valid_idx) == 0) {
+        return(NA_real_)
+      }
+      matrixStats::weightedMedian(
+        values[valid_idx],
+        w = total_weights[valid_idx],
+        na.rm = TRUE
+      )
+    }
+
+    for (agg in weighted) {
+      fun <- if (agg == "weighted_mean") {
+        "weighted_mean"
+      } else {
+        weighted_median_fun
+      }
+      base::suppressWarnings(
+        stats_df[[agg]] <- exactextractr::exact_extract(
+          rast, shapefile,
+          fun = fun,
+          weights = pop_rast,
+          default_weight = default_w,
+          progress = FALSE
+        )
+      )
+    }
+  }
+
+  result_df <- dplyr::bind_cols(shapefile, stats_df)
 
   result_df <- result_df |>
     dplyr::mutate(
