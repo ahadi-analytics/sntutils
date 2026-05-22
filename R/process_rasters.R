@@ -489,19 +489,26 @@ process_raster_with_boundaries <- function(raster_file,
   components <- time_components
 
   rast <- terra::rast(raster_file)[[layer_to_process]]
-  rast[rast == -9999] <- NA
-
-  if (raster_is_density) {
-    # Convert density to counts using cell area in km²
-    cell_area_km2 <- terra::cellSize(rast, unit = "km")
-    rast <- rast * cell_area_km2
-  }
 
   rast_crs <- terra::crs(rast)
   shp_crs <- sf::st_crs(shapefile)
 
   if (!identical(rast_crs, shp_crs$wkt)) {
     shapefile <- sf::st_transform(shapefile, rast_crs)
+  }
+
+  # crop to the shapefile bbox before any per-cell work — same output,
+  # avoids touching cells outside the area of interest
+  rast <- terra::crop(
+    rast, terra::vect(shapefile), snap = "out"
+  )
+
+  rast[rast == -9999] <- NA
+
+  if (raster_is_density) {
+    # Convert density to counts using cell area in km²
+    cell_area_km2 <- terra::cellSize(rast, unit = "km")
+    rast <- rast * cell_area_km2
   }
 
   # split aggregations into unweighted vs weighted
@@ -534,9 +541,18 @@ process_raster_with_boundaries <- function(raster_file,
   }
 
   if (base::length(weighted) > 0) {
-    # align population raster to value raster
+    # align population raster to value raster.
+    # crop in the pop raster's native CRS first — projecting a global
+    # raster to match the value raster is the dominant cost, so cutting
+    # it down to the shapefile bbox before that makes a big difference.
     pop_rast <- terra::rast(pop_raster_file)[[1]]
-    pop_rast <- terra::project(pop_rast, terra::crs(rast))
+    shp_in_pop_crs <- sf::st_transform(shapefile, terra::crs(pop_rast))
+    pop_rast <- terra::crop(
+      pop_rast, terra::vect(shp_in_pop_crs), snap = "out"
+    )
+    if (!base::identical(terra::crs(pop_rast), terra::crs(rast))) {
+      pop_rast <- terra::project(pop_rast, terra::crs(rast))
+    }
     pop_rast <- terra::resample(pop_rast, rast, method = "bilinear")
 
     default_w <- if (weight_na_as_zero) 0 else NA
