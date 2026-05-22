@@ -11,6 +11,8 @@ process_raster_with_boundaries(
   aggregations = c("mean"),
   raster_is_density = FALSE,
   layer_to_process = 1,
+  pop_raster_file = NULL,
+  weight_na_as_zero = TRUE,
   pattern_info = NULL,
   time_components = NULL
 )
@@ -25,7 +27,9 @@ in the same coordinate reference system (CRS) as the raster data}
 output. Default is c("adm0", "adm1") for country and first admin level}
 
 \item{aggregations}{Vector of aggregation methods to calculate. Supported
-values are "mean", "sum", and "median". Default is c("mean")}
+values are "mean", "sum", "median", "weighted_mean", and
+"weighted_median". The two weighted options require \code{pop_raster_file}.
+Default is c("mean")}
 
 \item{raster_is_density}{Logical indicating if raster values represent density.
 If TRUE, values are converted from density to counts using cell area.
@@ -35,6 +39,14 @@ Default is FALSE.}
 multi-layer raster to extract. If the raster contains multiple layers
 (e.g., different years or indicators), this argument selects the layer to
 be processed. Default is 1}
+
+\item{pop_raster_file}{Optional path to a population raster used as weights
+for \code{"weighted_mean"} and \code{"weighted_median"} aggregations. Reprojected
+and resampled to match \code{raster_file}. Default is \code{NULL}.}
+
+\item{weight_na_as_zero}{Logical. If \code{TRUE}, missing weights are treated
+as zero; if \code{FALSE}, as \code{NA}. Only used when weighted aggregations are
+requested. Default is \code{TRUE}.}
 
 \item{pattern_info}{Optional. Pre-parsed time pattern from
 \code{detect_time_pattern()}. If NULL, detected from filename.}
@@ -65,7 +77,9 @@ The function performs the following steps:
 \item Detects and extracts date information from filename
 \item Loads raster data and handles no-data values (-9999)
 \item If raster_is_density is TRUE, converts density to counts using cell area
-\item Calculates zonal statistics using exactextractr
+\item Calculates zonal statistics using exactextractr. When weighted
+aggregations are requested, loads the population raster, reprojects and
+resamples it to match the value raster, then uses it as per-cell weights
 \item Combines results with shapefile attributes
 \item Returns a clean data frame without geometry
 }
@@ -79,6 +93,15 @@ results <- process_raster_with_boundaries(
   shapefile = districts,
   id_cols = c("COUNTRY", "DISTRICT"),
   aggregations = c("mean", "sum", "median")
+)
+
+# Population-weighted statistics alongside plain ones
+results_weighted <- process_raster_with_boundaries(
+  raster_file = "pfpr_2022.tif",
+  shapefile = districts,
+  id_cols = c("COUNTRY", "DISTRICT"),
+  aggregations = c("mean", "weighted_mean", "weighted_median"),
+  pop_raster_file = "worldpop_2022.tif"
 )
 }
 }
