@@ -472,11 +472,16 @@ process_raster_with_boundaries <- function(raster_file,
     )
   }
 
-  # use pre-parsed time info if provided, otherwise detect
+  # use pre-parsed time info if provided, otherwise detect.
+  # filenames without a recognizable date pattern fall through silently —
+  # the function still works for static rasters (e.g. travel time).
   if (is.null(pattern_info)) {
-    pattern_info <- detect_time_pattern(raster_file)
+    pattern_info <- base::tryCatch(
+      detect_time_pattern(raster_file),
+      error = function(e) NULL
+    )
   }
-  if (is.null(time_components)) {
+  if (!base::is.null(pattern_info) && base::is.null(time_components)) {
     time_components <- extract_time_components(
       raster_file, pattern_info
     )
@@ -573,11 +578,7 @@ process_raster_with_boundaries <- function(raster_file,
   result_df <- dplyr::bind_cols(shapefile, stats_df)
 
   result_df <- result_df |>
-    dplyr::mutate(
-      file_name = basename(raster_file),
-      file_date = components$date,
-      year = components$year
-    ) |>
+    dplyr::mutate(file_name = base::basename(raster_file)) |>
     dplyr::mutate(
       dplyr::across(
         .cols = where(is.numeric) & dplyr::matches("sum"),
@@ -585,11 +586,21 @@ process_raster_with_boundaries <- function(raster_file,
       )
     )
 
-  if (pattern_info$pattern == "monthly") {
-    result_df <- result_df |> dplyr::mutate(month = components$month)
+  # add time columns only when a date pattern was detected
+  if (!base::is.null(pattern_info)) {
+    result_df <- result_df |>
+      dplyr::mutate(
+        file_date = components$date,
+        year = components$year
+      )
+    if (pattern_info$pattern == "monthly") {
+      result_df <- result_df |> dplyr::mutate(month = components$month)
+    }
   }
 
-  time_cols <- if (pattern_info$pattern == "monthly") {
+  time_cols <- if (base::is.null(pattern_info)) {
+    base::character(0)
+  } else if (pattern_info$pattern == "monthly") {
     c("year", "month")
   } else {
     "year"
