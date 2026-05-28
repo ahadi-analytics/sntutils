@@ -10,7 +10,7 @@ download_process_nasapower(
   start_date = "2025-01-01",
   end_date = "2025-12-31",
   power_vars = c("PRECTOTCORR", "T2M_MAX", "T2M_MIN", "T2M", "TS", "TS_MAX", "TS_MIN",
-    "RH2M"),
+    "RH2M", "T2MDEW"),
   power_community = "ag",
   max_retries = 3,
   dict_language = "fr"
@@ -28,7 +28,21 @@ unit identifier. Default is \code{c("adm0", "adm1", "adm2")}.}
 
 \item{end_date}{End date in \code{"YYYY-MM-DD"} format.}
 
-\item{power_vars}{Character vector of NASA POWER variable codes to download.}
+\item{power_vars}{Character vector of NASA POWER variable codes to download.
+Drop a code to exclude that variable from the outputs; add a code to opt
+in. Codes recognised by the rename map (clean column name in parentheses):
+\code{PRECTOTCORR} (rainfall_mm), \code{T2M} (air_temperature_c),
+\code{T2M_MAX}/\code{T2M_MIN} (max/min_air_temperature_c), \code{TS}
+(land_temperature_c), \code{TS_MAX}/\code{TS_MIN}
+(max/min_land_temperature_c), \code{RH2M} (humidity_pct),
+\code{T2MDEW} (dewpoint_c), \code{T2MWET} (wet_bulb_temperature_c),
+\code{QV2M} (specific_humidity_gkg), \code{PS} (surface_pressure_kpa),
+\code{WS2M}/\code{WS2M_MAX}/\code{WS2M_MIN} (wind_speed_ms),
+\code{ALLSKY_SFC_SW_DWN} (solar_radiation_kwhm2), \code{CLOUD_AMT}
+(cloud_amount_pct), \code{GWETTOP} (surface_soil_wetness),
+\code{GWETROOT} (root_soil_wetness), \code{GWETPROF}
+(profile_soil_wetness). Unrecognised codes are downloaded but dropped
+from the cleaned daily/monthly outputs.}
 
 \item{power_community}{NASA POWER community parameter. Default is "ag"
 (agroclimatology).}
@@ -40,8 +54,13 @@ unit identifier. Default is \code{c("adm0", "adm1", "adm2")}.}
 \value{
 A list with four elements:
 \describe{
-\item{daily}{Tibble of daily climate data with admin columns}
-\item{monthly}{Tibble of monthly aggregated climate data}
+\item{daily}{Tibble of daily climate data with admin columns plus an
+\code{elevation_m} column (MERRA-2 grid-cell elevation, static per
+polygon, parsed from the POWER response metadata).}
+\item{monthly}{Tibble of monthly aggregated climate data. For each
+requested variable: \code{mean_}, \code{median_}, \code{min_},
+\code{max_} versions; rainfall additionally gets \code{total_}.
+\code{elevation_m} is carried through as a static column.}
 \item{dict_daily}{Data dictionary for daily data}
 \item{dict_monthly}{Data dictionary for monthly data}
 }

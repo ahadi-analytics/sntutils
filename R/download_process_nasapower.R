@@ -1,7 +1,31 @@
+#' Parse grid-cell elevation from a NASA POWER response
+#'
+#' Pulls the MERRA-2 grid-cell elevation from the `POWER.Elevation` attribute
+#' attached to objects returned by [nasapower::get_power()]. Free metadata,
+#' no extra API call.
+#'
+#' @param power_obj Object returned by [nasapower::get_power()].
+#'
+#' @return Numeric scalar elevation in metres, or `NA_real_` if missing.
+#'
+#' @noRd
+.parse_power_elevation <- function(power_obj) {
+  meta <- attr(power_obj, "POWER.Elevation")
+  if (is.null(meta)) return(NA_real_)
+  matched <- regmatches(
+    meta,
+    regexpr("([0-9]+\\.?[0-9]*)\\s*meters", meta)
+  )
+  if (length(matched) == 0L) return(NA_real_)
+  as.numeric(sub("\\s*meters", "", matched))
+}
+
 #' Download NASA POWER data for a single location
 #'
 #' Internal helper that downloads daily climate data from NASA POWER API for
 #' one administrative unit. Uses exponential backoff retry logic on failure.
+#' Also parses the grid-cell elevation from the response metadata and attaches
+#' it to every row as a static `elevation_m` column.
 #'
 #' @param row Single-row data frame with `lon`, `lat`, and admin columns.
 #' @param power_community NASA POWER community (e.g., "ag", "re", "sb").
@@ -12,7 +36,8 @@
 #' @param admin_cols Character vector of admin column names to bind to result.
 #' @param max_retries Maximum retry attempts before giving up.
 #'
-#' @return Data frame with POWER data and admin columns, or NULL on failure.
+#' @return Data frame with POWER data, admin columns, and `elevation_m`, or
+#'   NULL on failure.
 #'
 #' @noRd
 .download_power_location <- function(
@@ -42,12 +67,16 @@
           )
         }
 
+        elevation_m <- .parse_power_elevation(data)
+
         # keep only needed columns to avoid unnamed metadata
         keep_cols <- intersect(
           c("YYYYMMDD", "YEAR", "MM", power_vars),
           names(data)
         )
-        dplyr::bind_cols(data[keep_cols], row[admin_cols])
+        result <- dplyr::bind_cols(data[keep_cols], row[admin_cols])
+        result$elevation_m <- elevation_m
+        result
       },
       error = function(e) {
         if (attempt < max_retries) {
@@ -94,6 +123,20 @@
 #' @param end_date End date in \code{"YYYY-MM-DD"} format.
 #'
 #' @param power_vars Character vector of NASA POWER variable codes to download.
+#'   Drop a code to exclude that variable from the outputs; add a code to opt
+#'   in. Codes recognised by the rename map (clean column name in parentheses):
+#'   \code{PRECTOTCORR} (rainfall_mm), \code{T2M} (air_temperature_c),
+#'   \code{T2M_MAX}/\code{T2M_MIN} (max/min_air_temperature_c), \code{TS}
+#'   (land_temperature_c), \code{TS_MAX}/\code{TS_MIN}
+#'   (max/min_land_temperature_c), \code{RH2M} (humidity_pct),
+#'   \code{T2MDEW} (dewpoint_c), \code{T2MWET} (wet_bulb_temperature_c),
+#'   \code{QV2M} (specific_humidity_gkg), \code{PS} (surface_pressure_kpa),
+#'   \code{WS2M}/\code{WS2M_MAX}/\code{WS2M_MIN} (wind_speed_ms),
+#'   \code{ALLSKY_SFC_SW_DWN} (solar_radiation_kwhm2), \code{CLOUD_AMT}
+#'   (cloud_amount_pct), \code{GWETTOP} (surface_soil_wetness),
+#'   \code{GWETROOT} (root_soil_wetness), \code{GWETPROF}
+#'   (profile_soil_wetness). Unrecognised codes are downloaded but dropped
+#'   from the cleaned daily/monthly outputs.
 #'
 #' @param power_community NASA POWER community parameter. Default is "ag"
 #'   (agroclimatology).
@@ -104,8 +147,13 @@
 #'
 #' @return A list with four elements:
 #'   \describe{
-#'     \item{daily}{Tibble of daily climate data with admin columns}
-#'     \item{monthly}{Tibble of monthly aggregated climate data}
+#'     \item{daily}{Tibble of daily climate data with admin columns plus an
+#'       \code{elevation_m} column (MERRA-2 grid-cell elevation, static per
+#'       polygon, parsed from the POWER response metadata).}
+#'     \item{monthly}{Tibble of monthly aggregated climate data. For each
+#'       requested variable: \code{mean_}, \code{median_}, \code{min_},
+#'       \code{max_} versions; rainfall additionally gets \code{total_}.
+#'       \code{elevation_m} is carried through as a static column.}
 #'     \item{dict_daily}{Data dictionary for daily data}
 #'     \item{dict_monthly}{Data dictionary for monthly data}
 #'   }
@@ -142,7 +190,8 @@ download_process_nasapower <- function(
       "TS",
       "TS_MAX",
       "TS_MIN",
-      "RH2M"
+      "RH2M",
+      "T2MDEW"
     ),
     power_community = "ag",
     max_retries = 3,
@@ -294,6 +343,32 @@ download_process_nasapower <- function(
 
   cli::cli_h2("Processing daily data")
 
+  # rename map: clean column name <- POWER variable code. Anything the user
+  # excluded from `power_vars` is simply absent from `power_data_agg`, so
+  # `dplyr::any_of()` quietly drops it. To extend coverage, add a row here.
+  power_rename <- c(
+    rainfall_mm = "PRECTOTCORR",
+    max_air_temperature_c = "T2M_MAX",
+    min_air_temperature_c = "T2M_MIN",
+    air_temperature_c = "T2M",
+    max_land_temperature_c = "TS_MAX",
+    min_land_temperature_c = "TS_MIN",
+    land_temperature_c = "TS",
+    humidity_pct = "RH2M",
+    dewpoint_c = "T2MDEW",
+    wet_bulb_temperature_c = "T2MWET",
+    specific_humidity_gkg = "QV2M",
+    surface_pressure_kpa = "PS",
+    wind_speed_ms = "WS2M",
+    max_wind_speed_ms = "WS2M_MAX",
+    min_wind_speed_ms = "WS2M_MIN",
+    solar_radiation_kwhm2 = "ALLSKY_SFC_SW_DWN",
+    cloud_amount_pct = "CLOUD_AMT",
+    surface_soil_wetness = "GWETTOP",
+    root_soil_wetness = "GWETROOT",
+    profile_soil_wetness = "GWETPROF"
+  )
+
   power_daily <- power_data_agg |>
     dplyr::mutate(
       date = as.Date(YYYYMMDD),
@@ -308,22 +383,10 @@ download_process_nasapower <- function(
       )
     ) |>
     dplyr::select(
-      adm0,
-      adm1,
-      adm2,
-      location,
-      date,
-      year,
-      month,
-      yearmon,
-      rainfall_mm = PRECTOTCORR,
-      max_air_temperature_c = T2M_MAX,
-      min_air_temperature_c = T2M_MIN,
-      mean_air_temperature_c = T2M,
-      max_land_temperature_c = TS_MAX,
-      min_land_temperature_c = TS_MIN,
-      mean_land_temperature_c = TS,
-      humidity_pct = RH2M
+      adm0, adm1, adm2,
+      location, date, year, month, yearmon,
+      dplyr::any_of(power_rename),
+      dplyr::any_of("elevation_m")
     )
 
   cli::cli_alert_success("Processed {nrow(power_daily)} daily records")
@@ -337,54 +400,35 @@ download_process_nasapower <- function(
 
   cli::cli_h2("Aggregating to monthly")
 
+  # variables to aggregate. rainfall additionally gets a monthly total; every
+  # variable in the rename map gets mean/median/min/max. elevation is static
+  # per grid cell, so we just carry the first value through.
+  agg_cols <- as.character(names(power_rename))
+  rain_col <- "rainfall_mm"
+
   power_monthly <- power_daily |>
     dplyr::group_by(adm0, adm1, adm2, location, year, month, yearmon) |>
     dplyr::summarise(
-      # rainfall
-      total_rainfall_mm = sum(rainfall_mm, na.rm = TRUE),
-      mean_rainfall_mm = mean(rainfall_mm, na.rm = TRUE),
-      median_rainfall_mm = median(rainfall_mm, na.rm = TRUE),
-      min_rainfall_mm = min(rainfall_mm, na.rm = TRUE),
-      max_rainfall_mm = max(rainfall_mm, na.rm = TRUE),
-      # air temperature - maximum (2m)
-      mean_max_air_temperature_c = mean(max_air_temperature_c, na.rm = TRUE),
-      median_max_air_temperature_c =
-        median(max_air_temperature_c, na.rm = TRUE),
-      min_max_air_temperature_c = min(max_air_temperature_c, na.rm = TRUE),
-      max_max_air_temperature_c = max(max_air_temperature_c, na.rm = TRUE),
-      # air temperature - minimum (2m)
-      mean_min_air_temperature_c = mean(min_air_temperature_c, na.rm = TRUE),
-      median_min_air_temperature_c =
-        median(min_air_temperature_c, na.rm = TRUE),
-      min_min_air_temperature_c = min(min_air_temperature_c, na.rm = TRUE),
-      max_min_air_temperature_c = max(min_air_temperature_c, na.rm = TRUE),
-      # air temperature - mean (2m)
-      mean_air_temperature_c = mean(mean_air_temperature_c, na.rm = TRUE),
-      median_air_temperature_c = median(mean_air_temperature_c, na.rm = TRUE),
-      min_air_temperature_c = min(mean_air_temperature_c, na.rm = TRUE),
-      max_air_temperature_c = max(mean_air_temperature_c, na.rm = TRUE),
-      # land/surface temperature - maximum
-      mean_max_land_temperature_c = mean(max_land_temperature_c, na.rm = TRUE),
-      median_max_land_temperature_c =
-        median(max_land_temperature_c, na.rm = TRUE),
-      min_max_land_temperature_c = min(max_land_temperature_c, na.rm = TRUE),
-      max_max_land_temperature_c = max(max_land_temperature_c, na.rm = TRUE),
-      # land/surface temperature - minimum
-      mean_min_land_temperature_c = mean(min_land_temperature_c, na.rm = TRUE),
-      median_min_land_temperature_c =
-        median(min_land_temperature_c, na.rm = TRUE),
-      min_min_land_temperature_c = min(min_land_temperature_c, na.rm = TRUE),
-      max_min_land_temperature_c = max(min_land_temperature_c, na.rm = TRUE),
-      # land/surface temperature - mean
-      mean_land_temperature_c = mean(mean_land_temperature_c, na.rm = TRUE),
-      median_land_temperature_c = median(mean_land_temperature_c, na.rm = TRUE),
-      min_land_temperature_c = min(mean_land_temperature_c, na.rm = TRUE),
-      max_land_temperature_c = max(mean_land_temperature_c, na.rm = TRUE),
-      # humidity
-      mean_humidity_pct = mean(humidity_pct, na.rm = TRUE),
-      median_humidity_pct = median(humidity_pct, na.rm = TRUE),
-      min_humidity_pct = min(humidity_pct, na.rm = TRUE),
-      max_humidity_pct = max(humidity_pct, na.rm = TRUE),
+      dplyr::across(
+        dplyr::any_of(rain_col),
+        list(total = \(x) sum(x, na.rm = TRUE)),
+        .names = "{.fn}_{.col}"
+      ),
+      dplyr::across(
+        dplyr::any_of(agg_cols),
+        list(
+          mean   = \(x) mean(x, na.rm = TRUE),
+          median = \(x) stats::median(x, na.rm = TRUE),
+          min    = \(x) min(x, na.rm = TRUE),
+          max    = \(x) max(x, na.rm = TRUE)
+        ),
+        .names = "{.fn}_{.col}"
+      ),
+      dplyr::across(
+        dplyr::any_of("elevation_m"),
+        list(value = dplyr::first),
+        .names = "{.col}"
+      ),
       .groups = "drop"
     )
 
