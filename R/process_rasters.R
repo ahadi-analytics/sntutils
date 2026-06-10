@@ -1574,3 +1574,158 @@ process_weighted_raster_stacks <- function(
 
   dplyr::bind_rows(results_list)
 }
+
+#' Process Year-Indexed Rasters Against Time-Varying Admin Boundaries
+#'
+#' Wrapper around [process_raster_with_boundaries()] for the case where the
+#' admin boundaries change over time (one row per admin x year in the
+#' shapefile, identified by a year column). For each raster, detects the
+#' year from the filename, filters the shapefile to just that year's
+#' boundaries, extracts zonal statistics against those polygons, and
+#' row-binds the results.
+#'
+#' @param raster_files Character vector of raster file paths.
+#' @param shapefile An `sf` object whose rows are admin units valid for a
+#'   specific year. Each (admin x year) combination is a row; the year is
+#'   stored in the column named by `year_col`.
+#' @param id_cols Character vector of shapefile columns to carry into the
+#'   output (e.g., admin names or codes). Default:
+#'   `c("adm0", "adm1", "adm2")`.
+#' @param year_col Character. Name of the year column in `shapefile`.
+#'   Default: `"year"`.
+#' @param aggregations Vector of aggregation methods. Same options as for
+#'   [process_raster_with_boundaries()]. Default: `c("mean")`. For
+#'   population count rasters, use `"sum"`.
+#' @param layer_to_process Integer or character. Layer index for
+#'   multi-layer rasters. Default: 1.
+#' @param raster_is_density Logical. Convert density to counts using cell
+#'   area before extraction. Default: FALSE.
+#' @param year_extractor Optional function `(filename) -> year`, used when
+#'   the default "last plausible 4-digit year in filename" heuristic picks
+#'   the wrong year. See [extract_time_components()].
+#'
+#' @return A tibble with one row per (admin, year) combination, holding
+#'   `id_cols`, `year`, and the requested aggregation columns. Rasters
+#'   whose year is not present in the shapefile are skipped with a
+#'   warning.
+#'
+#' @examples
+#' \dontrun{
+#' # population rasters with year-varying districts
+#' shp_by_year <- sf::read_sf("districts_by_year.gpkg")
+#' raster_paths <- list.files(
+#'   "data/worldpop/raw", pattern = "_pop_.*\\.tif$", full.names = TRUE
+#' )
+#' pop_by_admin <- process_rasters_by_year(
+#'   raster_files = raster_paths,
+#'   shapefile = shp_by_year,
+#'   id_cols = c("adm0", "adm1", "adm2"),
+#'   aggregations = "sum"
+#' )
+#' }
+#' @export
+process_rasters_by_year <- function(
+    raster_files,
+    shapefile,
+    id_cols = c("adm0", "adm1", "adm2"),
+    year_col = "year",
+    aggregations = c("mean"),
+    layer_to_process = 1,
+    raster_is_density = FALSE,
+    year_extractor = NULL) {
+
+  if (!is.character(raster_files) || length(raster_files) == 0) {
+    cli::cli_abort("{.arg raster_files} must be a non-empty character vector")
+  }
+
+  missing <- raster_files[!file.exists(raster_files)]
+  if (length(missing) > 0) {
+    cli::cli_abort(c(
+      "Some raster files do not exist:",
+      "x" = "{.path {missing}}"
+    ))
+  }
+
+  if (!inherits(shapefile, "sf")) {
+    cli::cli_abort("{.arg shapefile} must be an {.cls sf} object")
+  }
+
+  if (!year_col %in% names(shapefile)) {
+    cli::cli_abort(c(
+      "Column {.val {year_col}} not found in shapefile",
+      "i" = "Available columns: {.val {names(shapefile)}}"
+    ))
+  }
+
+  # detect time pattern once across the whole batch
+  cleaned_names <- clean_filenames(raster_files)
+  pattern_info <- detect_time_pattern(cleaned_names)
+  if (is.null(pattern_info)) {
+    cli::cli_abort(
+      "Could not detect a time pattern in raster filenames"
+    )
+  }
+
+  # coerce shapefile years to integer once; allows character or numeric
+  # year columns and isolates the comparison logic from input type
+  shp_years_int <- base::suppressWarnings(
+    base::as.integer(shapefile[[year_col]])
+  )
+  if (base::all(base::is.na(shp_years_int))) {
+    cli::cli_abort(
+      "Could not coerce {.val {year_col}} values to integer years"
+    )
+  }
+
+  results <- purrr::map(
+    base::seq_along(raster_files),
+    function(i) {
+      components <- extract_time_components(
+        cleaned_names[i], pattern_info, year_extractor = year_extractor
+      )
+      raster_year <- base::as.integer(components$year)
+
+      keep <- !base::is.na(shp_years_int) & shp_years_int == raster_year
+      shp_year <- shapefile[keep, , drop = FALSE]
+
+      if (base::nrow(shp_year) == 0) {
+        cli::cli_alert_warning(
+          paste0(
+            "No shapefile rows for year ", raster_year,
+            "; skipping ", base::basename(raster_files[i])
+          )
+        )
+        return(NULL)
+      }
+
+      process_raster_with_boundaries(
+        raster_file = raster_files[i],
+        shapefile = shp_year,
+        id_cols = id_cols,
+        aggregations = aggregations,
+        raster_is_density = raster_is_density,
+        layer_to_process = layer_to_process,
+        pattern_info = pattern_info,
+        time_components = components
+      )
+    },
+    .progress = "Processing rasters by year"
+  ) |>
+    purrr::compact() |>
+    purrr::list_rbind()
+
+  if (base::nrow(results) == 0) {
+    cli::cli_alert_warning(
+      "No results produced: no raster years matched the shapefile"
+    )
+    return(results)
+  }
+
+  sort_cols <- base::intersect(c("year", "month"), base::names(results))
+  if (base::length(sort_cols) > 0) {
+    results <- dplyr::arrange(
+      results, dplyr::across(dplyr::all_of(sort_cols))
+    )
+  }
+  results
+}

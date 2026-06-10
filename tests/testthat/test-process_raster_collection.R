@@ -2954,3 +2954,177 @@ testthat::test_that(
 
   testthat::expect_equal(base::sort(years), c(2019L, 2020L))
 })
+
+# process_rasters_by_year -----------------------------------------------------
+
+testthat::test_that(
+  "process_rasters_by_year filters shapefile per raster year",
+  {
+    # two rasters, one per year, with year in filename
+    tmp <- tempfile("by_year_")
+    base::dir.create(tmp)
+    on.exit(unlink(tmp, recursive = TRUE))
+
+    raster_paths <- character(2)
+    for (i in seq_along(c(2020, 2021))) {
+      yr <- c(2020, 2021)[i]
+      r <- terra::rast(
+        nrows = 10, ncols = 10,
+        xmin = 0, xmax = 10, ymin = 0, ymax = 10,
+        crs = "EPSG:4326"
+      )
+      # raster values differ per year so we can verify the right one ran
+      terra::values(r) <- if (yr == 2020) 1 else 100
+      path <- file.path(tmp, sprintf("pop_%d.tif", yr))
+      terra::writeRaster(r, path, overwrite = TRUE)
+      raster_paths[i] <- path
+    }
+
+    # shapefile: same polygons for both years, year column distinguishes them
+    poly <- sf::st_polygon(list(rbind(
+      c(0, 0), c(10, 0), c(10, 10), c(0, 10), c(0, 0)
+    )))
+    shp <- sf::st_sf(
+      adm0 = c("A", "A"),
+      adm1 = c("X", "X"),
+      year = c(2020L, 2021L),
+      geometry = sf::st_sfc(poly, poly, crs = 4326)
+    )
+
+    result <- process_rasters_by_year(
+      raster_files = raster_paths,
+      shapefile = shp,
+      id_cols = c("adm0", "adm1"),
+      aggregations = "mean"
+    )
+
+    testthat::expect_s3_class(result, "data.frame")
+    testthat::expect_equal(base::nrow(result), 2)
+    testthat::expect_setequal(result$year, c(2020L, 2021L))
+    # 2020 raster had value 1; 2021 raster had value 100
+    testthat::expect_equal(
+      result$mean[result$year == 2020L], 1, tolerance = 1e-6
+    )
+    testthat::expect_equal(
+      result$mean[result$year == 2021L], 100, tolerance = 1e-6
+    )
+  }
+)
+
+testthat::test_that(
+  "process_rasters_by_year warns and skips rasters with no shapefile year",
+  {
+    tmp <- tempfile("by_year_skip_")
+    base::dir.create(tmp)
+    on.exit(unlink(tmp, recursive = TRUE))
+
+    # raster for a year not in the shapefile
+    r <- terra::rast(
+      nrows = 10, ncols = 10,
+      xmin = 0, xmax = 10, ymin = 0, ymax = 10,
+      crs = "EPSG:4326"
+    )
+    terra::values(r) <- 1
+    path <- file.path(tmp, "pop_1999.tif")
+    terra::writeRaster(r, path, overwrite = TRUE)
+
+    poly <- sf::st_polygon(list(rbind(
+      c(0, 0), c(10, 0), c(10, 10), c(0, 10), c(0, 0)
+    )))
+    shp <- sf::st_sf(
+      adm0 = "A", adm1 = "X", year = 2020L,
+      geometry = sf::st_sfc(poly, crs = 4326)
+    )
+
+    testthat::expect_message(
+      result <- process_rasters_by_year(
+        raster_files = path,
+        shapefile = shp,
+        id_cols = c("adm0", "adm1")
+      ),
+      "1999"
+    )
+    testthat::expect_equal(base::nrow(result), 0)
+  }
+)
+
+testthat::test_that(
+  "process_rasters_by_year honours a custom year_col",
+  {
+    tmp <- tempfile("by_year_col_")
+    base::dir.create(tmp)
+    on.exit(unlink(tmp, recursive = TRUE))
+
+    r <- terra::rast(
+      nrows = 5, ncols = 5,
+      xmin = 0, xmax = 5, ymin = 0, ymax = 5,
+      crs = "EPSG:4326"
+    )
+    terra::values(r) <- 42
+    path <- file.path(tmp, "pop_2020.tif")
+    terra::writeRaster(r, path, overwrite = TRUE)
+
+    poly <- sf::st_polygon(list(rbind(
+      c(0, 0), c(5, 0), c(5, 5), c(0, 5), c(0, 0)
+    )))
+    shp <- sf::st_sf(
+      adm0 = "A", adm1 = "X",
+      epi_year = "2020", # character year col with non-default name
+      geometry = sf::st_sfc(poly, crs = 4326)
+    )
+
+    result <- process_rasters_by_year(
+      raster_files = path,
+      shapefile = shp,
+      id_cols = c("adm0", "adm1"),
+      year_col = "epi_year"
+    )
+
+    testthat::expect_equal(base::nrow(result), 1)
+    testthat::expect_equal(result$year, 2020L)
+    testthat::expect_equal(result$mean, 42, tolerance = 1e-6)
+  }
+)
+
+testthat::test_that(
+  "process_rasters_by_year validates inputs",
+  {
+    poly <- sf::st_polygon(list(rbind(
+      c(0, 0), c(1, 0), c(1, 1), c(0, 1), c(0, 0)
+    )))
+    shp <- sf::st_sf(
+      adm0 = "A", year = 2020L, geometry = sf::st_sfc(poly, crs = 4326)
+    )
+
+    # missing files
+    testthat::expect_error(
+      process_rasters_by_year(
+        raster_files = "/nonexistent/path.tif",
+        shapefile = shp
+      ),
+      "do not exist"
+    )
+
+    # year_col missing
+    tmp <- tempfile(fileext = ".tif")
+    on.exit(unlink(tmp))
+    r <- terra::rast(
+      nrows = 2, ncols = 2,
+      xmin = 0, xmax = 1, ymin = 0, ymax = 1,
+      crs = "EPSG:4326"
+    )
+    terra::values(r) <- 1
+    path <- gsub("\\.tif$", "_2020.tif", tmp)
+    terra::writeRaster(r, path, overwrite = TRUE)
+    on.exit(unlink(path), add = TRUE)
+
+    testthat::expect_error(
+      process_rasters_by_year(
+        raster_files = path,
+        shapefile = shp,
+        year_col = "bogus"
+      ),
+      "bogus"
+    )
+  }
+)
