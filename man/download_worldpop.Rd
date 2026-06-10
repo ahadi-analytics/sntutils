@@ -15,7 +15,10 @@ download_worldpop(
 }
 \arguments{
 \item{country_codes}{Character vector of ISO country codes (e.g., "GBR",
-"GIN")}
+"GIN"). Pass \code{"GLOBAL"} (case-insensitive) to download the worldwide
+mosaic from the \verb{0_Mosaicked} directory instead of a per-country
+raster. \code{"GLOBAL"} only works for years >= 2015 at 1km resolution and
+\code{type = "count"}.}
 
 \item{years}{Numeric vector of years to download data for (2000-2030).}
 
@@ -24,7 +27,8 @@ total population count (default: "count"). Note: density is only available
 for years 2000-2020.}
 
 \item{resolution}{Character; either "1km" (default) or "100m". The 100m
-resolution is only available for years 2015-2030.}
+resolution is only available for years 2015-2030 and is not available
+for the GLOBAL mosaic.}
 
 \item{dest_dir}{Destination directory for downloaded files
 (default: current dir)}

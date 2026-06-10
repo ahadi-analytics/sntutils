@@ -10,13 +10,17 @@ get_worldpop_paths(
   groups = list(total = list(age_range = NULL), u5 = list(age_range = c(0, 4)), wra =
     list(age_range = c(15, 49), sex = "f")),
   resolution = "1km",
+  release = "R2025A",
   dest_dir = here::here(),
   download = TRUE,
   quiet = TRUE
 )
 }
 \arguments{
-\item{country_code}{Character. Single ISO3 country code (e.g., "TGO")}
+\item{country_code}{Character. Single ISO3 country code (e.g., "TGO"),
+or \code{"GLOBAL"} (case-insensitive) to download worldwide mosaics
+instead of per-country rasters. \code{"GLOBAL"} requires years >= 2015 and
+1km resolution.}
 
 \item{years}{Numeric vector of years to download (2000-2030)}
 
@@ -26,6 +30,11 @@ for total population) and optionally \code{sex} ("both", "m", or "f").
 Default includes total, u5, and wra groups.}
 
 \item{resolution}{Character. "1km" (default) or "100m".}
+
+\item{release}{Character. WorldPop release for age-band downloads at
+years >= 2015: "R2025A" (default, constrained) or "R2024B"
+(unconstrained). Ignored for years < 2015 and for total-population
+downloads (which always use R2025A for years >= 2015).}
 
 \item{dest_dir}{Character. Base directory for downloaded files.
 Total population goes to \code{dest_dir}, age bands go to

@@ -1,7 +1,16 @@
 # internal helper to build worldpop url and filename
+# cc may be an ISO3 code or the literal "GLOBAL" to target the worldwide
+# mosaic under 0_Mosaicked (r2025a + 1km + count only — legacy has no mosaic)
 #' @noRd
 .build_worldpop_url <- function(cc, year, type, dataset, resolution) {
+  is_global <- toupper(cc) == "GLOBAL"
+
   if (dataset == "legacy") {
+    if (is_global) {
+      cli::cli_abort(
+        "{.val GLOBAL} mosaic not available for legacy years (2000-2014)"
+      )
+    }
     base_url <- "https://data.worldpop.org/GIS/Population"
     if (type == "density") base_url <- paste0(base_url, "_Density")
     base_url <- paste0(base_url, "/Global_2000_2020_1km_UNadj/")
@@ -17,6 +26,12 @@
   }
 
   # r2025a dataset
+  if (is_global && resolution != "1km") {
+    cli::cli_abort(
+      "{.val GLOBAL} mosaic only available at 1km resolution"
+    )
+  }
+
   base_url <- "https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/"
 
   if (resolution == "1km") {
@@ -29,14 +44,28 @@
     ua_suffix <- ""
   }
 
-  # remote filename includes R2025A, local filename does not
- remote_fn <- sprintf("%s_pop_%s_CN_%s_R2025A%s_v1.tif",
-                       tolower(cc), year, res_suffix, ua_suffix)
-  local_fn <- sprintf("%s_pop_%s_CN_%s%s_v1.tif",
-                      tolower(cc), year, res_suffix, ua_suffix)
+  if (is_global) {
+    cc_lo <- "global"
+    country_segment <- "0_Mosaicked"
+  } else {
+    cc_lo <- tolower(cc)
+    country_segment <- toupper(cc)
+  }
 
-  url <- sprintf("%s%s/%s/v1/%s/constrained/%s",
-                 base_url, year, toupper(cc), res_path, remote_fn)
+  # remote filename includes R2025A, local filename does not
+  remote_fn <- sprintf(
+    "%s_pop_%s_CN_%s_R2025A%s_v1.tif",
+    cc_lo, year, res_suffix, ua_suffix
+  )
+  local_fn <- sprintf(
+    "%s_pop_%s_CN_%s%s_v1.tif",
+    cc_lo, year, res_suffix, ua_suffix
+  )
+
+  url <- sprintf(
+    "%s%s/%s/v1/%s/constrained/%s",
+    base_url, year, country_segment, res_path, remote_fn
+  )
 
   return(list(url = url, filename = local_fn))
 }
@@ -48,13 +77,17 @@
 #' legacy (2000-2020) or R2025A (2015-2030).
 #'
 #' @param country_codes Character vector of ISO country codes (e.g., "GBR",
-#'   "GIN")
+#'   "GIN"). Pass `"GLOBAL"` (case-insensitive) to download the worldwide
+#'   mosaic from the `0_Mosaicked` directory instead of a per-country
+#'   raster. `"GLOBAL"` only works for years >= 2015 at 1km resolution and
+#'   `type = "count"`.
 #' @param years Numeric vector of years to download data for (2000-2030).
 #' @param type Character; either "density" for persons per sq km or "count" for
 #'   total population count (default: "count"). Note: density is only available
 #'   for years 2000-2020.
 #' @param resolution Character; either "1km" (default) or "100m". The 100m
-#'   resolution is only available for years 2015-2030.
+#'   resolution is only available for years 2015-2030 and is not available
+#'   for the GLOBAL mosaic.
 #' @param dest_dir Destination directory for downloaded files
 #'   (default: current dir)
 #' @param quiet Logical; if TRUE, suppresses progress messages
@@ -138,6 +171,41 @@ download_worldpop <- function(
       "i" = "Use {.code resolution = '1km'} for years < 2015"
     ))
   }
+
+  # global mosaic only for r2025a years, count, and 1km
+  has_global <- any(toupper(country_codes) == "GLOBAL")
+  if (has_global) {
+    if (length(legacy_years) > 0) {
+      cli::cli_abort(c(
+        "{.val GLOBAL} mosaic only available for years >= 2015",
+        "i" = "Drop legacy years or use ISO3 country codes for them"
+      ))
+    }
+    if (resolution != "1km") {
+      cli::cli_abort(c(
+        "{.val GLOBAL} mosaic only available at 1km resolution",
+        "i" = "Use {.code resolution = '1km'} when requesting GLOBAL"
+      ))
+    }
+    if (type != "count") {
+      cli::cli_abort(c(
+        "{.val GLOBAL} mosaic only available for {.val count} rasters",
+        "i" = "Density is legacy-only and has no global mosaic"
+      ))
+    }
+    if (!quiet) {
+      cli::cli_alert_warning(
+        "{.val GLOBAL} downloads each year as a worldwide raster (~290 MB per year)"
+      )
+    }
+  }
+
+  # normalise codes: keep "GLOBAL" (case-insensitive); uppercase ISO3 otherwise
+  country_codes <- vapply(
+    country_codes,
+    function(c) if (toupper(c) == "GLOBAL") "GLOBAL" else toupper(c),
+    character(1)
+  )
 
   if (!dir.exists(dest_dir)) dir.create(dest_dir, recursive = TRUE)
 
@@ -234,25 +302,194 @@ download_worldpop <- function(
   list(results = results, params = params)
 }
 
+# internal helper to build worldpop age-band URL and local filename
+# release ("R2024B" or "R2025A") only applies for year >= 2015; ignored for
+# legacy years. cc may be an ISO3 code or the literal "GLOBAL" to target the
+# worldwide mosaic under 0_Mosaicked.
+#' @noRd
+.build_worldpop_age_band_url <- function(
+    cc, sex, code, year, resolution, release = "R2025A") {
+
+  is_global <- toupper(cc) == "GLOBAL"
+
+  if (year < 2015) {
+    # legacy 2000-2020: 1km only, unconstrained, m/f only, no global mosaic
+    if (is_global) {
+      cli::cli_abort(
+        "{.val GLOBAL} mosaic not available for years < 2015"
+      )
+    }
+    if (resolution != "1km") {
+      cli::cli_abort(
+        "100m resolution not available for years < 2015"
+      )
+    }
+    if (sex == "t") {
+      cli::cli_abort(
+        "{.val t} (total) variant not available for years < 2015"
+      )
+    }
+
+    cc_lo <- tolower(cc)
+    cc_up <- toupper(cc)
+    url <- sprintf(
+      paste0(
+        "https://data.worldpop.org/GIS/AgeSex_structures/",
+        "Global_2000_2020_1km/unconstrained/%d/%s/%s_%s_%s_%d_1km.tif"
+      ),
+      year, cc_up, cc_lo, sex, code, year
+    )
+    local_fn <- sprintf("%s_%s_%s_%d_1km.tif", cc_lo, sex, code, year)
+    return(list(url = url, filename = local_fn))
+  }
+
+  # year >= 2015: R2024B (unconstrained, UC) or R2025A (constrained, CN)
+  if (is_global && resolution != "1km") {
+    cli::cli_abort(
+      "{.val GLOBAL} mosaic only available at 1km resolution"
+    )
+  }
+
+  if (release == "R2025A") {
+    constraint <- "constrained"
+    constraint_tag <- "CN"
+  } else {
+    constraint <- "unconstrained"
+    constraint_tag <- "UC"
+  }
+
+  if (resolution == "1km") {
+    res_path <- "1km_ua"
+    res_suffix <- "1km"
+    ua_suffix <- "_UA"
+  } else {
+    res_path <- "100m"
+    res_suffix <- "100m"
+    ua_suffix <- ""
+  }
+
+  if (is_global) {
+    cc_lo <- "global"
+    country_segment <- "0_Mosaicked"
+  } else {
+    cc_lo <- tolower(cc)
+    country_segment <- toupper(cc)
+  }
+
+  # age band code uses leading zero for r2024b/r2025a filenames
+  code_str <- sprintf("%02d", code)
+  remote_fn <- sprintf(
+    "%s_%s_%s_%d_%s_%s_%s%s_v1.tif",
+    cc_lo, sex, code_str, year, constraint_tag,
+    res_suffix, release, ua_suffix
+  )
+  url <- sprintf(
+    paste0(
+      "https://data.worldpop.org/GIS/AgeSex_structures/",
+      "Global_2015_2030/%s/%d/%s/v1/%s/%s/%s"
+    ),
+    release, year, country_segment, res_path, constraint, remote_fn
+  )
+  # local filename drops release tag (keeps cache stable across release flips)
+  local_fn <- sprintf(
+    "%s_%s_%s_%d_%s_%s%s_v1.tif",
+    cc_lo, sex, code_str, year, constraint_tag, res_suffix, ua_suffix
+  )
+
+  list(url = url, filename = local_fn)
+}
+
+# internal helper: download age-band rasters for one (cc, yr) and sum across
+# bands * sexes. Returns a SpatRaster, or NULL when soft_fail = TRUE and any
+# download errors (used so the caller can transparently fall back to per-sex
+# 'm + f' when the 't' total variant is missing for a given country/year).
+#' @noRd
+.download_age_bands <- function(
+    cc, yr, matching_bands, sexes, resolution, release,
+    out_dir, quiet, soft_fail = FALSE) {
+
+  acc <- NULL
+  for (band_code in matching_bands$code) {
+    for (sx in sexes) {
+      url_info <- .build_worldpop_age_band_url(
+        cc, sx, band_code, yr, resolution, release
+      )
+      temp_fname <- file.path(out_dir, url_info$filename)
+
+      # repair cached file if corrupt
+      if (file.exists(temp_fname)) {
+        valid <- tryCatch(
+          { suppressWarnings(terra::rast(temp_fname)); TRUE },
+          error = function(e) FALSE
+        )
+        if (!valid) {
+          cli::cli_alert_warning(
+            "Corrupt file {basename(temp_fname)}, re-downloading"
+          )
+          unlink(temp_fname)
+        }
+      }
+
+      if (!file.exists(temp_fname)) {
+        if (!quiet) cli::cli_alert_info(
+          "Downloading {sx} band {band_code} for {cc}, {yr}"
+        )
+        ok <- tryCatch(
+          {
+            httr2::request(url_info$url) |>
+              httr2::req_timeout(600) |>
+              httr2::req_retry(max_tries = 3, backoff = ~ 5) |>
+              httr2::req_perform(path = temp_fname)
+            TRUE
+          },
+          error = function(e) {
+            if (file.exists(temp_fname)) unlink(temp_fname)
+            if (soft_fail) FALSE else stop(e)
+          }
+        )
+        if (!ok) return(NULL)
+      } else if (!quiet) {
+        cli::cli_alert_info("Using cached file {basename(temp_fname)}")
+      }
+
+      r <- suppressWarnings(terra::rast(temp_fname))
+      acc <- if (is.null(acc)) r else acc + r
+    }
+  }
+  acc
+}
+
 #' Download WorldPop Population Raster Data for Specific Age Bands
 #'
-#' Downloads and processes WorldPop population raster data for specified age
-#' bands and years. Combines male and female population data for the requested
-#' age range. Automatically selects legacy (2000-2014) or R2024B (2015-2030)
-#' dataset based on year.
+#' Downloads WorldPop population rasters for the specified age bands and
+#' years. When `sex = "both"` and `year >= 2015`, downloads the pre-summed
+#' `"t"` (total) raster instead of fetching male and female separately and
+#' summing locally. Automatically selects legacy (2000-2014) or R2025A /
+#' R2024B (2015-2030) dataset based on year.
 #'
-#' @param country_codes Character vector. ISO3 country codes (e.g., "TUN", "BDI")
-#' @param years Numeric vector. Years for which to download data (2000-2030)
+#' @param country_codes Character vector. ISO3 country codes (e.g., "TUN",
+#'   "BDI"). Pass `"GLOBAL"` (case-insensitive) to download the worldwide
+#'   mosaic from the `0_Mosaicked` directory instead of a per-country
+#'   raster. `"GLOBAL"` only works for years >= 2015 at 1km resolution.
+#' @param years Numeric vector. Years for which to download data (2000-2030).
 #' @param age_range Numeric vector of length 2 specifying the lower and upper
-#'   age range bounds (e.g., c(1, 9) for ages 1-9). Default: c(1, 9)
-#' @param sex Character. Which sex to download: "both" (default, sums male
-#'   and female), "m" (male only), or "f" (female only).
+#'   age range bounds (e.g., c(1, 9) for ages 1-9). Default: c(1, 9).
+#' @param sex Character. Which sex to download: "both" (default, total
+#'   population), "m" (male only), or "f" (female only). For years >= 2015
+#'   `"both"` is satisfied with the single `t` (total) variant; for years
+#'   < 2015 male and female are downloaded separately and summed locally.
 #' @param resolution Character. Either "1km" (default) or "100m". The 100m
-#'   resolution is only available for years >= 2015 (R2024B dataset).
+#'   resolution is only available for years >= 2015 and is not available for
+#'   the GLOBAL mosaic.
+#' @param release Character. WorldPop release for years >= 2015: "R2025A"
+#'   (default, constrained / built-up areas only) or "R2024B" (unconstrained,
+#'   covers all populated areas via interpolation). Ignored for years < 2015
+#'   (the legacy dataset is always used). The two releases answer different
+#'   methodological questions and are not directly comparable.
 #' @param out_dir Character string. Directory where downloaded files will be
-#'   saved. Default: "."
+#'   saved. Default: ".".
 #' @param quiet Logical; if TRUE, suppresses progress messages
-#'   (default: FALSE)
+#'   (default: FALSE).
 #'
 #' @details
 #' ## Data Source
@@ -261,16 +498,32 @@ download_worldpop <- function(
 #' ### Legacy Dataset (years < 2015)
 #' - URL: https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/
 #' - Resolution: 1km only
+#' - Sex variants: `m`, `f` only (no `t` total available)
 #' - Files: `{iso3}_{sex}_{code}_{year}_1km.tif`
 #'
-#' ### R2024B Dataset (years >= 2015)
-#' - URL: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2024B/
+#' ### R2025A Dataset (years >= 2015, default)
+#' - URL: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/
+#' - Constrained to built-up areas
 #' - Resolution: 1km or 100m
-#' - Files: `{iso3}_{sex}_{code}_{year}_UC_{res}_UA_v1.tif` (R2024B removed locally)
+#' - Sex variants: `m`, `f`, `t` (total)
+#' - Files: `{iso3}_{sex}_{code}_{year}_CN_{res}_R2025A{_UA}_v1.tif`
+#'
+#' ### R2024B Dataset (years >= 2015, optional)
+#' - URL: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2024B/
+#' - Unconstrained
+#' - Resolution: 1km or 100m
+#' - Sex variants: `m`, `f`, `t` (total)
+#' - Files: `{iso3}_{sex}_{code}_{year}_UC_{res}_R2024B{_UA}_v1.tif`
+#'
+#' ### Global Mosaic
+#' Passing `country_codes = "GLOBAL"` swaps the `{ISO3}` URL segment for
+#' `0_Mosaicked` and uses `global_` instead of an ISO3 prefix in the
+#' filename. Available for years >= 2015 at 1km only. The worldwide files
+#' are large (R2025A: ~280 MB, R2024B: ~650 MB per band).
 #'
 #' ## Band Combination Logic
-#' If the exact age range is not covered by a single WorldPop band, the function
-#' combines adjacent bands. For example:
+#' If the exact age range is not covered by a single WorldPop band, the
+#' function combines adjacent bands. For example:
 #' - Requesting ages 2-9 will combine bands 1-4 and 5-9
 #' - Requesting ages 0-10 will combine bands 0-1, 1-4, 5-9, and 10-14
 #'
@@ -280,11 +533,12 @@ download_worldpop <- function(
 #'
 #' @return No return value. Files saved to output directory with pattern:
 #'   `{iso3}_{sex}_{lower}_{upper}_{year}.tif` where sex is "total", "m",
-#'   or "f", and upper is "80plus" when the 80+ band is included.
+#'   or "f", and upper is "80plus" when the 80+ band is included. For
+#'   GLOBAL requests, `iso3` is `global`.
 #'
 #' @examples
 #' \dontrun{
-#' # Download age 1-9 data for Burundi (both sexes combined)
+#' # Download age 1-9 data for Burundi (both sexes; uses R2025A 't' variant)
 #' download_worldpop_age_band(
 #'   country_codes = "BDI",
 #'   years = 2020:2024,
@@ -300,6 +554,22 @@ download_worldpop <- function(
 #'   sex = "f",
 #'   out_dir = "data/worldpop"
 #' )
+#'
+#' # Use R2024B unconstrained release instead of the R2025A default
+#' download_worldpop_age_band(
+#'   country_codes = "BDI",
+#'   years = 2020,
+#'   release = "R2024B",
+#'   out_dir = "data/worldpop"
+#' )
+#'
+#' # Download the worldwide mosaic (large file, ~280 MB per band)
+#' download_worldpop_age_band(
+#'   country_codes = "GLOBAL",
+#'   years = 2020,
+#'   age_range = c(0, 4),
+#'   out_dir = "data/worldpop"
+#' )
 #' }
 #' @export
 download_worldpop_age_band <- function(
@@ -308,11 +578,13 @@ download_worldpop_age_band <- function(
     age_range = c(1, 9),
     sex = "both",
     resolution = "1km",
+    release = "R2025A",
     out_dir = ".",
     quiet = FALSE) {
 
   sex <- match.arg(sex, choices = c("both", "m", "f"))
   resolution <- match.arg(resolution, choices = c("1km", "100m"))
+  release <- match.arg(release, choices = c("R2025A", "R2024B"))
 
   # 100m only available for years >= 2015
   legacy_years <- years[years < 2015]
@@ -323,6 +595,31 @@ download_worldpop_age_band <- function(
     ))
   }
 
+  # global mosaic only for years >= 2015 and only at 1km
+  has_global <- any(toupper(country_codes) == "GLOBAL")
+  if (has_global) {
+    if (length(legacy_years) > 0) {
+      cli::cli_abort(c(
+        "{.val GLOBAL} mosaic only available for years >= 2015",
+        "i" = "Drop legacy years or use ISO3 country codes for them"
+      ))
+    }
+    if (resolution != "1km") {
+      cli::cli_abort(c(
+        "{.val GLOBAL} mosaic only available at 1km resolution",
+        "i" = "Use {.code resolution = '1km'} when requesting GLOBAL"
+      ))
+    }
+    if (!quiet) {
+      cli::cli_alert_warning(
+        paste0(
+          "{.val GLOBAL} downloads each band as a worldwide raster ",
+          "(R2025A: ~280 MB, R2024B: ~650 MB per band)"
+        )
+      )
+    }
+  }
+
   base::dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
   bands <- base::data.frame(
@@ -331,53 +628,14 @@ download_worldpop_age_band <- function(
     upper = c(1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, Inf)
   )
 
-  sexes <- if (sex == "both") c("m", "f") else sex
   sex_label <- if (sex == "both") "total" else sex
 
-  # build url and local filename based on year and resolution
-  make_url_info <- function(cc, sex, code, yr, res) {
-    cc_lo <- tolower(cc)
-    cc_up <- toupper(cc)
-    # age band code needs leading zero for single digits
-    code_str <- sprintf("%02d", code)
-
-    if (yr < 2015) {
-      # legacy dataset (2000-2020, 1km only)
-      url_base <- paste0(
-        "https://data.worldpop.org/GIS/AgeSex_structures/",
-        "Global_2000_2020_1km/unconstrained"
-      )
-      url <- sprintf("%s/%d/%s/%s_%s_%s_%d_1km.tif",
-                     url_base, yr, cc_up, cc_lo, sex, code, yr)
-      local_fn <- sprintf("%s_%s_%s_%d_1km.tif", cc_lo, sex, code, yr)
-    } else {
-      # r2024b dataset (2015-2030, 1km or 100m)
-      url_base <- paste0(
-        "https://data.worldpop.org/GIS/AgeSex_structures/",
-        "Global_2015_2030/R2024B"
-      )
-
-      if (res == "1km") {
-        res_path <- "1km_ua"
-        res_suffix <- "1km"
-        ua_suffix <- "_UA"
-      } else {
-        res_path <- "100m"
-        res_suffix <- "100m"
-        ua_suffix <- ""
-      }
-
-      remote_fn <- sprintf("%s_%s_%s_%d_UC_%s_R2024B%s_v1.tif",
-                           cc_lo, sex, code_str, yr, res_suffix, ua_suffix)
-      url <- sprintf("%s/%d/%s/v1/%s/unconstrained/%s",
-                     url_base, yr, cc_up, res_path, remote_fn)
-      # local filename without R2024B
-      local_fn <- sprintf("%s_%s_%s_%d_UC_%s%s_v1.tif",
-                          cc_lo, sex, code_str, yr, res_suffix, ua_suffix)
-    }
-
-    list(url = url, filename = local_fn)
-  }
+  # normalise codes: keep "GLOBAL" (case-insensitive); uppercase ISO3 otherwise
+  country_codes <- vapply(
+    country_codes,
+    function(c) if (toupper(c) == "GLOBAL") "GLOBAL" else toupper(c),
+    character(1)
+  )
 
   combos <- expand.grid(
     country_code = country_codes,
@@ -395,7 +653,9 @@ download_worldpop_age_band <- function(
       if (yr < 2015) {
         cli::cli_alert_info("Using legacy dataset (1km) for {cc}, {yr}")
       } else {
-        cli::cli_alert_info("Using R2024B dataset ({resolution}) for {cc}, {yr}")
+        cli::cli_alert_info(
+          "Using {release} dataset ({resolution}) for {cc}, {yr}"
+        )
       }
     }
 
@@ -443,49 +703,44 @@ download_worldpop_age_band <- function(
     upper_str <- if (has_80plus) "80plus" else sprintf("%02d", covered_upper_num)
     out_fname <- file.path(
       out_dir,
-      sprintf("%s_%s_%02d_%s_%d.tif", cc_lo, sex_label, covered_lower, upper_str, yr)
+      sprintf(
+        "%s_%s_%02d_%s_%d.tif",
+        cc_lo, sex_label, covered_lower, upper_str, yr
+      )
     )
 
     if (file.exists(out_fname)) {
-      if (!quiet) cli::cli_alert_info("Skipping {basename(out_fname)} (already exists)")
+      if (!quiet) cli::cli_alert_info(
+        "Skipping {basename(out_fname)} (already exists)"
+      )
       next
     }
 
+    # try 't' (total) variant first when both sexes wanted and r2024b/r2025a
+    # applies — halves downloads and skips the local m+f sum
     acc <- NULL
-    for (band_code in matching_bands$code) {
-      for (sx in sexes) {
-        url_info <- make_url_info(cc, sx, band_code, yr, resolution)
-        temp_fname <- file.path(out_dir, url_info$filename)
-
-        # check if cached file is valid; re-download if corrupt
-        if (file.exists(temp_fname)) {
-          valid <- tryCatch(
-            { suppressWarnings(terra::rast(temp_fname)); TRUE },
-            error = function(e) FALSE
+    if (sex == "both" && yr >= 2015) {
+      acc <- .download_age_bands(
+        cc, yr, matching_bands, "t", resolution, release,
+        out_dir, quiet, soft_fail = TRUE
+      )
+      if (is.null(acc) && !quiet) {
+        cli::cli_alert_warning(
+          paste0(
+            "Total ('t') variant unavailable for {cc} {yr}; ",
+            "falling back to m+f"
           )
-          if (!valid) {
-            cli::cli_alert_warning(
-              "Corrupt file {basename(temp_fname)}, re-downloading"
-            )
-            unlink(temp_fname)
-          }
-        }
-
-        if (!file.exists(temp_fname)) {
-          if (!quiet) cli::cli_alert_info(
-            "Downloading {sx} band {band_code} for {cc}, {yr}"
-          )
-          httr2::request(url_info$url) |>
-            httr2::req_timeout(600) |>
-            httr2::req_retry(max_tries = 3, backoff = ~ 5) |>
-            httr2::req_perform(path = temp_fname)
-        } else if (!quiet) {
-          cli::cli_alert_info("Using cached file {basename(temp_fname)}")
-        }
-
-        r <- suppressWarnings(terra::rast(temp_fname))
-        acc <- if (is.null(acc)) r else acc + r
+        )
       }
+    }
+
+    # fall back to per-sex downloads if 't' was not tried or was unavailable
+    if (is.null(acc)) {
+      sex_set <- if (sex == "both") c("m", "f") else sex
+      acc <- .download_age_bands(
+        cc, yr, matching_bands, sex_set, resolution, release,
+        out_dir, quiet
+      )
     }
 
     suppressWarnings(terra::writeRaster(acc, out_fname, overwrite = TRUE))
@@ -533,13 +788,20 @@ download_worldpop_age_band <- function(
 #' call and returns file paths as a nested named list. Each group is a
 #' named list keyed by year.
 #'
-#' @param country_code Character. Single ISO3 country code (e.g., "TGO")
+#' @param country_code Character. Single ISO3 country code (e.g., "TGO"),
+#'   or `"GLOBAL"` (case-insensitive) to download worldwide mosaics
+#'   instead of per-country rasters. `"GLOBAL"` requires years >= 2015 and
+#'   1km resolution.
 #' @param years Numeric vector of years to download (2000-2030)
 #' @param groups Named list of age group specifications. Each element
 #'   should be a list with `age_range` (length-2 numeric vector or NULL
 #'   for total population) and optionally `sex` ("both", "m", or "f").
 #'   Default includes total, u5, and wra groups.
 #' @param resolution Character. "1km" (default) or "100m".
+#' @param release Character. WorldPop release for age-band downloads at
+#'   years >= 2015: "R2025A" (default, constrained) or "R2024B"
+#'   (unconstrained). Ignored for years < 2015 and for total-population
+#'   downloads (which always use R2025A for years >= 2015).
 #' @param dest_dir Character. Base directory for downloaded files.
 #'   Total population goes to `dest_dir`, age bands go to
 #'   `dest_dir/aged_rasters`.
@@ -586,9 +848,12 @@ get_worldpop_paths <- function(
       wra = list(age_range = c(15, 49), sex = "f")
     ),
     resolution = "1km",
+    release = "R2025A",
     dest_dir = here::here(),
     download = TRUE,
     quiet = TRUE) {
+
+  release <- match.arg(release, choices = c("R2025A", "R2024B"))
 
   result <- list()
 
@@ -614,7 +879,8 @@ get_worldpop_paths <- function(
       } else {
         download_worldpop_age_band(
           country_code, years, age_range,
-          sex = sex, resolution = resolution, out_dir = out_dir, quiet = quiet
+          sex = sex, resolution = resolution, release = release,
+          out_dir = out_dir, quiet = quiet
         )
       }
     }

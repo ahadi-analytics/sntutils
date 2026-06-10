@@ -10,40 +10,55 @@ download_worldpop_age_band(
   age_range = c(1, 9),
   sex = "both",
   resolution = "1km",
+  release = "R2025A",
   out_dir = ".",
   quiet = FALSE
 )
 }
 \arguments{
-\item{country_codes}{Character vector. ISO3 country codes (e.g., "TUN", "BDI")}
+\item{country_codes}{Character vector. ISO3 country codes (e.g., "TUN",
+"BDI"). Pass \code{"GLOBAL"} (case-insensitive) to download the worldwide
+mosaic from the \verb{0_Mosaicked} directory instead of a per-country
+raster. \code{"GLOBAL"} only works for years >= 2015 at 1km resolution.}
 
-\item{years}{Numeric vector. Years for which to download data (2000-2030)}
+\item{years}{Numeric vector. Years for which to download data (2000-2030).}
 
 \item{age_range}{Numeric vector of length 2 specifying the lower and upper
-age range bounds (e.g., c(1, 9) for ages 1-9). Default: c(1, 9)}
+age range bounds (e.g., c(1, 9) for ages 1-9). Default: c(1, 9).}
 
-\item{sex}{Character. Which sex to download: "both" (default, sums male
-and female), "m" (male only), or "f" (female only).}
+\item{sex}{Character. Which sex to download: "both" (default, total
+population), "m" (male only), or "f" (female only). For years >= 2015
+\code{"both"} is satisfied with the single \code{t} (total) variant; for years
+< 2015 male and female are downloaded separately and summed locally.}
 
 \item{resolution}{Character. Either "1km" (default) or "100m". The 100m
-resolution is only available for years >= 2015 (R2024B dataset).}
+resolution is only available for years >= 2015 and is not available for
+the GLOBAL mosaic.}
+
+\item{release}{Character. WorldPop release for years >= 2015: "R2025A"
+(default, constrained / built-up areas only) or "R2024B" (unconstrained,
+covers all populated areas via interpolation). Ignored for years < 2015
+(the legacy dataset is always used). The two releases answer different
+methodological questions and are not directly comparable.}
 
 \item{out_dir}{Character string. Directory where downloaded files will be
-saved. Default: "."}
+saved. Default: ".".}
 
 \item{quiet}{Logical; if TRUE, suppresses progress messages
-(default: FALSE)}
+(default: FALSE).}
 }
 \value{
 No return value. Files saved to output directory with pattern:
 \verb{\{iso3\}_\{sex\}_\{lower\}_\{upper\}_\{year\}.tif} where sex is "total", "m",
-or "f", and upper is "80plus" when the 80+ band is included.
+or "f", and upper is "80plus" when the 80+ band is included. For
+GLOBAL requests, \code{iso3} is \code{global}.
 }
 \description{
-Downloads and processes WorldPop population raster data for specified age
-bands and years. Combines male and female population data for the requested
-age range. Automatically selects legacy (2000-2014) or R2024B (2015-2030)
-dataset based on year.
+Downloads WorldPop population rasters for the specified age bands and
+years. When \code{sex = "both"} and \code{year >= 2015}, downloads the pre-summed
+\code{"t"} (total) raster instead of fetching male and female separately and
+summing locally. Automatically selects legacy (2000-2014) or R2025A /
+R2024B (2015-2030) dataset based on year.
 }
 \details{
 \subsection{Data Source}{
@@ -53,24 +68,45 @@ The function automatically selects the appropriate dataset:
 \itemize{
 \item URL: https://data.worldpop.org/GIS/AgeSex_structures/Global_2000_2020_1km/
 \item Resolution: 1km only
+\item Sex variants: \code{m}, \code{f} only (no \code{t} total available)
 \item Files: \verb{\{iso3\}_\{sex\}_\{code\}_\{year\}_1km.tif}
 }
 }
 
-\subsection{R2024B Dataset (years >= 2015)}{
+\subsection{R2025A Dataset (years >= 2015, default)}{
+\itemize{
+\item URL: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2025A/
+\item Constrained to built-up areas
+\item Resolution: 1km or 100m
+\item Sex variants: \code{m}, \code{f}, \code{t} (total)
+\item Files: \verb{\{iso3\}_\{sex\}_\{code\}_\{year\}_CN_\{res\}_R2025A\{_UA\}_v1.tif}
+}
+}
+
+\subsection{R2024B Dataset (years >= 2015, optional)}{
 \itemize{
 \item URL: https://data.worldpop.org/GIS/AgeSex_structures/Global_2015_2030/R2024B/
+\item Unconstrained
 \item Resolution: 1km or 100m
-\item Files: \verb{\{iso3\}_\{sex\}_\{code\}_\{year\}_UC_\{res\}_UA_v1.tif} (R2024B removed locally)
+\item Sex variants: \code{m}, \code{f}, \code{t} (total)
+\item Files: \verb{\{iso3\}_\{sex\}_\{code\}_\{year\}_UC_\{res\}_R2024B\{_UA\}_v1.tif}
 }
+}
+
+\subsection{Global Mosaic}{
+
+Passing \code{country_codes = "GLOBAL"} swaps the \code{{ISO3}} URL segment for
+\verb{0_Mosaicked} and uses \code{global_} instead of an ISO3 prefix in the
+filename. Available for years >= 2015 at 1km only. The worldwide files
+are large (R2025A: ~280 MB, R2024B: ~650 MB per band).
 }
 
 }
 
 \subsection{Band Combination Logic}{
 
-If the exact age range is not covered by a single WorldPop band, the function
-combines adjacent bands. For example:
+If the exact age range is not covered by a single WorldPop band, the
+function combines adjacent bands. For example:
 \itemize{
 \item Requesting ages 2-9 will combine bands 1-4 and 5-9
 \item Requesting ages 0-10 will combine bands 0-1, 1-4, 5-9, and 10-14
@@ -85,7 +121,7 @@ Available bands: 0, 1-4, 5-9, 10-14, 15-19, 20-24, 25-29, 30-34, 35-39,
 }
 \examples{
 \dontrun{
-# Download age 1-9 data for Burundi (both sexes combined)
+# Download age 1-9 data for Burundi (both sexes; uses R2025A 't' variant)
 download_worldpop_age_band(
   country_codes = "BDI",
   years = 2020:2024,
@@ -99,6 +135,22 @@ download_worldpop_age_band(
   years = 2020:2024,
   age_range = c(1, 9),
   sex = "f",
+  out_dir = "data/worldpop"
+)
+
+# Use R2024B unconstrained release instead of the R2025A default
+download_worldpop_age_band(
+  country_codes = "BDI",
+  years = 2020,
+  release = "R2024B",
+  out_dir = "data/worldpop"
+)
+
+# Download the worldwide mosaic (large file, ~280 MB per band)
+download_worldpop_age_band(
+  country_codes = "GLOBAL",
+  years = 2020,
+  age_range = c(0, 4),
   out_dir = "data/worldpop"
 )
 }

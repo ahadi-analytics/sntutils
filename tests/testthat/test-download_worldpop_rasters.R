@@ -135,6 +135,79 @@ testthat::test_that("download_worldpop: url construction is correct for r2025a",
   testthat::expect_true(grepl("^civ_", result_lower$filename))  # lowercase in filename
 })
 
+testthat::test_that("download_worldpop: url construction for GLOBAL mosaic", {
+  result <- sntutils:::.build_worldpop_url(
+    "GLOBAL", 2020, "count", "r2025a", "1km"
+  )
+  expected_url <- paste0(
+    "https://data.worldpop.org/GIS/Population/Global_2015_2030/R2025A/",
+    "2020/0_Mosaicked/v1/1km_ua/constrained/",
+    "global_pop_2020_CN_1km_R2025A_UA_v1.tif"
+  )
+  testthat::expect_equal(result$url, expected_url)
+  testthat::expect_equal(result$filename, "global_pop_2020_CN_1km_UA_v1.tif")
+
+  # case-insensitive
+  result_lower <- sntutils:::.build_worldpop_url(
+    "global", 2020, "count", "r2025a", "1km"
+  )
+  testthat::expect_equal(result_lower$url, expected_url)
+
+  # GLOBAL + 100m rejected
+  testthat::expect_error(
+    sntutils:::.build_worldpop_url("GLOBAL", 2020, "count", "r2025a", "100m"),
+    "GLOBAL"
+  )
+
+  # GLOBAL + legacy rejected
+  testthat::expect_error(
+    sntutils:::.build_worldpop_url("GLOBAL", 2010, "count", "legacy", "1km"),
+    "GLOBAL"
+  )
+})
+
+testthat::test_that("download_worldpop: GLOBAL validation in main function", {
+  temp_dir <- setup_temp_dir()
+  on.exit(unlink(temp_dir, recursive = TRUE))
+
+  # GLOBAL + legacy year
+  testthat::expect_error(
+    download_worldpop("GLOBAL", years = 2010, dest_dir = temp_dir, quiet = TRUE),
+    "GLOBAL"
+  )
+  # GLOBAL + 100m
+  testthat::expect_error(
+    download_worldpop(
+      "GLOBAL", years = 2020,
+      resolution = "100m", dest_dir = temp_dir, quiet = TRUE
+    ),
+    "GLOBAL"
+  )
+  # GLOBAL + density
+  testthat::expect_error(
+    download_worldpop(
+      "GLOBAL", years = 2020,
+      type = "density", dest_dir = temp_dir, quiet = TRUE
+    ),
+    "Density|GLOBAL"
+  )
+})
+
+testthat::test_that("download_worldpop: GLOBAL skip when cached", {
+  temp_dir <- setup_temp_dir()
+  on.exit(unlink(temp_dir, recursive = TRUE))
+
+  mock_file <- file.path(temp_dir, "global_pop_2020_CN_1km_UA_v1.tif")
+  writeLines("mock", mock_file)
+
+  result <- download_worldpop(
+    "GLOBAL", years = 2020, dest_dir = temp_dir, quiet = TRUE
+  )
+
+  testthat::expect_true(file.exists(mock_file))
+  testthat::expect_equal(unname(result$counts[["GLOBAL"]]), 1)
+})
+
 testthat::test_that("download_worldpop: url construction is correct for legacy", {
   # test legacy count
   result_count <- sntutils:::.build_worldpop_url("GBR", 2020, "count", "legacy", "1km")
@@ -411,34 +484,203 @@ testthat::test_that("age band: creates output directory", {
   unlink(file.path(temp_dir, "new_worldpop_dir"), recursive = TRUE)
 })
 
-testthat::test_that("age band url construction works correctly", {
-  # test legacy url construction (years < 2015)
-  legacy_url <- paste0(
-    "https://data.worldpop.org/GIS/AgeSex_structures/",
-    "Global_2000_2020_1km/unconstrained/2010/TUN/tun_m_5_2010_1km.tif"
+testthat::test_that(".build_worldpop_age_band_url: legacy per-country", {
+  result <- sntutils:::.build_worldpop_age_band_url(
+    "TUN", "m", 5, 2010, "1km"
+  )
+  testthat::expect_equal(
+    result$url,
+    paste0(
+      "https://data.worldpop.org/GIS/AgeSex_structures/",
+      "Global_2000_2020_1km/unconstrained/2010/TUN/tun_m_5_2010_1km.tif"
+    )
+  )
+  testthat::expect_equal(result$filename, "tun_m_5_2010_1km.tif")
+
+  # legacy ignores release param
+  result_r <- sntutils:::.build_worldpop_age_band_url(
+    "TUN", "f", 5, 2014, "1km", "R2024B"
+  )
+  testthat::expect_true(
+    grepl("Global_2000_2020_1km", result_r$url, fixed = TRUE)
+  )
+})
+
+testthat::test_that(".build_worldpop_age_band_url: legacy rejects bad combos", {
+  # 100m not in legacy
+  testthat::expect_error(
+    sntutils:::.build_worldpop_age_band_url("TUN", "m", 5, 2010, "100m"),
+    "100m"
+  )
+  # 't' total not in legacy
+  testthat::expect_error(
+    sntutils:::.build_worldpop_age_band_url("TUN", "t", 5, 2010, "1km"),
+    "total"
+  )
+  # GLOBAL mosaic not in legacy
+  testthat::expect_error(
+    sntutils:::.build_worldpop_age_band_url("GLOBAL", "m", 5, 2010, "1km"),
+    "GLOBAL"
+  )
+})
+
+testthat::test_that(".build_worldpop_age_band_url: R2025A per-country", {
+  # 1km, t total
+  result <- sntutils:::.build_worldpop_age_band_url(
+    "GIN", "t", 0, 2020, "1km", "R2025A"
+  )
+  testthat::expect_equal(
+    result$url,
+    paste0(
+      "https://data.worldpop.org/GIS/AgeSex_structures/",
+      "Global_2015_2030/R2025A/2020/GIN/v1/1km_ua/constrained/",
+      "gin_t_00_2020_CN_1km_R2025A_UA_v1.tif"
+    )
+  )
+  testthat::expect_equal(result$filename, "gin_t_00_2020_CN_1km_UA_v1.tif")
+
+  # 100m, m
+  result_100m <- sntutils:::.build_worldpop_age_band_url(
+    "GIN", "m", 5, 2020, "100m", "R2025A"
+  )
+  testthat::expect_equal(
+    result_100m$url,
+    paste0(
+      "https://data.worldpop.org/GIS/AgeSex_structures/",
+      "Global_2015_2030/R2025A/2020/GIN/v1/100m/constrained/",
+      "gin_m_05_2020_CN_100m_R2025A_v1.tif"
+    )
+  )
+})
+
+testthat::test_that(".build_worldpop_age_band_url: R2024B per-country", {
+  # 1km, t total
+  result <- sntutils:::.build_worldpop_age_band_url(
+    "BDI", "t", 0, 2015, "1km", "R2024B"
+  )
+  testthat::expect_equal(
+    result$url,
+    paste0(
+      "https://data.worldpop.org/GIS/AgeSex_structures/",
+      "Global_2015_2030/R2024B/2015/BDI/v1/1km_ua/unconstrained/",
+      "bdi_t_00_2015_UC_1km_R2024B_UA_v1.tif"
+    )
   )
 
-  # test r2024b 1km url construction (years >= 2015)
-  r2024b_1km_url <- paste0(
-    "https://data.worldpop.org/GIS/AgeSex_structures/",
-    "Global_2015_2030/R2024B/2015/BDI/v1/1km_ua/unconstrained/",
-    "bdi_f_00_2015_UC_1km_R2024B_UA_v1.tif"
+  # 100m, f
+  result_100m <- sntutils:::.build_worldpop_age_band_url(
+    "BDI", "f", 0, 2015, "100m", "R2024B"
+  )
+  testthat::expect_equal(
+    result_100m$url,
+    paste0(
+      "https://data.worldpop.org/GIS/AgeSex_structures/",
+      "Global_2015_2030/R2024B/2015/BDI/v1/100m/unconstrained/",
+      "bdi_f_00_2015_UC_100m_R2024B_v1.tif"
+    )
+  )
+})
+
+testthat::test_that(".build_worldpop_age_band_url: GLOBAL mosaic", {
+  # R2025A
+  result_r2025a <- sntutils:::.build_worldpop_age_band_url(
+    "GLOBAL", "t", 0, 2020, "1km", "R2025A"
+  )
+  testthat::expect_equal(
+    result_r2025a$url,
+    paste0(
+      "https://data.worldpop.org/GIS/AgeSex_structures/",
+      "Global_2015_2030/R2025A/2020/0_Mosaicked/v1/1km_ua/constrained/",
+      "global_t_00_2020_CN_1km_R2025A_UA_v1.tif"
+    )
   )
 
-  # test r2024b 100m url construction
-  r2024b_100m_url <- paste0(
-    "https://data.worldpop.org/GIS/AgeSex_structures/",
-    "Global_2015_2030/R2024B/2015/BDI/v1/100m/unconstrained/",
-    "bdi_f_00_2015_UC_100m_R2024B_v1.tif"
+  # R2024B
+  result_r2024b <- sntutils:::.build_worldpop_age_band_url(
+    "global", "t", 0, 2020, "1km", "R2024B"
+  )
+  testthat::expect_equal(
+    result_r2024b$url,
+    paste0(
+      "https://data.worldpop.org/GIS/AgeSex_structures/",
+      "Global_2015_2030/R2024B/2020/0_Mosaicked/v1/1km_ua/unconstrained/",
+      "global_t_00_2020_UC_1km_R2024B_UA_v1.tif"
+    )
   )
 
-  # verify url patterns are valid
-  testthat::expect_true(grepl("Global_2000_2020_1km", legacy_url))
-  testthat::expect_true(grepl("Global_2015_2030/R2024B", r2024b_1km_url))
-  testthat::expect_true(grepl("Global_2015_2030/R2024B", r2024b_100m_url))
-  testthat::expect_true(grepl("_1km\\.tif$", legacy_url))
-  testthat::expect_true(grepl("_1km_R2024B_UA_v1\\.tif$", r2024b_1km_url))
-  testthat::expect_true(grepl("_100m_R2024B_v1\\.tif$", r2024b_100m_url))
+  # GLOBAL + 100m is rejected
+  testthat::expect_error(
+    sntutils:::.build_worldpop_age_band_url(
+      "GLOBAL", "t", 0, 2020, "100m", "R2025A"
+    ),
+    "1km"
+  )
+})
+
+testthat::test_that("download_worldpop_age_band: GLOBAL/release validation", {
+  temp_dir <- setup_temp_dir()
+  on.exit(unlink(temp_dir, recursive = TRUE))
+
+  # GLOBAL + legacy year
+  testthat::expect_error(
+    download_worldpop_age_band(
+      country_codes = "GLOBAL", years = 2010,
+      out_dir = temp_dir, quiet = TRUE
+    ),
+    "GLOBAL"
+  )
+  # GLOBAL + 100m
+  testthat::expect_error(
+    download_worldpop_age_band(
+      country_codes = "GLOBAL", years = 2020,
+      resolution = "100m", out_dir = temp_dir, quiet = TRUE
+    ),
+    "GLOBAL"
+  )
+  # invalid release
+  testthat::expect_error(
+    download_worldpop_age_band(
+      country_codes = "GIN", years = 2020,
+      release = "R2030A", out_dir = temp_dir, quiet = TRUE
+    ),
+    "should be one of"
+  )
+})
+
+testthat::test_that("age band: uses 't' total when sex='both' + yr>=2015 (cached)", {
+  testthat::skip_if_not(
+    requireNamespace("terra", quietly = TRUE),
+    "terra package not available"
+  )
+  temp_dir <- setup_temp_dir()
+  on.exit(unlink(temp_dir, recursive = TRUE))
+
+  # pre-stage a valid 't' raster for band 0 — age_range c(0, 0) selects
+  # band 0 only so no other downloads are triggered
+  r <- suppressWarnings(terra::rast(nrows = 2, ncols = 2, vals = 1))
+  t_fname <- file.path(temp_dir, "gin_t_00_2020_CN_1km_UA_v1.tif")
+  suppressWarnings(terra::writeRaster(r, t_fname))
+
+  testthat::expect_no_error({
+    download_worldpop_age_band(
+      country_codes = "GIN",
+      years = 2020,
+      age_range = c(0, 0),
+      sex = "both",
+      out_dir = temp_dir,
+      quiet = TRUE
+    )
+  })
+
+  # aggregated output exists
+  expected <- file.path(temp_dir, "gin_total_00_00_2020.tif")
+  testthat::expect_true(file.exists(expected))
+
+  # m and f variants were NOT touched: 't' is used directly
+  m_fn <- file.path(temp_dir, "gin_m_00_2020_CN_1km_UA_v1.tif")
+  f_fn <- file.path(temp_dir, "gin_f_00_2020_CN_1km_UA_v1.tif")
+  testthat::expect_false(file.exists(m_fn))
+  testthat::expect_false(file.exists(f_fn))
 })
 
 testthat::test_that("filename generation works correctly", {
