@@ -359,6 +359,14 @@ download_era5 <- function(
     )
   }
 
+  # validate pressure_levels up front so a missing value fails before
+  # we touch the keyring / CDS credentials
+  if (dataset == "hourly_pressure_levels" && is.null(pressure_levels)) {
+    cli::cli_abort(
+      "pressure_levels required for hourly_pressure_levels dataset"
+    )
+  }
+
   sel <- opts[opts$dataset == dataset, ]
 
   # Parse CDS credentials
@@ -562,12 +570,7 @@ download_era5 <- function(
         target = basename(target)
       )
     } else if (dataset == "hourly_pressure_levels") {
-      # hourly pressure level dataset
-      if (is.null(pressure_levels)) {
-        cli::cli_abort(
-          "pressure_levels required for hourly_pressure_levels dataset"
-        )
-      }
+      # hourly pressure level dataset; pressure_levels validated up front
       list(
         dataset_short_name = sel$cds_id,
         product_type = sel$product_type,

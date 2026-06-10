@@ -1207,7 +1207,9 @@ testthat::test_that("process_raster_collection handles multiple aggregations", {
     layer_to_process,
     ...
   ) {
-    file_num <- ifelse(grepl("01", raster_file), 1, 2)
+    # match on basename only so temp dirs containing "01" (e.g. /tmp/claude-501)
+    # don't make every file look like file 1
+    file_num <- ifelse(grepl("_01\\.tif$", base::basename(raster_file)), 1, 2)
 
     data.frame(
       file_name = basename(raster_file),
