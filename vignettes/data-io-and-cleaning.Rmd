@@ -154,35 +154,77 @@ parsed$iso8601_dates
 #> [1] "2021-03-20" "2022-11-05"
 ```
 
-To see the formats it knows about, inspect `available_date_formats`.
+To see the formats it knows about, inspect `available_date_formats`:
+
+```r
+utils::head(available_date_formats, 8)
+#> [1] "%Y-%m-%d"      "%Y/%m/%d"      "%d-%m-%Y"      "%d/%m/%Y"
+#> [5] "%d.%m.%Y"      "%d-%b-%Y"      "%d %B %Y"      "%Y-%m-%dT%H:%M:%S"
+```
+
+Pass an additional `formats =` vector to extend the list for a
+country whose data carries an unusual encoding (some MIS exports use
+`%d %m %Y` with a literal space, for example).
 
 ## Inferring variable types
 
 DHIS2 / Excel pipelines almost always leave numerics as character and
-factor-like columns as freeform strings. `auto_parse_types()` walks each
-column and converts it to the narrowest sensible type - preserving
-leading zeros on ID columns it recognises by name suffix.
+factor-like columns as freeform strings. The two helpers below recover
+the right types without losing the IDs that look numeric but aren't.
+
+### `auto_parse_types()` - one call, sensible types
+
+Walks each column and converts to the narrowest sensible type. It
+recognises ID-like columns by name suffix (`*_id`, `*_uid`, `*_code`,
+etc.) and keeps them as character so leading zeros survive.
 
 ```r
 df <- tibble::tibble(
-  id  = c("001", "002", "003"),
-  sex = c("M", "F", "F"),
-  age = c("1", "2", "3"),
-  dob = c("2001-05-10", "2003-02-14", "2005-09-30")
+  hf_uid    = c("001", "002", "003"),       # preserved as character
+  sex       = c("M", "F", "F"),             # detected as factor
+  age       = c("1", "2", "3"),             # parsed to integer
+  weight_kg = c("12.4", "15.0", "9.8"),     # parsed to double
+  dob       = c("2001-05-10", "2003-02-14", "2005-09-30"),  # to Date
+  notes     = c("ok", "review", NA_character_)  # stays character
 )
 
 auto_parse_types(df)
-#> # A tibble: 3 × 4
-#>   id    sex     age dob
-#>   <chr> <fct> <int> <date>
-#> 1 001   M         1 2001-05-10
-#> 2 002   F         2 2003-02-14
-#> 3 003   F         3 2005-09-30
+#> # A tibble: 3 × 6
+#>   hf_uid sex     age weight_kg dob        notes
+#>   <chr>  <fct> <int>     <dbl> <date>     <chr>
+#> 1 001    M         1      12.4 2001-05-10 ok
+#> 2 002    F         2      15   2003-02-14 review
+#> 3 003    F         3       9.8 2005-09-30 <NA>
 ```
 
-`detect_factors()` is the lower-level function that decides whether a
-character column should become a factor based on cardinality
-(`max_levels`).
+Control the factor-vs-character cut-off via `max_levels` (default 50):
+columns with more unique values than that stay character, so a
+`facility_name` column with 1700 distinct values doesn't get coerced
+to a 1700-level factor.
+
+### `detect_factors()` - the cardinality check, exposed
+
+`detect_factors()` is the lower-level helper that powers the factor
+decision in `auto_parse_types()`. Call it directly when you want to
+see what *would* be factorised before committing to the conversion:
+
+```r
+tibble::tibble(
+  adm  = c("A", "B", "A", "C", "B"),       # 3 levels - good factor candidate
+  code = c("01", "02", "03", "04", "05"),  # 5 unique - looks like an ID
+  note = letters[1:5]                       # 5 unique - just text
+) |>
+  detect_factors(max_levels = 4)
+#> # A tibble: 3 × 4
+#>   variable n_unique would_factor reason
+#>   <chr>       <int> <lgl>        <chr>
+#> 1 adm             3 TRUE         under max_levels
+#> 2 code            5 FALSE        looks like an ID column
+#> 3 note            5 FALSE        over max_levels
+```
+
+The `reason` column makes it easy to audit type decisions when a
+country submission looks suspicious.
 
 ## Harmonising admin names
 
