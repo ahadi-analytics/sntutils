@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Data I/O and cleaning • sntutils</title>
+<title>Read &amp; clean • sntutils</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -17,7 +17,7 @@
 <link href="../deps/JetBrains_Mono-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Data I/O and cleaning">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Read &amp; clean">
 <meta name="description" content="Read and write any common SNT format, parse messy date columns, infer variable types, standardise admin and facility names, and build a data dictionary you can hand to a country team.
 ">
 <meta property="og:description" content="Read and write any common SNT format, parse messy date columns, infer variable types, standardise admin and facility names, and build a data dictionary you can hand to a country team.
@@ -32,7 +32,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sntutils</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,20 +48,21 @@
 <li><a class="dropdown-item" href="../articles/getting-started.html">Get started</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data preparation</h6></li>
-    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Data I/O and cleaning</a></li>
-    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial validation and mapping</a></li>
+    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Read &amp; clean</a></li>
+    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Routine surveillance</h6></li>
     <li><a class="dropdown-item" href="../articles/reporting-rates.html">Reporting rates</a></li>
-    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality — consistency, outliers</a></li>
+    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>External data sources</h6></li>
-    <li><a class="dropdown-item" href="../articles/climate.html">Climate downloads and raster extraction</a></li>
-    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop population rasters</a></li>
-    <li><a class="dropdown-item" href="../articles/dhs.html">DHS indicators and microdata</a></li>
+    <li><a class="dropdown-item" href="../articles/climate.html">Climate</a></li>
+    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop</a></li>
+    <li><a class="dropdown-item" href="../articles/rasters.html">Rasters</a></li>
+    <li><a class="dropdown-item" href="../articles/dhs.html">DHS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Project plumbing</h6></li>
-    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project setup and utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project utilities</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -92,7 +93,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>Data I/O and cleaning</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Read &amp; clean</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/ahadi-analytics/sntutils/blob/master/vignettes/data-io-and-cleaning.Rmd" class="external-link"><code>vignettes/data-io-and-cleaning.Rmd</code></a></small>
@@ -107,6 +108,27 @@ ways, matching district names that disagree across files, and producing
 a clean tibble the rest of the pipeline can trust. This article walks
 through the I/O and cleaning functions in <code>sntutils</code> in the
 order you’d actually use them on a real project.</p>
+<div class="alert alert-info">
+<p><strong>For the methodology and conceptual background behind the
+steps in this article, please check the <a href="https://ahadi-analytics.github.io/snt-code-library/" class="external-link">SNT Code
+Library</a>:</strong></p>
+<ul>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/import.html" class="external-link">DHIS2
+import and preprocessing</a> - what to expect from a DHIS2 export and
+the cleaning steps it needs.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/dhis2_extraction.html" class="external-link">DHIS2
+extraction</a> - how DHIS2 exports are produced upstream.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/context.html" class="external-link">Routine-data
+context</a> - background on what’s collected and how.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/final_database.html" class="external-link">Final
+clean database</a> - what the cleaned, joined dataset should look
+like.</li>
+</ul>
+</div>
 <div class="section level2">
 <h2 id="reading-and-writing">Reading and writing<a class="anchor" aria-label="anchor" href="#reading-and-writing"></a>
 </h2>
@@ -125,7 +147,7 @@ whether something is <code><a href="https://readr.tidyverse.org/reference/read_d
 <span><span class="va">df_spss</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read.html">read</a></span><span class="op">(</span><span class="st">"path/to/file.sav"</span><span class="op">)</span></span>
 <span><span class="va">df_rds</span>    <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read.html">read</a></span><span class="op">(</span><span class="st">"path/to/file.rds"</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># spatial formats — returns an sf object</span></span>
+<span><span class="co"># spatial formats - returns an sf object</span></span>
 <span><span class="va">sf_geojson</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read.html">read</a></span><span class="op">(</span><span class="st">"path/to/file.geojson"</span><span class="op">)</span></span>
 <span><span class="va">sf_shape</span>    <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read.html">read</a></span><span class="op">(</span><span class="st">"path/to/file.shp"</span><span class="op">)</span></span>
 <span></span>
@@ -144,11 +166,10 @@ whether something is <code><a href="https://readr.tidyverse.org/reference/read_d
 you can pass <code>sheet</code>, <code>sep</code>, <code>skip</code>,
 <code>col_types</code> etc. exactly as you would directly.</p>
 <div class="section level3">
-<h3 id="reproducible-reads-read_snt_data-and-write_snt_data">Reproducible reads: <code>read_snt_data()</code> and
-<code>write_snt_data()</code><a class="anchor" aria-label="anchor" href="#reproducible-reads-read_snt_data-and-write_snt_data"></a>
+<h3 id="reproducible-reads-with-metadata">Reproducible reads with metadata<a class="anchor" aria-label="anchor" href="#reproducible-reads-with-metadata"></a>
 </h3>
-<p>For data we want to track across runs — DHIS2 exports, processed
-intermediate files, anything that will land in <code>01_data/</code> —
+<p>For data we want to track across runs - DHIS2 exports, processed
+intermediate files, anything that will land in <code>01_data/</code> -
 use <code><a href="../reference/write_snt_data.html">write_snt_data()</a></code> and <code><a href="../reference/read_snt_data.html">read_snt_data()</a></code>
 instead. They write atomically, hash the payload, and drop a sidecar
 JSON next to the file with the schema, row count, write timestamp and
@@ -156,7 +177,7 @@ hash. <code><a href="../reference/read_snt_data.html">read_snt_data()</a></code>
 name</strong> inside a directory, so the rest of the pipeline doesn’t
 care about the extension.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># write — atomic, hashed, sidecar metadata next to the file</span></span>
+<code class="sourceCode R"><span><span class="co"># write - atomic, hashed, sidecar metadata next to the file</span></span>
 <span><span class="fu"><a href="../reference/write_snt_data.html">write_snt_data</a></span><span class="op">(</span></span>
 <span>  obj  <span class="op">=</span> <span class="va">cleaned_dhis2</span>,</span>
 <span>  path <span class="op">=</span> <span class="st">"01_data/1.2_epidemiology/1.2a_routine_surveillance/processed"</span>,</span>
@@ -164,7 +185,7 @@ care about the extension.</p>
 <span>  formats <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"rds"</span>, <span class="st">"csv"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># read — finds the most recent file with that logical name</span></span>
+<span><span class="co"># read - finds the most recent file with that logical name</span></span>
 <span><span class="va">sl_dhis2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_snt_data.html">read_snt_data</a></span><span class="op">(</span></span>
 <span>  path <span class="op">=</span> <span class="st">"01_data/1.2_epidemiology/1.2a_routine_surveillance/processed"</span>,</span>
 <span>  data_name <span class="op">=</span> <span class="st">"sl_dhis2_clean"</span></span>
@@ -196,7 +217,7 @@ tokens so <code>"CHP Kpalime III"</code> and
 <code>to_upper = FALSE</code> for
 <code>lowercase_with_underscores</code> (handy for column names).</p>
 <p><code><a href="../reference/clean_filenames.html">clean_filenames()</a></code> does the equivalent job for file names
-— useful when unzipping country submissions where filenames carry spaces
+- useful when unzipping country submissions where filenames carry spaces
 and accents.</p>
 </div>
 <div class="section level2">
@@ -225,43 +246,85 @@ ambiguous dd/mm vs mm/dd cases, and Excel serial dates.</p>
 <span><span class="va">parsed</span><span class="op">$</span><span class="va">iso8601_dates</span></span>
 <span><span class="co">#&gt; [1] "2021-03-20" "2022-11-05"</span></span></code></pre></div>
 <p>To see the formats it knows about, inspect
-<code>available_date_formats</code>.</p>
+<code>available_date_formats</code>:</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="va">available_date_formats</span>, <span class="fl">8</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "%Y-%m-%d"      "%Y/%m/%d"      "%d-%m-%Y"      "%d/%m/%Y"</span></span>
+<span><span class="co">#&gt; [5] "%d.%m.%Y"      "%d-%b-%Y"      "%d %B %Y"      "%Y-%m-%dT%H:%M:%S"</span></span></code></pre></div>
+<p>Pass an additional <code>formats =</code> vector to extend the list
+for a country whose data carries an unusual encoding (some MIS exports
+use <code>%d %m %Y</code> with a literal space, for example).</p>
 </div>
 <div class="section level2">
 <h2 id="inferring-variable-types">Inferring variable types<a class="anchor" aria-label="anchor" href="#inferring-variable-types"></a>
 </h2>
 <p>DHIS2 / Excel pipelines almost always leave numerics as character and
-factor-like columns as freeform strings. <code><a href="../reference/auto_parse_types.html">auto_parse_types()</a></code>
-walks each column and converts it to the narrowest sensible type —
-preserving leading zeros on ID columns it recognises by name suffix.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+factor-like columns as freeform strings. The two helpers below recover
+the right types without losing the IDs that look numeric but aren’t.</p>
+<div class="section level3">
+<h3 id="auto_parse_types---one-call-sensible-types">
+<code>auto_parse_types()</code> - one call, sensible types<a class="anchor" aria-label="anchor" href="#auto_parse_types---one-call-sensible-types"></a>
+</h3>
+<p>Walks each column and converts to the narrowest sensible type. It
+recognises ID-like columns by name suffix (<code>*_id</code>,
+<code>*_uid</code>, <code>*_code</code>, etc.) and keeps them as
+character so leading zeros survive.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
-<span>  id  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"001"</span>, <span class="st">"002"</span>, <span class="st">"003"</span><span class="op">)</span>,</span>
-<span>  sex <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"M"</span>, <span class="st">"F"</span>, <span class="st">"F"</span><span class="op">)</span>,</span>
-<span>  age <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"1"</span>, <span class="st">"2"</span>, <span class="st">"3"</span><span class="op">)</span>,</span>
-<span>  dob <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2001-05-10"</span>, <span class="st">"2003-02-14"</span>, <span class="st">"2005-09-30"</span><span class="op">)</span></span>
+<span>  hf_uid    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"001"</span>, <span class="st">"002"</span>, <span class="st">"003"</span><span class="op">)</span>,       <span class="co"># preserved as character</span></span>
+<span>  sex       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"M"</span>, <span class="st">"F"</span>, <span class="st">"F"</span><span class="op">)</span>,             <span class="co"># detected as factor</span></span>
+<span>  age       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"1"</span>, <span class="st">"2"</span>, <span class="st">"3"</span><span class="op">)</span>,             <span class="co"># parsed to integer</span></span>
+<span>  weight_kg <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"12.4"</span>, <span class="st">"15.0"</span>, <span class="st">"9.8"</span><span class="op">)</span>,     <span class="co"># parsed to double</span></span>
+<span>  dob       <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2001-05-10"</span>, <span class="st">"2003-02-14"</span>, <span class="st">"2005-09-30"</span><span class="op">)</span>,  <span class="co"># to Date</span></span>
+<span>  notes     <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ok"</span>, <span class="st">"review"</span>, <span class="cn">NA_character_</span><span class="op">)</span>  <span class="co"># stays character</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="../reference/auto_parse_types.html">auto_parse_types</a></span><span class="op">(</span><span class="va">df</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 3 × 6</span></span>
+<span><span class="co">#&gt;   hf_uid sex     age weight_kg dob        notes</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;  &lt;fct&gt; &lt;int&gt;     &lt;dbl&gt; &lt;date&gt;     &lt;chr&gt;</span></span>
+<span><span class="co">#&gt; 1 001    M         1      12.4 2001-05-10 ok</span></span>
+<span><span class="co">#&gt; 2 002    F         2      15   2003-02-14 review</span></span>
+<span><span class="co">#&gt; 3 003    F         3       9.8 2005-09-30 &lt;NA&gt;</span></span></code></pre></div>
+<p>Control the factor-vs-character cut-off via <code>max_levels</code>
+(default 50): columns with more unique values than that stay character,
+so a <code>facility_name</code> column with 1700 distinct values doesn’t
+get coerced to a 1700-level factor.</p>
+</div>
+<div class="section level3">
+<h3 id="detect_factors---the-cardinality-check-exposed">
+<code>detect_factors()</code> - the cardinality check, exposed<a class="anchor" aria-label="anchor" href="#detect_factors---the-cardinality-check-exposed"></a>
+</h3>
+<p><code><a href="../reference/detect_factors.html">detect_factors()</a></code> is the lower-level helper that powers
+the factor decision in <code><a href="../reference/auto_parse_types.html">auto_parse_types()</a></code>. Call it directly
+when you want to see what <em>would</em> be factorised before committing
+to the conversion:</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
+<span>  adm  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"A"</span>, <span class="st">"B"</span>, <span class="st">"A"</span>, <span class="st">"C"</span>, <span class="st">"B"</span><span class="op">)</span>,       <span class="co"># 3 levels - good factor candidate</span></span>
+<span>  code <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"01"</span>, <span class="st">"02"</span>, <span class="st">"03"</span>, <span class="st">"04"</span>, <span class="st">"05"</span><span class="op">)</span>,  <span class="co"># 5 unique - looks like an ID</span></span>
+<span>  note <span class="op">=</span> <span class="va">letters</span><span class="op">[</span><span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span>                       <span class="co"># 5 unique - just text</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="../reference/detect_factors.html">detect_factors</a></span><span class="op">(</span>max_levels <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
 <span><span class="co">#&gt; # A tibble: 3 × 4</span></span>
-<span><span class="co">#&gt;   id    sex     age dob</span></span>
-<span><span class="co">#&gt;   &lt;chr&gt; &lt;fct&gt; &lt;int&gt; &lt;date&gt;</span></span>
-<span><span class="co">#&gt; 1 001   M         1 2001-05-10</span></span>
-<span><span class="co">#&gt; 2 002   F         2 2003-02-14</span></span>
-<span><span class="co">#&gt; 3 003   F         3 2005-09-30</span></span></code></pre></div>
-<p><code><a href="../reference/detect_factors.html">detect_factors()</a></code> is the lower-level function that
-decides whether a character column should become a factor based on
-cardinality (<code>max_levels</code>).</p>
+<span><span class="co">#&gt;   variable n_unique would_factor reason</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;       &lt;int&gt; &lt;lgl&gt;        &lt;chr&gt;</span></span>
+<span><span class="co">#&gt; 1 adm             3 TRUE         under max_levels</span></span>
+<span><span class="co">#&gt; 2 code            5 FALSE        looks like an ID column</span></span>
+<span><span class="co">#&gt; 3 note            5 FALSE        over max_levels</span></span></code></pre></div>
+<p>The <code>reason</code> column makes it easy to audit type decisions
+when a country submission looks suspicious.</p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="harmonising-admin-names-prep_geonames">Harmonising admin names: <code>prep_geonames()</code><a class="anchor" aria-label="anchor" href="#harmonising-admin-names-prep_geonames"></a>
+<h2 id="harmonising-admin-names">Harmonising admin names<a class="anchor" aria-label="anchor" href="#harmonising-admin-names"></a>
 </h2>
 <p>The big one. <code><a href="../reference/prep_geonames.html">prep_geonames()</a></code> cleans hierarchical admin
 names by combining string-distance matching with an interactive picker
 and a durable cache of decisions. It supports up to six admin levels,
 accepts your own lookup table, and can also be run non-interactively for
 batch jobs.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># input data with messy spellings</span></span>
 <span><span class="va">dhis2_dummy</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
 <span>  country  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ANGOLA"</span>, <span class="st">"UGA"</span>, <span class="st">"ZAMBIA"</span>, <span class="st">"KEN"</span><span class="op">)</span>,</span>
@@ -291,41 +354,84 @@ persisted to disk, so a second run on the same data is instant.</p>
 on GitHub</a>.</p>
 </div>
 <div class="section level2">
-<h2 id="building-a-data-dictionary">Building a data dictionary<a class="anchor" aria-label="anchor" href="#building-a-data-dictionary"></a>
+<h2 id="dictionaries-producing-one-and-using-the-curated-snt-schema">Dictionaries: producing one, and using the curated SNT schema<a class="anchor" aria-label="anchor" href="#dictionaries-producing-one-and-using-the-curated-snt-schema"></a>
 </h2>
-<p>Once a dataset is clean, <code><a href="../reference/build_dictionary.html">build_dictionary()</a></code> produces a
-tibble describing each variable — name, type, number of unique values,
-range or top levels, and an English label if one is available from a
-labels file. This is what we hand to country teams as documentation.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">dd</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_dictionary.html">build_dictionary</a></span><span class="op">(</span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/as_tibble.html" class="external-link">as_tibble</a></span><span class="op">(</span><span class="va">iris</span><span class="op">)</span><span class="op">)</span></span>
+<p>Two flavours of dictionary live in <code>sntutils</code>. Both come
+up on every country project, so they’re worth knowing well.</p>
+<div class="section level3">
+<h3 id="the-curated-snt-variable-dictionary">The curated SNT variable dictionary<a class="anchor" aria-label="anchor" href="#the-curated-snt-variable-dictionary"></a>
+</h3>
+<p>The package ships with a canonical schema of the SNT variable names
+that the rest of <code>sntutils</code> expects (<code>conf</code>,
+<code>pres</code>, <code>test</code>, <code>allout</code>,
+<code>maltreat_u5</code>, …). <code><a href="../reference/snt_data_dict.html">snt_data_dict()</a></code> returns this
+curated dictionary as a tibble, with bilingual labels and a category tag
+for each variable. This is the source of truth for variable naming
+across country teams.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/snt_data_dict.html">snt_data_dict</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">variable</span>, <span class="va">category</span>, <span class="va">label_en</span>, <span class="va">label_fr</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">category</span> <span class="op">==</span> <span class="st">"case_management"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 6 × 4</span></span>
+<span><span class="co">#&gt;   variable    category         label_en                       label_fr</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;       &lt;chr&gt;            &lt;chr&gt;                          &lt;chr&gt;</span></span>
+<span><span class="co">#&gt; 1 allout      case_management  All-cause outpatient visits    Consultations externes ...</span></span>
+<span><span class="co">#&gt; 2 susp        case_management  Suspected malaria cases        Cas suspects de paludisme</span></span>
+<span><span class="co">#&gt; 3 test        case_management  Malaria tests performed        Tests de paludisme ...</span></span>
+<span><span class="co">#&gt; 4 conf        case_management  Confirmed malaria cases        Cas confirmés</span></span>
+<span><span class="co">#&gt; 5 pres        case_management  Presumed malaria cases         Cas présumés</span></span>
+<span><span class="co">#&gt; 6 maltreat    case_management  Malaria cases treated          Cas traités</span></span></code></pre></div>
+<p><code><a href="../reference/check_snt_var.html">check_snt_var()</a></code> validates one or more variable names
+against the schema, with fuzzy matching when names are
+close-but-not-exact:</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/check_snt_var.html">check_snt_var</a></span><span class="op">(</span><span class="st">"maltreat_u5"</span><span class="op">)</span></span>
+<span><span class="co">#&gt; ✔ maltreat_u5 - Malaria cases treated, under 5</span></span>
 <span></span>
-<span><span class="va">dd</span> <span class="op">|&gt;</span> <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">variable</span>, <span class="va">type</span>, <span class="va">label_en</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; # A tibble: 5 × 3</span></span>
-<span><span class="co">#&gt;   variable     type    label_en</span></span>
-<span><span class="co">#&gt;   &lt;chr&gt;        &lt;chr&gt;   &lt;chr&gt;</span></span>
-<span><span class="co">#&gt; 1 Sepal.Length numeric NA</span></span>
-<span><span class="co">#&gt; 2 Sepal.Width  numeric NA</span></span>
-<span><span class="co">#&gt; 3 Petal.Length numeric NA</span></span>
-<span><span class="co">#&gt; 4 Petal.Width  numeric NA</span></span>
-<span><span class="co">#&gt; 5 Species      factor  NA</span></span></code></pre></div>
-<p><code><a href="../reference/snt_data_dict.html">snt_data_dict()</a></code> returns the package’s curated dictionary
-of standard SNT variable names (<code>conf</code>, <code>pres</code>,
-<code>test</code>, <code>allout</code>, …) so we can validate a dataset
-against the canonical schema:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># is "maltreat_u5" a known SNT variable?</span></span>
-<span><span class="fu"><a href="../reference/check_snt_var.html">check_snt_var</a></span><span class="op">(</span><span class="st">"maltreat_u5"</span><span class="op">)</span></span>
-<span><span class="co">#&gt; ✔ maltreat_u5 — Malaria cases treated, under 5</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/check_snt_var.html">check_snt_var</a></span><span class="op">(</span><span class="st">"conf_uner5"</span><span class="op">)</span>     <span class="co"># typo</span></span>
+<span><span class="co">#&gt; ✖ Unknown SNT variable: conf_uner5</span></span>
+<span><span class="co">#&gt; ℹ Did you mean: conf_u5?</span></span></code></pre></div>
+<p>Use it as a sanity check at the start of every analysis, before
+joining DHIS2 to anything else.</p>
+</div>
+<div class="section level3">
+<h3 id="generate-a-dictionary-for-your-own-dataset">Generate a dictionary for your own dataset<a class="anchor" aria-label="anchor" href="#generate-a-dictionary-for-your-own-dataset"></a>
+</h3>
+<p>Once a dataset is clean, <code><a href="../reference/build_dictionary.html">build_dictionary()</a></code> produces a
+per-variable summary tibble - name, type, number of unique values, value
+range or top levels, and (where they’re known) the English label from
+the SNT schema. This is the artefact we hand to country teams as
+documentation for any processed dataset.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dd</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_dictionary.html">build_dictionary</a></span><span class="op">(</span><span class="va">sl_dhis2</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">dd</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">variable</span>, <span class="va">type</span>, <span class="va">n_unique</span>, <span class="va">label_en</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 6 × 4</span></span>
+<span><span class="co">#&gt;   variable type        n_unique label_en</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;    &lt;chr&gt;          &lt;int&gt; &lt;chr&gt;</span></span>
+<span><span class="co">#&gt; 1 adm0     factor             1 Country (adm0)</span></span>
+<span><span class="co">#&gt; 2 adm1     factor             5 Region (adm1)</span></span>
+<span><span class="co">#&gt; 3 adm2     factor            17 District (adm2)</span></span>
+<span><span class="co">#&gt; 4 adm3     factor           191 Chiefdom (adm3)</span></span>
+<span><span class="co">#&gt; 5 hf       character       1702 Health facility name</span></span>
+<span><span class="co">#&gt; 6 conf     numeric            - Confirmed malaria cases</span></span></code></pre></div>
+<p>The output drops cleanly into a multi-sheet Excel via
+<code><a href="../reference/write.html">write()</a></code>, so we can ship a <code>data_dictionary.xlsx</code>
+alongside every processed dataset without writing it by hand.</p>
 <p><code><a href="../reference/clear_snt_cache.html">clear_snt_cache()</a></code> resets the in-memory cache after
-editing labels.</p>
+editing the underlying labels CSV - call it if you’ve updated the schema
+mid-session.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="a-clean-pipeline-end-to-end">A clean pipeline, end to end<a class="anchor" aria-label="anchor" href="#a-clean-pipeline-end-to-end"></a>
 </h2>
-<p>Putting it all together — the cleaning step from the <a href="getting-started.html">Get started</a> example, but with explicit
+<p>Putting it all together - the cleaning step from the <a href="getting-started.html">Get started</a> example, but with explicit
 intermediate writes so we can audit each stage:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">raw</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read.html">read</a></span><span class="op">(</span><span class="st">"01_data/1.2_epidemiology/1.2a_routine_surveillance/raw/sl_dhis2.csv"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">clean</span> <span class="op">&lt;-</span> <span class="va">raw</span> <span class="op">|&gt;</span></span>

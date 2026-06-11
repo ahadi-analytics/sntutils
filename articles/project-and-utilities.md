@@ -1,8 +1,8 @@
-# Project setup and utilities
+# Project utilities
 
 The other articles cover the headline analyses. This one rounds up the
-day-to-day plumbing — folder scaffolding, paths, translation, hashing,
-image compression, and the small numerical helpers — that make the rest
+day-to-day plumbing - folder scaffolding, paths, translation, hashing,
+image compression, and the small numerical helpers - that make the rest
 of `sntutils` feel coherent.
 
 ## Project structure
@@ -10,7 +10,7 @@ of `sntutils` feel coherent.
 AHADI projects follow a fixed top-level layout so that scripts written
 for one country drop straight into another. Two functions build it.
 
-### `create_data_structure()`
+### Just the data tree
 
 Creates only the data tree under `01_data/`. Each domain folder has
 `raw/` and `processed/` subfolders.
@@ -25,15 +25,25 @@ create_data_structure(base_path = ".")
     01_data/
     ├── 1.1_foundational/
     │   ├── 1.1a_admin_boundaries/
-    │   ├── 1.1b_health_facilities/
-    │   └── 1.1c_population/
-    │       ├── 1.1ci_national/
-    │       └── 1.1cii_worldpop_rasters/
+    │   ├── 1.1b_physical_features/
+    │   ├── 1.1c_health_facilities/
+    │   ├── 1.1d_community_health_workers/
+    │   ├── 1.1e_population/
+    │   │   ├── 1.1ei_national/
+    │   │   ├── 1.1eii_worldpop_rasters/
+    │   │   └── 1.1eiii_displaced_pop/
+    │   └── 1.1f_cache_files/
     ├── 1.2_epidemiology/
     │   ├── 1.2a_routine_surveillance/
     │   ├── 1.2b_pfpr_estimates/
     │   └── 1.2c_mortality_estimates/
     ├── 1.3_interventions/
+    │   ├── 1.3a_itns/
+    │   ├── 1.3b_iptp/
+    │   ├── 1.3c_smc/
+    │   ├── 1.3d_vap/
+    │   ├── 1.3e_anc/
+    │   └── 1.3f_irs/
     ├── 1.4_drug_efficacy_resistance/
     ├── 1.5_environment/
     │   ├── 1.5a_climate/
@@ -42,12 +52,17 @@ create_data_structure(base_path = ".")
     ├── 1.6_health_systems/
     │   └── 1.6a_dhs/
     ├── 1.7_entomology/
-    └── 1.8_commodities/
+    ├── 1.8_commodities/
+    ├── 1.9_finance/
+    └── 1.10_final/
 
-### `initialize_project_structure()`
+Every leaf folder (except `1.10_final/` and `1.1f_cache_files/`) gets
+its own `raw/` and `processed/` subfolders automatically.
+
+### Full project skeleton
 
 Same data tree plus the surrounding scaffolding for scripts, outputs and
-reports — use this on the first day of a new project.
+reports - use this on the first day of a new project.
 
 ``` r
 
@@ -55,14 +70,17 @@ initialize_project_structure(base_path = "my_snt_project")
 ```
 
     my_snt_project/
-    ├── 01_data/                  # hierarchical data tree from above
+    ├── 01_data/                       # full hierarchical data tree from above
     ├── 02_scripts/
     ├── 03_outputs/
-    │   └── plots/
+    │   ├── 3.1_validation/            (figures/ + tables/)
+    │   ├── 3.2_intermediate_products/ (figures/ + tables/)
+    │   ├── 3.3_final_snt_outputs/     (figures/ + tables/)
+    │   └── 3.4_model/                 (figures/ + tables/)
     ├── 04_reports/
-    └── metadata_docs/
+    └── 05_metadata_docs/
 
-## Resolving paths: `setup_project_paths()`
+## Resolving paths
 
 Once the folders exist,
 [`setup_project_paths()`](https://ahadi-analytics.github.io/sntutils/reference/setup_project_paths.md)
@@ -98,7 +116,7 @@ dhis2  <- read_snt_data(paths$dhis2, "sl_dhis2_clean")
 ```
 
 [`ahadi_path()`](https://ahadi-analytics.github.io/sntutils/reference/ahadi_path.md)
-is a related helper for navigating the AHADI shared OneDrive — it
+is a related helper for navigating the AHADI shared OneDrive - it
 locates a project by name across team members’ synced roots, useful for
 cross-machine reproducibility.
 
@@ -115,7 +133,7 @@ weekly basis. Every plot and label function in `sntutils` accepts a
 `target_language` argument, which routes through this small translation
 stack.
 
-### `translate_text()`
+### Translate a single string
 
 Calls Google Translate (via the `gtranslate` package) once per unique
 string and caches the response to a local JSON file. The next call for
@@ -134,11 +152,11 @@ translate_text("Malaria cases",
 #> [1] "Casos de malária"
 ```
 
-### `translate_text_vec()`
+### Translate a column
 
 Vectorised wrapper for
-[`translate_text()`](https://ahadi-analytics.github.io/sntutils/reference/translate_text.md)
-— translate a whole column in one call, with caching shared across the
+[`translate_text()`](https://ahadi-analytics.github.io/sntutils/reference/translate_text.md) -
+translate a whole column in one call, with caching shared across the
 batch.
 
 ``` r
@@ -157,7 +175,7 @@ df |>
 #> 3 Tests performed Pruebas realizadas
 ```
 
-### `translate_yearmon()`
+### Locale-aware month-year formatting
 
 Locale-aware month-year formatting for time-series axes.
 
@@ -172,14 +190,40 @@ translate_yearmon(dates, language = "es", format = "%B %Y")
 #> [1] "enero 2022" "febrero 2022" "marzo 2022"
 ```
 
-### `french_malaria_acronyms()`
+## French malaria acronyms
 
-Returns the curated list of malaria acronyms used to override Google
-Translate’s defaults for French (`TPI` instead of “PIT”, `MILDA` instead
-of “moustiquaire imprégnée à longue durée d’action”, etc.). Plot helpers
-consult this list automatically when `target_language = "fr"`.
+Google Translate consistently butchers technical malaria acronyms when
+asked to translate plot titles, labels and report text into French - it
+emits “PIT” instead of `TPI`, the literal phrase “moustiquaire imprégnée
+à longue durée d’action” instead of `MILDA`, and so on.
+[`french_malaria_acronyms()`](https://ahadi-analytics.github.io/sntutils/reference/french_malaria_acronyms.md)
+is the curated override list that every translation-aware function in
+`sntutils` consults to keep the French outputs publication-ready.
 
-## Image compression: `compress_png()`
+``` r
+
+french_malaria_acronyms() |> utils::head()
+#> # A tibble: 6 × 3
+#>   en       fr      definition_fr
+#>   <chr>    <chr>   <chr>
+#> 1 ITN      MILDA   Moustiquaire imprégnée à longue durée d'action
+#> 2 IRS      AID     Aspersion intra-domiciliaire
+#> 3 IPT      TPI     Traitement préventif intermittent
+#> 4 IPTp     TPIp    Traitement préventif intermittent pendant la grossesse
+#> 5 SMC      CPS     Chimioprévention du paludisme saisonnier
+#> 6 RDT      TDR     Test de diagnostic rapide
+```
+
+This list is consumed automatically inside
+[`translate_text()`](https://ahadi-analytics.github.io/sntutils/reference/translate_text.md),
+[`reporting_rate_plot()`](https://ahadi-analytics.github.io/sntutils/reference/reporting_rate_plot.md),
+[`consistency_check()`](https://ahadi-analytics.github.io/sntutils/reference/consistency_check.md),
+the faceted-map helpers and any other function with a `target_language`
+argument - we don’t need to call it directly, but it’s worth knowing it
+exists when a French translation looks off and we want to extend or
+override the mapping for a country team.
+
+## Image compression
 
 When SNT reports get assembled into PDFs or Word docs, embedded PNGs
 dominate the file size.
@@ -216,7 +260,7 @@ compress_png(
 )
 ```
 
-## Hashing: `vdigest()`
+## Hashing for stable IDs
 
 [`vdigest()`](https://ahadi-analytics.github.io/sntutils/reference/vdigest.md)
 is a vectorised version of
@@ -279,13 +323,85 @@ median2(c(1, 2, NA, 4, 5))
 #> [1] 3
 ```
 
-[`safe_sum()`](https://ahadi-analytics.github.io/sntutils/reference/safe_sum.md),
-[`fallback_row_sum()`](https://ahadi-analytics.github.io/sntutils/reference/fallback_row_sum.md)
-and
+## Defensive numerics: `safe_sum()`, `fallback_row_sum()`, `fallback_diff()`
+
+Routine surveillance data is full of partial rows, all-NA months, and
+columns that arrived as character because Excel snuck a comma in
+somewhere. Plain [`sum()`](https://rdrr.io/r/base/sum.html) and `-`
+either propagate `NA` everywhere or silently coerce. These three helpers
+solve the same problem at three different scales and are what
+[`correct_outliers()`](https://ahadi-analytics.github.io/sntutils/reference/correct_outliers.md),
+[`impute_outlier_ma()`](https://ahadi-analytics.github.io/sntutils/reference/impute_outlier_ma.md)
+and the cascade reconciliation paths call internally. They’re equally
+useful in your own scripts.
+
+### `safe_sum()` - sum a vector without surprises
+
+Returns `NA` only when every value is missing; otherwise sums the
+non-missing values and never silently coerces character input to zero.
+
+``` r
+
+safe_sum(c(1, 2, NA, 4))
+#> [1] 7
+
+safe_sum(c(NA, NA, NA))
+#> [1] NA            # NOT 0 - you wanted "everything missing", you got it
+```
+
+### `fallback_row_sum()` - sum a set of columns row-wise
+
+Sums any number of columns row-wise with an explicit `min_present`
+floor: a row needs at least that many non-missing columns or its total
+stays `NA` rather than masquerading as zero.
+
+``` r
+
+dplyr::tibble(
+  conf_u5  = c(10, NA, 0,  NA),
+  conf_5_14 = c( 5, 12, NA, NA),
+  conf_ov15 = c(20, 18, NA, NA)
+) |>
+  dplyr::mutate(
+    conf_total = fallback_row_sum(conf_u5, conf_5_14, conf_ov15,
+                                  min_present = 2)
+  )
+#> # A tibble: 4 × 4
+#>   conf_u5 conf_5_14 conf_ov15 conf_total
+#>     <dbl>     <dbl>     <dbl>      <dbl>
+#> 1      10         5        20         35
+#> 2      NA        12        18         30   # 2 of 3 present - OK
+#> 3       0        NA        NA         NA   # only 1 present - flagged
+#> 4      NA        NA        NA         NA
+```
+
+Use `.keep_zero_as_zero = FALSE` if you want a row of explicit zeros to
+also count as informative; the default treats `c(0, 0, 0)` as a valid
+zero total.
+
+### `fallback_diff()` - subtraction that won’t go negative
+
+`conf - maltreat` should be non-negative in a clean cascade. When it’s
+not, you want either `NA` (mark for review) or a clamped value.
 [`fallback_diff()`](https://ahadi-analytics.github.io/sntutils/reference/fallback_diff.md)
-are defensively-typed helpers that show up inside the imputation and
-outlier-correction paths. They tolerate all-NA rows, return zeros where
-appropriate, and stop you from accidentally summing characters.
+does the latter with a configurable floor.
+
+``` r
+
+fallback_diff(col1 = c(100, 80, 50), col2 = c(40, 100, NA))
+#> [1] 60  0 NA          # clamped at the `minimum = 0` floor
+
+# stricter: NA out any negative or invalid subtraction
+fallback_diff(c(100, 80, 50), c(40, 100, NA), minimum = NA)
+#> [1] 60 NA NA
+```
+
+The same function powers the cascade-reconciliation step in
+[`correct_outliers()`](https://ahadi-analytics.github.io/sntutils/reference/correct_outliers.md):
+when an outlier is replaced, the downstream cascade variable is
+recomputed via
+[`fallback_diff()`](https://ahadi-analytics.github.io/sntutils/reference/fallback_diff.md)
+so the resulting row stays internally consistent.
 
 ## Plot helpers
 
@@ -294,25 +410,25 @@ reuse them in custom one-off charts:
 
 - [`get_palette()`](https://ahadi-analytics.github.io/sntutils/reference/get_palette.md)
   /
-  [`list_palettes()`](https://ahadi-analytics.github.io/sntutils/reference/list_palettes.md)
-  — AHADI-branded discrete and gradient palettes (`ahadi_main`,
+  [`list_palettes()`](https://ahadi-analytics.github.io/sntutils/reference/list_palettes.md) -
+  AHADI-branded discrete and gradient palettes (`ahadi_main`,
   `ahadi_warm`, `ahadi_cool`, …).
-- [`auto_bin()`](https://ahadi-analytics.github.io/sntutils/reference/auto_bin.md)
-  — choose bin edges for an indicator using Fisher-Jenks or quantile
+- [`auto_bin()`](https://ahadi-analytics.github.io/sntutils/reference/auto_bin.md) -
+  choose bin edges for an indicator using Fisher-Jenks or quantile
   breaks, returning a labelled factor.
 - [`detect_factors()`](https://ahadi-analytics.github.io/sntutils/reference/detect_factors.md),
   [`detect_time_pattern()`](https://ahadi-analytics.github.io/sntutils/reference/detect_time_pattern.md),
   [`extract_time_components()`](https://ahadi-analytics.github.io/sntutils/reference/extract_time_components.md)
-  — utilities that power the auto-parsers but are exposed for ad-hoc
-  use.
+  - utilities that power the auto-parsers but are exposed for ad-hoc
+    use.
 - [`get_model()`](https://ahadi-analytics.github.io/sntutils/reference/get_model.md),
   [`generate_ir_plot()`](https://ahadi-analytics.github.io/sntutils/reference/generate_ir_plot.md),
-  [`run_resistance_trend()`](https://ahadi-analytics.github.io/sntutils/reference/run_resistance_trend.md)
-  — fit and render incidence-rate / resistance-trend plots used in
+  [`run_resistance_trend()`](https://ahadi-analytics.github.io/sntutils/reference/run_resistance_trend.md) -
+  fit and render incidence-rate / resistance-trend plots used in
   insecticide-resistance reports.
 - [`prepare_plot_data()`](https://ahadi-analytics.github.io/sntutils/reference/prepare_plot_data.md),
-  [`get_pathway_vars()`](https://ahadi-analytics.github.io/sntutils/reference/get_pathway_vars.md)
-  — internal data-shaping helpers that show up in custom reporting
+  [`get_pathway_vars()`](https://ahadi-analytics.github.io/sntutils/reference/get_pathway_vars.md) -
+  internal data-shaping helpers that show up in custom reporting
   pipelines.
 
 ## Putting it together

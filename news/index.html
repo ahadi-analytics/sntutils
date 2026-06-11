@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sntutils</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -21,20 +21,21 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Get started</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data preparation</h6></li>
-    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Data I/O and cleaning</a></li>
-    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial validation and mapping</a></li>
+    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Read &amp; clean</a></li>
+    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Routine surveillance</h6></li>
     <li><a class="dropdown-item" href="../articles/reporting-rates.html">Reporting rates</a></li>
-    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality — consistency, outliers</a></li>
+    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>External data sources</h6></li>
-    <li><a class="dropdown-item" href="../articles/climate.html">Climate downloads and raster extraction</a></li>
-    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop population rasters</a></li>
-    <li><a class="dropdown-item" href="../articles/dhs.html">DHS indicators and microdata</a></li>
+    <li><a class="dropdown-item" href="../articles/climate.html">Climate</a></li>
+    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop</a></li>
+    <li><a class="dropdown-item" href="../articles/rasters.html">Rasters</a></li>
+    <li><a class="dropdown-item" href="../articles/dhs.html">DHS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Project plumbing</h6></li>
-    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project setup and utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project utilities</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="active nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -59,16 +60,16 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="1.13.0" id="sntutils-1130-2026-06-11">sntutils 1.13.0 (2026-06-11)<a class="anchor" aria-label="anchor" href="#sntutils-1130-2026-06-11"></a></h2>
+<h2 class="pkg-version" data-toc-text="2.0.0" id="sntutils-200-2026-06-11">sntutils 2.0.0 (2026-06-11)<a class="anchor" aria-label="anchor" href="#sntutils-200-2026-06-11"></a></h2>
 <div class="section level3">
-<h3 id="documentation-1-13-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-1-13-0"></a></h3>
+<h3 id="documentation-2-0-0">Documentation<a class="anchor" aria-label="anchor" href="#documentation-2-0-0"></a></h3>
 <ul><li>New <code>pkgdown</code> site with workflow vignettes covering data cleaning, spatial preparation, climate downloads and raster processing. README rewritten to point at the site.</li>
 <li>New hex sticker logo at <code>man/figures/logo.png</code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="new-features-1-13-0">New features<a class="anchor" aria-label="anchor" href="#new-features-1-13-0"></a></h3>
+<h3 id="new-features-2-0-0">New features<a class="anchor" aria-label="anchor" href="#new-features-2-0-0"></a></h3>
 <div class="section level4">
-<h4 id="climate-and-earth-observation-downloads-1-13-0">Climate and earth-observation downloads<a class="anchor" aria-label="anchor" href="#climate-and-earth-observation-downloads-1-13-0"></a></h4>
+<h4 id="climate-and-earth-observation-downloads-2-0-0">Climate and earth-observation downloads<a class="anchor" aria-label="anchor" href="#climate-and-earth-observation-downloads-2-0-0"></a></h4>
 <ul><li>
 <code>download_nasapower()</code> pulls NASA POWER climate variables (temperature, precipitation, humidity, wind, radiation) plus dewpoint, elevation and 11 more added in this release. Samples multiple points per polygon (default 3) for better representativeness.</li>
 <li>
@@ -83,7 +84,7 @@
 <code><a href="../reference/download_worldpop.html">download_worldpop()</a></code> now uses the <code>t</code> (total) variant by default and exposes a <code>GLOBAL</code> mosaic option.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="raster-processing-1-13-0">Raster processing<a class="anchor" aria-label="anchor" href="#raster-processing-1-13-0"></a></h4>
+<h4 id="raster-processing-2-0-0">Raster processing<a class="anchor" aria-label="anchor" href="#raster-processing-2-0-0"></a></h4>
 <ul><li>
 <code><a href="../reference/process_rasters_by_year.html">process_rasters_by_year()</a></code> wraps <code><a href="../reference/process_raster_collection.html">process_raster_collection()</a></code> for pipelines where the admin boundary changes year over year.</li>
 <li>
@@ -92,7 +93,7 @@
 <li>Compact <code>YYYYMM</code> date pattern now supported by <code>process_rasters()</code> helpers alongside <code>YYYY</code> and <code>YYYY-MM</code>.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="mapping-and-visualization-1-13-0">Mapping and visualization<a class="anchor" aria-label="anchor" href="#mapping-and-visualization-1-13-0"></a></h4>
+<h4 id="mapping-and-visualization-2-0-0">Mapping and visualization<a class="anchor" aria-label="anchor" href="#mapping-and-visualization-2-0-0"></a></h4>
 <ul><li>
 <code><a href="../reference/facetted_map_bins.html">facetted_map_bins()</a></code> and <code><a href="../reference/facetted_map_gradient.html">facetted_map_gradient()</a></code> draw faceted choropleths for discrete and continuous data. Both support <code>caption</code>, fixed colour-scale <code>limits</code> and configurable text sizes.</li>
 <li>Insecticide-resistance trend plotting functions added, with built-in PNG compression.</li>
@@ -100,20 +101,20 @@
 <code><a href="../reference/auto_bin.html">auto_bin()</a></code> rewritten with robust outlier handling and adaptive labels; companion colour palette utilities added.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="emod-pipeline-1-13-0">EMOD pipeline<a class="anchor" aria-label="anchor" href="#emod-pipeline-1-13-0"></a></h4>
+<h4 id="emod-pipeline-2-0-0">EMOD pipeline<a class="anchor" aria-label="anchor" href="#emod-pipeline-2-0-0"></a></h4>
 <ul><li>
 <code>write_emod_demog()</code> writes EMOD demographics JSON with correct nested <code>AgeDistribution</code> arrays.</li>
 <li>
 <code><a href="../reference/read_emod_weather.html">read_emod_weather()</a></code> and <code><a href="../reference/write_emod_weather_by_adm2.html">write_emod_weather_by_adm2()</a></code> added, with a <code>folder_case</code> parameter and correct filename handling when <code>climate_profile</code> is empty.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="reporting-and-data-quality-1-13-0">Reporting and data quality<a class="anchor" aria-label="anchor" href="#reporting-and-data-quality-1-13-0"></a></h4>
+<h4 id="reporting-and-data-quality-2-0-0">Reporting and data quality<a class="anchor" aria-label="anchor" href="#reporting-and-data-quality-2-0-0"></a></h4>
 <ul><li>New reporting-rate functions computed directly from date columns.</li>
 <li>Reporting-rate plots and outlier detection extended with more diagnostics and standardized plot filenames for OneDrive sync.</li>
 <li>Outlier correction and cascade logic refined.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="spatial-validation-1-13-0">Spatial validation<a class="anchor" aria-label="anchor" href="#spatial-validation-1-13-0"></a></h4>
+<h4 id="spatial-validation-2-0-0">Spatial validation<a class="anchor" aria-label="anchor" href="#spatial-validation-2-0-0"></a></h4>
 <ul><li>
 <code><a href="../reference/validate_process_spatial.html">validate_process_spatial()</a></code> runs a multi-stage boundary-artifact cleaning pass (<code>make_valid</code>, s2 toggling, zero-width buffer, hole removal) so aggregated geometries are always valid and render cleanly without double lines or polygon overlap.</li>
 <li>
@@ -122,18 +123,18 @@
 <code><a href="../reference/crosswalk_shapefiles_sf.html">crosswalk_shapefiles_sf()</a></code> exported and now works at adm1 without requiring an <code>adm2</code> column.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="dictionary-and-variable-tree-1-13-0">Dictionary and variable tree<a class="anchor" aria-label="anchor" href="#dictionary-and-variable-tree-1-13-0"></a></h4>
+<h4 id="dictionary-and-variable-tree-2-0-0">Dictionary and variable tree<a class="anchor" aria-label="anchor" href="#dictionary-and-variable-tree-2-0-0"></a></h4>
 <ul><li>
 <code>var_tree.yml</code> extended with ACT, IRS, ANC, EPI, SMC, IPTp4+, ITN, N5 cascade, care-seeking adjustment factors, severe anemia, household size, vaccine, health-facility variables, trained-provider care-seeking, and rate/incidence/coverage indicators.</li>
 </ul></div>
 <div class="section level4">
-<h4 id="file-handling-1-13-0">File handling<a class="anchor" aria-label="anchor" href="#file-handling-1-13-0"></a></h4>
+<h4 id="file-handling-2-0-0">File handling<a class="anchor" aria-label="anchor" href="#file-handling-2-0-0"></a></h4>
 <ul><li>
 <code><a href="../reference/clean_filenames.html">clean_filenames()</a></code> refactored as a pure string operation with an explicit path-mapping helper.</li>
 </ul></div>
 </div>
 <div class="section level3">
-<h3 id="bug-fixes-1-13-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-1-13-0"></a></h3>
+<h3 id="bug-fixes-2-0-0">Bug fixes<a class="anchor" aria-label="anchor" href="#bug-fixes-2-0-0"></a></h3>
 <ul><li>
 <code><a href="../reference/crosswalk_shapefiles_sf.html">crosswalk_shapefiles_sf()</a></code> no longer requires an <code>adm2</code> column when matching at adm1.</li>
 <li>
@@ -150,12 +151,12 @@
 <li>Two pre-existing test flakes fixed.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="breaking-changes-1-13-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-1-13-0"></a></h3>
+<h3 id="breaking-changes-2-0-0">Breaking changes<a class="anchor" aria-label="anchor" href="#breaking-changes-2-0-0"></a></h3>
 <ul><li>
 <code>download_appeears()</code> and its documentation removed in favour of <code><a href="../reference/download_modis.html">download_modis()</a></code>. Migrate by replacing calls with <code><a href="../reference/download_modis.html">download_modis()</a></code> and pulling product/band names from <code><a href="../reference/modis_options.html">modis_options()</a></code>.</li>
 </ul></div>
 <div class="section level3">
-<h3 id="internals-1-13-0">Internals<a class="anchor" aria-label="anchor" href="#internals-1-13-0"></a></h3>
+<h3 id="internals-2-0-0">Internals<a class="anchor" aria-label="anchor" href="#internals-2-0-0"></a></h3>
 <ul><li>Atomic write path hardened on Windows: retrying <code><a href="https://fs.r-lib.org/reference/file_move.html" class="external-link">fs::file_move</a></code>, resilience to path and lock failures, tests skipped on Windows where reliable behaviour can’t be guaranteed.</li>
 <li>CI workflows slimmed down — live integrations gated, oldrel-1 dropped now that <code>ggrepel</code> requires R &gt;= 4.5.0; Windows dependency install step added.</li>
 <li>System-dependency install script for macOS, Ubuntu and Fedora.</li>

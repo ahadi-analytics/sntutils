@@ -3,7 +3,7 @@
 `sntutils` is an R package developed by
 [AHADI](https://appliedhealthanalytics.org) to support the **Subnational
 Tailoring (SNT)** of malaria interventions. It bundles the small,
-repeated operations every SNT support analysis does — reading DHIS2
+repeated operations every SNT support analysis does - reading DHIS2
 exports, harmonising admin names across shapefile vintages, validating
 facility coordinates, calculating reporting rates, extracting climate
 and population rasters to admin units, and rendering
@@ -70,7 +70,7 @@ walks through the same example end-to-end with plotted output.
 The package exports ~100 functions, grouped by workflow stage. Each row
 links to the article that covers that group in depth.
 
-### [Data I/O and cleaning →](https://ahadi-analytics.github.io/sntutils/articles/data-io-and-cleaning.html)
+### [Read & clean →](https://ahadi-analytics.github.io/sntutils/articles/data-io-and-cleaning.html)
 
 Read and write any common SNT format, parse messy dates, infer column
 types, standardise admin and facility names, build data dictionaries.
@@ -85,7 +85,7 @@ types, standardise admin and facility names, build data dictionaries.
 | [`prep_geonames()`](https://ahadi-analytics.github.io/sntutils/reference/prep_geonames.md) | Interactive admin-name harmonisation with caching |
 | [`build_dictionary()`](https://ahadi-analytics.github.io/sntutils/reference/build_dictionary.md), [`snt_data_dict()`](https://ahadi-analytics.github.io/sntutils/reference/snt_data_dict.md), [`check_snt_var()`](https://ahadi-analytics.github.io/sntutils/reference/check_snt_var.md) | Variable dictionaries |
 
-### [Spatial validation and mapping →](https://ahadi-analytics.github.io/sntutils/articles/spatial.html)
+### [Spatial →](https://ahadi-analytics.github.io/sntutils/articles/spatial.html)
 
 Validate admin geometries and facility coordinates, crosswalk between
 shapefile vintages, fuzzy-match facilities, render maps.
@@ -114,7 +114,7 @@ Measure how completely facilities are reporting, by time and admin unit.
 | [`compare_methods_plot()`](https://ahadi-analytics.github.io/sntutils/reference/compare_methods_plot.md) | Compare two reporting-rule choices side by side |
 | [`validate_routine_hf_data()`](https://ahadi-analytics.github.io/sntutils/reference/validate_routine_hf_data.md) | Structural checks before any of the above |
 
-### [Data quality — consistency, outliers →](https://ahadi-analytics.github.io/sntutils/articles/data-quality.html)
+### [Data quality →](https://ahadi-analytics.github.io/sntutils/articles/data-quality.html)
 
 Cascade consistency, outlier detection (3 methods), correction and
 imputation.
@@ -126,10 +126,9 @@ imputation.
 | [`correct_outliers()`](https://ahadi-analytics.github.io/sntutils/reference/correct_outliers.md), [`impute_outlier_ma()`](https://ahadi-analytics.github.io/sntutils/reference/impute_outlier_ma.md), [`impute_higher_admin()`](https://ahadi-analytics.github.io/sntutils/reference/impute_higher_admin.md) | Replace flagged values |
 | [`fallback_diff()`](https://ahadi-analytics.github.io/sntutils/reference/fallback_diff.md), [`fallback_row_sum()`](https://ahadi-analytics.github.io/sntutils/reference/fallback_row_sum.md), [`safe_sum()`](https://ahadi-analytics.github.io/sntutils/reference/safe_sum.md) | Defensive numerical helpers |
 
-### [Climate downloads and raster extraction →](https://ahadi-analytics.github.io/sntutils/articles/climate.html)
+### [Climate →](https://ahadi-analytics.github.io/sntutils/articles/climate.html)
 
-CHIRPS, ERA5, MODIS, NASA POWER, IHME — plus the batch raster processors
-that bring them to admin units.
+CHIRPS, ERA5, MODIS, NASA POWER download wrappers.
 
 | Function | What it does |
 |----|----|
@@ -137,12 +136,8 @@ that bring them to admin units.
 | [`download_era5()`](https://ahadi-analytics.github.io/sntutils/reference/download_era5.md), [`check_era5_available()`](https://ahadi-analytics.github.io/sntutils/reference/check_era5_available.md), [`era5_options()`](https://ahadi-analytics.github.io/sntutils/reference/era5_options.md), [`read_era5()`](https://ahadi-analytics.github.io/sntutils/reference/read_era5.md), [`get_era5_metadata()`](https://ahadi-analytics.github.io/sntutils/reference/get_era5_metadata.md), [`print_era5_metadata()`](https://ahadi-analytics.github.io/sntutils/reference/print_era5_metadata.md), [`migrate_era5_filenames()`](https://ahadi-analytics.github.io/sntutils/reference/migrate_era5_filenames.md) | ERA5 reanalysis |
 | [`download_modis()`](https://ahadi-analytics.github.io/sntutils/reference/download_modis.md), [`modis_options()`](https://ahadi-analytics.github.io/sntutils/reference/modis_options.md) | MODIS land-surface variables |
 | [`download_process_nasapower()`](https://ahadi-analytics.github.io/sntutils/reference/download_process_nasapower.md) | NASA POWER agro-climate at points |
-| [`process_ihme_u5m_raster()`](https://ahadi-analytics.github.io/sntutils/reference/process_ihme_u5m_raster.md) | IHME under-5 mortality rasters → admin tibble |
-| [`process_raster_collection()`](https://ahadi-analytics.github.io/sntutils/reference/process_raster_collection.md), [`process_raster_with_boundaries()`](https://ahadi-analytics.github.io/sntutils/reference/process_raster_with_boundaries.md), [`process_rasters_by_year()`](https://ahadi-analytics.github.io/sntutils/reference/process_rasters_by_year.md) | Batch zonal stats |
-| [`process_weighted_raster_collection()`](https://ahadi-analytics.github.io/sntutils/reference/process_weighted_raster_collection.md), [`process_weighted_raster_stacks()`](https://ahadi-analytics.github.io/sntutils/reference/process_weighted_raster_stacks.md), [`normalize_raster_by_polygon()`](https://ahadi-analytics.github.io/sntutils/reference/normalize_raster_by_polygon.md) | Population-weighted extraction |
-| [`tidy_malaria_raster_names()`](https://ahadi-analytics.github.io/sntutils/reference/tidy_malaria_raster_names.md), [`detect_time_pattern()`](https://ahadi-analytics.github.io/sntutils/reference/detect_time_pattern.md), [`extract_time_components()`](https://ahadi-analytics.github.io/sntutils/reference/extract_time_components.md) | Raster-naming utilities |
 
-### [WorldPop population rasters →](https://ahadi-analytics.github.io/sntutils/articles/worldpop.html)
+### [WorldPop →](https://ahadi-analytics.github.io/sntutils/articles/worldpop.html)
 
 WorldPop downloads (totals, age bands, urbanicity, global mosaic),
 extrapolation and SNT-shape reshape.
@@ -156,7 +151,19 @@ extrapolation and SNT-shape reshape.
 | [`extrapolate_pop()`](https://ahadi-analytics.github.io/sntutils/reference/extrapolate_pop.md) | Fill years between or beyond observed years |
 | [`snt_process_population()`](https://ahadi-analytics.github.io/sntutils/reference/snt_process_population.md) | Reshape into canonical SNT long format |
 
-### [DHS indicators and microdata →](https://ahadi-analytics.github.io/sntutils/articles/dhs.html)
+### [Rasters →](https://ahadi-analytics.github.io/sntutils/articles/rasters.html)
+
+Batch raster processors that turn any raster archive (climate,
+population, MAP, IHME) into admin-keyed tibbles.
+
+| Function | What it does |
+|----|----|
+| [`process_raster_collection()`](https://ahadi-analytics.github.io/sntutils/reference/process_raster_collection.md), [`process_raster_with_boundaries()`](https://ahadi-analytics.github.io/sntutils/reference/process_raster_with_boundaries.md), [`process_rasters_by_year()`](https://ahadi-analytics.github.io/sntutils/reference/process_rasters_by_year.md) | Batch zonal stats; time-varying boundaries |
+| [`process_weighted_raster_collection()`](https://ahadi-analytics.github.io/sntutils/reference/process_weighted_raster_collection.md), [`process_weighted_raster_stacks()`](https://ahadi-analytics.github.io/sntutils/reference/process_weighted_raster_stacks.md), [`normalize_raster_by_polygon()`](https://ahadi-analytics.github.io/sntutils/reference/normalize_raster_by_polygon.md) | Population-weighted extraction |
+| [`process_ihme_u5m_raster()`](https://ahadi-analytics.github.io/sntutils/reference/process_ihme_u5m_raster.md) | IHME under-5 mortality rasters to admin tibble |
+| [`tidy_malaria_raster_names()`](https://ahadi-analytics.github.io/sntutils/reference/tidy_malaria_raster_names.md), [`detect_time_pattern()`](https://ahadi-analytics.github.io/sntutils/reference/detect_time_pattern.md), [`extract_time_components()`](https://ahadi-analytics.github.io/sntutils/reference/extract_time_components.md), [`clean_filenames()`](https://ahadi-analytics.github.io/sntutils/reference/clean_filenames.md) | Raster-naming utilities |
+
+### [DHS →](https://ahadi-analytics.github.io/sntutils/articles/dhs.html)
 
 Discover, download and query DHS / MIS indicators via the API; open DHS
 parquet microdata via DuckDB.
@@ -167,7 +174,7 @@ parquet microdata via DuckDB.
 | [`download_dhs_indicators()`](https://ahadi-analytics.github.io/sntutils/reference/download_dhs_indicators.md) | National / subnational indicator values |
 | [`get_dhs_data()`](https://ahadi-analytics.github.io/sntutils/reference/get_dhs_data.md) | Register DHS parquet datasets as DuckDB views |
 
-### [Project setup and utilities →](https://ahadi-analytics.github.io/sntutils/articles/project-and-utilities.html)
+### [Project utilities →](https://ahadi-analytics.github.io/sntutils/articles/project-and-utilities.html)
 
 Folder scaffolding, paths, translation, hashing, image compression,
 small numeric helpers.

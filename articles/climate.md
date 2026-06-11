@@ -1,4 +1,4 @@
-# Climate downloads and raster extraction
+# Climate
 
 Every SNT study eventually needs climate covariates joined to admin
 units. `sntutils` exposes a small, consistent API over the messy world
@@ -15,7 +15,18 @@ everything to admin polygons.
 For population rasters (WorldPop), see the [WorldPop
 article](https://ahadi-analytics.github.io/sntutils/articles/worldpop.md).
 
-## CHIRPS — rainfall
+**For the methodology and conceptual background behind the steps in this
+article, please check the [SNT Code
+Library](https://ahadi-analytics.github.io/snt-code-library/):**
+
+- [Climate and environmental
+  data](https://ahadi-analytics.github.io/snt-code-library/english/library/data/climate.html) -
+  sources, resolutions, and how climate covariates feed stratification.
+- [Extracting climate from
+  rasters](https://ahadi-analytics.github.io/snt-code-library/english/library/data/climate/extract_raster_climate.html) -
+  the analytical step-by-step.
+
+## CHIRPS - rainfall
 
 CHIRPS is the workhorse rainfall product for African SNT analyses. The
 package supports the four standard CHIRPS monthly subsets.
@@ -48,12 +59,12 @@ download_chirps(
 ```
 
 [`download_chirps()`](https://ahadi-analytics.github.io/sntutils/reference/download_chirps.md)
-is resumable — it never re-downloads a file that is already present and
+is resumable - it never re-downloads a file that is already present and
 the right size. The result is a directory of `.tif`s named
 e.g. `chirps-v2.0.2022.01.tif`, ready for the raster batch processors
 below.
 
-## ERA5 — reanalysis
+## ERA5 - reanalysis
 
 ERA5 (ECMWF reanalysis) gives temperature, dewpoint, wind, surface
 pressure, and many other variables at hourly and daily resolution. The
@@ -62,7 +73,7 @@ download path goes through the Copernicus Climate Data Store and needs a
 
 ``` r
 
-# set CDS API key once — see https://cds.climate.copernicus.eu
+# set CDS API key once - see https://cds.climate.copernicus.eu
 Sys.setenv(CDS_USER = "<uid>", CDS_KEY = "<key>")
 
 # list known datasets and their variable catalogues
@@ -95,14 +106,14 @@ download_era5(
 and
 [`print_era5_metadata()`](https://ahadi-analytics.github.io/sntutils/reference/print_era5_metadata.md)
 extract the embedded metadata from any ERA5 NetCDF without loading the
-data into memory — useful for auditing what’s in the cache.
+data into memory - useful for auditing what’s in the cache.
 [`read_era5()`](https://ahadi-analytics.github.io/sntutils/reference/read_era5.md)
 opens NetCDF files with sensible defaults (CRS, dimension renaming, unit
 conversion).
 [`migrate_era5_filenames()`](https://ahadi-analytics.github.io/sntutils/reference/migrate_era5_filenames.md)
 renames older ERA5 caches to the current naming convention.
 
-## MODIS — land surface
+## MODIS - land surface
 
 MODIS provides EVI, NDVI, surface temperature, fire and land-cover
 layers. The
@@ -131,7 +142,7 @@ download_modis(
 The output is a tidy set of GeoTIFFs with date-suffixed filenames, ready
 for the raster processors.
 
-## NASA POWER — point time series
+## NASA POWER - point time series
 
 For agro-climate variables (rainfall, irradiance, humidity, wind speed,
 several temperature flavours) at point locations,
@@ -163,104 +174,120 @@ dplyr::glimpse(power_df)
 #> $ T2M       <dbl> 25.4, 25.9, 26.1, ...
 ```
 
-## IHME under-5 mortality rasters
+## Extracting to admin units
 
-For child-mortality rasters from IHME’s Global Burden of Disease
-modelling output,
+The download functions deposit `.tif`s on disk. To turn those into a
+tidy tibble keyed by admin and date, use the [batch raster
+processors](https://ahadi-analytics.github.io/sntutils/articles/rasters.md) -
+[`process_raster_collection()`](https://ahadi-analytics.github.io/sntutils/reference/process_raster_collection.md)
+for plain zonal stats,
+[`process_weighted_raster_collection()`](https://ahadi-analytics.github.io/sntutils/reference/process_weighted_raster_collection.md)
+for population-weighted extraction,
+[`process_rasters_by_year()`](https://ahadi-analytics.github.io/sntutils/reference/process_rasters_by_year.md)
+when boundaries change between vintages, and
 [`process_ihme_u5m_raster()`](https://ahadi-analytics.github.io/sntutils/reference/process_ihme_u5m_raster.md)
-turns a directory of GeoTIFFs into admin-level tibbles in one call:
+for IHME under-5 mortality rasters. The Rasters article walks through
+each in detail.
 
-``` r
+## Mapping small-area climate estimates
 
-u5m_adm2 <- process_ihme_u5m_raster(
-  directory = "01_data/1.2_epidemiology/1.2c_mortality_estimates/raw/ihme_u5m",
-  shapefile = sle_adm2_clean,
-  id_cols   = c("adm0_name", "adm1_name", "adm2_name")
-)
-```
-
-## Aggregating rasters to admin units
-
-The download functions deposit rasters on disk. To get a tibble of
-indicators-by-admin-by-time, we use the **raster batch processors**.
-
-### `process_raster_collection()` — basic zonal stats
-
-The default for CHIRPS / ERA5-monthly / MODIS-monthly:
-
-``` r
-
-adm3_shp <- sf::st_read(system.file(
-  "extdata", "sle_adm3_example.geojson", package = "sntutils"
-))
-
-raster_dir <- system.file("extdata", "chirps_test_rasters",
-                          package = "sntutils")
-
-rainfall_df <- process_raster_collection(
-  directory    = raster_dir,
-  shapefile    = adm3_shp,
-  id_cols      = c("adm0", "adm1", "adm2", "adm3"),
-  aggregations = c("mean"),
-  pattern      = "\\.tif$"
-)
-
-rainfall_df |> utils::head()
-#>                                file_name    adm1     adm2          adm3 year month      mean
-#> 1   africa_monthly_chirps-v2.0.2020.01.tif EASTERN KAILAHUN          DEA 2020     1 12.871692
-#> 2   africa_monthly_chirps-v2.0.2020.01.tif EASTERN KAILAHUN         JAHN 2020     1  9.820749
-#> 3   africa_monthly_chirps-v2.0.2020.01.tif EASTERN KAILAHUN        JAWIE 2020     1 12.042542
-#> 4   africa_monthly_chirps-v2.0.2020.01.tif EASTERN KAILAHUN   KISSI KAMA 2020     1  8.951293
-#> 5   africa_monthly_chirps-v2.0.2020.01.tif EASTERN KAILAHUN   KISSI TENG 2020     1  8.494733
-```
-
-Dates are detected automatically from the filename. Pass
-`aggregations = c("mean", "sum", "median", "max")` to get several stats
-in one pass.
-
-### `process_raster_with_boundaries()` — single raster, multiple boundaries
-
-Use this when the same raster needs to be extracted to several
-shapefiles (adm1, adm2, adm3 simultaneously), or with different ID
-column sets.
-
-### `process_rasters_by_year()` — time-varying boundaries
-
-When the boundaries themselves change over time (post-redistricting),
-this wrapper aligns each raster’s year to the appropriate shapefile
-vintage.
-
-### `process_weighted_raster_collection()` / `process_weighted_raster_stacks()` — population-weighted
-
-For variables that need population weighting (e.g. mean temperature
-weighted by population so we report an “experienced” value rather than
-an areal average), point these at a population raster of the same
-extent. Weights are applied per pixel during extraction.
-
-``` r
-
-process_weighted_raster_collection(
-  directory      = "01_data/1.5_environment/1.5a_climate/raw/chirps",
-  shapefile      = sle_adm2_clean,
-  weight_raster  = "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters/sle_ppp_2020_1km.tif",
-  id_cols        = c("adm0_name", "adm1_name", "adm2_name"),
-  aggregations   = c("mean", "sum")
-)
-```
-
-[`normalize_raster_by_polygon()`](https://ahadi-analytics.github.io/sntutils/reference/normalize_raster_by_polygon.md)
-is the building block — it normalises a raster’s values so they sum to 1
-within each polygon, which is how the weighted extractors keep totals
-consistent.
-
-[`tidy_malaria_raster_names()`](https://ahadi-analytics.github.io/sntutils/reference/tidy_malaria_raster_names.md)
-batch-renames a directory of MAP / IHME rasters to the SNT convention;
-[`clean_filenames()`](https://ahadi-analytics.github.io/sntutils/reference/clean_filenames.md),
-[`detect_time_pattern()`](https://ahadi-analytics.github.io/sntutils/reference/detect_time_pattern.md)
+Once climate is extracted to admin,
+[`facetted_map_gradient()`](https://ahadi-analytics.github.io/sntutils/reference/facetted_map_gradient.md)
 and
-[`extract_time_components()`](https://ahadi-analytics.github.io/sntutils/reference/extract_time_components.md)
-are the smaller utilities that the batch processors use internally and
-are exported for ad-hoc use.
+[`facetted_map_bins()`](https://ahadi-analytics.github.io/sntutils/reference/facetted_map_bins.md)
+are the small-area visualisation pair. They both take an `sf` object
+(boundaries + indicator on the same rows) and a colour vector, so we
+join the extraction output to our boundaries first and then pick colours
+from
+[`get_palette()`](https://ahadi-analytics.github.io/sntutils/reference/get_palette.md).
+
+``` r
+
+# 1. extract CHIRPS to adm2 (see the Rasters article)
+rain_adm2 <- process_raster_collection(
+  directory    = "01_data/1.5_environment/1.5a_climate/raw/chirps",
+  shapefile    = sle_adm2_clean,
+  id_cols      = c("adm0_name", "adm1_name", "adm2_name"),
+  aggregations = "mean"
+)
+
+# 2. summarise to annual and join to the sf so each polygon carries its value
+rain_annual_sf <- rain_adm2 |>
+  dplyr::group_by(adm0_name, adm1_name, adm2_name, year) |>
+  dplyr::summarise(rain_mm = mean(mean, na.rm = TRUE), .groups = "drop") |>
+  dplyr::left_join(sle_adm2_clean, y = _, by = c("adm0_name", "adm1_name", "adm2_name")) |>
+  sf::st_as_sf()
+```
+
+### Continuous scale
+
+For a continuous indicator like rainfall,
+[`facetted_map_gradient()`](https://ahadi-analytics.github.io/sntutils/reference/facetted_map_gradient.md)
+draws a small-multiples choropleth straight from the joined `sf`. Pick
+colours via
+[`get_palette()`](https://ahadi-analytics.github.io/sntutils/reference/get_palette.md) -
+[`list_palettes()`](https://ahadi-analytics.github.io/sntutils/reference/list_palettes.md)
+lists all built-in palettes (`"ylgnbu"`, `"blues"`, `"viridis"`,
+`"spectral"`, …).
+
+``` r
+
+list_palettes()
+#> [1] "default"  "byor"     "gyor"     "ylord"    "ylgnbu"   "blues"
+#> [7] "greens"   "reds"     "oranges"  "purples"  "bupu"     "orrd"
+#> ... etc
+
+facetted_map_gradient(
+  data      = rain_annual_sf,
+  fill_col  = "rain_mm",
+  facet_col = "year",
+  colors    = get_palette("ylgnbu"),
+  limits    = c(0, 300),
+  ncol      = 3,
+  title     = "Mean monthly rainfall (mm) - Sierra Leone",
+  fill_label = "Rainfall (mm)",
+  caption   = "Source: CHIRPS v2.0, monthly Africa subset."
+)
+```
+
+### Discrete bands
+
+When the indicator is more naturally read in categories - e.g. low /
+moderate / high rainfall - bin the values with
+[`auto_bin()`](https://ahadi-analytics.github.io/sntutils/reference/auto_bin.md)
+(or manually) and pair
+[`facetted_map_bins()`](https://ahadi-analytics.github.io/sntutils/reference/facetted_map_bins.md)
+with a named-colour vector from
+[`get_palette()`](https://ahadi-analytics.github.io/sntutils/reference/get_palette.md)
+of the same length as the bin levels.
+
+``` r
+
+rain_banded_sf <- rain_annual_sf |>
+  dplyr::mutate(
+    rain_band = auto_bin(rain_mm, n_breaks = 5, style = "quantile")
+  )
+
+# one colour per band, in the bin order
+bin_colors <- stats::setNames(
+  get_palette("ylgnbu", n = nlevels(rain_banded_sf$rain_band)),
+  levels(rain_banded_sf$rain_band)
+)
+
+facetted_map_bins(
+  data        = rain_banded_sf,
+  fill_col    = "rain_band",
+  facet_col   = "year",
+  fill_colors = bin_colors,
+  title       = "Mean monthly rainfall, quantile bands",
+  fill_label  = "mm / month"
+)
+```
+
+Both helpers can write a compressed PNG straight to disk by passing
+`output_file = "..."`. They also accept an optional `adm1_shp` overlay
+for higher-admin outlines on top of the adm2 fills - useful for SNT
+reports where district fills sit inside region borders.
 
 ## A climate pipeline, end to end
 
@@ -302,7 +329,7 @@ temp_adm2 <- process_weighted_raster_collection(
   aggregations  = "mean"
 )
 
-# 4. combine — ready for stratification and modelling
+# 4. combine - ready for stratification and modelling
 climate_adm2 <- rain_adm2 |>
   dplyr::left_join(
     temp_adm2,
@@ -311,6 +338,6 @@ climate_adm2 <- rain_adm2 |>
   )
 ```
 
-That’s two major archives reduced to one tibble keyed by admin and date
-— the canonical climate input to the stratification and modelling steps
-downstream.
+That’s two major archives reduced to one tibble keyed by admin and
+date - the canonical climate input to the stratification and modelling
+steps downstream.

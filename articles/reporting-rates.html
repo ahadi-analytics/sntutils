@@ -32,7 +32,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sntutils</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,20 +48,21 @@
 <li><a class="dropdown-item" href="../articles/getting-started.html">Get started</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data preparation</h6></li>
-    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Data I/O and cleaning</a></li>
-    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial validation and mapping</a></li>
+    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Read &amp; clean</a></li>
+    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Routine surveillance</h6></li>
     <li><a class="dropdown-item" href="../articles/reporting-rates.html">Reporting rates</a></li>
-    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality — consistency, outliers</a></li>
+    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>External data sources</h6></li>
-    <li><a class="dropdown-item" href="../articles/climate.html">Climate downloads and raster extraction</a></li>
-    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop population rasters</a></li>
-    <li><a class="dropdown-item" href="../articles/dhs.html">DHS indicators and microdata</a></li>
+    <li><a class="dropdown-item" href="../articles/climate.html">Climate</a></li>
+    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop</a></li>
+    <li><a class="dropdown-item" href="../articles/rasters.html">Rasters</a></li>
+    <li><a class="dropdown-item" href="../articles/dhs.html">DHS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Project plumbing</h6></li>
-    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project setup and utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project utilities</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -106,8 +107,8 @@ analyst needs to know <strong>how completely facilities are
 reporting</strong>. <code><a href="../reference/calculate_reporting_metrics.html">calculate_reporting_metrics()</a></code> is the
 workhorse: it answers the “who reported, when, where” question in three
 different shapes.</p>
-<p>For the related question — are the values they reported internally
-consistent and free of outliers — see the <a href="data-quality.html">Data quality</a> article.</p>
+<p>For the related question - are the values they reported internally
+consistent and free of outliers - see the <a href="data-quality.html">Data quality</a> article.</p>
 <p>We use the Sierra Leone DHIS2 sample shipped with the package
 throughout.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
@@ -122,6 +123,19 @@ throughout.</p>
 <span>    hf_uid    <span class="op">=</span> <span class="fu"><a href="../reference/vdigest.html">vdigest</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">adm1</span>, <span class="va">adm2</span>, <span class="va">hf</span><span class="op">)</span>, algo <span class="op">=</span> <span class="st">"xxhash32"</span><span class="op">)</span>,</span>
 <span>    record_id <span class="op">=</span> <span class="fu"><a href="../reference/vdigest.html">vdigest</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">hf_uid</span>, <span class="va">year_mon</span><span class="op">)</span>,  algo <span class="op">=</span> <span class="st">"xxhash32"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
+<div class="alert alert-info">
+<p><strong>For the methodology and conceptual background behind the
+steps in this article, please check the <a href="https://ahadi-analytics.github.io/snt-code-library/" class="external-link">SNT Code
+Library</a>:</strong></p>
+<ul>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/reporting_rate.html" class="external-link">Reporting
+rates</a> - what reporting rate measures and how to interpret it.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/active_status.html" class="external-link">Active
+facility status</a> - the denominator logic in plain English.</li>
+</ul>
+</div>
 <div class="section level2">
 <h2 id="what-reporting-rate-actually-means-here">What “reporting rate” actually means here<a class="anchor" aria-label="anchor" href="#what-reporting-rate-actually-means-here"></a>
 </h2>
@@ -142,22 +156,22 @@ down.</p>
 <ul>
 <li>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math>
-— administrative unit (e.g. district)</li>
+- administrative unit (e.g. district)</li>
 <li>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>t</mi><annotation encoding="application/x-tex">t</annotation></semantics></math>
-— time period (year-month)</li>
+- time period (year-month)</li>
 <li>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>f</mi><annotation encoding="application/x-tex">f</annotation></semantics></math>
-— facility in
+- facility in
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math>
 </li>
 <li>
-<code>key_indicators</code> — variables used to determine whether a
+<code>key_indicators</code> - variables used to determine whether a
 facility is active, e.g. <code>"test"</code>, <code>"treat"</code>,
 <code>"conf"</code>, <code>"pres"</code>, <code>"allout"</code>
 </li>
 <li>
-<code>vars_of_interest</code> — variables we want the reporting rate
+<code>vars_of_interest</code> - variables we want the reporting rate
 <strong>for</strong>, e.g. <code>"conf"</code>, <code>"pres"</code>
 </li>
 </ul>
@@ -173,7 +187,7 @@ is</p>
 <ul>
 <li>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>o</mi><mrow><mi>a</mi><mo>,</mo><mi>t</mi></mrow></msub><annotation encoding="application/x-tex">o_{a,t}</annotation></semantics></math>
-— facilities in
+- facilities in
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math>
 that reported <strong>any</strong> value in
 <code>vars_of_interest</code> during
@@ -181,7 +195,7 @@ that reported <strong>any</strong> value in
 </li>
 <li>
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><msub><mi>e</mi><mrow><mi>a</mi><mo>,</mo><mi>t</mi></mrow></msub><annotation encoding="application/x-tex">e_{a,t}</annotation></semantics></math>
-— facilities in
+- facilities in
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>a</mi><annotation encoding="application/x-tex">a</annotation></semantics></math>
 whose <strong>first-ever</strong> report on any
 <code>key_indicators</code> occurred on or before
@@ -207,7 +221,7 @@ March</li>
 </div>
 </div>
 <div class="section level2">
-<h2 id="scenario-1-facility-level-reporting-missing-rate">Scenario 1 — Facility-level reporting / missing rate<a class="anchor" aria-label="anchor" href="#scenario-1-facility-level-reporting-missing-rate"></a>
+<h2 id="scenario-1---facility-level-reporting-missing-rate">Scenario 1 - Facility-level reporting / missing rate<a class="anchor" aria-label="anchor" href="#scenario-1---facility-level-reporting-missing-rate"></a>
 </h2>
 <p>This is the rate you almost always want when reporting to a country
 team. It uses an evolving denominator (facilities that have ever
@@ -245,7 +259,7 @@ arguments:</p>
 <p><img src="figures/reporting-rate-plot-scenario1-output-1.png"></p>
 </div>
 <div class="section level2">
-<h2 id="scenario-2-reporting-rate-by-two-dimensions">Scenario 2 — Reporting rate by two dimensions<a class="anchor" aria-label="anchor" href="#scenario-2-reporting-rate-by-two-dimensions"></a>
+<h2 id="scenario-2---reporting-rate-by-two-dimensions">Scenario 2 - Reporting rate by two dimensions<a class="anchor" aria-label="anchor" href="#scenario-2---reporting-rate-by-two-dimensions"></a>
 </h2>
 <p>When we want a heatmap of completeness across time × space for one or
 more variables, without the activity-based denominator, drop
@@ -279,7 +293,7 @@ more variables, without the activity-based denominator, drop
 <p><img src="figures/reporting-rate-plot-scenario2-output-1.png"></p>
 </div>
 <div class="section level2">
-<h2 id="scenario-3-reporting-rates-over-time">Scenario 3 — Reporting rates over time<a class="anchor" aria-label="anchor" href="#scenario-3-reporting-rates-over-time"></a>
+<h2 id="scenario-3---reporting-rates-over-time">Scenario 3 - Reporting rates over time<a class="anchor" aria-label="anchor" href="#scenario-3---reporting-rates-over-time"></a>
 </h2>
 <p>To see when each variable starts being reported (and where it stops),
 drop <code>y_var</code> entirely:</p>
@@ -358,7 +372,7 @@ ready to feed back into a filtered analysis.</p>
 reporting-rule choices (e.g. <em>any</em> indicator vs <em>all</em>
 indicators) on the same data.</p>
 <p><code><a href="../reference/validate_routine_hf_data.html">validate_routine_hf_data()</a></code> is the upstream sanity check
-— it runs a battery of structural checks on a routine HF dataset
+- it runs a battery of structural checks on a routine HF dataset
 (required columns, parseable dates, plausible value ranges) before any
 of the reporting-rate functions get to it. Run it once at ingest.</p>
 </div>

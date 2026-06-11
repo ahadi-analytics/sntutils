@@ -1,4 +1,4 @@
-# WorldPop population rasters
+# WorldPop
 
 WorldPop is the canonical sub-national population surface for African
 SNT work. `sntutils` wraps both WorldPop releases (legacy 2000–2020 and
@@ -22,13 +22,30 @@ extraction), see the [Climate downloads and raster
 extraction](https://ahadi-analytics.github.io/sntutils/articles/climate.md)
 article.
 
-## Total population: `download_worldpop()`
+**For the methodology and conceptual background behind the steps in this
+article, please check the [SNT Code
+Library](https://ahadi-analytics.github.io/snt-code-library/):**
+
+- [Population
+  data](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population.html) -
+  census vs raster vs displaced population.
+- [Population
+  rasters](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population/population_raster.html) -
+  WorldPop methodology, release choices, and the canonical growth-rate
+  projection method that
+  [`extrapolate_pop()`](https://ahadi-analytics.github.io/sntutils/reference/extrapolate_pop.md)
+  implements.
+- [Population
+  census](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population/population_census.html) -
+  when census data is the right input.
+
+## Total population
 
 The default download. Automatically picks the right WorldPop release
 based on the years requested:
 
-- **Legacy (2000–2020)** — UN-adjusted, 1 km, `count` or `density`.
-- **R2025A (2015–2030)** — constrained to built-up areas, 1 km **or 100
+- **Legacy (2000–2020)** - UN-adjusted, 1 km, `count` or `density`.
+- **R2025A (2015–2030)** - constrained to built-up areas, 1 km **or 100
   m**, `count` only.
 
 If your year range spans both releases (e.g. 2010:2020) the function
@@ -89,7 +106,7 @@ skips files that already exist with the right size, so re-running the
 same call is a no-op. The returned (invisible) list has the resolved
 file paths and a per-country success counter for logging.
 
-## Age bands: `download_worldpop_age_band()`
+## Population by age band
 
 For interventions targeted at specific demographic groups (women of
 reproductive age for ITN allocation, children under 5 for SMC, etc.)
@@ -114,7 +131,7 @@ download_worldpop_age_band(
   out_dir       = "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters"
 )
 
-# children 1–9 (both sexes, total) — uses the "t" variant under the hood
+# children 1–9 (both sexes, total) - uses the "t" variant under the hood
 download_worldpop_age_band(
   country_codes = "SLE",
   years         = 2020:2024,
@@ -130,7 +147,7 @@ Switch `release = "R2024B"` if you specifically need the previous
 release; the default is `R2025A`. The global mosaic
 (`country_codes = "GLOBAL"`) also works here for years ≥ 2015 at 1 km.
 
-## Urbanicity: `download_worldpop_urbanicity()`
+## Urbanicity
 
 WorldPop’s urbanicity layer classifies each pixel as urban / peri-urban
 / rural. Used in SNT for urban microstratification and to weight
@@ -145,7 +162,7 @@ download_worldpop_urbanicity(
 )
 ```
 
-## Resolving paths: `get_worldpop_paths()`
+## Resolving download paths
 
 After a series of downloads spread over different days, you usually need
 to know “where did the 2020 1 km count raster end up?”.
@@ -173,18 +190,26 @@ to do population-weighted climate extraction, or into
 [`process_raster_collection()`](https://ahadi-analytics.github.io/sntutils/reference/process_raster_collection.md)
 for plain zonal sums of population by admin.
 
-## Extrapolating to missing years: `extrapolate_pop()`
+## Extrapolating to missing years
+
+> **Methodology note.** The code library’s [Population rasters
+> chapter](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population/population_raster.html)
+> is the authoritative reference for growth-rate-based population
+> projection in SNT. **Use the national statistics bureau’s growth rate
+> whenever it is available** - the function makes it easy to apply the
+> right number, not to invent one. Avoid ad hoc rates outside of early
+> exploration.
 
 WorldPop ends at 2030 (R2025A). For the years where WorldPop doesn’t
 publish,
 [`extrapolate_pop()`](https://ahadi-analytics.github.io/sntutils/reference/extrapolate_pop.md)
 fills the gap. It supports three strategies:
 
-1.  **Automatic growth rate** — fit a growth rate from observed years
+1.  **Automatic growth rate** - fit a growth rate from observed years
     per location.
-2.  **Single multiplier** — apply the same growth to every column /
+2.  **Single multiplier** - apply the same growth to every column /
     year.
-3.  **Per-column, per-year multipliers** — full control via a named
+3.  **Per-column, per-year multipliers** - full control via a named
     list.
 
 ``` r
@@ -222,7 +247,7 @@ extrapolate_pop(
   multiplier      = 1.03
 )
 
-# 3. per-column, per-year — fine control
+# 3. per-column, per-year - fine control
 extrapolate_pop(
   data            = dummy_pop,
   year_col        = "year",
@@ -237,10 +262,10 @@ extrapolate_pop(
 ```
 
 Extrapolation can also be backward (years earlier than the earliest
-observed) using the same syntax — pass the older years to
+observed) using the same syntax - pass the older years to
 `years_to_extrap`.
 
-## SNT-shape reshape: `snt_process_population()`
+## Reshaping to the SNT long format
 
 The final step before stratification: reshape the wide population tibble
 into the canonical SNT long format, optionally with translated labels
@@ -260,7 +285,7 @@ snt_process_population(
 [`snt_process_population()`](https://ahadi-analytics.github.io/sntutils/reference/snt_process_population.md)
 builds per-admin-level summaries (adm0..adm3, whichever are present),
 produces a bilingual EN + optional FR data dictionary, and records which
-admin levels were available — exactly the inputs the downstream plotting
+admin levels were available - exactly the inputs the downstream plotting
 and stratification functions expect.
 
 ## A WorldPop pipeline, end to end
@@ -320,6 +345,6 @@ pop_snt <- snt_process_population(
 ```
 
 The result is one tibble keyed by admin and year, with both total and
-age-band populations, extrapolated to whatever year the project ends —
+age-band populations, extrapolated to whatever year the project ends -
 the canonical denominator for incidence, intervention coverage and
 need-based allocation downstream.

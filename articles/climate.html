@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Climate downloads and raster extraction • sntutils</title>
+<title>Climate • sntutils</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -17,10 +17,10 @@
 <link href="../deps/JetBrains_Mono-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Climate downloads and raster extraction">
-<meta name="description" content="Pull rainfall, temperature, land-surface and agro-climate variables from CHIRPS, ERA5, MODIS and NASA POWER — then extract them to admin units, optionally population-weighted.
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Climate">
+<meta name="description" content="Pull rainfall, temperature, land-surface and agro-climate variables from CHIRPS, ERA5, MODIS and NASA POWER - then extract them to admin units, optionally population-weighted.
 ">
-<meta property="og:description" content="Pull rainfall, temperature, land-surface and agro-climate variables from CHIRPS, ERA5, MODIS and NASA POWER — then extract them to admin units, optionally population-weighted.
+<meta property="og:description" content="Pull rainfall, temperature, land-surface and agro-climate variables from CHIRPS, ERA5, MODIS and NASA POWER - then extract them to admin units, optionally population-weighted.
 ">
 <meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png">
 </head>
@@ -32,7 +32,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sntutils</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,20 +48,21 @@
 <li><a class="dropdown-item" href="../articles/getting-started.html">Get started</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data preparation</h6></li>
-    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Data I/O and cleaning</a></li>
-    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial validation and mapping</a></li>
+    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Read &amp; clean</a></li>
+    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Routine surveillance</h6></li>
     <li><a class="dropdown-item" href="../articles/reporting-rates.html">Reporting rates</a></li>
-    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality — consistency, outliers</a></li>
+    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>External data sources</h6></li>
-    <li><a class="dropdown-item" href="../articles/climate.html">Climate downloads and raster extraction</a></li>
-    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop population rasters</a></li>
-    <li><a class="dropdown-item" href="../articles/dhs.html">DHS indicators and microdata</a></li>
+    <li><a class="dropdown-item" href="../articles/climate.html">Climate</a></li>
+    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop</a></li>
+    <li><a class="dropdown-item" href="../articles/rasters.html">Rasters</a></li>
+    <li><a class="dropdown-item" href="../articles/dhs.html">DHS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Project plumbing</h6></li>
-    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project setup and utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project utilities</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -92,7 +93,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>Climate downloads and raster extraction</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Climate</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/ahadi-analytics/sntutils/blob/master/vignettes/climate.Rmd" class="external-link"><code>vignettes/climate.Rmd</code></a></small>
@@ -112,8 +113,22 @@ variables exist, and <code>download_&lt;source&gt;()</code> pulls files
 into a local cache. The <strong>raster batch processors</strong> at the
 bottom of this article then aggregate everything to admin polygons.</p>
 <p>For population rasters (WorldPop), see the <a href="worldpop.html">WorldPop article</a>.</p>
+<div class="alert alert-info">
+<p><strong>For the methodology and conceptual background behind the
+steps in this article, please check the <a href="https://ahadi-analytics.github.io/snt-code-library/" class="external-link">SNT Code
+Library</a>:</strong></p>
+<ul>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/climate.html" class="external-link">Climate
+and environmental data</a> - sources, resolutions, and how climate
+covariates feed stratification.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/climate/extract_raster_climate.html" class="external-link">Extracting
+climate from rasters</a> - the analytical step-by-step.</li>
+</ul>
+</div>
 <div class="section level2">
-<h2 id="chirps-rainfall">CHIRPS — rainfall<a class="anchor" aria-label="anchor" href="#chirps-rainfall"></a>
+<h2 id="chirps---rainfall">CHIRPS - rainfall<a class="anchor" aria-label="anchor" href="#chirps---rainfall"></a>
 </h2>
 <p>CHIRPS is the workhorse rainfall product for African SNT analyses.
 The package supports the four standard CHIRPS monthly subsets.</p>
@@ -141,21 +156,21 @@ The package supports the four standard CHIRPS monthly subsets.</p>
 <span>  end     <span class="op">=</span> <span class="st">"2022-03"</span>,</span>
 <span>  out_dir <span class="op">=</span> <span class="st">"01_data/1.5_environment/1.5a_climate/raw/chirps"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="../reference/download_chirps.html">download_chirps()</a></code> is resumable — it never re-downloads a
+<p><code><a href="../reference/download_chirps.html">download_chirps()</a></code> is resumable - it never re-downloads a
 file that is already present and the right size. The result is a
 directory of <code>.tif</code>s named
 e.g. <code>chirps-v2.0.2022.01.tif</code>, ready for the raster batch
 processors below.</p>
 </div>
 <div class="section level2">
-<h2 id="era5-reanalysis">ERA5 — reanalysis<a class="anchor" aria-label="anchor" href="#era5-reanalysis"></a>
+<h2 id="era5---reanalysis">ERA5 - reanalysis<a class="anchor" aria-label="anchor" href="#era5---reanalysis"></a>
 </h2>
 <p>ERA5 (ECMWF reanalysis) gives temperature, dewpoint, wind, surface
 pressure, and many other variables at hourly and daily resolution. The
 download path goes through the Copernicus Climate Data Store and needs a
 (free) API key.</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># set CDS API key once — see https://cds.climate.copernicus.eu</span></span>
+<code class="sourceCode R"><span><span class="co"># set CDS API key once - see https://cds.climate.copernicus.eu</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>CDS_USER <span class="op">=</span> <span class="st">"&lt;uid&gt;"</span>, CDS_KEY <span class="op">=</span> <span class="st">"&lt;key&gt;"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># list known datasets and their variable catalogues</span></span>
@@ -184,14 +199,14 @@ download path goes through the Copernicus Climate Data Store and needs a
 <span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="../reference/get_era5_metadata.html">get_era5_metadata()</a></code> and
 <code><a href="../reference/print_era5_metadata.html">print_era5_metadata()</a></code> extract the embedded metadata from
-any ERA5 NetCDF without loading the data into memory — useful for
+any ERA5 NetCDF without loading the data into memory - useful for
 auditing what’s in the cache. <code><a href="../reference/read_era5.html">read_era5()</a></code> opens NetCDF
 files with sensible defaults (CRS, dimension renaming, unit conversion).
 <code><a href="../reference/migrate_era5_filenames.html">migrate_era5_filenames()</a></code> renames older ERA5 caches to the
 current naming convention.</p>
 </div>
 <div class="section level2">
-<h2 id="modis-land-surface">MODIS — land surface<a class="anchor" aria-label="anchor" href="#modis-land-surface"></a>
+<h2 id="modis---land-surface">MODIS - land surface<a class="anchor" aria-label="anchor" href="#modis---land-surface"></a>
 </h2>
 <p>MODIS provides EVI, NDVI, surface temperature, fire and land-cover
 layers. The <code><a href="../reference/download_modis.html">download_modis()</a></code> function wraps NASA Earthdata
@@ -216,7 +231,7 @@ shapefile.</p>
 ready for the raster processors.</p>
 </div>
 <div class="section level2">
-<h2 id="nasa-power-point-time-series">NASA POWER — point time series<a class="anchor" aria-label="anchor" href="#nasa-power-point-time-series"></a>
+<h2 id="nasa-power---point-time-series">NASA POWER - point time series<a class="anchor" aria-label="anchor" href="#nasa-power---point-time-series"></a>
 </h2>
 <p>For agro-climate variables (rainfall, irradiance, humidity, wind
 speed, several temperature flavours) at point locations,
@@ -246,99 +261,102 @@ joined to admin codes.</p>
 <span><span class="co">#&gt; $ T2M       &lt;dbl&gt; 25.4, 25.9, 26.1, ...</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="ihme-under-5-mortality-rasters">IHME under-5 mortality rasters<a class="anchor" aria-label="anchor" href="#ihme-under-5-mortality-rasters"></a>
+<h2 id="extracting-to-admin-units">Extracting to admin units<a class="anchor" aria-label="anchor" href="#extracting-to-admin-units"></a>
 </h2>
-<p>For child-mortality rasters from IHME’s Global Burden of Disease
-modelling output, <code><a href="../reference/process_ihme_u5m_raster.html">process_ihme_u5m_raster()</a></code> turns a
-directory of GeoTIFFs into admin-level tibbles in one call:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">u5m_adm2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/process_ihme_u5m_raster.html">process_ihme_u5m_raster</a></span><span class="op">(</span></span>
-<span>  directory <span class="op">=</span> <span class="st">"01_data/1.2_epidemiology/1.2c_mortality_estimates/raw/ihme_u5m"</span>,</span>
-<span>  shapefile <span class="op">=</span> <span class="va">sle_adm2_clean</span>,</span>
-<span>  id_cols   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"adm0_name"</span>, <span class="st">"adm1_name"</span>, <span class="st">"adm2_name"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
+<p>The download functions deposit <code>.tif</code>s on disk. To turn
+those into a tidy tibble keyed by admin and date, use the <a href="rasters.html">batch raster processors</a> -
+<code><a href="../reference/process_raster_collection.html">process_raster_collection()</a></code> for plain zonal stats,
+<code><a href="../reference/process_weighted_raster_collection.html">process_weighted_raster_collection()</a></code> for
+population-weighted extraction, <code><a href="../reference/process_rasters_by_year.html">process_rasters_by_year()</a></code>
+when boundaries change between vintages, and
+<code><a href="../reference/process_ihme_u5m_raster.html">process_ihme_u5m_raster()</a></code> for IHME under-5 mortality
+rasters. The Rasters article walks through each in detail.</p>
 </div>
 <div class="section level2">
-<h2 id="aggregating-rasters-to-admin-units">Aggregating rasters to admin units<a class="anchor" aria-label="anchor" href="#aggregating-rasters-to-admin-units"></a>
+<h2 id="mapping-small-area-climate-estimates">Mapping small-area climate estimates<a class="anchor" aria-label="anchor" href="#mapping-small-area-climate-estimates"></a>
 </h2>
-<p>The download functions deposit rasters on disk. To get a tibble of
-indicators-by-admin-by-time, we use the <strong>raster batch
-processors</strong>.</p>
-<div class="section level3">
-<h3 id="process_raster_collection-basic-zonal-stats">
-<code>process_raster_collection()</code> — basic zonal stats<a class="anchor" aria-label="anchor" href="#process_raster_collection-basic-zonal-stats"></a>
-</h3>
-<p>The default for CHIRPS / ERA5-monthly / MODIS-monthly:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">adm3_shp</span> <span class="op">&lt;-</span> <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_read.html" class="external-link">st_read</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span></span>
-<span>  <span class="st">"extdata"</span>, <span class="st">"sle_adm3_example.geojson"</span>, package <span class="op">=</span> <span class="st">"sntutils"</span></span>
-<span><span class="op">)</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">raster_dir</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"chirps_test_rasters"</span>,</span>
-<span>                          package <span class="op">=</span> <span class="st">"sntutils"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">rainfall_df</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/process_raster_collection.html">process_raster_collection</a></span><span class="op">(</span></span>
-<span>  directory    <span class="op">=</span> <span class="va">raster_dir</span>,</span>
-<span>  shapefile    <span class="op">=</span> <span class="va">adm3_shp</span>,</span>
-<span>  id_cols      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"adm0"</span>, <span class="st">"adm1"</span>, <span class="st">"adm2"</span>, <span class="st">"adm3"</span><span class="op">)</span>,</span>
-<span>  aggregations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mean"</span><span class="op">)</span>,</span>
-<span>  pattern      <span class="op">=</span> <span class="st">"\\.tif$"</span></span>
+<p>Once climate is extracted to admin,
+<code><a href="../reference/facetted_map_gradient.html">facetted_map_gradient()</a></code> and
+<code><a href="../reference/facetted_map_bins.html">facetted_map_bins()</a></code> are the small-area visualisation pair.
+They both take an <code>sf</code> object (boundaries + indicator on the
+same rows) and a colour vector, so we join the extraction output to our
+boundaries first and then pick colours from
+<code><a href="../reference/get_palette.html">get_palette()</a></code>.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 1. extract CHIRPS to adm2 (see the Rasters article)</span></span>
+<span><span class="va">rain_adm2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/process_raster_collection.html">process_raster_collection</a></span><span class="op">(</span></span>
+<span>  directory    <span class="op">=</span> <span class="st">"01_data/1.5_environment/1.5a_climate/raw/chirps"</span>,</span>
+<span>  shapefile    <span class="op">=</span> <span class="va">sle_adm2_clean</span>,</span>
+<span>  id_cols      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"adm0_name"</span>, <span class="st">"adm1_name"</span>, <span class="st">"adm2_name"</span><span class="op">)</span>,</span>
+<span>  aggregations <span class="op">=</span> <span class="st">"mean"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">rainfall_df</span> <span class="op">|&gt;</span> <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt;                                file_name    adm1     adm2          adm3 year month      mean</span></span>
-<span><span class="co">#&gt; 1   africa_monthly_chirps-v2.0.2020.01.tif EASTERN KAILAHUN          DEA 2020     1 12.871692</span></span>
-<span><span class="co">#&gt; 2   africa_monthly_chirps-v2.0.2020.01.tif EASTERN KAILAHUN         JAHN 2020     1  9.820749</span></span>
-<span><span class="co">#&gt; 3   africa_monthly_chirps-v2.0.2020.01.tif EASTERN KAILAHUN        JAWIE 2020     1 12.042542</span></span>
-<span><span class="co">#&gt; 4   africa_monthly_chirps-v2.0.2020.01.tif EASTERN KAILAHUN   KISSI KAMA 2020     1  8.951293</span></span>
-<span><span class="co">#&gt; 5   africa_monthly_chirps-v2.0.2020.01.tif EASTERN KAILAHUN   KISSI TENG 2020     1  8.494733</span></span></code></pre></div>
-<p>Dates are detected automatically from the filename. Pass
-<code>aggregations = c("mean", "sum", "median", "max")</code> to get
-several stats in one pass.</p>
-</div>
+<span><span class="co"># 2. summarise to annual and join to the sf so each polygon carries its value</span></span>
+<span><span class="va">rain_annual_sf</span> <span class="op">&lt;-</span> <span class="va">rain_adm2</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/group_by.html" class="external-link">group_by</a></span><span class="op">(</span><span class="va">adm0_name</span>, <span class="va">adm1_name</span>, <span class="va">adm2_name</span>, <span class="va">year</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/summarise.html" class="external-link">summarise</a></span><span class="op">(</span>rain_mm <span class="op">=</span> <span class="fu"><a href="https://rspatial.github.io/terra/reference/summarize-generics.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">mean</span>, na.rm <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span>, .groups <span class="op">=</span> <span class="st">"drop"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span><span class="va">sle_adm2_clean</span>, y <span class="op">=</span> <span class="va">_</span>, by <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"adm0_name"</span>, <span class="st">"adm1_name"</span>, <span class="st">"adm2_name"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">sf</span><span class="fu">::</span><span class="fu"><a href="https://r-spatial.github.io/sf/reference/st_as_sf.html" class="external-link">st_as_sf</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
-<h3 id="process_raster_with_boundaries-single-raster-multiple-boundaries">
-<code>process_raster_with_boundaries()</code> — single raster,
-multiple boundaries<a class="anchor" aria-label="anchor" href="#process_raster_with_boundaries-single-raster-multiple-boundaries"></a>
+<h3 id="continuous-scale">Continuous scale<a class="anchor" aria-label="anchor" href="#continuous-scale"></a>
 </h3>
-<p>Use this when the same raster needs to be extracted to several
-shapefiles (adm1, adm2, adm3 simultaneously), or with different ID
-column sets.</p>
-</div>
-<div class="section level3">
-<h3 id="process_rasters_by_year-time-varying-boundaries">
-<code>process_rasters_by_year()</code> — time-varying
-boundaries<a class="anchor" aria-label="anchor" href="#process_rasters_by_year-time-varying-boundaries"></a>
-</h3>
-<p>When the boundaries themselves change over time (post-redistricting),
-this wrapper aligns each raster’s year to the appropriate shapefile
-vintage.</p>
-</div>
-<div class="section level3">
-<h3 id="process_weighted_raster_collection-process_weighted_raster_stacks-population-weighted">
-<code>process_weighted_raster_collection()</code> /
-<code>process_weighted_raster_stacks()</code> — population-weighted<a class="anchor" aria-label="anchor" href="#process_weighted_raster_collection-process_weighted_raster_stacks-population-weighted"></a>
-</h3>
-<p>For variables that need population weighting (e.g. mean temperature
-weighted by population so we report an “experienced” value rather than
-an areal average), point these at a population raster of the same
-extent. Weights are applied per pixel during extraction.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/process_weighted_raster_collection.html">process_weighted_raster_collection</a></span><span class="op">(</span></span>
-<span>  directory      <span class="op">=</span> <span class="st">"01_data/1.5_environment/1.5a_climate/raw/chirps"</span>,</span>
-<span>  shapefile      <span class="op">=</span> <span class="va">sle_adm2_clean</span>,</span>
-<span>  weight_raster  <span class="op">=</span> <span class="st">"01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters/sle_ppp_2020_1km.tif"</span>,</span>
-<span>  id_cols        <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"adm0_name"</span>, <span class="st">"adm1_name"</span>, <span class="st">"adm2_name"</span><span class="op">)</span>,</span>
-<span>  aggregations   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mean"</span>, <span class="st">"sum"</span><span class="op">)</span></span>
+<p>For a continuous indicator like rainfall,
+<code><a href="../reference/facetted_map_gradient.html">facetted_map_gradient()</a></code> draws a small-multiples choropleth
+straight from the joined <code>sf</code>. Pick colours via
+<code><a href="../reference/get_palette.html">get_palette()</a></code> - <code><a href="../reference/list_palettes.html">list_palettes()</a></code> lists all
+built-in palettes (<code>"ylgnbu"</code>, <code>"blues"</code>,
+<code>"viridis"</code>, <code>"spectral"</code>, …).</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/list_palettes.html">list_palettes</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] "default"  "byor"     "gyor"     "ylord"    "ylgnbu"   "blues"</span></span>
+<span><span class="co">#&gt; [7] "greens"   "reds"     "oranges"  "purples"  "bupu"     "orrd"</span></span>
+<span><span class="co">#&gt; ... etc</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/facetted_map_gradient.html">facetted_map_gradient</a></span><span class="op">(</span></span>
+<span>  data      <span class="op">=</span> <span class="va">rain_annual_sf</span>,</span>
+<span>  fill_col  <span class="op">=</span> <span class="st">"rain_mm"</span>,</span>
+<span>  facet_col <span class="op">=</span> <span class="st">"year"</span>,</span>
+<span>  colors    <span class="op">=</span> <span class="fu"><a href="../reference/get_palette.html">get_palette</a></span><span class="op">(</span><span class="st">"ylgnbu"</span><span class="op">)</span>,</span>
+<span>  limits    <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">300</span><span class="op">)</span>,</span>
+<span>  ncol      <span class="op">=</span> <span class="fl">3</span>,</span>
+<span>  title     <span class="op">=</span> <span class="st">"Mean monthly rainfall (mm) - Sierra Leone"</span>,</span>
+<span>  fill_label <span class="op">=</span> <span class="st">"Rainfall (mm)"</span>,</span>
+<span>  caption   <span class="op">=</span> <span class="st">"Source: CHIRPS v2.0, monthly Africa subset."</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p><code><a href="../reference/normalize_raster_by_polygon.html">normalize_raster_by_polygon()</a></code> is the building block — it
-normalises a raster’s values so they sum to 1 within each polygon, which
-is how the weighted extractors keep totals consistent.</p>
-<p><code><a href="../reference/tidy_malaria_raster_names.html">tidy_malaria_raster_names()</a></code> batch-renames a directory of
-MAP / IHME rasters to the SNT convention;
-<code><a href="../reference/clean_filenames.html">clean_filenames()</a></code>, <code><a href="../reference/detect_time_pattern.html">detect_time_pattern()</a></code> and
-<code><a href="../reference/extract_time_components.html">extract_time_components()</a></code> are the smaller utilities that
-the batch processors use internally and are exported for ad-hoc use.</p>
+</div>
+<div class="section level3">
+<h3 id="discrete-bands">Discrete bands<a class="anchor" aria-label="anchor" href="#discrete-bands"></a>
+</h3>
+<p>When the indicator is more naturally read in categories - e.g. low /
+moderate / high rainfall - bin the values with <code><a href="../reference/auto_bin.html">auto_bin()</a></code>
+(or manually) and pair <code><a href="../reference/facetted_map_bins.html">facetted_map_bins()</a></code> with a
+named-colour vector from <code><a href="../reference/get_palette.html">get_palette()</a></code> of the same length
+as the bin levels.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">rain_banded_sf</span> <span class="op">&lt;-</span> <span class="va">rain_annual_sf</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    rain_band <span class="op">=</span> <span class="fu"><a href="../reference/auto_bin.html">auto_bin</a></span><span class="op">(</span><span class="va">rain_mm</span>, n_breaks <span class="op">=</span> <span class="fl">5</span>, style <span class="op">=</span> <span class="st">"quantile"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="co"># one colour per band, in the bin order</span></span>
+<span><span class="va">bin_colors</span> <span class="op">&lt;-</span> <span class="fu">stats</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/stats/setNames.html" class="external-link">setNames</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="../reference/get_palette.html">get_palette</a></span><span class="op">(</span><span class="st">"ylgnbu"</span>, n <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nlevels.html" class="external-link">nlevels</a></span><span class="op">(</span><span class="va">rain_banded_sf</span><span class="op">$</span><span class="va">rain_band</span><span class="op">)</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rspatial.github.io/terra/reference/factors.html" class="external-link">levels</a></span><span class="op">(</span><span class="va">rain_banded_sf</span><span class="op">$</span><span class="va">rain_band</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/facetted_map_bins.html">facetted_map_bins</a></span><span class="op">(</span></span>
+<span>  data        <span class="op">=</span> <span class="va">rain_banded_sf</span>,</span>
+<span>  fill_col    <span class="op">=</span> <span class="st">"rain_band"</span>,</span>
+<span>  facet_col   <span class="op">=</span> <span class="st">"year"</span>,</span>
+<span>  fill_colors <span class="op">=</span> <span class="va">bin_colors</span>,</span>
+<span>  title       <span class="op">=</span> <span class="st">"Mean monthly rainfall, quantile bands"</span>,</span>
+<span>  fill_label  <span class="op">=</span> <span class="st">"mm / month"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Both helpers can write a compressed PNG straight to disk by passing
+<code>output_file = "..."</code>. They also accept an optional
+<code>adm1_shp</code> overlay for higher-admin outlines on top of the
+adm2 fills - useful for SNT reports where district fills sit inside
+region borders.</p>
 </div>
 </div>
 <div class="section level2">
@@ -381,7 +399,7 @@ the batch processors use internally and are exported for ad-hoc use.</p>
 <span>  aggregations  <span class="op">=</span> <span class="st">"mean"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 4. combine — ready for stratification and modelling</span></span>
+<span><span class="co"># 4. combine - ready for stratification and modelling</span></span>
 <span><span class="va">climate_adm2</span> <span class="op">&lt;-</span> <span class="va">rain_adm2</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate-joins.html" class="external-link">left_join</a></span><span class="op">(</span></span>
 <span>    <span class="va">temp_adm2</span>,</span>
@@ -389,7 +407,7 @@ the batch processors use internally and are exported for ad-hoc use.</p>
 <span>    suffix <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"_rain"</span>, <span class="st">"_temp"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
 <p>That’s two major archives reduced to one tibble keyed by admin and
-date — the canonical climate input to the stratification and modelling
+date - the canonical climate input to the stratification and modelling
 steps downstream.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

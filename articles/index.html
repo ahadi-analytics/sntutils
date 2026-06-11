@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sntutils</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -21,20 +21,21 @@
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/getting-started.html">Get started</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data preparation</h6></li>
-    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Data I/O and cleaning</a></li>
-    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial validation and mapping</a></li>
+    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Read &amp; clean</a></li>
+    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Routine surveillance</h6></li>
     <li><a class="dropdown-item" href="../articles/reporting-rates.html">Reporting rates</a></li>
-    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality — consistency, outliers</a></li>
+    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>External data sources</h6></li>
-    <li><a class="dropdown-item" href="../articles/climate.html">Climate downloads and raster extraction</a></li>
-    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop population rasters</a></li>
-    <li><a class="dropdown-item" href="../articles/dhs.html">DHS indicators and microdata</a></li>
+    <li><a class="dropdown-item" href="../articles/climate.html">Climate</a></li>
+    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop</a></li>
+    <li><a class="dropdown-item" href="../articles/rasters.html">Rasters</a></li>
+    <li><a class="dropdown-item" href="../articles/dhs.html">DHS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Project plumbing</h6></li>
-    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project setup and utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project utilities</a></li>
   </ul></li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
@@ -61,16 +62,16 @@
       <h3>Getting started</h3>
       <div class="section-desc"></div>
 
-      <dl><dt><a href="getting-started.html">Get started with sntutils</a></dt>
+      <dl><dt><a href="getting-started.html">Get started</a></dt>
         <dd><p>A 5-minute tour of what sntutils does, how the pieces fit together, and a small end-to-end example you can read straight through.</p>
       </dd></dl></div>
     <div class="section ">
       <h3>Data preparation</h3>
       <div class="section-desc"></div>
 
-      <dl><dt><a href="data-io-and-cleaning.html">Data I/O and cleaning</a></dt>
+      <dl><dt><a href="data-io-and-cleaning.html">Read &amp; clean</a></dt>
         <dd><p>Read and write any common SNT format, parse messy date columns, infer variable types, standardise admin and facility names, and build a data dictionary you can hand to a country team.</p>
-        </dd><dt><a href="spatial.html">Spatial validation and mapping</a></dt>
+        </dd><dt><a href="spatial.html">Spatial</a></dt>
         <dd><p>Validate admin geometries and facility coordinates, crosswalk between shapefile vintages, fuzzy-match facilities across DHIS2 and the master facility list, and render publication-ready maps in the AHADI style.</p>
       </dd></dl></div>
     <div class="section ">
@@ -79,25 +80,27 @@
 
       <dl><dt><a href="reporting-rates.html">Reporting rates</a></dt>
         <dd><p>How completely are health facilities reporting and where are the gaps. The three reporting-rate scenarios, the underlying formula, maps, facility-level activity classification.</p>
-        </dd><dt><a href="data-quality.html">Data quality — consistency, outliers, imputation</a></dt>
+        </dd><dt><a href="data-quality.html">Data quality</a></dt>
         <dd><p>Cascade consistency checks, three-method outlier detection, correction and imputation for routine surveillance data.</p>
       </dd></dl></div>
     <div class="section ">
       <h3>External data sources</h3>
       <div class="section-desc"></div>
 
-      <dl><dt><a href="climate.html">Climate downloads and raster extraction</a></dt>
-        <dd><p>Pull rainfall, temperature, land-surface and agro-climate variables from CHIRPS, ERA5, MODIS and NASA POWER — then extract them to admin units, optionally population-weighted.</p>
-        </dd><dt><a href="worldpop.html">WorldPop population rasters</a></dt>
-        <dd><p>Download WorldPop population rasters — totals, age bands, urbanicity, per-country and global mosaics — then extrapolate to missing years and reshape into the canonical SNT population table.</p>
-        </dd><dt><a href="dhs.html">DHS indicators and microdata</a></dt>
+      <dl><dt><a href="climate.html">Climate</a></dt>
+        <dd><p>Pull rainfall, temperature, land-surface and agro-climate variables from CHIRPS, ERA5, MODIS and NASA POWER - then extract them to admin units, optionally population-weighted.</p>
+        </dd><dt><a href="worldpop.html">WorldPop</a></dt>
+        <dd><p>Download WorldPop population rasters - totals, age bands, urbanicity, per-country and global mosaics - then extrapolate to missing years and reshape into the canonical SNT population table.</p>
+        </dd><dt><a href="rasters.html">Rasters</a></dt>
+        <dd><p>Aggregate raster stacks (CHIRPS, ERA5, MODIS, WorldPop, IHME) to admin polygons - basic zonal stats, time-varying boundaries, and population-weighted extraction.</p>
+        </dd><dt><a href="dhs.html">DHS</a></dt>
         <dd><p>Discover, fetch and query DHS / MIS indicators via the DHS API, and open large local DHS parquet datasets through DuckDB for analysis.</p>
       </dd></dl></div>
     <div class="section ">
       <h3>Project plumbing</h3>
       <div class="section-desc"></div>
 
-      <dl><dt><a href="project-and-utilities.html">Project setup and utilities</a></dt>
+      <dl><dt><a href="project-and-utilities.html">Project utilities</a></dt>
         <dd><p>Scaffold an AHADI project structure, resolve standardised paths, translate plot labels with caching, hash records, compress images, and use the small numeric helpers that show up in every SNT script.</p>
       </dd></dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

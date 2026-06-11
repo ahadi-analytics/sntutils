@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>sntutils — utilities for Subnational Tailoring of malaria interventions • sntutils</title>
+<title>sntutils - utilities for Subnational Tailoring of malaria interventions • sntutils</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -17,7 +17,7 @@
 <link href="deps/JetBrains_Mono-0.4.10/font.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="sntutils — utilities for Subnational Tailoring of malaria interventions">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="sntutils - utilities for Subnational Tailoring of malaria interventions">
 <meta name="description" content="R package developed by AHADI to support the Subnational Tailoring (SNT) of malaria interventions. Standardises and streamlines data preparation, cleaning, spatial validation, climate downloads, reporting-rate analytics, population processing and visualisation for evidence-based decisions at district level and below.
 ">
 <meta property="og:description" content="R package developed by AHADI to support the Subnational Tailoring (SNT) of malaria interventions. Standardises and streamlines data preparation, cleaning, spatial validation, climate downloads, reporting-rate analytics, population processing and visualisation for evidence-based decisions at district level and below.
@@ -32,7 +32,7 @@
 
     <a class="navbar-brand me-2" href="index.html">sntutils</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,20 +48,21 @@
 <li><a class="dropdown-item" href="articles/getting-started.html">Get started</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data preparation</h6></li>
-    <li><a class="dropdown-item" href="articles/data-io-and-cleaning.html">Data I/O and cleaning</a></li>
-    <li><a class="dropdown-item" href="articles/spatial.html">Spatial validation and mapping</a></li>
+    <li><a class="dropdown-item" href="articles/data-io-and-cleaning.html">Read &amp; clean</a></li>
+    <li><a class="dropdown-item" href="articles/spatial.html">Spatial</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Routine surveillance</h6></li>
     <li><a class="dropdown-item" href="articles/reporting-rates.html">Reporting rates</a></li>
-    <li><a class="dropdown-item" href="articles/data-quality.html">Data quality — consistency, outliers</a></li>
+    <li><a class="dropdown-item" href="articles/data-quality.html">Data quality</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>External data sources</h6></li>
-    <li><a class="dropdown-item" href="articles/climate.html">Climate downloads and raster extraction</a></li>
-    <li><a class="dropdown-item" href="articles/worldpop.html">WorldPop population rasters</a></li>
-    <li><a class="dropdown-item" href="articles/dhs.html">DHS indicators and microdata</a></li>
+    <li><a class="dropdown-item" href="articles/climate.html">Climate</a></li>
+    <li><a class="dropdown-item" href="articles/worldpop.html">WorldPop</a></li>
+    <li><a class="dropdown-item" href="articles/rasters.html">Rasters</a></li>
+    <li><a class="dropdown-item" href="articles/dhs.html">DHS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Project plumbing</h6></li>
-    <li><a class="dropdown-item" href="articles/project-and-utilities.html">Project setup and utilities</a></li>
+    <li><a class="dropdown-item" href="articles/project-and-utilities.html">Project utilities</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
@@ -93,7 +94,7 @@
 <img src="logo.png" class="logo" alt=""><h1 id="sntutils-">sntutils <a class="anchor" aria-label="anchor" href="#sntutils-"></a>
 </h1>
 </div>
-<p><code>sntutils</code> is an R package developed by <a href="https://appliedhealthanalytics.org" class="external-link">AHADI</a> to support the <strong>Subnational Tailoring (SNT)</strong> of malaria interventions. It bundles the small, repeated operations every SNT support analysis does — reading DHIS2 exports, harmonising admin names across shapefile vintages, validating facility coordinates, calculating reporting rates, extracting climate and population rasters to admin units, and rendering country-team-language plots and maps.</p>
+<p><code>sntutils</code> is an R package developed by <a href="https://appliedhealthanalytics.org" class="external-link">AHADI</a> to support the <strong>Subnational Tailoring (SNT)</strong> of malaria interventions. It bundles the small, repeated operations every SNT support analysis does - reading DHIS2 exports, harmonising admin names across shapefile vintages, validating facility coordinates, calculating reporting rates, extracting climate and population rasters to admin units, and rendering country-team-language plots and maps.</p>
 <blockquote>
 <p><strong>Full documentation, with worked examples for every workflow, lives at <a href="https://ahadi-analytics.github.io/sntutils/" class="uri">https://ahadi-analytics.github.io/sntutils/</a></strong></p>
 </blockquote>
@@ -145,8 +146,8 @@
 </h2>
 <p>The package exports ~100 functions, grouped by workflow stage. Each row links to the article that covers that group in depth.</p>
 <div class="section level3">
-<h3 id="data-io-and-cleaning-">
-<a href="https://ahadi-analytics.github.io/sntutils/articles/data-io-and-cleaning.html">Data I/O and cleaning →</a><a class="anchor" aria-label="anchor" href="#data-io-and-cleaning-"></a>
+<h3 id="read--clean-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/data-io-and-cleaning.html">Read &amp; clean →</a><a class="anchor" aria-label="anchor" href="#read--clean-"></a>
 </h3>
 <p>Read and write any common SNT format, parse messy dates, infer column types, standardise admin and facility names, build data dictionaries.</p>
 <table class="table">
@@ -203,8 +204,8 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="spatial-validation-and-mapping-">
-<a href="https://ahadi-analytics.github.io/sntutils/articles/spatial.html">Spatial validation and mapping →</a><a class="anchor" aria-label="anchor" href="#spatial-validation-and-mapping-"></a>
+<h3 id="spatial-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/spatial.html">Spatial →</a><a class="anchor" aria-label="anchor" href="#spatial-"></a>
 </h3>
 <p>Validate admin geometries and facility coordinates, crosswalk between shapefile vintages, fuzzy-match facilities, render maps.</p>
 <table class="table">
@@ -305,8 +306,8 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="data-quality--consistency-outliers-">
-<a href="https://ahadi-analytics.github.io/sntutils/articles/data-quality.html">Data quality — consistency, outliers →</a><a class="anchor" aria-label="anchor" href="#data-quality--consistency-outliers-"></a>
+<h3 id="data-quality-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/data-quality.html">Data quality →</a><a class="anchor" aria-label="anchor" href="#data-quality-"></a>
 </h3>
 <p>Cascade consistency, outlier detection (3 methods), correction and imputation.</p>
 <table class="table">
@@ -347,10 +348,10 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="climate-downloads-and-raster-extraction-">
-<a href="https://ahadi-analytics.github.io/sntutils/articles/climate.html">Climate downloads and raster extraction →</a><a class="anchor" aria-label="anchor" href="#climate-downloads-and-raster-extraction-"></a>
+<h3 id="climate-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/climate.html">Climate →</a><a class="anchor" aria-label="anchor" href="#climate-"></a>
 </h3>
-<p>CHIRPS, ERA5, MODIS, NASA POWER, IHME — plus the batch raster processors that bring them to admin units.</p>
+<p>CHIRPS, ERA5, MODIS, NASA POWER download wrappers.</p>
 <table class="table">
 <colgroup>
 <col width="50%">
@@ -383,34 +384,12 @@
 <td><code><a href="reference/download_process_nasapower.html">download_process_nasapower()</a></code></td>
 <td>NASA POWER agro-climate at points</td>
 </tr>
-<tr>
-<td><code><a href="reference/process_ihme_u5m_raster.html">process_ihme_u5m_raster()</a></code></td>
-<td>IHME under-5 mortality rasters → admin tibble</td>
-</tr>
-<tr>
-<td>
-<code><a href="reference/process_raster_collection.html">process_raster_collection()</a></code>, <code><a href="reference/process_raster_with_boundaries.html">process_raster_with_boundaries()</a></code>, <code><a href="reference/process_rasters_by_year.html">process_rasters_by_year()</a></code>
-</td>
-<td>Batch zonal stats</td>
-</tr>
-<tr>
-<td>
-<code><a href="reference/process_weighted_raster_collection.html">process_weighted_raster_collection()</a></code>, <code><a href="reference/process_weighted_raster_stacks.html">process_weighted_raster_stacks()</a></code>, <code><a href="reference/normalize_raster_by_polygon.html">normalize_raster_by_polygon()</a></code>
-</td>
-<td>Population-weighted extraction</td>
-</tr>
-<tr>
-<td>
-<code><a href="reference/tidy_malaria_raster_names.html">tidy_malaria_raster_names()</a></code>, <code><a href="reference/detect_time_pattern.html">detect_time_pattern()</a></code>, <code><a href="reference/extract_time_components.html">extract_time_components()</a></code>
-</td>
-<td>Raster-naming utilities</td>
-</tr>
 </tbody>
 </table>
 </div>
 <div class="section level3">
-<h3 id="worldpop-population-rasters-">
-<a href="https://ahadi-analytics.github.io/sntutils/articles/worldpop.html">WorldPop population rasters →</a><a class="anchor" aria-label="anchor" href="#worldpop-population-rasters-"></a>
+<h3 id="worldpop-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/worldpop.html">WorldPop →</a><a class="anchor" aria-label="anchor" href="#worldpop-"></a>
 </h3>
 <p>WorldPop downloads (totals, age bands, urbanicity, global mosaic), extrapolation and SNT-shape reshape.</p>
 <table class="table">
@@ -451,8 +430,48 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="dhs-indicators-and-microdata-">
-<a href="https://ahadi-analytics.github.io/sntutils/articles/dhs.html">DHS indicators and microdata →</a><a class="anchor" aria-label="anchor" href="#dhs-indicators-and-microdata-"></a>
+<h3 id="rasters-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/rasters.html">Rasters →</a><a class="anchor" aria-label="anchor" href="#rasters-"></a>
+</h3>
+<p>Batch raster processors that turn any raster archive (climate, population, MAP, IHME) into admin-keyed tibbles.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Function</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code><a href="reference/process_raster_collection.html">process_raster_collection()</a></code>, <code><a href="reference/process_raster_with_boundaries.html">process_raster_with_boundaries()</a></code>, <code><a href="reference/process_rasters_by_year.html">process_rasters_by_year()</a></code>
+</td>
+<td>Batch zonal stats; time-varying boundaries</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/process_weighted_raster_collection.html">process_weighted_raster_collection()</a></code>, <code><a href="reference/process_weighted_raster_stacks.html">process_weighted_raster_stacks()</a></code>, <code><a href="reference/normalize_raster_by_polygon.html">normalize_raster_by_polygon()</a></code>
+</td>
+<td>Population-weighted extraction</td>
+</tr>
+<tr>
+<td><code><a href="reference/process_ihme_u5m_raster.html">process_ihme_u5m_raster()</a></code></td>
+<td>IHME under-5 mortality rasters to admin tibble</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/tidy_malaria_raster_names.html">tidy_malaria_raster_names()</a></code>, <code><a href="reference/detect_time_pattern.html">detect_time_pattern()</a></code>, <code><a href="reference/extract_time_components.html">extract_time_components()</a></code>, <code><a href="reference/clean_filenames.html">clean_filenames()</a></code>
+</td>
+<td>Raster-naming utilities</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="dhs-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/dhs.html">DHS →</a><a class="anchor" aria-label="anchor" href="#dhs-"></a>
 </h3>
 <p>Discover, download and query DHS / MIS indicators via the API; open DHS parquet microdata via DuckDB.</p>
 <table class="table">
@@ -481,8 +500,8 @@
 </table>
 </div>
 <div class="section level3">
-<h3 id="project-setup-and-utilities-">
-<a href="https://ahadi-analytics.github.io/sntutils/articles/project-and-utilities.html">Project setup and utilities →</a><a class="anchor" aria-label="anchor" href="#project-setup-and-utilities-"></a>
+<h3 id="project-utilities-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/project-and-utilities.html">Project utilities →</a><a class="anchor" aria-label="anchor" href="#project-utilities-"></a>
 </h3>
 <p>Folder scaffolding, paths, translation, hashing, image compression, small numeric helpers.</p>
 <table class="table">
@@ -639,6 +658,9 @@
 <h2 data-toc-skip>Developers</h2>
 <ul class="list-unstyled">
 <li>Mohamed A. Yusuf <br><small class="roles"> Author, maintainer </small> <a href="https://orcid.org/0000-0002-9339-4613" target="orcid.widget" aria-label="ORCID" class="external-link"><span class="fab fa-orcid orcid" aria-hidden="true"></span></a>  </li>
+<li>Silas Mwandikwa Mbivya <br><small class="roles"> Author </small>   </li>
+<li>Collins Rop <br><small class="roles"> Author </small>   </li>
+<li>Jaline Gerardin <br><small class="roles"> Author </small>   </li>
 <li><a href="authors.html">More about authors...</a></li>
 </ul>
 </div>

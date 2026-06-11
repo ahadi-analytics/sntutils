@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Spatial validation and mapping • sntutils</title>
+<title>Spatial • sntutils</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -17,7 +17,7 @@
 <link href="../deps/JetBrains_Mono-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Spatial validation and mapping">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Spatial">
 <meta name="description" content="Validate admin geometries and facility coordinates, crosswalk between shapefile vintages, fuzzy-match facilities across DHIS2 and the master facility list, and render publication-ready maps in the AHADI style.
 ">
 <meta property="og:description" content="Validate admin geometries and facility coordinates, crosswalk between shapefile vintages, fuzzy-match facilities across DHIS2 and the master facility list, and render publication-ready maps in the AHADI style.
@@ -32,7 +32,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sntutils</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,20 +48,21 @@
 <li><a class="dropdown-item" href="../articles/getting-started.html">Get started</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data preparation</h6></li>
-    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Data I/O and cleaning</a></li>
-    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial validation and mapping</a></li>
+    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Read &amp; clean</a></li>
+    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Routine surveillance</h6></li>
     <li><a class="dropdown-item" href="../articles/reporting-rates.html">Reporting rates</a></li>
-    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality — consistency, outliers</a></li>
+    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>External data sources</h6></li>
-    <li><a class="dropdown-item" href="../articles/climate.html">Climate downloads and raster extraction</a></li>
-    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop population rasters</a></li>
-    <li><a class="dropdown-item" href="../articles/dhs.html">DHS indicators and microdata</a></li>
+    <li><a class="dropdown-item" href="../articles/climate.html">Climate</a></li>
+    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop</a></li>
+    <li><a class="dropdown-item" href="../articles/rasters.html">Rasters</a></li>
+    <li><a class="dropdown-item" href="../articles/dhs.html">DHS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Project plumbing</h6></li>
-    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project setup and utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project utilities</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -92,7 +93,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>Spatial validation and mapping</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Spatial</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/ahadi-analytics/sntutils/blob/master/vignettes/spatial.Rmd" class="external-link"><code>vignettes/spatial.Rmd</code></a></small>
@@ -107,8 +108,30 @@ between the shapefile and the DHIS2 export, or facility coordinates
 might land in the ocean. <code>sntutils</code> provides a stack of
 focused functions to find and fix each of these issues, then a small
 mapping layer to plot the result.</p>
+<div class="alert alert-info">
+<p><strong>For the methodology and conceptual background behind the
+steps in this article, please check the <a href="https://ahadi-analytics.github.io/snt-code-library/" class="external-link">SNT Code
+Library</a>:</strong></p>
+<ul>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/shapefiles.html" class="external-link">Working
+with shapefiles</a> - source choice, vintages, projection notes.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/shapefiles/shapefile_management.html" class="external-link">Shapefile
+management</a> - the day-to-day workflow.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/shapefiles/merge_sf_excel.html" class="external-link">Merging
+shapefiles with non-spatial data</a>.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/health_facilities/facility_coordinates.html" class="external-link">Health-facility
+coordinates</a> - validation, common errors.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/health_facilities/master_facility_lists.html" class="external-link">Master
+facility lists</a> - matching DHIS2 to the MFL.</li>
+</ul>
+</div>
 <div class="section level2">
-<h2 id="downloading-boundaries-download_shapefile">Downloading boundaries: <code>download_shapefile()</code><a class="anchor" aria-label="anchor" href="#downloading-boundaries-download_shapefile"></a>
+<h2 id="downloading-boundaries">Downloading boundaries<a class="anchor" aria-label="anchor" href="#downloading-boundaries"></a>
 </h2>
 <p>For most SNT work the WHO <code>geohub</code> boundaries are the
 canonical input. <code><a href="../reference/download_shapefile.html">download_shapefile()</a></code> pulls them by ISO3
@@ -131,12 +154,11 @@ use.</p>
 downloaded to a session-scoped cache and not persisted across runs.</p>
 </div>
 <div class="section level2">
-<h2 id="validating-admin-geometries-validate_process_spatial">Validating admin geometries:
-<code>validate_process_spatial()</code><a class="anchor" aria-label="anchor" href="#validating-admin-geometries-validate_process_spatial"></a>
+<h2 id="validating-admin-geometries">Validating admin geometries<a class="anchor" aria-label="anchor" href="#validating-admin-geometries"></a>
 </h2>
 <p>Once a shapefile is in hand, <code><a href="../reference/validate_process_spatial.html">validate_process_spatial()</a></code>
-runs a battery of checks — invalid geometry, mixed Z/M dimensions, wrong
-CRS, missing admin codes, duplicated admin names — and (with
+runs a battery of checks - invalid geometry, mixed Z/M dimensions, wrong
+CRS, missing admin codes, duplicated admin names - and (with
 <code>fix_issues = TRUE</code>) attempts safe automatic repairs. It
 always returns the same shape: a list with a cleaned <code>sf</code>
 object plus a tibble of issues found.</p>
@@ -154,12 +176,11 @@ object plus a tibble of issues found.</p>
 <span></span>
 <span><span class="fu"><a href="https://rspatial.github.io/terra/reference/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">boundaries_clean</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "shp"     "issues"  "summary"</span></span></code></pre></div>
-<p>The <code>issues</code> tibble is the audit trail — keep it next to
+<p>The <code>issues</code> tibble is the audit trail - keep it next to
 the shapefile on disk so reviewers can see what was changed.</p>
 </div>
 <div class="section level2">
-<h2 id="validating-point-coordinates-validate_process_coordinates">Validating point coordinates:
-<code>validate_process_coordinates()</code><a class="anchor" aria-label="anchor" href="#validating-point-coordinates-validate_process_coordinates"></a>
+<h2 id="validating-facility-coordinates">Validating facility coordinates<a class="anchor" aria-label="anchor" href="#validating-facility-coordinates"></a>
 </h2>
 <p>For facility data, <code><a href="../reference/validate_process_coordinates.html">validate_process_coordinates()</a></code> checks
 that lat/lon columns parse, sit within plausible bounds, have enough
@@ -189,8 +210,7 @@ you pass <code>adm0_sf</code>.</p>
 <code>issues</code> tibble of dropped or flagged rows.</p>
 </div>
 <div class="section level2">
-<h2 id="crosswalking-shapefile-vintages-crosswalk_shapefiles_sf">Crosswalking shapefile vintages:
-<code>crosswalk_shapefiles_sf()</code><a class="anchor" aria-label="anchor" href="#crosswalking-shapefile-vintages-crosswalk_shapefiles_sf"></a>
+<h2 id="crosswalking-shapefile-vintages">Crosswalking shapefile vintages<a class="anchor" aria-label="anchor" href="#crosswalking-shapefile-vintages"></a>
 </h2>
 <p>When a country redistricts (Sierra Leone 2017, Togo 2019, several
 recent DRC changes), historical surveillance data is keyed to the old
@@ -222,8 +242,7 @@ indicators forward or backward.</p>
 aggregate counts from old units to new.</p>
 </div>
 <div class="section level2">
-<h2 id="fuzzy-matching-facilities-fuzzy_match_facilities">Fuzzy-matching facilities:
-<code>fuzzy_match_facilities()</code><a class="anchor" aria-label="anchor" href="#fuzzy-matching-facilities-fuzzy_match_facilities"></a>
+<h2 id="fuzzy-matching-facilities">Fuzzy-matching facilities<a class="anchor" aria-label="anchor" href="#fuzzy-matching-facilities"></a>
 </h2>
 <p>DHIS2 facility names rarely line up perfectly with the master
 facility list. <code><a href="../reference/fuzzy_match_facilities.html">fuzzy_match_facilities()</a></code> runs a staged
@@ -261,11 +280,19 @@ matching pipeline:</p>
 method so we can compare matching strategies side by side.</p>
 </div>
 <div class="section level2">
-<h2 id="joining-dhis2-columns-dhis2_map">Joining DHIS2 columns: <code>dhis2_map()</code><a class="anchor" aria-label="anchor" href="#joining-dhis2-columns-dhis2_map"></a>
+<h2 id="renaming-dhis2-columns-dhis2_map">Renaming DHIS2 columns: <code>dhis2_map()</code><a class="anchor" aria-label="anchor" href="#renaming-dhis2-columns-dhis2_map"></a>
 </h2>
 <p><code><a href="../reference/dhis2_map.html">dhis2_map()</a></code> renames a DHIS2 export’s columns using a
-name-mapping dictionary, so we can keep the upstream names intact on
-disk and only remap when we load the data.</p>
+name-mapping dictionary, so we can keep the upstream column labels
+intact on disk and only remap to SNT names when we load the data. It’s a
+small but critical step in every DHIS2 import workflow.</p>
+<blockquote>
+<p><strong>Used in:</strong> the <a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/import.html" class="external-link">DHIS2
+import and preprocessing</a> chapter of the SNT Code Library walks
+through where this fits in the end-to-end DHIS2 cleaning pipeline.
+<code><a href="../reference/dhis2_map.html">dhis2_map()</a></code> is the helper that performs the rename step
+described there.</p>
+</blockquote>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mapped</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dhis2_map.html">dhis2_map</a></span><span class="op">(</span></span>
 <span>  data    <span class="op">=</span> <span class="va">sl_dhis2_raw</span>,</span>
@@ -274,13 +301,15 @@ disk and only remap when we load the data.</p>
 <span>  old_col <span class="op">=</span> <span class="st">"dhis2_label"</span>,</span>
 <span>  drop_unmatched <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
+<p>Pair it with <code><a href="../reference/check_snt_var.html">check_snt_var()</a></code> after the rename to confirm
+the resulting column names match the canonical SNT schema (see <a href="data-io-and-cleaning.html#dictionaries-producing-one-and-using-the-curated-snt-schema">Read
+&amp; clean</a>).</p>
 </div>
 <div class="section level2">
 <h2 id="drawing-maps">Drawing maps<a class="anchor" aria-label="anchor" href="#drawing-maps"></a>
 </h2>
 <div class="section level3">
-<h3 id="plot_admin_map_distinct-categorical-fills">
-<code>plot_admin_map_distinct()</code> — categorical fills<a class="anchor" aria-label="anchor" href="#plot_admin_map_distinct-categorical-fills"></a>
+<h3 id="categorical-fills">Categorical fills<a class="anchor" aria-label="anchor" href="#categorical-fills"></a>
 </h3>
 <p>For administrative reference maps and any other categorical
 layer:</p>
@@ -288,32 +317,30 @@ layer:</p>
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/plot_admin_map_distinct.html">plot_admin_map_distinct</a></span><span class="op">(</span></span>
 <span>  sf_data <span class="op">=</span> <span class="va">boundaries_clean</span><span class="op">$</span><span class="va">shp</span>,</span>
 <span>  fill_col <span class="op">=</span> <span class="st">"adm1_name"</span>,</span>
-<span>  title   <span class="op">=</span> <span class="st">"Sierra Leone — districts coloured by region"</span>,</span>
+<span>  title   <span class="op">=</span> <span class="st">"Sierra Leone - districts coloured by region"</span>,</span>
 <span>  palette <span class="op">=</span> <span class="st">"ahadi_main"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Available palettes are listed via <code><a href="../reference/list_palettes.html">list_palettes()</a></code>; pull
 a specific palette with <code><a href="../reference/get_palette.html">get_palette()</a></code>.</p>
 </div>
 <div class="section level3">
-<h3 id="facetted_map_bins-and-facetted_map_gradient">
-<code>facetted_map_bins()</code> and
-<code>facetted_map_gradient()</code><a class="anchor" aria-label="anchor" href="#facetted_map_bins-and-facetted_map_gradient"></a>
+<h3 id="faceted-choropleths">Faceted choropleths<a class="anchor" aria-label="anchor" href="#faceted-choropleths"></a>
 </h3>
 <p>When the map needs to faceted by year, indicator, scenario or
 intervention, these two helpers produce consistent small-multiples with
 the SNT plotting defaults baked in:</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># bins — discrete legend, good for incidence categories</span></span>
+<code class="sourceCode R"><span><span class="co"># bins - discrete legend, good for incidence categories</span></span>
 <span><span class="fu"><a href="../reference/facetted_map_bins.html">facetted_map_bins</a></span><span class="op">(</span></span>
 <span>  data    <span class="op">=</span> <span class="va">incidence_long</span>,</span>
 <span>  sf_data <span class="op">=</span> <span class="va">boundaries_clean</span><span class="op">$</span><span class="va">shp</span>,</span>
 <span>  facet_col <span class="op">=</span> <span class="st">"year"</span>,</span>
 <span>  fill_col  <span class="op">=</span> <span class="st">"incidence_per_1000"</span>,</span>
 <span>  bins      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span>, <span class="fl">50</span>, <span class="fl">100</span>, <span class="fl">250</span>, <span class="fl">500</span>, <span class="cn">Inf</span><span class="op">)</span>,</span>
-<span>  title     <span class="op">=</span> <span class="st">"Annual malaria incidence per 1,000 — Sierra Leone"</span></span>
+<span>  title     <span class="op">=</span> <span class="st">"Annual malaria incidence per 1,000 - Sierra Leone"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># gradient — continuous legend, good for reporting completeness</span></span>
+<span><span class="co"># gradient - continuous legend, good for reporting completeness</span></span>
 <span><span class="fu"><a href="../reference/facetted_map_gradient.html">facetted_map_gradient</a></span><span class="op">(</span></span>
 <span>  data    <span class="op">=</span> <span class="va">reporting_long</span>,</span>
 <span>  sf_data <span class="op">=</span> <span class="va">boundaries_clean</span><span class="op">$</span><span class="va">shp</span>,</span>
@@ -367,13 +394,13 @@ article).</p>
 <span><span class="fu"><a href="../reference/plot_admin_map_distinct.html">plot_admin_map_distinct</a></span><span class="op">(</span></span>
 <span>  sf_data  <span class="op">=</span> <span class="va">sle_adm2_clean</span>,</span>
 <span>  fill_col <span class="op">=</span> <span class="st">"adm1_name"</span>,</span>
-<span>  title    <span class="op">=</span> <span class="st">"Sierra Leone — adm2 by region"</span></span>
+<span>  title    <span class="op">=</span> <span class="st">"Sierra Leone - adm2 by region"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>By the end of this pipeline we have a single, validated
 <code>sf</code> boundary file, a validated <code>sf</code>
 facility-points file, a high-confidence link between DHIS2 facility
-names and the MFL, and a baseline map. Everything that follows —
-reporting rates, climate extraction, population weighting — assumes this
+names and the MFL, and a baseline map. Everything that follows -
+reporting rates, climate extraction, population weighting - assumes this
 foundation.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

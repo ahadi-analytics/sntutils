@@ -79,7 +79,7 @@ maps.
 - [`download_shapefile()`](https://ahadi-analytics.github.io/sntutils/reference/download_shapefile.md)
   : Download WHO Administrative Boundaries with Partial Update
 
-## Routine surveillance — reporting rates
+## Routine surveillance - reporting rates
 
 Quantify and visualise how completely health facilities are reporting,
 by time and admin unit.
@@ -105,7 +105,7 @@ by time and admin unit.
   missing/duplicate/future/logic/ outlier checks, compiles a summary,
   and optionally translates and saves.
 
-## Routine surveillance — data quality
+## Routine surveillance - data quality
 
 Cascade consistency checks, outlier detection and correction, imputation
 helpers.
@@ -267,7 +267,7 @@ formatting.
 
 ## Plotting helpers and trend models
 
-Reusable building blocks for SNT plots — palettes, model wrappers, IR
+Reusable building blocks for SNT plots - palettes, model wrappers, IR
 plots.
 
 - [`get_model()`](https://ahadi-analytics.github.io/sntutils/reference/get_model.md)

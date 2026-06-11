@@ -1,4 +1,4 @@
-# Spatial validation and mapping
+# Spatial
 
 Spatial work is where SNT analyses fail most quietly. Geometry might be
 invalid, CRS might disagree, district names might have been renamed
@@ -7,7 +7,26 @@ might land in the ocean. `sntutils` provides a stack of focused
 functions to find and fix each of these issues, then a small mapping
 layer to plot the result.
 
-## Downloading boundaries: `download_shapefile()`
+**For the methodology and conceptual background behind the steps in this
+article, please check the [SNT Code
+Library](https://ahadi-analytics.github.io/snt-code-library/):**
+
+- [Working with
+  shapefiles](https://ahadi-analytics.github.io/snt-code-library/english/library/data/shapefiles.html) -
+  source choice, vintages, projection notes.
+- [Shapefile
+  management](https://ahadi-analytics.github.io/snt-code-library/english/library/data/shapefiles/shapefile_management.html) -
+  the day-to-day workflow.
+- [Merging shapefiles with non-spatial
+  data](https://ahadi-analytics.github.io/snt-code-library/english/library/data/shapefiles/merge_sf_excel.html).
+- [Health-facility
+  coordinates](https://ahadi-analytics.github.io/snt-code-library/english/library/data/health_facilities/facility_coordinates.html) -
+  validation, common errors.
+- [Master facility
+  lists](https://ahadi-analytics.github.io/snt-code-library/english/library/data/health_facilities/master_facility_lists.html) -
+  matching DHIS2 to the MFL.
+
+## Downloading boundaries
 
 For most SNT work the WHO `geohub` boundaries are the canonical input.
 [`download_shapefile()`](https://ahadi-analytics.github.io/sntutils/reference/download_shapefile.md)
@@ -33,12 +52,12 @@ class(boundaries)
 When `dest_path` is `NULL` the file is downloaded to a session-scoped
 cache and not persisted across runs.
 
-## Validating admin geometries: `validate_process_spatial()`
+## Validating admin geometries
 
 Once a shapefile is in hand,
 [`validate_process_spatial()`](https://ahadi-analytics.github.io/sntutils/reference/validate_process_spatial.md)
-runs a battery of checks — invalid geometry, mixed Z/M dimensions, wrong
-CRS, missing admin codes, duplicated admin names — and (with
+runs a battery of checks - invalid geometry, mixed Z/M dimensions, wrong
+CRS, missing admin codes, duplicated admin names - and (with
 `fix_issues = TRUE`) attempts safe automatic repairs. It always returns
 the same shape: a list with a cleaned `sf` object plus a tibble of
 issues found.
@@ -60,10 +79,10 @@ names(boundaries_clean)
 #> [1] "shp"     "issues"  "summary"
 ```
 
-The `issues` tibble is the audit trail — keep it next to the shapefile
+The `issues` tibble is the audit trail - keep it next to the shapefile
 on disk so reviewers can see what was changed.
 
-## Validating point coordinates: `validate_process_coordinates()`
+## Validating facility coordinates
 
 For facility data,
 [`validate_process_coordinates()`](https://ahadi-analytics.github.io/sntutils/reference/validate_process_coordinates.md)
@@ -97,7 +116,7 @@ hf_clean$summary
 Returns an `sf` of valid POINT geometry plus an `issues` tibble of
 dropped or flagged rows.
 
-## Crosswalking shapefile vintages: `crosswalk_shapefiles_sf()`
+## Crosswalking shapefile vintages
 
 When a country redistricts (Sierra Leone 2017, Togo 2019, several recent
 DRC changes), historical surveillance data is keyed to the old
@@ -132,7 +151,7 @@ Multiply by `weight` and
 `dplyr::group_by(adm2_name) |> summarise(sum())` to push aggregate
 counts from old units to new.
 
-## Fuzzy-matching facilities: `fuzzy_match_facilities()`
+## Fuzzy-matching facilities
 
 DHIS2 facility names rarely line up perfectly with the master facility
 list.
@@ -177,12 +196,20 @@ matches$results |>
 summarises the same results by method so we can compare matching
 strategies side by side.
 
-## Joining DHIS2 columns: `dhis2_map()`
+## Renaming DHIS2 columns: `dhis2_map()`
 
 [`dhis2_map()`](https://ahadi-analytics.github.io/sntutils/reference/dhis2_map.md)
 renames a DHIS2 export’s columns using a name-mapping dictionary, so we
-can keep the upstream names intact on disk and only remap when we load
-the data.
+can keep the upstream column labels intact on disk and only remap to SNT
+names when we load the data. It’s a small but critical step in every
+DHIS2 import workflow.
+
+> **Used in:** the [DHIS2 import and
+> preprocessing](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/import.html)
+> chapter of the SNT Code Library walks through where this fits in the
+> end-to-end DHIS2 cleaning pipeline.
+> [`dhis2_map()`](https://ahadi-analytics.github.io/sntutils/reference/dhis2_map.md)
+> is the helper that performs the rename step described there.
 
 ``` r
 
@@ -195,9 +222,15 @@ mapped <- dhis2_map(
 )
 ```
 
+Pair it with
+[`check_snt_var()`](https://ahadi-analytics.github.io/sntutils/reference/check_snt_var.md)
+after the rename to confirm the resulting column names match the
+canonical SNT schema (see [Read &
+clean](https://ahadi-analytics.github.io/sntutils/articles/data-io-and-cleaning.html#dictionaries-producing-one-and-using-the-curated-snt-schema)).
+
 ## Drawing maps
 
-### `plot_admin_map_distinct()` — categorical fills
+### Categorical fills
 
 For administrative reference maps and any other categorical layer:
 
@@ -206,7 +239,7 @@ For administrative reference maps and any other categorical layer:
 plot_admin_map_distinct(
   sf_data = boundaries_clean$shp,
   fill_col = "adm1_name",
-  title   = "Sierra Leone — districts coloured by region",
+  title   = "Sierra Leone - districts coloured by region",
   palette = "ahadi_main"
 )
 ```
@@ -216,7 +249,7 @@ Available palettes are listed via
 pull a specific palette with
 [`get_palette()`](https://ahadi-analytics.github.io/sntutils/reference/get_palette.md).
 
-### `facetted_map_bins()` and `facetted_map_gradient()`
+### Faceted choropleths
 
 When the map needs to faceted by year, indicator, scenario or
 intervention, these two helpers produce consistent small-multiples with
@@ -224,17 +257,17 @@ the SNT plotting defaults baked in:
 
 ``` r
 
-# bins — discrete legend, good for incidence categories
+# bins - discrete legend, good for incidence categories
 facetted_map_bins(
   data    = incidence_long,
   sf_data = boundaries_clean$shp,
   facet_col = "year",
   fill_col  = "incidence_per_1000",
   bins      = c(0, 10, 50, 100, 250, 500, Inf),
-  title     = "Annual malaria incidence per 1,000 — Sierra Leone"
+  title     = "Annual malaria incidence per 1,000 - Sierra Leone"
 )
 
-# gradient — continuous legend, good for reporting completeness
+# gradient - continuous legend, good for reporting completeness
 facetted_map_gradient(
   data    = reporting_long,
   sf_data = boundaries_clean$shp,
@@ -290,12 +323,12 @@ match_results <- fuzzy_match_facilities(
 plot_admin_map_distinct(
   sf_data  = sle_adm2_clean,
   fill_col = "adm1_name",
-  title    = "Sierra Leone — adm2 by region"
+  title    = "Sierra Leone - adm2 by region"
 )
 ```
 
 By the end of this pipeline we have a single, validated `sf` boundary
 file, a validated `sf` facility-points file, a high-confidence link
 between DHIS2 facility names and the MFL, and a baseline map. Everything
-that follows — reporting rates, climate extraction, population weighting
-— assumes this foundation.
+that follows - reporting rates, climate extraction, population
+weighting - assumes this foundation.

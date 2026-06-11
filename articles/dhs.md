@@ -1,4 +1,4 @@
-# DHS indicators and microdata
+# DHS
 
 DHS (Demographic and Health Surveys) and MIS (Malaria Indicator Surveys)
 are core inputs for SNT: they’re the only consistent source of
@@ -7,14 +7,28 @@ data across most malaria-endemic countries.
 
 `sntutils` exposes two paths into DHS:
 
-1.  **DHS API** — discover and download published, pre-tabulated
+1.  **DHS API** - discover and download published, pre-tabulated
     indicators (national and subnational) for any country / survey.
-2.  **Local parquet via DuckDB** — register downloaded DHS microdata
+2.  **Local parquet via DuckDB** - register downloaded DHS microdata
     ([`get_dhs_data()`](https://ahadi-analytics.github.io/sntutils/reference/get_dhs_data.md))
     as queryable views, so we can compute custom indicators without
     loading full SPSS / Stata files into memory.
 
-## Discovering indicators: `check_dhs_indicators()`
+**For the methodology and conceptual background behind the steps in this
+article, please check the [SNT Code
+Library](https://ahadi-analytics.github.io/snt-code-library/):**
+
+- [DHS
+  overview](https://ahadi-analytics.github.io/snt-code-library/english/library/data/dhs.html) -
+  what DHS publishes, how it’s structured.
+- [Treatment-seeking](https://ahadi-analytics.github.io/snt-code-library/english/library/data/dhs/treatment_seeking.html),
+  [ITN
+  metrics](https://ahadi-analytics.github.io/snt-code-library/english/library/data/dhs/itn_metrics.html),
+  [Prevalence](https://ahadi-analytics.github.io/snt-code-library/english/library/data/dhs/prevalence.html),
+  [Mortality](https://ahadi-analytics.github.io/snt-code-library/english/library/data/dhs/mortality_data.html),
+  [Wealth](https://ahadi-analytics.github.io/snt-code-library/english/library/data/dhs/wealth.html).
+
+## Discovering indicators
 
 Before downloading anything, find the indicator IDs we want.
 [`check_dhs_indicators()`](https://ahadi-analytics.github.io/sntutils/reference/check_dhs_indicators.md)
@@ -56,9 +70,9 @@ check_dhs_indicators(
 ```
 
 Returned fields include `IndicatorId`, `Label`, and `Definition` by
-default — pass `returnFields` to add more.
+default - pass `returnFields` to add more.
 
-## Downloading values: `download_dhs_indicators()`
+## Downloading indicator values
 
 Once we have indicator IDs,
 [`download_dhs_indicators()`](https://ahadi-analytics.github.io/sntutils/reference/download_dhs_indicators.md)
@@ -119,7 +133,7 @@ download_dhs_indicators(
 )
 ```
 
-## Local DHS microdata via DuckDB: `get_dhs_data()`
+## Local DHS microdata via DuckDB
 
 When the published indicators don’t cover what we need (custom
 denominators, multi-variable cross-tabs, restricted populations), the

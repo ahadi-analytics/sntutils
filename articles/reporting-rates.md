@@ -6,8 +6,8 @@ analyst needs to know **how completely facilities are reporting**.
 is the workhorse: it answers the “who reported, when, where” question in
 three different shapes.
 
-For the related question — are the values they reported internally
-consistent and free of outliers — see the [Data
+For the related question - are the values they reported internally
+consistent and free of outliers - see the [Data
 quality](https://ahadi-analytics.github.io/sntutils/articles/data-quality.md)
 article.
 
@@ -29,6 +29,17 @@ sl_dhis2 <- read(
   )
 ```
 
+**For the methodology and conceptual background behind the steps in this
+article, please check the [SNT Code
+Library](https://ahadi-analytics.github.io/snt-code-library/):**
+
+- [Reporting
+  rates](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/reporting_rate.html) -
+  what reporting rate measures and how to interpret it.
+- [Active facility
+  status](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/active_status.html) -
+  the denominator logic in plain English.
+
 ## What “reporting rate” actually means here
 
 [`calculate_reporting_metrics()`](https://ahadi-analytics.github.io/sntutils/reference/calculate_reporting_metrics.md)
@@ -47,12 +58,12 @@ non-reporting rate down.
 
 Let:
 
-- $`a`$ — administrative unit (e.g. district)
-- $`t`$ — time period (year-month)
-- $`f`$ — facility in $`a`$
-- `key_indicators` — variables used to determine whether a facility is
+- $`a`$ - administrative unit (e.g. district)
+- $`t`$ - time period (year-month)
+- $`f`$ - facility in $`a`$
+- `key_indicators` - variables used to determine whether a facility is
   active, e.g. `"test"`, `"treat"`, `"conf"`, `"pres"`, `"allout"`
-- `vars_of_interest` — variables we want the reporting rate **for**,
+- `vars_of_interest` - variables we want the reporting rate **for**,
   e.g. `"conf"`, `"pres"`
 
 The reporting rate for unit $`a`$ in period $`t`$ is
@@ -63,9 +74,9 @@ The reporting rate for unit $`a`$ in period $`t`$ is
 
 where
 
-- $`o_{a,t}`$ — facilities in $`a`$ that reported **any** value in
+- $`o_{a,t}`$ - facilities in $`a`$ that reported **any** value in
   `vars_of_interest` during $`t`$
-- $`e_{a,t}`$ — facilities in $`a`$ whose **first-ever** report on any
+- $`e_{a,t}`$ - facilities in $`a`$ whose **first-ever** report on any
   `key_indicators` occurred on or before $`t`$.
 
 ### Worked example
@@ -81,7 +92,7 @@ Suppose we want the reporting rate for district $`d`$ in March:
 \text{Reporting Rate}_{d,\text{Mar}} \;=\; \frac{4}{6} \;=\; 0.667
 ```
 
-## Scenario 1 — Facility-level reporting / missing rate
+## Scenario 1 - Facility-level reporting / missing rate
 
 This is the rate you almost always want when reporting to a country
 team. It uses an evolving denominator (facilities that have ever
@@ -127,7 +138,7 @@ reporting_rate_plot(
 
 ![](figures/reporting-rate-plot-scenario1-output-1.png)
 
-## Scenario 2 — Reporting rate by two dimensions
+## Scenario 2 - Reporting rate by two dimensions
 
 When we want a heatmap of completeness across time × space for one or
 more variables, without the activity-based denominator, drop `hf_col`
@@ -168,7 +179,7 @@ reporting_rate_plot(
 
 ![](figures/reporting-rate-plot-scenario2-output-1.png)
 
-## Scenario 3 — Reporting rates over time
+## Scenario 3 - Reporting rates over time
 
 To see when each variable starts being reported (and where it stops),
 drop `y_var` entirely:
@@ -259,7 +270,7 @@ lets us compare two reporting-rule choices (e.g. *any* indicator vs
 *all* indicators) on the same data.
 
 [`validate_routine_hf_data()`](https://ahadi-analytics.github.io/sntutils/reference/validate_routine_hf_data.md)
-is the upstream sanity check — it runs a battery of structural checks on
+is the upstream sanity check - it runs a battery of structural checks on
 a routine HF dataset (required columns, parseable dates, plausible value
 ranges) before any of the reporting-rate functions get to it. Run it
 once at ingest.

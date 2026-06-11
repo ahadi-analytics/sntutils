@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Data quality — consistency, outliers, imputation • sntutils</title>
+<title>Data quality • sntutils</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -17,7 +17,7 @@
 <link href="../deps/JetBrains_Mono-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Data quality — consistency, outliers, imputation">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Data quality">
 <meta name="description" content="Cascade consistency checks, three-method outlier detection, correction and imputation for routine surveillance data.
 ">
 <meta property="og:description" content="Cascade consistency checks, three-method outlier detection, correction and imputation for routine surveillance data.
@@ -32,7 +32,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sntutils</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,20 +48,21 @@
 <li><a class="dropdown-item" href="../articles/getting-started.html">Get started</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data preparation</h6></li>
-    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Data I/O and cleaning</a></li>
-    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial validation and mapping</a></li>
+    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Read &amp; clean</a></li>
+    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Routine surveillance</h6></li>
     <li><a class="dropdown-item" href="../articles/reporting-rates.html">Reporting rates</a></li>
-    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality — consistency, outliers</a></li>
+    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>External data sources</h6></li>
-    <li><a class="dropdown-item" href="../articles/climate.html">Climate downloads and raster extraction</a></li>
-    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop population rasters</a></li>
-    <li><a class="dropdown-item" href="../articles/dhs.html">DHS indicators and microdata</a></li>
+    <li><a class="dropdown-item" href="../articles/climate.html">Climate</a></li>
+    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop</a></li>
+    <li><a class="dropdown-item" href="../articles/rasters.html">Rasters</a></li>
+    <li><a class="dropdown-item" href="../articles/dhs.html">DHS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Project plumbing</h6></li>
-    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project setup and utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project utilities</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -92,7 +93,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>Data quality — consistency, outliers, imputation</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Data quality</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/ahadi-analytics/sntutils/blob/master/vignettes/data-quality.Rmd" class="external-link"><code>vignettes/data-quality.Rmd</code></a></small>
@@ -118,6 +119,28 @@ correcting before modelling?</p>
 <span>    hf_uid    <span class="op">=</span> <span class="fu"><a href="../reference/vdigest.html">vdigest</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">adm1</span>, <span class="va">adm2</span>, <span class="va">hf</span><span class="op">)</span>, algo <span class="op">=</span> <span class="st">"xxhash32"</span><span class="op">)</span>,</span>
 <span>    record_id <span class="op">=</span> <span class="fu"><a href="../reference/vdigest.html">vdigest</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="va">hf_uid</span>, <span class="va">year_mon</span><span class="op">)</span>,  algo <span class="op">=</span> <span class="st">"xxhash32"</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span></code></pre></div>
+<div class="alert alert-info">
+<p><strong>For the methodology and conceptual background behind the
+steps in this article, please check the <a href="https://ahadi-analytics.github.io/snt-code-library/" class="external-link">SNT Code
+Library</a>:</strong></p>
+<ul>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/quality_control.html" class="external-link">Quality
+control (consistency checks)</a> - cascade logic and red flags.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/outlier_detection.html" class="external-link">Outlier
+detection</a> - when to use mean, median or IQR rules.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/outlier_correction.html" class="external-link">Outlier
+correction</a> - decision rules for replacing flagged values.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/missing_data.html" class="external-link">Missing
+data</a> - patterns and what to do about them.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/imputation.html" class="external-link">Imputation</a>
+- replacement strategies in context.</li>
+</ul>
+</div>
 <div class="section level2">
 <h2 id="consistency-checks">Consistency checks<a class="anchor" aria-label="anchor" href="#consistency-checks"></a>
 </h2>
@@ -172,7 +195,7 @@ points highlighted.</p>
 <h3 id="mapping-consistency">Mapping consistency<a class="anchor" aria-label="anchor" href="#mapping-consistency"></a>
 </h3>
 <p><code><a href="../reference/consistency_map.html">consistency_map()</a></code> renders a choropleth of
-cascade-violation rates by admin unit — useful for spotting whether the
+cascade-violation rates by admin unit - useful for spotting whether the
 cascade is breaking in particular districts vs. system-wide:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/consistency_map.html">consistency_map</a></span><span class="op">(</span></span>
@@ -195,13 +218,13 @@ column using three complementary methods, with detection done
 seasonal and contextual variation isn’t mistaken for noise:</p>
 <ul>
 <li>
-<strong>Mean ± 3 SD</strong> — classic, parametric, sensitive to
+<strong>Mean ± 3 SD</strong> - classic, parametric, sensitive to
 extremes.</li>
 <li>
-<strong>Median ± 15 × MAD</strong> — robust, the workhorse for
+<strong>Median ± 15 × MAD</strong> - robust, the workhorse for
 surveillance data.</li>
 <li>
-<strong>Tukey’s fences</strong> — quartile-based, tunable via
+<strong>Tukey’s fences</strong> - quartile-based, tunable via
 <code>iqr_multiplier</code>.</li>
 </ul>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -233,7 +256,7 @@ surveillance data.</li>
 <h3 id="visualising-outliers">Visualising outliers<a class="anchor" aria-label="anchor" href="#visualising-outliers"></a>
 </h3>
 <p><code><a href="../reference/outlier_plot.html">outlier_plot()</a></code> returns a list of <code>ggplot</code>
-objects — one per method — faceted by district and coloured by status.
+objects - one per method - faceted by district and coloured by status.
 Facet labels show the share of outliers in each district.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">plots</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/outlier_plot.html">outlier_plot</a></span><span class="op">(</span></span>
@@ -272,16 +295,16 @@ replaces flagged values using one of several strategies:</p>
 <p>The supporting functions:</p>
 <ul>
 <li>
-<code><a href="../reference/impute_outlier_ma.html">impute_outlier_ma()</a></code> — moving-average imputation; the
+<code><a href="../reference/impute_outlier_ma.html">impute_outlier_ma()</a></code> - moving-average imputation; the
 workhorse inside <code><a href="../reference/correct_outliers.html">correct_outliers()</a></code> when
 <code>method = "moving_average"</code>.</li>
 <li>
-<code><a href="../reference/impute_higher_admin.html">impute_higher_admin()</a></code> — borrow strength from the parent
+<code><a href="../reference/impute_higher_admin.html">impute_higher_admin()</a></code> - borrow strength from the parent
 admin unit when the facility’s own history is too sparse to support a
 within-unit estimate.</li>
 <li>
 <code><a href="../reference/fallback_diff.html">fallback_diff()</a></code>, <code><a href="../reference/fallback_row_sum.html">fallback_row_sum()</a></code>,
-<code><a href="../reference/safe_sum.html">safe_sum()</a></code> — defensive numerical helpers used inside the
+<code><a href="../reference/safe_sum.html">safe_sum()</a></code> - defensive numerical helpers used inside the
 imputation paths. They tolerate all-NA rows, return zeros where
 appropriate, and refuse to silently sum characters.</li>
 </ul>
@@ -316,8 +339,8 @@ appropriate, and refuse to silently sum characters.</li>
 <span>  method      <span class="op">=</span> <span class="st">"moving_average"</span>,</span>
 <span>  flag_method <span class="op">=</span> <span class="st">"median"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>The output is <code>sl_clean</code> — same shape as the input but
-with flagged-and-replaced values — plus diagnostic objects
+<p>The output is <code>sl_clean</code> - same shape as the input but
+with flagged-and-replaced values - plus diagnostic objects
 (<code>cascade</code>, <code>outliers</code>) you can hand to reviewers
 as evidence for why each record was edited.</p>
 </div>

@@ -1,4 +1,4 @@
-# Data quality — consistency, outliers, imputation
+# Data quality
 
 Reporting completeness (covered in [Reporting
 rates](https://ahadi-analytics.github.io/sntutils/articles/reporting-rates.md))
@@ -21,6 +21,25 @@ sl_dhis2 <- read(
     record_id = vdigest(paste(hf_uid, year_mon),  algo = "xxhash32")
   )
 ```
+
+**For the methodology and conceptual background behind the steps in this
+article, please check the [SNT Code
+Library](https://ahadi-analytics.github.io/snt-code-library/):**
+
+- [Quality control (consistency
+  checks)](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/quality_control.html) -
+  cascade logic and red flags.
+- [Outlier
+  detection](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/outlier_detection.html) -
+  when to use mean, median or IQR rules.
+- [Outlier
+  correction](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/outlier_correction.html) -
+  decision rules for replacing flagged values.
+- [Missing
+  data](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/missing_data.html) -
+  patterns and what to do about them.
+- [Imputation](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/imputation.html) -
+  replacement strategies in context.
 
 ## Consistency checks
 
@@ -79,7 +98,7 @@ consistency_check(
 ### Mapping consistency
 
 [`consistency_map()`](https://ahadi-analytics.github.io/sntutils/reference/consistency_map.md)
-renders a choropleth of cascade-violation rates by admin unit — useful
+renders a choropleth of cascade-violation rates by admin unit - useful
 for spotting whether the cascade is breaking in particular districts
 vs. system-wide:
 
@@ -103,9 +122,9 @@ flags unusual values in a numeric column using three complementary
 methods, with detection done **within groups** of admin unit × facility
 × year so seasonal and contextual variation isn’t mistaken for noise:
 
-- **Mean ± 3 SD** — classic, parametric, sensitive to extremes.
-- **Median ± 15 × MAD** — robust, the workhorse for surveillance data.
-- **Tukey’s fences** — quartile-based, tunable via `iqr_multiplier`.
+- **Mean ± 3 SD** - classic, parametric, sensitive to extremes.
+- **Median ± 15 × MAD** - robust, the workhorse for surveillance data.
+- **Tukey’s fences** - quartile-based, tunable via `iqr_multiplier`.
 
 ``` r
 
@@ -139,7 +158,7 @@ or correct as needed.
 ### Visualising outliers
 
 [`outlier_plot()`](https://ahadi-analytics.github.io/sntutils/reference/outlier_plot.md)
-returns a list of `ggplot` objects — one per method — faceted by
+returns a list of `ggplot` objects - one per method - faceted by
 district and coloured by status. Facet labels show the share of outliers
 in each district.
 
@@ -193,17 +212,17 @@ sl_corrected <- correct_outliers(
 
 The supporting functions:
 
-- [`impute_outlier_ma()`](https://ahadi-analytics.github.io/sntutils/reference/impute_outlier_ma.md)
-  — moving-average imputation; the workhorse inside
+- [`impute_outlier_ma()`](https://ahadi-analytics.github.io/sntutils/reference/impute_outlier_ma.md) -
+  moving-average imputation; the workhorse inside
   [`correct_outliers()`](https://ahadi-analytics.github.io/sntutils/reference/correct_outliers.md)
   when `method = "moving_average"`.
-- [`impute_higher_admin()`](https://ahadi-analytics.github.io/sntutils/reference/impute_higher_admin.md)
-  — borrow strength from the parent admin unit when the facility’s own
+- [`impute_higher_admin()`](https://ahadi-analytics.github.io/sntutils/reference/impute_higher_admin.md) -
+  borrow strength from the parent admin unit when the facility’s own
   history is too sparse to support a within-unit estimate.
 - [`fallback_diff()`](https://ahadi-analytics.github.io/sntutils/reference/fallback_diff.md),
   [`fallback_row_sum()`](https://ahadi-analytics.github.io/sntutils/reference/fallback_row_sum.md),
-  [`safe_sum()`](https://ahadi-analytics.github.io/sntutils/reference/safe_sum.md)
-  — defensive numerical helpers used inside the imputation paths. They
+  [`safe_sum()`](https://ahadi-analytics.github.io/sntutils/reference/safe_sum.md) -
+  defensive numerical helpers used inside the imputation paths. They
   tolerate all-NA rows, return zeros where appropriate, and refuse to
   silently sum characters.
 
@@ -239,7 +258,7 @@ sl_clean <- correct_outliers(
 )
 ```
 
-The output is `sl_clean` — same shape as the input but with
-flagged-and-replaced values — plus diagnostic objects (`cascade`,
+The output is `sl_clean` - same shape as the input but with
+flagged-and-replaced values - plus diagnostic objects (`cascade`,
 `outliers`) you can hand to reviewers as evidence for why each record
 was edited.

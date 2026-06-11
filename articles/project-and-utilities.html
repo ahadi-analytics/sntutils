@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Project setup and utilities • sntutils</title>
+<title>Project utilities • sntutils</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -17,7 +17,7 @@
 <link href="../deps/JetBrains_Mono-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Project setup and utilities">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Project utilities">
 <meta name="description" content="Scaffold an AHADI project structure, resolve standardised paths, translate plot labels with caching, hash records, compress images, and use the small numeric helpers that show up in every SNT script.
 ">
 <meta property="og:description" content="Scaffold an AHADI project structure, resolve standardised paths, translate plot labels with caching, hash records, compress images, and use the small numeric helpers that show up in every SNT script.
@@ -32,7 +32,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sntutils</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,20 +48,21 @@
 <li><a class="dropdown-item" href="../articles/getting-started.html">Get started</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data preparation</h6></li>
-    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Data I/O and cleaning</a></li>
-    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial validation and mapping</a></li>
+    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Read &amp; clean</a></li>
+    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Routine surveillance</h6></li>
     <li><a class="dropdown-item" href="../articles/reporting-rates.html">Reporting rates</a></li>
-    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality — consistency, outliers</a></li>
+    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>External data sources</h6></li>
-    <li><a class="dropdown-item" href="../articles/climate.html">Climate downloads and raster extraction</a></li>
-    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop population rasters</a></li>
-    <li><a class="dropdown-item" href="../articles/dhs.html">DHS indicators and microdata</a></li>
+    <li><a class="dropdown-item" href="../articles/climate.html">Climate</a></li>
+    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop</a></li>
+    <li><a class="dropdown-item" href="../articles/rasters.html">Rasters</a></li>
+    <li><a class="dropdown-item" href="../articles/dhs.html">DHS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Project plumbing</h6></li>
-    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project setup and utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project utilities</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -92,7 +93,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>Project setup and utilities</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Project utilities</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/ahadi-analytics/sntutils/blob/master/vignettes/project-and-utilities.Rmd" class="external-link"><code>vignettes/project-and-utilities.Rmd</code></a></small>
@@ -102,8 +103,8 @@
     
     
 <p>The other articles cover the headline analyses. This one rounds up
-the day-to-day plumbing — folder scaffolding, paths, translation,
-hashing, image compression, and the small numerical helpers — that make
+the day-to-day plumbing - folder scaffolding, paths, translation,
+hashing, image compression, and the small numerical helpers - that make
 the rest of <code>sntutils</code> feel coherent.</p>
 <div class="section level2">
 <h2 id="project-structure">Project structure<a class="anchor" aria-label="anchor" href="#project-structure"></a>
@@ -112,8 +113,7 @@ the rest of <code>sntutils</code> feel coherent.</p>
 written for one country drop straight into another. Two functions build
 it.</p>
 <div class="section level3">
-<h3 id="create_data_structure">
-<code>create_data_structure()</code><a class="anchor" aria-label="anchor" href="#create_data_structure"></a>
+<h3 id="just-the-data-tree">Just the data tree<a class="anchor" aria-label="anchor" href="#just-the-data-tree"></a>
 </h3>
 <p>Creates only the data tree under <code>01_data/</code>. Each domain
 folder has <code>raw/</code> and <code>processed/</code> subfolders.</p>
@@ -124,15 +124,25 @@ folder has <code>raw/</code> and <code>processed/</code> subfolders.</p>
 <pre><code>01_data/
 ├── 1.1_foundational/
 │   ├── 1.1a_admin_boundaries/
-│   ├── 1.1b_health_facilities/
-│   └── 1.1c_population/
-│       ├── 1.1ci_national/
-│       └── 1.1cii_worldpop_rasters/
+│   ├── 1.1b_physical_features/
+│   ├── 1.1c_health_facilities/
+│   ├── 1.1d_community_health_workers/
+│   ├── 1.1e_population/
+│   │   ├── 1.1ei_national/
+│   │   ├── 1.1eii_worldpop_rasters/
+│   │   └── 1.1eiii_displaced_pop/
+│   └── 1.1f_cache_files/
 ├── 1.2_epidemiology/
 │   ├── 1.2a_routine_surveillance/
 │   ├── 1.2b_pfpr_estimates/
 │   └── 1.2c_mortality_estimates/
 ├── 1.3_interventions/
+│   ├── 1.3a_itns/
+│   ├── 1.3b_iptp/
+│   ├── 1.3c_smc/
+│   ├── 1.3d_vap/
+│   ├── 1.3e_anc/
+│   └── 1.3f_irs/
 ├── 1.4_drug_efficacy_resistance/
 ├── 1.5_environment/
 │   ├── 1.5a_climate/
@@ -141,27 +151,34 @@ folder has <code>raw/</code> and <code>processed/</code> subfolders.</p>
 ├── 1.6_health_systems/
 │   └── 1.6a_dhs/
 ├── 1.7_entomology/
-└── 1.8_commodities/</code></pre>
+├── 1.8_commodities/
+├── 1.9_finance/
+└── 1.10_final/</code></pre>
+<p>Every leaf folder (except <code>1.10_final/</code> and
+<code>1.1f_cache_files/</code>) gets its own <code>raw/</code> and
+<code>processed/</code> subfolders automatically.</p>
 </div>
 <div class="section level3">
-<h3 id="initialize_project_structure">
-<code>initialize_project_structure()</code><a class="anchor" aria-label="anchor" href="#initialize_project_structure"></a>
+<h3 id="full-project-skeleton">Full project skeleton<a class="anchor" aria-label="anchor" href="#full-project-skeleton"></a>
 </h3>
 <p>Same data tree plus the surrounding scaffolding for scripts, outputs
-and reports — use this on the first day of a new project.</p>
+and reports - use this on the first day of a new project.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/initialize_project_structure.html">initialize_project_structure</a></span><span class="op">(</span>base_path <span class="op">=</span> <span class="st">"my_snt_project"</span><span class="op">)</span></span></code></pre></div>
 <pre><code>my_snt_project/
-├── 01_data/                  # hierarchical data tree from above
+├── 01_data/                       # full hierarchical data tree from above
 ├── 02_scripts/
 ├── 03_outputs/
-│   └── plots/
+│   ├── 3.1_validation/            (figures/ + tables/)
+│   ├── 3.2_intermediate_products/ (figures/ + tables/)
+│   ├── 3.3_final_snt_outputs/     (figures/ + tables/)
+│   └── 3.4_model/                 (figures/ + tables/)
 ├── 04_reports/
-└── metadata_docs/</code></pre>
+└── 05_metadata_docs/</code></pre>
 </div>
 </div>
 <div class="section level2">
-<h2 id="resolving-paths-setup_project_paths">Resolving paths: <code>setup_project_paths()</code><a class="anchor" aria-label="anchor" href="#resolving-paths-setup_project_paths"></a>
+<h2 id="resolving-paths">Resolving paths<a class="anchor" aria-label="anchor" href="#resolving-paths"></a>
 </h2>
 <p>Once the folders exist, <code><a href="../reference/setup_project_paths.html">setup_project_paths()</a></code> returns a
 named list of absolute paths to every important location. Detects the
@@ -186,7 +203,7 @@ accepts these paths directly, so a typical script reads:</p>
 <span><span class="va">shp</span>    <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read.html">read</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">admin_shp</span>, <span class="st">"sle_adm2.geojson"</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">dhis2</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read_snt_data.html">read_snt_data</a></span><span class="op">(</span><span class="va">paths</span><span class="op">$</span><span class="va">dhis2</span>, <span class="st">"sl_dhis2_clean"</span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="../reference/ahadi_path.html">ahadi_path()</a></code> is a related helper for navigating the
-AHADI shared OneDrive — it locates a project by name across team
+AHADI shared OneDrive - it locates a project by name across team
 members’ synced roots, useful for cross-machine reproducibility.</p>
 <p><code><a href="../reference/clear_snt_cache.html">clear_snt_cache()</a></code> resets the in-memory caches used by
 <code><a href="../reference/snt_data_dict.html">snt_data_dict()</a></code> and related helpers; call it after editing
@@ -200,8 +217,7 @@ near- weekly basis. Every plot and label function in
 <code>sntutils</code> accepts a <code>target_language</code> argument,
 which routes through this small translation stack.</p>
 <div class="section level3">
-<h3 id="translate_text">
-<code>translate_text()</code><a class="anchor" aria-label="anchor" href="#translate_text"></a>
+<h3 id="translate-a-single-string">Translate a single string<a class="anchor" aria-label="anchor" href="#translate-a-single-string"></a>
 </h3>
 <p>Calls Google Translate (via the <code>gtranslate</code> package) once
 per unique string and caches the response to a local JSON file. The next
@@ -219,10 +235,9 @@ instantly from cache.</p>
 <span><span class="co">#&gt; [1] "Casos de malária"</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="translate_text_vec">
-<code>translate_text_vec()</code><a class="anchor" aria-label="anchor" href="#translate_text_vec"></a>
+<h3 id="translate-a-column">Translate a column<a class="anchor" aria-label="anchor" href="#translate-a-column"></a>
 </h3>
-<p>Vectorised wrapper for <code><a href="../reference/translate_text.html">translate_text()</a></code> — translate a
+<p>Vectorised wrapper for <code><a href="../reference/translate_text.html">translate_text()</a></code> - translate a
 whole column in one call, with caching shared across the batch.</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="fu">tibble</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
@@ -239,8 +254,7 @@ whole column in one call, with caching shared across the batch.</p>
 <span><span class="co">#&gt; 3 Tests performed Pruebas realizadas</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="translate_yearmon">
-<code>translate_yearmon()</code><a class="anchor" aria-label="anchor" href="#translate_yearmon"></a>
+<h3 id="locale-aware-month-year-formatting">Locale-aware month-year formatting<a class="anchor" aria-label="anchor" href="#locale-aware-month-year-formatting"></a>
 </h3>
 <p>Locale-aware month-year formatting for time-series axes.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
@@ -252,19 +266,39 @@ whole column in one call, with caching shared across the batch.</p>
 <span><span class="fu"><a href="../reference/translate_yearmon.html">translate_yearmon</a></span><span class="op">(</span><span class="va">dates</span>, language <span class="op">=</span> <span class="st">"es"</span>, format <span class="op">=</span> <span class="st">"%B %Y"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "enero 2022" "febrero 2022" "marzo 2022"</span></span></code></pre></div>
 </div>
-<div class="section level3">
-<h3 id="french_malaria_acronyms">
-<code>french_malaria_acronyms()</code><a class="anchor" aria-label="anchor" href="#french_malaria_acronyms"></a>
-</h3>
-<p>Returns the curated list of malaria acronyms used to override Google
-Translate’s defaults for French (<code>TPI</code> instead of “PIT”,
-<code>MILDA</code> instead of “moustiquaire imprégnée à longue durée
-d’action”, etc.). Plot helpers consult this list automatically when
-<code>target_language = "fr"</code>.</p>
-</div>
 </div>
 <div class="section level2">
-<h2 id="image-compression-compress_png">Image compression: <code>compress_png()</code><a class="anchor" aria-label="anchor" href="#image-compression-compress_png"></a>
+<h2 id="french-malaria-acronyms">French malaria acronyms<a class="anchor" aria-label="anchor" href="#french-malaria-acronyms"></a>
+</h2>
+<p>Google Translate consistently butchers technical malaria acronyms
+when asked to translate plot titles, labels and report text into French
+- it emits “PIT” instead of <code>TPI</code>, the literal phrase
+“moustiquaire imprégnée à longue durée d’action” instead of
+<code>MILDA</code>, and so on. <code><a href="../reference/french_malaria_acronyms.html">french_malaria_acronyms()</a></code> is
+the curated override list that every translation-aware function in
+<code>sntutils</code> consults to keep the French outputs
+publication-ready.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/french_malaria_acronyms.html">french_malaria_acronyms</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu">utils</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/r/utils/head.html" class="external-link">head</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 6 × 3</span></span>
+<span><span class="co">#&gt;   en       fr      definition_fr</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;    &lt;chr&gt;   &lt;chr&gt;</span></span>
+<span><span class="co">#&gt; 1 ITN      MILDA   Moustiquaire imprégnée à longue durée d'action</span></span>
+<span><span class="co">#&gt; 2 IRS      AID     Aspersion intra-domiciliaire</span></span>
+<span><span class="co">#&gt; 3 IPT      TPI     Traitement préventif intermittent</span></span>
+<span><span class="co">#&gt; 4 IPTp     TPIp    Traitement préventif intermittent pendant la grossesse</span></span>
+<span><span class="co">#&gt; 5 SMC      CPS     Chimioprévention du paludisme saisonnier</span></span>
+<span><span class="co">#&gt; 6 RDT      TDR     Test de diagnostic rapide</span></span></code></pre></div>
+<p>This list is consumed automatically inside
+<code><a href="../reference/translate_text.html">translate_text()</a></code>, <code><a href="../reference/reporting_rate_plot.html">reporting_rate_plot()</a></code>,
+<code><a href="../reference/consistency_check.html">consistency_check()</a></code>, the faceted-map helpers and any other
+function with a <code>target_language</code> argument - we don’t need to
+call it directly, but it’s worth knowing it exists when a French
+translation looks off and we want to extend or override the mapping for
+a country team.</p>
+</div>
+<div class="section level2">
+<h2 id="image-compression">Image compression<a class="anchor" aria-label="anchor" href="#image-compression"></a>
 </h2>
 <p>When SNT reports get assembled into PDFs or Word docs, embedded PNGs
 dominate the file size. <code><a href="../reference/compress_png.html">compress_png()</a></code> wraps
@@ -272,7 +306,7 @@ dominate the file size. <code><a href="../reference/compress_png.html">compress_
 no visible quality loss. Both <code><a href="../reference/reporting_rate_plot.html">reporting_rate_plot()</a></code> and
 <code><a href="../reference/consistency_check.html">consistency_check()</a></code> call it under the hood when saving with
 <code>compress_image = TRUE</code>.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># single file</span></span>
 <span><span class="fu"><a href="../reference/compress_png.html">compress_png</a></span><span class="op">(</span></span>
 <span>  <span class="st">"path/to/large_image.png"</span>,</span>
@@ -296,13 +330,13 @@ no visible quality loss. Both <code><a href="../reference/reporting_rate_plot.ht
 <span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="hashing-vdigest">Hashing: <code>vdigest()</code><a class="anchor" aria-label="anchor" href="#hashing-vdigest"></a>
+<h2 id="hashing-for-stable-ids">Hashing for stable IDs<a class="anchor" aria-label="anchor" href="#hashing-for-stable-ids"></a>
 </h2>
 <p><code><a href="../reference/vdigest.html">vdigest()</a></code> is a vectorised version of
 <code><a href="https://eddelbuettel.github.io/digest/man/digest.html" class="external-link">digest::digest()</a></code>. We use it constantly to mint stable IDs
 for facility-month records, deduplicate across DHIS2 exports, and detect
 content changes when caching expensive steps.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sl_dhis2</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/distinct.html" class="external-link">distinct</a></span><span class="op">(</span><span class="va">adm3</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span>adm3_hash <span class="op">=</span> <span class="fu"><a href="../reference/vdigest.html">vdigest</a></span><span class="op">(</span><span class="va">adm3</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -319,7 +353,7 @@ content changes when caching expensive steps.</p>
 <p>Default algorithm is <code>md5</code>, but <code>xxhash32</code> is
 much faster for the long character vectors typical of SNT data and
 produces shorter IDs:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">sl_dhis2</span> <span class="op">&lt;-</span> <span class="va">sl_dhis2</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
 <span>    hf_uid    <span class="op">=</span> <span class="fu"><a href="../reference/vdigest.html">vdigest</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">adm1</span>, <span class="va">adm2</span>, <span class="va">hf</span><span class="op">)</span>, algo <span class="op">=</span> <span class="st">"xxhash32"</span><span class="op">)</span>,</span>
@@ -331,7 +365,7 @@ produces shorter IDs:</p>
 </h2>
 <p>The small but frequently used numerics that prevent boilerplate in
 every script.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># thousands separator, with configurable mark and decimals</span></span>
 <span><span class="fu"><a href="../reference/big_mark.html">big_mark</a></span><span class="op">(</span><span class="fl">1234567.89</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] "1,234,567.89"</span></span>
@@ -348,11 +382,84 @@ every script.</p>
 <span></span>
 <span><span class="fu"><a href="../reference/median2.html">median2</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="cn">NA</span>, <span class="fl">4</span>, <span class="fl">5</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="co">#&gt; [1] 3</span></span></code></pre></div>
-<p><code><a href="../reference/safe_sum.html">safe_sum()</a></code>, <code><a href="../reference/fallback_row_sum.html">fallback_row_sum()</a></code> and
-<code><a href="../reference/fallback_diff.html">fallback_diff()</a></code> are defensively-typed helpers that show up
-inside the imputation and outlier-correction paths. They tolerate all-NA
-rows, return zeros where appropriate, and stop you from accidentally
-summing characters.</p>
+</div>
+<div class="section level2">
+<h2 id="defensive-numerics-safe_sum-fallback_row_sum-fallback_diff">Defensive numerics: <code>safe_sum()</code>,
+<code>fallback_row_sum()</code>, <code>fallback_diff()</code><a class="anchor" aria-label="anchor" href="#defensive-numerics-safe_sum-fallback_row_sum-fallback_diff"></a>
+</h2>
+<p>Routine surveillance data is full of partial rows, all-NA months, and
+columns that arrived as character because Excel snuck a comma in
+somewhere. Plain <code><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum()</a></code> and <code>-</code> either propagate
+<code>NA</code> everywhere or silently coerce. These three helpers solve
+the same problem at three different scales and are what
+<code><a href="../reference/correct_outliers.html">correct_outliers()</a></code>, <code><a href="../reference/impute_outlier_ma.html">impute_outlier_ma()</a></code> and
+the cascade reconciliation paths call internally. They’re equally useful
+in your own scripts.</p>
+<div class="section level3">
+<h3 id="safe_sum---sum-a-vector-without-surprises">
+<code>safe_sum()</code> - sum a vector without surprises<a class="anchor" aria-label="anchor" href="#safe_sum---sum-a-vector-without-surprises"></a>
+</h3>
+<p>Returns <code>NA</code> only when every value is missing; otherwise
+sums the non-missing values and never silently coerces character input
+to zero.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/safe_sum.html">safe_sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">2</span>, <span class="cn">NA</span>, <span class="fl">4</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 7</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/safe_sum.html">safe_sum</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">NA</span>, <span class="cn">NA</span>, <span class="cn">NA</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] NA            # NOT 0 - you wanted "everything missing", you got it</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="fallback_row_sum---sum-a-set-of-columns-row-wise">
+<code>fallback_row_sum()</code> - sum a set of columns row-wise<a class="anchor" aria-label="anchor" href="#fallback_row_sum---sum-a-set-of-columns-row-wise"></a>
+</h3>
+<p>Sums any number of columns row-wise with an explicit
+<code>min_present</code> floor: a row needs at least that many
+non-missing columns or its total stays <code>NA</code> rather than
+masquerading as zero.</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://tibble.tidyverse.org/reference/tibble.html" class="external-link">tibble</a></span><span class="op">(</span></span>
+<span>  conf_u5  <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">10</span>, <span class="cn">NA</span>, <span class="fl">0</span>,  <span class="cn">NA</span><span class="op">)</span>,</span>
+<span>  conf_5_14 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span> <span class="fl">5</span>, <span class="fl">12</span>, <span class="cn">NA</span>, <span class="cn">NA</span><span class="op">)</span>,</span>
+<span>  conf_ov15 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">20</span>, <span class="fl">18</span>, <span class="cn">NA</span>, <span class="cn">NA</span><span class="op">)</span></span>
+<span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    conf_total <span class="op">=</span> <span class="fu"><a href="../reference/fallback_row_sum.html">fallback_row_sum</a></span><span class="op">(</span><span class="va">conf_u5</span>, <span class="va">conf_5_14</span>, <span class="va">conf_ov15</span>,</span>
+<span>                                  min_present <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 4 × 4</span></span>
+<span><span class="co">#&gt;   conf_u5 conf_5_14 conf_ov15 conf_total</span></span>
+<span><span class="co">#&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;      &lt;dbl&gt;</span></span>
+<span><span class="co">#&gt; 1      10         5        20         35</span></span>
+<span><span class="co">#&gt; 2      NA        12        18         30   # 2 of 3 present - OK</span></span>
+<span><span class="co">#&gt; 3       0        NA        NA         NA   # only 1 present - flagged</span></span>
+<span><span class="co">#&gt; 4      NA        NA        NA         NA</span></span></code></pre></div>
+<p>Use <code>.keep_zero_as_zero = FALSE</code> if you want a row of
+explicit zeros to also count as informative; the default treats
+<code>c(0, 0, 0)</code> as a valid zero total.</p>
+</div>
+<div class="section level3">
+<h3 id="fallback_diff---subtraction-that-wont-go-negative">
+<code>fallback_diff()</code> - subtraction that won’t go
+negative<a class="anchor" aria-label="anchor" href="#fallback_diff---subtraction-that-wont-go-negative"></a>
+</h3>
+<p><code>conf - maltreat</code> should be non-negative in a clean
+cascade. When it’s not, you want either <code>NA</code> (mark for
+review) or a clamped value. <code><a href="../reference/fallback_diff.html">fallback_diff()</a></code> does the latter
+with a configurable floor.</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/fallback_diff.html">fallback_diff</a></span><span class="op">(</span>col1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span>, <span class="fl">80</span>, <span class="fl">50</span><span class="op">)</span>, col2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">40</span>, <span class="fl">100</span>, <span class="cn">NA</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 60  0 NA          # clamped at the `minimum = 0` floor</span></span>
+<span></span>
+<span><span class="co"># stricter: NA out any negative or invalid subtraction</span></span>
+<span><span class="fu"><a href="../reference/fallback_diff.html">fallback_diff</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">100</span>, <span class="fl">80</span>, <span class="fl">50</span><span class="op">)</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">40</span>, <span class="fl">100</span>, <span class="cn">NA</span><span class="op">)</span>, minimum <span class="op">=</span> <span class="cn">NA</span><span class="op">)</span></span>
+<span><span class="co">#&gt; [1] 60 NA NA</span></span></code></pre></div>
+<p>The same function powers the cascade-reconciliation step in
+<code><a href="../reference/correct_outliers.html">correct_outliers()</a></code>: when an outlier is replaced, the
+downstream cascade variable is recomputed via
+<code><a href="../reference/fallback_diff.html">fallback_diff()</a></code> so the resulting row stays internally
+consistent.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="plot-helpers">Plot helpers<a class="anchor" aria-label="anchor" href="#plot-helpers"></a>
@@ -361,22 +468,26 @@ summing characters.</p>
 teams reuse them in custom one-off charts:</p>
 <ul>
 <li>
-<code><a href="../reference/get_palette.html">get_palette()</a></code> / <code><a href="../reference/list_palettes.html">list_palettes()</a></code> —
+<code><a href="../reference/get_palette.html">get_palette()</a></code> / <code><a href="../reference/list_palettes.html">list_palettes()</a></code> -
 AHADI-branded discrete and gradient palettes (<code>ahadi_main</code>,
 <code>ahadi_warm</code>, <code>ahadi_cool</code>, …).</li>
 <li>
-<code><a href="../reference/auto_bin.html">auto_bin()</a></code> — choose bin edges for an indicator using
+<code><a href="../reference/auto_bin.html">auto_bin()</a></code> - choose bin edges for an indicator using
 Fisher-Jenks or quantile breaks, returning a labelled factor.</li>
 <li>
 <code><a href="../reference/detect_factors.html">detect_factors()</a></code>, <code><a href="../reference/detect_time_pattern.html">detect_time_pattern()</a></code>,
-<code><a href="../reference/extract_time_components.html">extract_time_components()</a></code> — utilities that power the
-auto-parsers but are exposed for ad-hoc use.</li>
+<code><a href="../reference/extract_time_components.html">extract_time_components()</a></code>
+<ul>
+<li>utilities that power the auto-parsers but are exposed for ad-hoc
+use.</li>
+</ul>
+</li>
 <li>
 <code><a href="../reference/get_model.html">get_model()</a></code>, <code><a href="../reference/generate_ir_plot.html">generate_ir_plot()</a></code>,
-<code><a href="../reference/run_resistance_trend.html">run_resistance_trend()</a></code> — fit and render incidence-rate /
+<code><a href="../reference/run_resistance_trend.html">run_resistance_trend()</a></code> - fit and render incidence-rate /
 resistance-trend plots used in insecticide-resistance reports.</li>
 <li>
-<code><a href="../reference/prepare_plot_data.html">prepare_plot_data()</a></code>, <code><a href="../reference/get_pathway_vars.html">get_pathway_vars()</a></code> —
+<code><a href="../reference/prepare_plot_data.html">prepare_plot_data()</a></code>, <code><a href="../reference/get_pathway_vars.html">get_pathway_vars()</a></code> -
 internal data-shaping helpers that show up in custom reporting
 pipelines.</li>
 </ul>
@@ -385,7 +496,7 @@ pipelines.</li>
 <h2 id="putting-it-together">Putting it together<a class="anchor" aria-label="anchor" href="#putting-it-together"></a>
 </h2>
 <p>A typical script header at AHADI ends up looking like this:</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/ahadi-analytics/sntutils" class="external-link">sntutils</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># 1. resolve where everything lives</span></span>

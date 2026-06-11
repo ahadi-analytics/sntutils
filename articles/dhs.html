@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>DHS indicators and microdata • sntutils</title>
+<title>DHS • sntutils</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
@@ -17,7 +17,7 @@
 <link href="../deps/JetBrains_Mono-0.4.10/font.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="DHS indicators and microdata">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="DHS">
 <meta name="description" content="Discover, fetch and query DHS / MIS indicators via the DHS API, and open large local DHS parquet datasets through DuckDB for analysis.
 ">
 <meta property="og:description" content="Discover, fetch and query DHS / MIS indicators via the DHS API, and open large local DHS parquet datasets through DuckDB for analysis.
@@ -32,7 +32,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">sntutils</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">1.13.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Released version">2.0.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -48,20 +48,21 @@
 <li><a class="dropdown-item" href="../articles/getting-started.html">Get started</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Data preparation</h6></li>
-    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Data I/O and cleaning</a></li>
-    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial validation and mapping</a></li>
+    <li><a class="dropdown-item" href="../articles/data-io-and-cleaning.html">Read &amp; clean</a></li>
+    <li><a class="dropdown-item" href="../articles/spatial.html">Spatial</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Routine surveillance</h6></li>
     <li><a class="dropdown-item" href="../articles/reporting-rates.html">Reporting rates</a></li>
-    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality — consistency, outliers</a></li>
+    <li><a class="dropdown-item" href="../articles/data-quality.html">Data quality</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>External data sources</h6></li>
-    <li><a class="dropdown-item" href="../articles/climate.html">Climate downloads and raster extraction</a></li>
-    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop population rasters</a></li>
-    <li><a class="dropdown-item" href="../articles/dhs.html">DHS indicators and microdata</a></li>
+    <li><a class="dropdown-item" href="../articles/climate.html">Climate</a></li>
+    <li><a class="dropdown-item" href="../articles/worldpop.html">WorldPop</a></li>
+    <li><a class="dropdown-item" href="../articles/rasters.html">Rasters</a></li>
+    <li><a class="dropdown-item" href="../articles/dhs.html">DHS</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>Project plumbing</h6></li>
-    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project setup and utilities</a></li>
+    <li><a class="dropdown-item" href="../articles/project-and-utilities.html">Project utilities</a></li>
   </ul>
 </li>
 <li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
@@ -92,7 +93,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>DHS indicators and microdata</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>DHS</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/ahadi-analytics/sntutils/blob/master/vignettes/dhs.Rmd" class="external-link"><code>vignettes/dhs.Rmd</code></a></small>
@@ -108,17 +109,33 @@ data across most malaria-endemic countries.</p>
 <p><code>sntutils</code> exposes two paths into DHS:</p>
 <ol style="list-style-type: decimal">
 <li>
-<strong>DHS API</strong> — discover and download published,
+<strong>DHS API</strong> - discover and download published,
 pre-tabulated indicators (national and subnational) for any country /
 survey.</li>
 <li>
-<strong>Local parquet via DuckDB</strong> — register downloaded DHS
+<strong>Local parquet via DuckDB</strong> - register downloaded DHS
 microdata (<code><a href="../reference/get_dhs_data.html">get_dhs_data()</a></code>) as queryable views, so we can
 compute custom indicators without loading full SPSS / Stata files into
 memory.</li>
 </ol>
+<div class="alert alert-info">
+<p><strong>For the methodology and conceptual background behind the
+steps in this article, please check the <a href="https://ahadi-analytics.github.io/snt-code-library/" class="external-link">SNT Code
+Library</a>:</strong></p>
+<ul>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/dhs.html" class="external-link">DHS
+overview</a> - what DHS publishes, how it’s structured.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/dhs/treatment_seeking.html" class="external-link">Treatment-seeking</a>,
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/dhs/itn_metrics.html" class="external-link">ITN
+metrics</a>, <a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/dhs/prevalence.html" class="external-link">Prevalence</a>,
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/dhs/mortality_data.html" class="external-link">Mortality</a>,
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/dhs/wealth.html" class="external-link">Wealth</a>.</li>
+</ul>
+</div>
 <div class="section level2">
-<h2 id="discovering-indicators-check_dhs_indicators">Discovering indicators: <code>check_dhs_indicators()</code><a class="anchor" aria-label="anchor" href="#discovering-indicators-check_dhs_indicators"></a>
+<h2 id="discovering-indicators">Discovering indicators<a class="anchor" aria-label="anchor" href="#discovering-indicators"></a>
 </h2>
 <p>Before downloading anything, find the indicator IDs we want.
 <code><a href="../reference/check_dhs_indicators.html">check_dhs_indicators()</a></code> is a thin wrapper around the DHS
@@ -153,11 +170,11 @@ down:</p>
 <span>  surveyYearStart  <span class="op">=</span> <span class="fl">2015</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>Returned fields include <code>IndicatorId</code>, <code>Label</code>,
-and <code>Definition</code> by default — pass <code>returnFields</code>
+and <code>Definition</code> by default - pass <code>returnFields</code>
 to add more.</p>
 </div>
 <div class="section level2">
-<h2 id="downloading-values-download_dhs_indicators">Downloading values: <code>download_dhs_indicators()</code><a class="anchor" aria-label="anchor" href="#downloading-values-download_dhs_indicators"></a>
+<h2 id="downloading-indicator-values">Downloading indicator values<a class="anchor" aria-label="anchor" href="#downloading-indicator-values"></a>
 </h2>
 <p>Once we have indicator IDs, <code><a href="../reference/download_dhs_indicators.html">download_dhs_indicators()</a></code>
 pulls the estimates themselves. It hits the DHS data endpoint directly
@@ -211,7 +228,7 @@ reported (typically adm1).</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="local-dhs-microdata-via-duckdb-get_dhs_data">Local DHS microdata via DuckDB: <code>get_dhs_data()</code><a class="anchor" aria-label="anchor" href="#local-dhs-microdata-via-duckdb-get_dhs_data"></a>
+<h2 id="local-dhs-microdata-via-duckdb">Local DHS microdata via DuckDB<a class="anchor" aria-label="anchor" href="#local-dhs-microdata-via-duckdb"></a>
 </h2>
 <p>When the published indicators don’t cover what we need (custom
 denominators, multi-variable cross-tabs, restricted populations), the
