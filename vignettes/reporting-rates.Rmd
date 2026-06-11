@@ -19,6 +19,13 @@ knitr::opts_chunk$set(
 )
 ```
 
+::: {.alert .alert-info}
+**Conceptual reading - SNT Code Library**
+
+- [Reporting rates](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/reporting_rate.html) - what reporting rate measures and how to interpret it.
+- [Active facility status](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/active_status.html) - the denominator logic in plain English.
+:::
+
 Before any stratification, trend analysis or modelling step, an SNT
 analyst needs to know **how completely facilities are reporting**.
 `calculate_reporting_metrics()` is the workhorse: it answers the
@@ -225,6 +232,53 @@ reporting_rate_map(
   hf_col          = "hf_uid",
   key_indicators  = c("allout", "test", "treat", "conf", "pres"),
   target_language = "en"
+)
+```
+
+### Or roll your own: `facetted_map_gradient()`
+
+`reporting_rate_map()` is the one-stop shortcut. When we want full
+control over the colour scale, facets, or pre-filtered subsets, the
+lower-level `facetted_map_gradient()` takes a tibble of metrics and an
+`sf` boundary and draws the same kind of small-multiples map. Pair it
+with `calculate_reporting_metrics()` directly:
+
+```r
+rates_by_year <- calculate_reporting_metrics(
+  data             = sl_dhis2,
+  vars_of_interest = c("conf", "pres"),
+  x_var            = "year",
+  y_var            = "adm2",
+  hf_col           = "hf_uid",
+  key_indicators   = c("allout", "test", "treat", "conf", "pres")
+)
+
+facetted_map_gradient(
+  data      = rates_by_year,
+  sf_data   = sle_adm2_clean,
+  facet_col = "year",
+  fill_col  = "reprate",
+  join_by   = c("adm2" = "adm2_name"),
+  limits    = c(0, 1),
+  palette   = "ahadi_cool",
+  title     = "Reporting completeness for `conf` - Sierra Leone",
+  caption   = "Denominator: facilities ever-reporting on key indicators."
+)
+```
+
+Use `facetted_map_bins()` instead when the metric is more naturally
+read in categories (e.g. 0-50% red, 50-80% amber, 80-100% green):
+
+```r
+facetted_map_bins(
+  data      = rates_by_year,
+  sf_data   = sle_adm2_clean,
+  facet_col = "year",
+  fill_col  = "reprate",
+  join_by   = c("adm2" = "adm2_name"),
+  bins      = c(0, 0.5, 0.8, 0.95, 1),
+  bin_labels = c("<50%", "50-80%", "80-95%", ">=95%"),
+  title     = "Reporting completeness band, by district"
 )
 ```
 

@@ -76,6 +76,8 @@ navbar:
         href: articles/climate.html
       - text: WorldPop
         href: articles/worldpop.html
+      - text: Rasters
+        href: articles/rasters.html
       - text: DHS
         href: articles/dhs.html
       - text: "---"
@@ -293,6 +295,7 @@ articles:
   contents:
   - climate
   - worldpop
+  - rasters
   - dhs
 
 - title: Project plumbing

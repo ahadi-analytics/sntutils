@@ -18,6 +18,16 @@ knitr::opts_chunk$set(
 )
 ```
 
+::: {.alert .alert-info}
+**Conceptual reading - SNT Code Library**
+
+- [Quality control (consistency checks)](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/quality_control.html) - cascade logic and red flags.
+- [Outlier detection](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/outlier_detection.html) - when to use mean, median or IQR rules.
+- [Outlier correction](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/outlier_correction.html) - decision rules for replacing flagged values.
+- [Missing data](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/missing_data.html) - patterns and what to do about them.
+- [Imputation](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/imputation.html) - replacement strategies in context.
+:::
+
 Reporting completeness (covered in
 [Reporting rates](reporting-rates.html)) tells us *whether* facilities
 reported. This article covers the next two quality questions: are the

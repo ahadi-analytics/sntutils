@@ -19,6 +19,15 @@ knitr::opts_chunk$set(
 )
 ```
 
+::: {.alert .alert-info}
+**Conceptual reading - SNT Code Library**
+
+- [DHIS2 import and preprocessing](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/import.html) - what to expect from a DHIS2 export and the cleaning steps it needs.
+- [DHIS2 extraction](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/dhis2_extraction.html) - how DHIS2 exports are produced upstream.
+- [Routine-data context](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/context.html) - background on what's collected and how.
+- [Final clean database](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/final_database.html) - what the cleaned, joined dataset should look like.
+:::
+
 Most of an SNT analysis is data wrangling: pulling spreadsheets out of
 DHIS2 exports, parsing dates that have been entered four different ways,
 matching district names that disagree across files, and producing a

@@ -19,6 +19,14 @@ knitr::opts_chunk$set(
 )
 ```
 
+::: {.alert .alert-info}
+**Conceptual reading - SNT Code Library**
+
+- [Population data](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population.html) - census vs raster vs displaced population.
+- [Population rasters](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population/population_raster.html) - WorldPop methodology and release choices.
+- [Population census](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population/population_census.html) - when census data is the right input.
+:::
+
 WorldPop is the canonical sub-national population surface for African
 SNT work. `sntutils` wraps both WorldPop releases (legacy
 2000–2020 and R2025A 2015–2030) behind one consistent API, with

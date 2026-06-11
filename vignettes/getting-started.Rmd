@@ -18,6 +18,10 @@ knitr::opts_chunk$set(
 )
 ```
 
+::: {.alert .alert-info}
+**New to Subnational Tailoring?** The [AHADI SNT Code Library](https://ahadi-analytics.github.io/snt-code-library/) covers the methodology, country examples, and analytical workflow in depth. `sntutils` is the R tooling that automates the steps documented there. Good starting points: [About](https://ahadi-analytics.github.io/snt-code-library/english/library/front_matter/about.html), [For Analysts](https://ahadi-analytics.github.io/snt-code-library/english/library/front_matter/for_analysts.html), [Producing high-quality outputs](https://ahadi-analytics.github.io/snt-code-library/english/library/front_matter/producing_outputs.html).
+:::
+
 ## What is `sntutils`?
 
 `sntutils` is an R package developed by AHADI to support the **Subnational

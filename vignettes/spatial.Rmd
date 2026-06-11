@@ -19,6 +19,16 @@ knitr::opts_chunk$set(
 )
 ```
 
+::: {.alert .alert-info}
+**Conceptual reading - SNT Code Library**
+
+- [Working with shapefiles](https://ahadi-analytics.github.io/snt-code-library/english/library/data/shapefiles.html) - source choice, vintages, projection notes.
+- [Shapefile management](https://ahadi-analytics.github.io/snt-code-library/english/library/data/shapefiles/shapefile_management.html) - the day-to-day workflow.
+- [Merging shapefiles with non-spatial data](https://ahadi-analytics.github.io/snt-code-library/english/library/data/shapefiles/merge_sf_excel.html).
+- [Health-facility coordinates](https://ahadi-analytics.github.io/snt-code-library/english/library/data/health_facilities/facility_coordinates.html) - validation, common errors.
+- [Master facility lists](https://ahadi-analytics.github.io/snt-code-library/english/library/data/health_facilities/master_facility_lists.html) - matching DHIS2 to the MFL.
+:::
+
 Spatial work is where SNT analyses fail most quietly. Geometry might be
 invalid, CRS might disagree, district names might have been renamed
 between the shapefile and the DHIS2 export, or facility coordinates
