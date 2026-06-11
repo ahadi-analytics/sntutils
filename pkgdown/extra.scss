@@ -221,6 +221,34 @@ table td, table th {
   border-left: 5px solid $ahadi-sky !important;
   background: rgba($ahadi-sky, 0.08);
   border-top: none; border-right: none; border-bottom: none;
+  color: $ahadi-navy !important;          // readable in both light and dark mode
+  padding: 0.85rem 1rem;
+  margin: 1.2rem 0;
+}
+
+.alert-primary p,
+.alert-info p,
+.alert-primary li,
+.alert-info li {
+  color: $ahadi-navy !important;
+  margin-bottom: 0.25rem;
+}
+
+.alert-primary strong,
+.alert-info strong {
+  color: $ahadi-navy !important;
+  font-weight: 600;
+}
+
+.alert-primary a,
+.alert-info a {
+  color: $ahadi-link !important;
+  text-decoration: underline;
+}
+
+.alert-primary a:hover,
+.alert-info a:hover {
+  color: $ahadi-gold !important;
 }
 
 .alert-success,

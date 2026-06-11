@@ -19,13 +19,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-::: {.alert .alert-info}
-**Conceptual reading - SNT Code Library**
-
-- [Climate and environmental data](https://ahadi-analytics.github.io/snt-code-library/english/library/data/climate.html) - sources, resolutions, and how climate covariates feed stratification.
-- [Extracting climate from rasters](https://ahadi-analytics.github.io/snt-code-library/english/library/data/climate/extract_raster_climate.html) - the analytical step-by-step.
-:::
-
 Every SNT study eventually needs climate covariates joined to admin
 units. `sntutils` exposes a small, consistent API over the messy world
 of public climate archives so we don't write custom FTP / HTTPS /
@@ -40,6 +33,13 @@ everything to admin polygons.
 
 For population rasters (WorldPop), see the
 [WorldPop article](worldpop.html).
+
+::: {.alert .alert-info}
+**For the methodology and conceptual background behind the steps in this article, please check the [SNT Code Library](https://ahadi-analytics.github.io/snt-code-library/):**
+
+- [Climate and environmental data](https://ahadi-analytics.github.io/snt-code-library/english/library/data/climate.html) - sources, resolutions, and how climate covariates feed stratification.
+- [Extracting climate from rasters](https://ahadi-analytics.github.io/snt-code-library/english/library/data/climate/extract_raster_climate.html) - the analytical step-by-step.
+:::
 
 ## CHIRPS - rainfall
 

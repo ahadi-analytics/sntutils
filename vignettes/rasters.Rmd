@@ -19,16 +19,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-::: {.alert .alert-info}
-**Conceptual reading - SNT Code Library**
-
-- [Extracting climate from rasters](https://ahadi-analytics.github.io/snt-code-library/english/library/data/climate/extract_raster_climate.html) - the analytical step-by-step.
-- [Population rasters](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population/population_raster.html) - WorldPop methodology.
-- [MAP outputs](https://ahadi-analytics.github.io/snt-code-library/english/library/data/modeled/MAP_outputs.html) - Malaria Atlas Project rasters and how to use them in SNT.
-- [IHME mortality rasters](https://ahadi-analytics.github.io/snt-code-library/english/library/data/modeled/IHME_mortality.html) - U5M raster methodology.
-- [Modeled data overview](https://ahadi-analytics.github.io/snt-code-library/english/library/data/modeled.html) - when to lean on modeled vs measured surfaces.
-:::
-
 Every SNT analysis ends up turning a folder of `.tif`s into a tidy
 tibble keyed by admin and time. `sntutils` exposes a small set of
 **batch raster processors** that handle the boring parts: detecting
@@ -38,6 +28,16 @@ computing zonal stats, and applying population weights when needed.
 The same processors work for any raster source - the downloads articles
 ([Climate](climate.html), [WorldPop](worldpop.html)) deposit files on
 disk, then these functions reduce them to admin-level tibbles.
+
+::: {.alert .alert-info}
+**For the methodology and conceptual background behind the steps in this article, please check the [SNT Code Library](https://ahadi-analytics.github.io/snt-code-library/):**
+
+- [Extracting climate from rasters](https://ahadi-analytics.github.io/snt-code-library/english/library/data/climate/extract_raster_climate.html) - the analytical step-by-step.
+- [Population rasters](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population/population_raster.html) - WorldPop methodology.
+- [MAP outputs](https://ahadi-analytics.github.io/snt-code-library/english/library/data/modeled/MAP_outputs.html) - Malaria Atlas Project rasters and how to use them in SNT.
+- [IHME mortality rasters](https://ahadi-analytics.github.io/snt-code-library/english/library/data/modeled/IHME_mortality.html) - U5M raster methodology.
+- [Modeled data overview](https://ahadi-analytics.github.io/snt-code-library/english/library/data/modeled.html) - when to lean on modeled vs measured surfaces.
+:::
 
 ## Basic zonal stats
 

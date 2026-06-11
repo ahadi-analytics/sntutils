@@ -19,13 +19,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-::: {.alert .alert-info}
-**Conceptual reading - SNT Code Library**
-
-- [Reporting rates](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/reporting_rate.html) - what reporting rate measures and how to interpret it.
-- [Active facility status](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/active_status.html) - the denominator logic in plain English.
-:::
-
 Before any stratification, trend analysis or modelling step, an SNT
 analyst needs to know **how completely facilities are reporting**.
 `calculate_reporting_metrics()` is the workhorse: it answers the
@@ -51,6 +44,13 @@ sl_dhis2 <- read(
     record_id = vdigest(paste(hf_uid, year_mon),  algo = "xxhash32")
   )
 ```
+
+::: {.alert .alert-info}
+**For the methodology and conceptual background behind the steps in this article, please check the [SNT Code Library](https://ahadi-analytics.github.io/snt-code-library/):**
+
+- [Reporting rates](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/reporting_rate.html) - what reporting rate measures and how to interpret it.
+- [Active facility status](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/active_status.html) - the denominator logic in plain English.
+:::
 
 ## What "reporting rate" actually means here
 
