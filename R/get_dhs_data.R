@@ -50,6 +50,13 @@ get_dhs_data <- function(
 
   for (ft in names(file_types)) {
     type_dir <- fs::path(path, ft)
+
+    # skip missing subdirectories quietly; without this guard, fs::dir_ls()
+    # emits an ENOENT warning for every absent type
+    if (!fs::dir_exists(type_dir)) {
+      next
+    }
+
     files <- fs::dir_ls(
       type_dir,
       recurse = TRUE,
