@@ -18,8 +18,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-[Intermediate]{.tag .tag-intermediate}
-
 DHS (Demographic and Health Surveys) and MIS (Malaria Indicator
 Surveys) are core inputs for SNT: they're the only consistent source
 of household-level intervention coverage, child mortality and

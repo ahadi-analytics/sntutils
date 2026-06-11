@@ -19,8 +19,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-[Intermediate]{.tag .tag-intermediate}
-
 Before any stratification, trend analysis or modelling step, an SNT
 analyst needs to know **how completely facilities are reporting**.
 `calculate_reporting_metrics()` is the workhorse: it answers the

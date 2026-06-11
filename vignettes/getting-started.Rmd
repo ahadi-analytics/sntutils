@@ -18,8 +18,6 @@ knitr::opts_chunk$set(
 )
 ```
 
-[Beginner]{.tag .tag-beginner}
-
 ## What is `sntutils`?
 
 `sntutils` is an R package developed by AHADI to support the **Subnational

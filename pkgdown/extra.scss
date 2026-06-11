@@ -39,6 +39,39 @@ $ahadi-coral:  #ff7a7a; // caution
   width: auto;
 }
 
+// Navbar dropdown — Articles menu items and group dividers.
+// Default Bootstrap renders these on a white background, but they
+// inherited the generic light-blue `a` colour and were too pale to read.
+.navbar .dropdown-menu {
+  background-color: #FFFFFF;
+  border: 1px solid lighten($ahadi-steel, 25%);
+  box-shadow: 0 4px 12px rgba(15, 35, 51, 0.08);
+}
+
+.navbar .dropdown-menu .dropdown-item,
+.navbar .dropdown-menu a.dropdown-item {
+  color: $ahadi-navy !important;
+  font-weight: 500;
+}
+
+.navbar .dropdown-menu .dropdown-item:hover,
+.navbar .dropdown-menu .dropdown-item:focus,
+.navbar .dropdown-menu a.dropdown-item:hover,
+.navbar .dropdown-menu a.dropdown-item:focus {
+  color: $ahadi-gold !important;
+  background-color: rgba($ahadi-navy, 0.04);
+}
+
+// Group labels (the "---" / "Data preparation" headings in the dropdown)
+.navbar .dropdown-menu .dropdown-header {
+  color: $ahadi-steel !important;
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  padding-top: 0.6rem;
+}
+
 // -----------------------------------------------------------------------------
 // Typography
 // -----------------------------------------------------------------------------
@@ -89,13 +122,30 @@ a:hover,
 #toc .nav > li > a,
 .aside .toc-action,
 .contents .nav > li > a {
-  color: $ahadi-steel !important;
+  color: $ahadi-navy !important;
+  font-weight: 500;
 }
 
 #toc .nav > li > a:hover,
 #toc .nav > li > a.active {
   color: $ahadi-gold !important;
   border-left-color: $ahadi-gold !important;
+}
+
+// Article side-nav (the "Get started", "Data I/O and cleaning" list on
+// /articles/index.html and the in-page TOC) — darken from steel to navy
+// so titles read clearly on the white sidebar.
+aside .nav-link,
+aside a.nav-link,
+.template-articles .nav-link {
+  color: $ahadi-navy !important;
+  font-weight: 500;
+}
+
+aside .nav-link:hover,
+aside a.nav-link:hover,
+.template-articles .nav-link:hover {
+  color: $ahadi-gold !important;
 }
 
 // -----------------------------------------------------------------------------
