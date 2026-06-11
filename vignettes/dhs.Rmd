@@ -1,11 +1,11 @@
 ---
-title: "DHS indicators and microdata"
+title: "DHS"
 description: >
   Discover, fetch and query DHS / MIS indicators via the DHS API, and
   open large local DHS parquet datasets through DuckDB for analysis.
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{DHS indicators and microdata}
+  %\VignetteIndexEntry{DHS}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -25,9 +25,9 @@ biomarker data across most malaria-endemic countries.
 
 `sntutils` exposes two paths into DHS:
 
-1. **DHS API** — discover and download published, pre-tabulated
+1. **DHS API** - discover and download published, pre-tabulated
    indicators (national and subnational) for any country / survey.
-2. **Local parquet via DuckDB** — register downloaded DHS microdata
+2. **Local parquet via DuckDB** - register downloaded DHS microdata
    (`get_dhs_data()`) as queryable views, so we can compute custom
    indicators without loading full SPSS / Stata files into memory.
 
@@ -70,7 +70,7 @@ check_dhs_indicators(
 ```
 
 Returned fields include `IndicatorId`, `Label`, and `Definition` by
-default — pass `returnFields` to add more.
+default - pass `returnFields` to add more.
 
 ## Downloading values: `download_dhs_indicators()`
 

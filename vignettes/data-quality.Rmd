@@ -1,11 +1,11 @@
 ---
-title: "Data quality — consistency, outliers, imputation"
+title: "Data quality"
 description: >
   Cascade consistency checks, three-method outlier detection,
   correction and imputation for routine surveillance data.
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Data quality — consistency, outliers, imputation}
+  %\VignetteIndexEntry{Data quality}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -93,7 +93,7 @@ consistency_check(
 ### Mapping consistency
 
 `consistency_map()` renders a choropleth of cascade-violation rates by
-admin unit — useful for spotting whether the cascade is breaking in
+admin unit - useful for spotting whether the cascade is breaking in
 particular districts vs. system-wide:
 
 ```r
@@ -115,9 +115,9 @@ three complementary methods, with detection done **within groups** of
 admin unit × facility × year so seasonal and contextual variation
 isn't mistaken for noise:
 
-- **Mean ± 3 SD** — classic, parametric, sensitive to extremes.
-- **Median ± 15 × MAD** — robust, the workhorse for surveillance data.
-- **Tukey's fences** — quartile-based, tunable via `iqr_multiplier`.
+- **Mean ± 3 SD** - classic, parametric, sensitive to extremes.
+- **Median ± 15 × MAD** - robust, the workhorse for surveillance data.
+- **Tukey's fences** - quartile-based, tunable via `iqr_multiplier`.
 
 ```r
 outlier_results <- detect_outliers(
@@ -149,7 +149,7 @@ or correct as needed.
 
 ### Visualising outliers
 
-`outlier_plot()` returns a list of `ggplot` objects — one per method —
+`outlier_plot()` returns a list of `ggplot` objects - one per method -
 faceted by district and coloured by status. Facet labels show the
 share of outliers in each district.
 
@@ -198,12 +198,12 @@ sl_corrected <- correct_outliers(
 
 The supporting functions:
 
-- `impute_outlier_ma()` — moving-average imputation; the workhorse
+- `impute_outlier_ma()` - moving-average imputation; the workhorse
   inside `correct_outliers()` when `method = "moving_average"`.
-- `impute_higher_admin()` — borrow strength from the parent admin unit
+- `impute_higher_admin()` - borrow strength from the parent admin unit
   when the facility's own history is too sparse to support a
   within-unit estimate.
-- `fallback_diff()`, `fallback_row_sum()`, `safe_sum()` — defensive
+- `fallback_diff()`, `fallback_row_sum()`, `safe_sum()` - defensive
   numerical helpers used inside the imputation paths. They tolerate
   all-NA rows, return zeros where appropriate, and refuse to silently
   sum characters.
@@ -239,7 +239,7 @@ sl_clean <- correct_outliers(
 )
 ```
 
-The output is `sl_clean` — same shape as the input but with
-flagged-and-replaced values — plus diagnostic objects (`cascade`,
+The output is `sl_clean` - same shape as the input but with
+flagged-and-replaced values - plus diagnostic objects (`cascade`,
 `outliers`) you can hand to reviewers as evidence for why each record
 was edited.

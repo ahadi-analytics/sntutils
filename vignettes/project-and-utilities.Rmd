@@ -1,12 +1,12 @@
 ---
-title: "Project setup and utilities"
+title: "Project utilities"
 description: >
   Scaffold an AHADI project structure, resolve standardised paths,
   translate plot labels with caching, hash records, compress images,
   and use the small numeric helpers that show up in every SNT script.
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Project setup and utilities}
+  %\VignetteIndexEntry{Project utilities}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -20,8 +20,8 @@ knitr::opts_chunk$set(
 ```
 
 The other articles cover the headline analyses. This one rounds up the
-day-to-day plumbing — folder scaffolding, paths, translation, hashing,
-image compression, and the small numerical helpers — that make the rest
+day-to-day plumbing - folder scaffolding, paths, translation, hashing,
+image compression, and the small numerical helpers - that make the rest
 of `sntutils` feel coherent.
 
 ## Project structure
@@ -44,15 +44,25 @@ create_data_structure(base_path = ".")
 01_data/
 ├── 1.1_foundational/
 │   ├── 1.1a_admin_boundaries/
-│   ├── 1.1b_health_facilities/
-│   └── 1.1c_population/
-│       ├── 1.1ci_national/
-│       └── 1.1cii_worldpop_rasters/
+│   ├── 1.1b_physical_features/
+│   ├── 1.1c_health_facilities/
+│   ├── 1.1d_community_health_workers/
+│   ├── 1.1e_population/
+│   │   ├── 1.1ei_national/
+│   │   ├── 1.1eii_worldpop_rasters/
+│   │   └── 1.1eiii_displaced_pop/
+│   └── 1.1f_cache_files/
 ├── 1.2_epidemiology/
 │   ├── 1.2a_routine_surveillance/
 │   ├── 1.2b_pfpr_estimates/
 │   └── 1.2c_mortality_estimates/
 ├── 1.3_interventions/
+│   ├── 1.3a_itns/
+│   ├── 1.3b_iptp/
+│   ├── 1.3c_smc/
+│   ├── 1.3d_vap/
+│   ├── 1.3e_anc/
+│   └── 1.3f_irs/
 ├── 1.4_drug_efficacy_resistance/
 ├── 1.5_environment/
 │   ├── 1.5a_climate/
@@ -61,13 +71,18 @@ create_data_structure(base_path = ".")
 ├── 1.6_health_systems/
 │   └── 1.6a_dhs/
 ├── 1.7_entomology/
-└── 1.8_commodities/
+├── 1.8_commodities/
+├── 1.9_finance/
+└── 1.10_final/
 ```
+
+Every leaf folder (except `1.10_final/` and `1.1f_cache_files/`) gets its
+own `raw/` and `processed/` subfolders automatically.
 
 ### `initialize_project_structure()`
 
 Same data tree plus the surrounding scaffolding for scripts, outputs
-and reports — use this on the first day of a new project.
+and reports - use this on the first day of a new project.
 
 ```r
 initialize_project_structure(base_path = "my_snt_project")
@@ -75,12 +90,15 @@ initialize_project_structure(base_path = "my_snt_project")
 
 ```
 my_snt_project/
-├── 01_data/                  # hierarchical data tree from above
+├── 01_data/                       # full hierarchical data tree from above
 ├── 02_scripts/
 ├── 03_outputs/
-│   └── plots/
+│   ├── 3.1_validation/            (figures/ + tables/)
+│   ├── 3.2_intermediate_products/ (figures/ + tables/)
+│   ├── 3.3_final_snt_outputs/     (figures/ + tables/)
+│   └── 3.4_model/                 (figures/ + tables/)
 ├── 04_reports/
-└── metadata_docs/
+└── 05_metadata_docs/
 ```
 
 ## Resolving paths: `setup_project_paths()`
@@ -114,7 +132,7 @@ dhis2  <- read_snt_data(paths$dhis2, "sl_dhis2_clean")
 ```
 
 `ahadi_path()` is a related helper for navigating the AHADI shared
-OneDrive — it locates a project by name across team members' synced
+OneDrive - it locates a project by name across team members' synced
 roots, useful for cross-machine reproducibility.
 
 `clear_snt_cache()` resets the in-memory caches used by `snt_data_dict()`
@@ -148,7 +166,7 @@ translate_text("Malaria cases",
 
 ### `translate_text_vec()`
 
-Vectorised wrapper for `translate_text()` — translate a whole column in
+Vectorised wrapper for `translate_text()` - translate a whole column in
 one call, with caching shared across the batch.
 
 ```r
@@ -288,16 +306,16 @@ appropriate, and stop you from accidentally summing characters.
 A handful of internal building blocks are exported because country
 teams reuse them in custom one-off charts:
 
-- `get_palette()` / `list_palettes()` — AHADI-branded discrete and
+- `get_palette()` / `list_palettes()` - AHADI-branded discrete and
   gradient palettes (`ahadi_main`, `ahadi_warm`, `ahadi_cool`, …).
-- `auto_bin()` — choose bin edges for an indicator using Fisher-Jenks
+- `auto_bin()` - choose bin edges for an indicator using Fisher-Jenks
   or quantile breaks, returning a labelled factor.
 - `detect_factors()`, `detect_time_pattern()`, `extract_time_components()`
-  — utilities that power the auto-parsers but are exposed for ad-hoc use.
-- `get_model()`, `generate_ir_plot()`, `run_resistance_trend()` — fit
+  - utilities that power the auto-parsers but are exposed for ad-hoc use.
+- `get_model()`, `generate_ir_plot()`, `run_resistance_trend()` - fit
   and render incidence-rate / resistance-trend plots used in
   insecticide-resistance reports.
-- `prepare_plot_data()`, `get_pathway_vars()` — internal data-shaping
+- `prepare_plot_data()`, `get_pathway_vars()` - internal data-shaping
   helpers that show up in custom reporting pipelines.
 
 ## Putting it together

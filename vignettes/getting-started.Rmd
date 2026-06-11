@@ -1,11 +1,11 @@
 ---
-title: "Get started with sntutils"
+title: "Get started"
 description: >
   A 5-minute tour of what sntutils does, how the pieces fit together, and a
   small end-to-end example you can read straight through.
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Get started with sntutils}
+  %\VignetteIndexEntry{Get started}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -34,7 +34,7 @@ The package is built around four ideas:
   format. `read_snt_data()` and `write_snt_data()` add hashing and metadata
   sidecars when you need a reproducible audit trail.
 - **Tidy outputs.** Every function returns a tibble or an `sf` data frame
-  with stable, documented column names — never a list of lists.
+  with stable, documented column names - never a list of lists.
 - **Country-aware defaults.** Functions accept `target_language` so plots,
   labels and month names match the team's working language.
 - **Small surface area, big leverage.** The R/ folder has ~50 source
@@ -82,12 +82,12 @@ plot. The dataset ships with the package.
 ```r
 library(sntutils)
 
-# 1. read — sntutils::read() picks the importer from the file extension
+# 1. read - sntutils::read() picks the importer from the file extension
 sl_dhis2 <- read(
   system.file("extdata", "sl_exmaple_dhis2.rds", package = "sntutils")
 )
 
-# 2. clean — make column names lowercase_with_underscores and parse dates
+# 2. clean - make column names lowercase_with_underscores and parse dates
 sl_dhis2 <- sl_dhis2 |>
   standardize_names() |>
   autoparse_dates(date_cols = "date") |>
@@ -97,7 +97,7 @@ sl_dhis2 <- sl_dhis2 |>
     record_id = vdigest(paste(hf_uid, year_mon),  algo = "xxhash32")
   )
 
-# 3. analyse — reporting rate by district-month
+# 3. analyse - reporting rate by district-month
 rates <- calculate_reporting_metrics(
   data             = sl_dhis2,
   vars_of_interest = c("conf", "pres"),
@@ -118,7 +118,7 @@ tail(rates)
 #> 5 2023-12  Tonkolili District Council            109   115   0.948   0.0522
 #> 6 2023-12  Western Area Rural District Council    62    64   0.969   0.0312
 
-# 4. visualise — facility-level reporting plot, in English
+# 4. visualise - facility-level reporting plot, in English
 reporting_rate_plot(
   data             = sl_dhis2,
   vars_of_interest = "conf",
@@ -135,17 +135,17 @@ articles drill into each step.
 
 ## Where to next
 
-- **Data I/O and cleaning** — every `read()`/`write()` shortcut plus name
+- **Data I/O and cleaning** - every `read()`/`write()` shortcut plus name
   and date harmonisation.
-- **Spatial validation and mapping** — admin geometries, coordinates,
+- **Spatial validation and mapping** - admin geometries, coordinates,
   shapefile crosswalks, fuzzy facility matching.
-- **Reporting rates and data quality** — the three reporting-rate
+- **Reporting rates and data quality** - the three reporting-rate
   scenarios, consistency checks and outlier methods.
-- **Climate and population downloads** — CHIRPS, ERA5, MODIS, NASA POWER,
+- **Climate and population downloads** - CHIRPS, ERA5, MODIS, NASA POWER,
   WorldPop and DHS, and how to extract them to admin units.
-- **Project setup and utilities** — folder scaffolding, paths, caching,
+- **Project setup and utilities** - folder scaffolding, paths, caching,
   translation and the small numeric helpers.
 
 If something is missing or surprising, please open an issue on
-[GitHub](https://github.com/ahadi-analytics/sntutils/issues) — the
+[GitHub](https://github.com/ahadi-analytics/sntutils/issues) - the
 package evolves with the SNT support work we do.

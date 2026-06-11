@@ -280,6 +280,17 @@ table td, table th {
 // pkgdown sidebar
 aside .roxygen .dont-index { display: none; }
 
+// Hide the "Source: vignettes/foo.Rmd" link that pkgdown shows right under
+// the page title on articles. We don't want users clicking into the raw
+// .Rmd source from the site - GitHub is the right entry point for that.
+.template-article small.dont-index,
+.template-reference-topic small.dont-index,
+.template-article .page-header + p.text-muted,
+.template-article .ref-source,
+.template-reference-topic .ref-source {
+  display: none !important;
+}
+
 // footer
 footer {
   border-top: 2px solid lighten($ahadi-steel, 30%);

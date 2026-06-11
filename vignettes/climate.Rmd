@@ -1,12 +1,12 @@
 ---
-title: "Climate downloads and raster extraction"
+title: "Climate"
 description: >
   Pull rainfall, temperature, land-surface and agro-climate variables
-  from CHIRPS, ERA5, MODIS and NASA POWER — then extract them to admin
+  from CHIRPS, ERA5, MODIS and NASA POWER - then extract them to admin
   units, optionally population-weighted.
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Climate downloads and raster extraction}
+  %\VignetteIndexEntry{Climate}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -34,7 +34,7 @@ everything to admin polygons.
 For population rasters (WorldPop), see the
 [WorldPop article](worldpop.html).
 
-## CHIRPS — rainfall
+## CHIRPS - rainfall
 
 CHIRPS is the workhorse rainfall product for African SNT analyses. The
 package supports the four standard CHIRPS monthly subsets.
@@ -65,12 +65,12 @@ download_chirps(
 )
 ```
 
-`download_chirps()` is resumable — it never re-downloads a file that is
+`download_chirps()` is resumable - it never re-downloads a file that is
 already present and the right size. The result is a directory of
 `.tif`s named e.g. `chirps-v2.0.2022.01.tif`, ready for the raster
 batch processors below.
 
-## ERA5 — reanalysis
+## ERA5 - reanalysis
 
 ERA5 (ECMWF reanalysis) gives temperature, dewpoint, wind, surface
 pressure, and many other variables at hourly and daily resolution. The
@@ -78,7 +78,7 @@ download path goes through the Copernicus Climate Data Store and needs
 a (free) API key.
 
 ```r
-# set CDS API key once — see https://cds.climate.copernicus.eu
+# set CDS API key once - see https://cds.climate.copernicus.eu
 Sys.setenv(CDS_USER = "<uid>", CDS_KEY = "<key>")
 
 # list known datasets and their variable catalogues
@@ -108,13 +108,13 @@ download_era5(
 ```
 
 `get_era5_metadata()` and `print_era5_metadata()` extract the embedded
-metadata from any ERA5 NetCDF without loading the data into memory —
+metadata from any ERA5 NetCDF without loading the data into memory -
 useful for auditing what's in the cache. `read_era5()` opens NetCDF
 files with sensible defaults (CRS, dimension renaming, unit
 conversion). `migrate_era5_filenames()` renames older ERA5 caches to
 the current naming convention.
 
-## MODIS — land surface
+## MODIS - land surface
 
 MODIS provides EVI, NDVI, surface temperature, fire and land-cover
 layers. The `download_modis()` function wraps NASA Earthdata search +
@@ -140,7 +140,7 @@ download_modis(
 The output is a tidy set of GeoTIFFs with date-suffixed filenames,
 ready for the raster processors.
 
-## NASA POWER — point time series
+## NASA POWER - point time series
 
 For agro-climate variables (rainfall, irradiance, humidity, wind
 speed, several temperature flavours) at point locations,
@@ -190,7 +190,7 @@ u5m_adm2 <- process_ihme_u5m_raster(
 The download functions deposit rasters on disk. To get a tibble of
 indicators-by-admin-by-time, we use the **raster batch processors**.
 
-### `process_raster_collection()` — basic zonal stats
+### `process_raster_collection()` - basic zonal stats
 
 The default for CHIRPS / ERA5-monthly / MODIS-monthly:
 
@@ -223,19 +223,19 @@ Dates are detected automatically from the filename. Pass
 `aggregations = c("mean", "sum", "median", "max")` to get several
 stats in one pass.
 
-### `process_raster_with_boundaries()` — single raster, multiple boundaries
+### `process_raster_with_boundaries()` - single raster, multiple boundaries
 
 Use this when the same raster needs to be extracted to several
 shapefiles (adm1, adm2, adm3 simultaneously), or with different ID
 column sets.
 
-### `process_rasters_by_year()` — time-varying boundaries
+### `process_rasters_by_year()` - time-varying boundaries
 
 When the boundaries themselves change over time
 (post-redistricting), this wrapper aligns each raster's year to the
 appropriate shapefile vintage.
 
-### `process_weighted_raster_collection()` / `process_weighted_raster_stacks()` — population-weighted
+### `process_weighted_raster_collection()` / `process_weighted_raster_stacks()` - population-weighted
 
 For variables that need population weighting (e.g. mean temperature
 weighted by population so we report an "experienced" value rather
@@ -252,7 +252,7 @@ process_weighted_raster_collection(
 )
 ```
 
-`normalize_raster_by_polygon()` is the building block — it normalises
+`normalize_raster_by_polygon()` is the building block - it normalises
 a raster's values so they sum to 1 within each polygon, which is how
 the weighted extractors keep totals consistent.
 
@@ -301,7 +301,7 @@ temp_adm2 <- process_weighted_raster_collection(
   aggregations  = "mean"
 )
 
-# 4. combine — ready for stratification and modelling
+# 4. combine - ready for stratification and modelling
 climate_adm2 <- rain_adm2 |>
   dplyr::left_join(
     temp_adm2,
@@ -311,5 +311,5 @@ climate_adm2 <- rain_adm2 |>
 ```
 
 That's two major archives reduced to one tibble keyed by admin and
-date — the canonical climate input to the stratification and
+date - the canonical climate input to the stratification and
 modelling steps downstream.

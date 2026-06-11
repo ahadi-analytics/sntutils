@@ -1,12 +1,12 @@
 ---
-title: "Spatial validation and mapping"
+title: "Spatial"
 description: >
   Validate admin geometries and facility coordinates, crosswalk between
   shapefile vintages, fuzzy-match facilities across DHIS2 and the master
   facility list, and render publication-ready maps in the AHADI style.
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Spatial validation and mapping}
+  %\VignetteIndexEntry{Spatial}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -53,8 +53,8 @@ cache and not persisted across runs.
 ## Validating admin geometries: `validate_process_spatial()`
 
 Once a shapefile is in hand, `validate_process_spatial()` runs a battery
-of checks — invalid geometry, mixed Z/M dimensions, wrong CRS, missing
-admin codes, duplicated admin names — and (with `fix_issues = TRUE`)
+of checks - invalid geometry, mixed Z/M dimensions, wrong CRS, missing
+admin codes, duplicated admin names - and (with `fix_issues = TRUE`)
 attempts safe automatic repairs. It always returns the same shape: a
 list with a cleaned `sf` object plus a tibble of issues found.
 
@@ -74,7 +74,7 @@ names(boundaries_clean)
 #> [1] "shp"     "issues"  "summary"
 ```
 
-The `issues` tibble is the audit trail — keep it next to the shapefile
+The `issues` tibble is the audit trail - keep it next to the shapefile
 on disk so reviewers can see what was changed.
 
 ## Validating point coordinates: `validate_process_coordinates()`
@@ -196,7 +196,7 @@ mapped <- dhis2_map(
 
 ## Drawing maps
 
-### `plot_admin_map_distinct()` — categorical fills
+### `plot_admin_map_distinct()` - categorical fills
 
 For administrative reference maps and any other categorical layer:
 
@@ -204,7 +204,7 @@ For administrative reference maps and any other categorical layer:
 plot_admin_map_distinct(
   sf_data = boundaries_clean$shp,
   fill_col = "adm1_name",
-  title   = "Sierra Leone — districts coloured by region",
+  title   = "Sierra Leone - districts coloured by region",
   palette = "ahadi_main"
 )
 ```
@@ -219,17 +219,17 @@ intervention, these two helpers produce consistent small-multiples with
 the SNT plotting defaults baked in:
 
 ```r
-# bins — discrete legend, good for incidence categories
+# bins - discrete legend, good for incidence categories
 facetted_map_bins(
   data    = incidence_long,
   sf_data = boundaries_clean$shp,
   facet_col = "year",
   fill_col  = "incidence_per_1000",
   bins      = c(0, 10, 50, 100, 250, 500, Inf),
-  title     = "Annual malaria incidence per 1,000 — Sierra Leone"
+  title     = "Annual malaria incidence per 1,000 - Sierra Leone"
 )
 
-# gradient — continuous legend, good for reporting completeness
+# gradient - continuous legend, good for reporting completeness
 facetted_map_gradient(
   data    = reporting_long,
   sf_data = boundaries_clean$shp,
@@ -283,12 +283,12 @@ match_results <- fuzzy_match_facilities(
 plot_admin_map_distinct(
   sf_data  = sle_adm2_clean,
   fill_col = "adm1_name",
-  title    = "Sierra Leone — adm2 by region"
+  title    = "Sierra Leone - adm2 by region"
 )
 ```
 
 By the end of this pipeline we have a single, validated `sf` boundary
 file, a validated `sf` facility-points file, a high-confidence link
 between DHIS2 facility names and the MFL, and a baseline map.
-Everything that follows — reporting rates, climate extraction,
-population weighting — assumes this foundation.
+Everything that follows - reporting rates, climate extraction,
+population weighting - assumes this foundation.

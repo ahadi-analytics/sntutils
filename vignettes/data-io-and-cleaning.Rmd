@@ -1,12 +1,12 @@
 ---
-title: "Data I/O and cleaning"
+title: "Read & clean"
 description: >
   Read and write any common SNT format, parse messy date columns, infer
   variable types, standardise admin and facility names, and build a data
   dictionary you can hand to a country team.
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Data I/O and cleaning}
+  %\VignetteIndexEntry{Read & clean}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -43,7 +43,7 @@ df_stata  <- read("path/to/file.dta")
 df_spss   <- read("path/to/file.sav")
 df_rds    <- read("path/to/file.rds")
 
-# spatial formats — returns an sf object
+# spatial formats - returns an sf object
 sf_geojson  <- read("path/to/file.geojson")
 sf_shape    <- read("path/to/file.shp")
 
@@ -65,8 +65,8 @@ write(
 
 ### Reproducible reads: `read_snt_data()` and `write_snt_data()`
 
-For data we want to track across runs — DHIS2 exports, processed
-intermediate files, anything that will land in `01_data/` — use
+For data we want to track across runs - DHIS2 exports, processed
+intermediate files, anything that will land in `01_data/` - use
 `write_snt_data()` and `read_snt_data()` instead. They write atomically,
 hash the payload, and drop a sidecar JSON next to the file with the
 schema, row count, write timestamp and hash. `read_snt_data()` looks for
@@ -74,7 +74,7 @@ the file by **logical name** inside a directory, so the rest of the
 pipeline doesn't care about the extension.
 
 ```r
-# write — atomic, hashed, sidecar metadata next to the file
+# write - atomic, hashed, sidecar metadata next to the file
 write_snt_data(
   obj  = cleaned_dhis2,
   path = "01_data/1.2_epidemiology/1.2a_routine_surveillance/processed",
@@ -82,7 +82,7 @@ write_snt_data(
   formats = c("rds", "csv")
 )
 
-# read — finds the most recent file with that logical name
+# read - finds the most recent file with that logical name
 sl_dhis2 <- read_snt_data(
   path = "01_data/1.2_epidemiology/1.2a_routine_surveillance/processed",
   data_name = "sl_dhis2_clean"
@@ -115,7 +115,7 @@ converts Roman numerals to digits, and sorts internal tokens so
 Set `to_upper = FALSE` for `lowercase_with_underscores` (handy for
 column names).
 
-`clean_filenames()` does the equivalent job for file names — useful when
+`clean_filenames()` does the equivalent job for file names - useful when
 unzipping country submissions where filenames carry spaces and accents.
 
 ## Parsing dates
@@ -151,7 +151,7 @@ To see the formats it knows about, inspect `available_date_formats`.
 
 DHIS2 / Excel pipelines almost always leave numerics as character and
 factor-like columns as freeform strings. `auto_parse_types()` walks each
-column and converts it to the narrowest sensible type — preserving
+column and converts it to the narrowest sensible type - preserving
 leading zeros on ID columns it recognises by name suffix.
 
 ```r
@@ -218,7 +218,7 @@ A demo of the interactive flow is in the
 ## Building a data dictionary
 
 Once a dataset is clean, `build_dictionary()` produces a tibble describing
-each variable — name, type, number of unique values, range or top
+each variable - name, type, number of unique values, range or top
 levels, and an English label if one is available from a labels file.
 This is what we hand to country teams as documentation.
 
@@ -243,14 +243,14 @@ validate a dataset against the canonical schema:
 ```r
 # is "maltreat_u5" a known SNT variable?
 check_snt_var("maltreat_u5")
-#> ✔ maltreat_u5 — Malaria cases treated, under 5
+#> ✔ maltreat_u5 - Malaria cases treated, under 5
 ```
 
 `clear_snt_cache()` resets the in-memory cache after editing labels.
 
 ## A clean pipeline, end to end
 
-Putting it all together — the cleaning step from the
+Putting it all together - the cleaning step from the
 [Get started](getting-started.html) example, but with explicit
 intermediate writes so we can audit each stage:
 

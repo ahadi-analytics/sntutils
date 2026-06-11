@@ -16,7 +16,7 @@ format:
 
 # sntutils <img src="man/figures/logo.png" align="right" height="140" alt="sntutils hex logo" />
 
-`sntutils` is an R package developed by [AHADI](https://appliedhealthanalytics.org) to support the **Subnational Tailoring (SNT)** of malaria interventions. It bundles the small, repeated operations every SNT support analysis does — reading DHIS2 exports, harmonising admin names across shapefile vintages, validating facility coordinates, calculating reporting rates, extracting climate and population rasters to admin units, and rendering country-team-language plots and maps.
+`sntutils` is an R package developed by [AHADI](https://appliedhealthanalytics.org) to support the **Subnational Tailoring (SNT)** of malaria interventions. It bundles the small, repeated operations every SNT support analysis does - reading DHIS2 exports, harmonising admin names across shapefile vintages, validating facility coordinates, calculating reporting rates, extracting climate and population rasters to admin units, and rendering country-team-language plots and maps.
 
 > **Full documentation, with worked examples for every workflow, lives at <https://ahadi-analytics.github.io/sntutils/>**
 
@@ -70,7 +70,7 @@ The [Get started article](https://ahadi-analytics.github.io/sntutils/articles/ge
 
 The package exports ~100 functions, grouped by workflow stage. Each row links to the article that covers that group in depth.
 
-### [Data I/O and cleaning →](https://ahadi-analytics.github.io/sntutils/articles/data-io-and-cleaning.html)
+### [Read & clean →](https://ahadi-analytics.github.io/sntutils/articles/data-io-and-cleaning.html)
 
 Read and write any common SNT format, parse messy dates, infer column types, standardise admin and facility names, build data dictionaries.
 
@@ -84,7 +84,7 @@ Read and write any common SNT format, parse messy dates, infer column types, sta
 | `prep_geonames()` | Interactive admin-name harmonisation with caching |
 | `build_dictionary()`, `snt_data_dict()`, `check_snt_var()` | Variable dictionaries |
 
-### [Spatial validation and mapping →](https://ahadi-analytics.github.io/sntutils/articles/spatial.html)
+### [Spatial →](https://ahadi-analytics.github.io/sntutils/articles/spatial.html)
 
 Validate admin geometries and facility coordinates, crosswalk between shapefile vintages, fuzzy-match facilities, render maps.
 
@@ -112,7 +112,7 @@ Measure how completely facilities are reporting, by time and admin unit.
 | `compare_methods_plot()` | Compare two reporting-rule choices side by side |
 | `validate_routine_hf_data()` | Structural checks before any of the above |
 
-### [Data quality — consistency, outliers →](https://ahadi-analytics.github.io/sntutils/articles/data-quality.html)
+### [Data quality →](https://ahadi-analytics.github.io/sntutils/articles/data-quality.html)
 
 Cascade consistency, outlier detection (3 methods), correction and imputation.
 
@@ -123,9 +123,9 @@ Cascade consistency, outlier detection (3 methods), correction and imputation.
 | `correct_outliers()`, `impute_outlier_ma()`, `impute_higher_admin()` | Replace flagged values |
 | `fallback_diff()`, `fallback_row_sum()`, `safe_sum()` | Defensive numerical helpers |
 
-### [Climate downloads and raster extraction →](https://ahadi-analytics.github.io/sntutils/articles/climate.html)
+### [Climate →](https://ahadi-analytics.github.io/sntutils/articles/climate.html)
 
-CHIRPS, ERA5, MODIS, NASA POWER, IHME — plus the batch raster processors that bring them to admin units.
+CHIRPS, ERA5, MODIS, NASA POWER, IHME - plus the batch raster processors that bring them to admin units.
 
 | Function | What it does |
 | --- | --- |
@@ -138,7 +138,7 @@ CHIRPS, ERA5, MODIS, NASA POWER, IHME — plus the batch raster processors that 
 | `process_weighted_raster_collection()`, `process_weighted_raster_stacks()`, `normalize_raster_by_polygon()` | Population-weighted extraction |
 | `tidy_malaria_raster_names()`, `detect_time_pattern()`, `extract_time_components()` | Raster-naming utilities |
 
-### [WorldPop population rasters →](https://ahadi-analytics.github.io/sntutils/articles/worldpop.html)
+### [WorldPop →](https://ahadi-analytics.github.io/sntutils/articles/worldpop.html)
 
 WorldPop downloads (totals, age bands, urbanicity, global mosaic), extrapolation and SNT-shape reshape.
 
@@ -151,7 +151,7 @@ WorldPop downloads (totals, age bands, urbanicity, global mosaic), extrapolation
 | `extrapolate_pop()` | Fill years between or beyond observed years |
 | `snt_process_population()` | Reshape into canonical SNT long format |
 
-### [DHS indicators and microdata →](https://ahadi-analytics.github.io/sntutils/articles/dhs.html)
+### [DHS →](https://ahadi-analytics.github.io/sntutils/articles/dhs.html)
 
 Discover, download and query DHS / MIS indicators via the API; open DHS parquet microdata via DuckDB.
 
@@ -161,7 +161,7 @@ Discover, download and query DHS / MIS indicators via the API; open DHS parquet 
 | `download_dhs_indicators()` | National / subnational indicator values |
 | `get_dhs_data()` | Register DHS parquet datasets as DuckDB views |
 
-### [Project setup and utilities →](https://ahadi-analytics.github.io/sntutils/articles/project-and-utilities.html)
+### [Project utilities →](https://ahadi-analytics.github.io/sntutils/articles/project-and-utilities.html)
 
 Folder scaffolding, paths, translation, hashing, image compression, small numeric helpers.
 

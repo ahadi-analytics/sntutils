@@ -26,10 +26,10 @@ development:
 opengraph:
   image:
     src: man/figures/logo.png
-    alt: "sntutils — utilities for Subnational Tailoring of malaria interventions"
+    alt: "sntutils - utilities for Subnational Tailoring of malaria interventions"
 
 home:
-  title: sntutils — utilities for Subnational Tailoring of malaria interventions
+  title: sntutils - utilities for Subnational Tailoring of malaria interventions
   description: >
     R package developed by AHADI to support the Subnational Tailoring (SNT) of
     malaria interventions. Standardises and streamlines data preparation,
@@ -60,27 +60,27 @@ navbar:
         href: articles/getting-started.html
       - text: "---"
       - text: "Data preparation"
-      - text: Data I/O and cleaning
+      - text: Read & clean
         href: articles/data-io-and-cleaning.html
-      - text: Spatial validation and mapping
+      - text: Spatial
         href: articles/spatial.html
       - text: "---"
       - text: "Routine surveillance"
       - text: Reporting rates
         href: articles/reporting-rates.html
-      - text: Data quality — consistency, outliers
+      - text: Data quality
         href: articles/data-quality.html
       - text: "---"
       - text: "External data sources"
-      - text: Climate downloads and raster extraction
+      - text: Climate
         href: articles/climate.html
-      - text: WorldPop population rasters
+      - text: WorldPop
         href: articles/worldpop.html
-      - text: DHS indicators and microdata
+      - text: DHS
         href: articles/dhs.html
       - text: "---"
       - text: "Project plumbing"
-      - text: Project setup and utilities
+      - text: Project utilities
         href: articles/project-and-utilities.html
     reference:
       text: Reference
@@ -131,7 +131,7 @@ reference:
   - list_palettes
   - download_shapefile
 
-- title: Routine surveillance — reporting rates
+- title: Routine surveillance - reporting rates
   desc: Quantify and visualise how completely health facilities are reporting, by time and admin unit.
   contents:
   - calculate_reporting_metrics
@@ -143,7 +143,7 @@ reference:
   - get_active_facilities
   - validate_routine_hf_data
 
-- title: Routine surveillance — data quality
+- title: Routine surveillance - data quality
   desc: Cascade consistency checks, outlier detection and correction, imputation helpers.
   contents:
   - consistency_check
@@ -232,7 +232,7 @@ reference:
   - french_malaria_acronyms
 
 - title: Plotting helpers and trend models
-  desc: Reusable building blocks for SNT plots — palettes, model wrappers, IR plots.
+  desc: Reusable building blocks for SNT plots - palettes, model wrappers, IR plots.
   contents:
   - get_model
   - generate_ir_plot
@@ -255,7 +255,7 @@ reference:
   - compress_png
 
 - title: internal
-  desc: Internal helpers and datasets — documented for completeness but not part of the public API.
+  desc: Internal helpers and datasets - documented for completeness but not part of the public API.
   contents:
   - batch_extract_weighted_stats
   - calculate_plot_dimensions

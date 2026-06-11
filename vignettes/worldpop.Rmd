@@ -1,12 +1,12 @@
 ---
-title: "WorldPop population rasters"
+title: "WorldPop"
 description: >
-  Download WorldPop population rasters — totals, age bands, urbanicity,
-  per-country and global mosaics — then extrapolate to missing years and
+  Download WorldPop population rasters - totals, age bands, urbanicity,
+  per-country and global mosaics - then extrapolate to missing years and
   reshape into the canonical SNT population table.
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{WorldPop population rasters}
+  %\VignetteIndexEntry{WorldPop}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -45,8 +45,8 @@ extraction), see the
 The default download. Automatically picks the right WorldPop release
 based on the years requested:
 
-- **Legacy (2000–2020)** — UN-adjusted, 1 km, `count` or `density`.
-- **R2025A (2015–2030)** — constrained to built-up areas, 1 km **or
+- **Legacy (2000–2020)** - UN-adjusted, 1 km, `count` or `density`.
+- **R2025A (2015–2030)** - constrained to built-up areas, 1 km **or
   100 m**, `count` only.
 
 If your year range spans both releases (e.g. 2010:2020) the function
@@ -129,7 +129,7 @@ download_worldpop_age_band(
   out_dir       = "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters"
 )
 
-# children 1–9 (both sexes, total) — uses the "t" variant under the hood
+# children 1–9 (both sexes, total) - uses the "t" variant under the hood
 download_worldpop_age_band(
   country_codes = "SLE",
   years         = 2020:2024,
@@ -191,11 +191,11 @@ WorldPop ends at 2030 (R2025A). For the years where WorldPop doesn't
 publish, `extrapolate_pop()` fills the gap. It supports three
 strategies:
 
-1. **Automatic growth rate** — fit a growth rate from observed years
+1. **Automatic growth rate** - fit a growth rate from observed years
    per location.
-2. **Single multiplier** — apply the same growth to every column /
+2. **Single multiplier** - apply the same growth to every column /
    year.
-3. **Per-column, per-year multipliers** — full control via a named
+3. **Per-column, per-year multipliers** - full control via a named
    list.
 
 ```r
@@ -232,7 +232,7 @@ extrapolate_pop(
   multiplier      = 1.03
 )
 
-# 3. per-column, per-year — fine control
+# 3. per-column, per-year - fine control
 extrapolate_pop(
   data            = dummy_pop,
   year_col        = "year",
@@ -247,7 +247,7 @@ extrapolate_pop(
 ```
 
 Extrapolation can also be backward (years earlier than the earliest
-observed) using the same syntax — pass the older years to
+observed) using the same syntax - pass the older years to
 `years_to_extrap`.
 
 ## SNT-shape reshape: `snt_process_population()`
@@ -268,7 +268,7 @@ snt_process_population(
 
 `snt_process_population()` builds per-admin-level summaries (adm0..adm3,
 whichever are present), produces a bilingual EN + optional FR data
-dictionary, and records which admin levels were available — exactly the
+dictionary, and records which admin levels were available - exactly the
 inputs the downstream plotting and stratification functions expect.
 
 ## A WorldPop pipeline, end to end
@@ -327,6 +327,6 @@ pop_snt <- snt_process_population(
 ```
 
 The result is one tibble keyed by admin and year, with both total and
-age-band populations, extrapolated to whatever year the project ends —
+age-band populations, extrapolated to whatever year the project ends -
 the canonical denominator for incidence, intervention coverage and
 need-based allocation downstream.
