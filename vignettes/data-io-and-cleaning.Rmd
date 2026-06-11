@@ -224,38 +224,81 @@ run on the same data is instant.
 A demo of the interactive flow is in the
 [README on GitHub](https://github.com/ahadi-analytics/sntutils#geolocation-name-cleaning).
 
-## Building a data dictionary
+## Dictionaries: producing one, and using the curated SNT schema
 
-Once a dataset is clean, `build_dictionary()` produces a tibble describing
-each variable - name, type, number of unique values, range or top
-levels, and an English label if one is available from a labels file.
-This is what we hand to country teams as documentation.
+Two flavours of dictionary live in `sntutils`. Both come up on every
+country project, so they're worth knowing well.
+
+### `snt_data_dict()` - the curated SNT variable dictionary
+
+The package ships with a canonical schema of the SNT variable names
+that the rest of `sntutils` expects (`conf`, `pres`, `test`, `allout`,
+`maltreat_u5`, …). `snt_data_dict()` returns this curated dictionary as
+a tibble, with bilingual labels and a category tag for each variable.
+This is the source of truth for variable naming across country teams.
 
 ```r
-dd <- build_dictionary(dplyr::as_tibble(iris))
-
-dd |> dplyr::select(variable, type, label_en) |> utils::head()
-#> # A tibble: 5 × 3
-#>   variable     type    label_en
-#>   <chr>        <chr>   <chr>
-#> 1 Sepal.Length numeric NA
-#> 2 Sepal.Width  numeric NA
-#> 3 Petal.Length numeric NA
-#> 4 Petal.Width  numeric NA
-#> 5 Species      factor  NA
+snt_data_dict() |>
+  dplyr::select(variable, category, label_en, label_fr) |>
+  dplyr::filter(category == "case_management") |>
+  utils::head()
+#> # A tibble: 6 × 4
+#>   variable    category         label_en                       label_fr
+#>   <chr>       <chr>            <chr>                          <chr>
+#> 1 allout      case_management  All-cause outpatient visits    Consultations externes ...
+#> 2 susp        case_management  Suspected malaria cases        Cas suspects de paludisme
+#> 3 test        case_management  Malaria tests performed        Tests de paludisme ...
+#> 4 conf        case_management  Confirmed malaria cases        Cas confirmés
+#> 5 pres        case_management  Presumed malaria cases         Cas présumés
+#> 6 maltreat    case_management  Malaria cases treated          Cas traités
 ```
 
-`snt_data_dict()` returns the package's curated dictionary of standard
-SNT variable names (`conf`, `pres`, `test`, `allout`, …) so we can
-validate a dataset against the canonical schema:
+`check_snt_var()` validates one or more variable names against the
+schema, with fuzzy matching when names are close-but-not-exact:
 
 ```r
-# is "maltreat_u5" a known SNT variable?
 check_snt_var("maltreat_u5")
 #> ✔ maltreat_u5 - Malaria cases treated, under 5
+
+check_snt_var("conf_uner5")     # typo
+#> ✖ Unknown SNT variable: conf_uner5
+#> ℹ Did you mean: conf_u5?
 ```
 
-`clear_snt_cache()` resets the in-memory cache after editing labels.
+Use it as a sanity check at the start of every analysis, before joining
+DHIS2 to anything else.
+
+### `build_dictionary()` - generate a dictionary for *your* dataset
+
+Once a dataset is clean, `build_dictionary()` produces a per-variable
+summary tibble - name, type, number of unique values, value range or
+top levels, and (where they're known) the English label from the SNT
+schema. This is the artefact we hand to country teams as documentation
+for any processed dataset.
+
+```r
+dd <- build_dictionary(sl_dhis2)
+
+dd |>
+  dplyr::select(variable, type, n_unique, label_en) |>
+  utils::head()
+#> # A tibble: 6 × 4
+#>   variable type        n_unique label_en
+#>   <chr>    <chr>          <int> <chr>
+#> 1 adm0     factor             1 Country (adm0)
+#> 2 adm1     factor             5 Region (adm1)
+#> 3 adm2     factor            17 District (adm2)
+#> 4 adm3     factor           191 Chiefdom (adm3)
+#> 5 hf       character       1702 Health facility name
+#> 6 conf     numeric            - Confirmed malaria cases
+```
+
+The output drops cleanly into a multi-sheet Excel via `write()`, so we
+can ship a `data_dictionary.xlsx` alongside every processed dataset
+without writing it by hand.
+
+`clear_snt_cache()` resets the in-memory cache after editing the
+underlying labels CSV - call it if you've updated the schema mid-session.
 
 ## A clean pipeline, end to end
 

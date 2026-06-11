@@ -238,46 +238,8 @@ analysis_ready <- rain_adm2 |>
 Two archives (climate + population), one tibble keyed by admin and
 date - the canonical input for stratification and modelling.
 
-## Mapping the extracted output
-
-The output of any of the batch processors is a tidy tibble of admin x
-time x stat, so it drops straight into `facetted_map_gradient()` for a
-continuous-scale small-multiples map, or `facetted_map_bins()` when
-banded categories read better.
-
-```r
-# annual mean rainfall, gradient
-rain_annual <- rain_adm2 |>
-  dplyr::group_by(adm0_name, adm1_name, adm2_name, year) |>
-  dplyr::summarise(rain_mm = mean(mean, na.rm = TRUE), .groups = "drop")
-
-facetted_map_gradient(
-  data      = rain_annual,
-  sf_data   = sle_adm2_clean,
-  facet_col = "year",
-  fill_col  = "rain_mm",
-  join_by   = c("adm2_name" = "adm2_name"),
-  palette   = "ahadi_cool",
-  title     = "Population-weighted mean monthly rainfall - Sierra Leone",
-  caption   = "Source: CHIRPS, weighted by WorldPop 2020 (1 km)."
-)
-
-# population density bands, discrete legend
-pop_density <- pop_adm2 |>
-  dplyr::mutate(pop_density = sum / area_km2)        # area joined upstream
-
-facetted_map_bins(
-  data      = pop_density,
-  sf_data   = sle_adm2_clean,
-  facet_col = "year",
-  fill_col  = "pop_density",
-  join_by   = c("adm2_name" = "adm2_name"),
-  bins      = c(0, 50, 150, 500, 1500, Inf),
-  bin_labels = c("<50", "50-150", "150-500", "500-1500", ">=1500"),
-  title     = "Population density (persons / km^2) - Sierra Leone"
-)
-```
-
-Both functions accept `target_language` for the legend and caption, so
-the same call produces an English or French version of the map (see
-[Spatial](spatial.html) for the full palette and styling controls).
+> Want to **map the extracted tibble** as a small-area surface? See the
+> [Climate article's mapping section](climate.html#mapping-small-area-climate-estimates)
+> for a worked example using `facetted_map_gradient()` and the
+> `get_palette()` colour helpers. The same recipe works for any
+> raster-extracted tibble.

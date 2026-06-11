@@ -198,13 +198,35 @@ translate_yearmon(dates, language = "es", format = "%B %Y")
 #> [1] "enero 2022" "febrero 2022" "marzo 2022"
 ```
 
-### `french_malaria_acronyms()`
+## French malaria acronyms: `french_malaria_acronyms()`
 
-Returns the curated list of malaria acronyms used to override Google
-Translate's defaults for French (`TPI` instead of "PIT", `MILDA`
-instead of "moustiquaire imprégnée à longue durée d'action", etc.).
-Plot helpers consult this list automatically when
-`target_language = "fr"`.
+Google Translate consistently butchers technical malaria acronyms when
+asked to translate plot titles, labels and report text into French - it
+emits "PIT" instead of `TPI`, the literal phrase
+"moustiquaire imprégnée à longue durée d'action" instead of `MILDA`,
+and so on. `french_malaria_acronyms()` is the curated override list
+that every translation-aware function in `sntutils` consults to keep
+the French outputs publication-ready.
+
+```r
+french_malaria_acronyms() |> utils::head()
+#> # A tibble: 6 × 3
+#>   en       fr      definition_fr
+#>   <chr>    <chr>   <chr>
+#> 1 ITN      MILDA   Moustiquaire imprégnée à longue durée d'action
+#> 2 IRS      AID     Aspersion intra-domiciliaire
+#> 3 IPT      TPI     Traitement préventif intermittent
+#> 4 IPTp     TPIp    Traitement préventif intermittent pendant la grossesse
+#> 5 SMC      CPS     Chimioprévention du paludisme saisonnier
+#> 6 RDT      TDR     Test de diagnostic rapide
+```
+
+This list is consumed automatically inside `translate_text()`,
+`reporting_rate_plot()`, `consistency_check()`, the faceted-map helpers
+and any other function with a `target_language` argument - we don't
+need to call it directly, but it's worth knowing it exists when a
+French translation looks off and we want to extend or override the
+mapping for a country team.
 
 ## Image compression: `compress_png()`
 

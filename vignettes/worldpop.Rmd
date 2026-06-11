@@ -23,7 +23,7 @@ knitr::opts_chunk$set(
 **Conceptual reading - SNT Code Library**
 
 - [Population data](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population.html) - census vs raster vs displaced population.
-- [Population rasters](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population/population_raster.html) - WorldPop methodology and release choices.
+- [Population rasters](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population/population_raster.html) - WorldPop methodology, release choices, and the canonical growth-rate projection method that `extrapolate_pop()` implements.
 - [Population census](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population/population_census.html) - when census data is the right input.
 :::
 
@@ -194,6 +194,14 @@ to do population-weighted climate extraction, or into
 admin.
 
 ## Extrapolating to missing years: `extrapolate_pop()`
+
+> **Methodology note.** The code library's
+> [Population rasters chapter](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population/population_raster.html)
+> is the authoritative reference for growth-rate-based population
+> projection in SNT. **Use the national statistics bureau's growth rate
+> whenever it is available** - the function makes it easy to apply
+> the right number, not to invent one. Avoid ad hoc rates outside of
+> early exploration.
 
 WorldPop ends at 2030 (R2025A). For the years where WorldPop doesn't
 publish, `extrapolate_pop()` fills the gap. It supports three
