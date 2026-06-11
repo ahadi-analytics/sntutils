@@ -1,0 +1,358 @@
+# Project setup and utilities
+
+Beginner
+
+The other articles cover the headline analyses. This one rounds up the
+day-to-day plumbing — folder scaffolding, paths, translation, hashing,
+image compression, and the small numerical helpers — that make the rest
+of `sntutils` feel coherent.
+
+## Project structure
+
+AHADI projects follow a fixed top-level layout so that scripts written
+for one country drop straight into another. Two functions build it.
+
+### `create_data_structure()`
+
+Creates only the data tree under `01_data/`. Each domain folder has
+`raw/` and `processed/` subfolders.
+
+``` r
+
+library(sntutils)
+
+create_data_structure(base_path = ".")
+```
+
+    01_data/
+    ├── 1.1_foundational/
+    │   ├── 1.1a_admin_boundaries/
+    │   ├── 1.1b_health_facilities/
+    │   └── 1.1c_population/
+    │       ├── 1.1ci_national/
+    │       └── 1.1cii_worldpop_rasters/
+    ├── 1.2_epidemiology/
+    │   ├── 1.2a_routine_surveillance/
+    │   ├── 1.2b_pfpr_estimates/
+    │   └── 1.2c_mortality_estimates/
+    ├── 1.3_interventions/
+    ├── 1.4_drug_efficacy_resistance/
+    ├── 1.5_environment/
+    │   ├── 1.5a_climate/
+    │   ├── 1.5b_accessibility/
+    │   └── 1.5c_land_use/
+    ├── 1.6_health_systems/
+    │   └── 1.6a_dhs/
+    ├── 1.7_entomology/
+    └── 1.8_commodities/
+
+### `initialize_project_structure()`
+
+Same data tree plus the surrounding scaffolding for scripts, outputs and
+reports — use this on the first day of a new project.
+
+``` r
+
+initialize_project_structure(base_path = "my_snt_project")
+```
+
+    my_snt_project/
+    ├── 01_data/                  # hierarchical data tree from above
+    ├── 02_scripts/
+    ├── 03_outputs/
+    │   └── plots/
+    ├── 04_reports/
+    └── metadata_docs/
+
+## Resolving paths: `setup_project_paths()`
+
+Once the folders exist,
+[`setup_project_paths()`](https://ahadi-analytics.github.io/sntutils/reference/setup_project_paths.md)
+returns a named list of absolute paths to every important location.
+Detects the project root via
+[`here::here()`](https://here.r-lib.org/reference/here.html) /
+`rprojroot`, with [`getwd()`](https://rdrr.io/r/base/getwd.html) as a
+fallback. The keys are short and stable so scripts don’t have to know
+where the project lives on disk.
+
+``` r
+
+paths <- setup_project_paths(quiet = TRUE)
+
+paths$admin_shp
+#> [1] "/Users/me/projects/sle-snt/01_data/1.1_foundational/1.1a_admin_boundaries"
+
+paths$dhis2
+#> [1] "/Users/me/projects/sle-snt/01_data/1.2_epidemiology/1.2a_routine_surveillance"
+
+paths$val_fig
+#> [1] "/Users/me/projects/sle-snt/03_outputs/validation/figures"
+```
+
+Every download, validation and processing function in the package
+accepts these paths directly, so a typical script reads:
+
+``` r
+
+paths  <- setup_project_paths()
+shp    <- read(file.path(paths$admin_shp, "sle_adm2.geojson"))
+dhis2  <- read_snt_data(paths$dhis2, "sl_dhis2_clean")
+```
+
+[`ahadi_path()`](https://ahadi-analytics.github.io/sntutils/reference/ahadi_path.md)
+is a related helper for navigating the AHADI shared OneDrive — it
+locates a project by name across team members’ synced roots, useful for
+cross-machine reproducibility.
+
+[`clear_snt_cache()`](https://ahadi-analytics.github.io/sntutils/reference/clear_snt_cache.md)
+resets the in-memory caches used by
+[`snt_data_dict()`](https://ahadi-analytics.github.io/sntutils/reference/snt_data_dict.md)
+and related helpers; call it after editing the dictionary CSV without
+restarting R.
+
+## Translation and localisation
+
+Country teams switch between English, French and Portuguese on a near-
+weekly basis. Every plot and label function in `sntutils` accepts a
+`target_language` argument, which routes through this small translation
+stack.
+
+### `translate_text()`
+
+Calls Google Translate (via the `gtranslate` package) once per unique
+string and caches the response to a local JSON file. The next call for
+the same `(source, target, text)` triple returns instantly from cache.
+
+``` r
+
+translate_text("Reporting rate by district",
+               target_language = "fr",
+               source_language = "en")
+#> [1] "Taux de rapportage par district"
+
+translate_text("Malaria cases",
+               target_language = "pt",
+               cache_path = "~/translation_cache")
+#> [1] "Casos de malária"
+```
+
+### `translate_text_vec()`
+
+Vectorised wrapper for
+[`translate_text()`](https://ahadi-analytics.github.io/sntutils/reference/translate_text.md)
+— translate a whole column in one call, with caching shared across the
+batch.
+
+``` r
+
+df <- tibble::tibble(
+  label = c("Confirmed cases", "Presumed cases", "Tests performed")
+)
+
+df |>
+  dplyr::mutate(label_es = translate_text_vec(label, target_language = "es"))
+#> # A tibble: 3 × 2
+#>   label           label_es
+#>   <chr>           <chr>
+#> 1 Confirmed cases Casos confirmados
+#> 2 Presumed cases  Casos presuntos
+#> 3 Tests performed Pruebas realizadas
+```
+
+### `translate_yearmon()`
+
+Locale-aware month-year formatting for time-series axes.
+
+``` r
+
+dates <- seq(as.Date("2022-01-01"), as.Date("2022-03-01"), by = "month")
+
+translate_yearmon(dates, language = "fr")
+#> [1] "janv. 2022" "févr. 2022" "mars 2022"
+
+translate_yearmon(dates, language = "es", format = "%B %Y")
+#> [1] "enero 2022" "febrero 2022" "marzo 2022"
+```
+
+### `french_malaria_acronyms()`
+
+Returns the curated list of malaria acronyms used to override Google
+Translate’s defaults for French (`TPI` instead of “PIT”, `MILDA` instead
+of “moustiquaire imprégnée à longue durée d’action”, etc.). Plot helpers
+consult this list automatically when `target_language = "fr"`.
+
+## Image compression: `compress_png()`
+
+When SNT reports get assembled into PDFs or Word docs, embedded PNGs
+dominate the file size.
+[`compress_png()`](https://ahadi-analytics.github.io/sntutils/reference/compress_png.md)
+wraps `pngquant` (installed on demand) to shrink PNGs by ~70% with no
+visible quality loss. Both
+[`reporting_rate_plot()`](https://ahadi-analytics.github.io/sntutils/reference/reporting_rate_plot.md)
+and
+[`consistency_check()`](https://ahadi-analytics.github.io/sntutils/reference/consistency_check.md)
+call it under the hood when saving with `compress_image = TRUE`.
+
+``` r
+
+# single file
+compress_png(
+  "path/to/large_image.png",
+  output_path = "path/to/consistency_plot.png"
+)
+#> ── Compression Summary ──
+#>
+#> ✔ Successfully compressed: consistency_plot.png
+#> ℹ Total compression: 200.21 KB (71.54% saved)
+#> ℹ Excellent compression!
+#>
+#> ── File Size
+#> Before compression: 279.87 KB
+#> After compression:   79.66 KB
+
+# whole directory
+compress_png(
+  "path/to/image_folder/",
+  output_path = "path/to/compressed_folder/",
+  verbose     = TRUE
+)
+```
+
+## Hashing: `vdigest()`
+
+[`vdigest()`](https://ahadi-analytics.github.io/sntutils/reference/vdigest.md)
+is a vectorised version of
+[`digest::digest()`](https://eddelbuettel.github.io/digest/man/digest.html).
+We use it constantly to mint stable IDs for facility-month records,
+deduplicate across DHIS2 exports, and detect content changes when
+caching expensive steps.
+
+``` r
+
+sl_dhis2 |>
+  dplyr::distinct(adm3) |>
+  dplyr::mutate(adm3_hash = vdigest(adm3)) |>
+  utils::head()
+#> # A tibble: 6 × 2
+#>   adm3             adm3_hash
+#>   <chr>            <chr>
+#> 1 Bo City          c810b59ec12efb2ac8b5cc84f46857ce
+#> 2 Kakua Chiefdom   27fd84f751fac150c2f8a8f42b71c3da
+#> 3 Baoma Chiefdom   462ef3c87dc9b40b2ec2e0e0a54dd63e
+#> 4 Valunia Chiefdom df394518e6987ed686d76e83a409f090
+#> 5 Bagbwe Chiefdom  3aa7a61247e34ab397ff813fe520c8b7
+#> 6 Wonde Chiefdom   196dc9792e2038b41411ec2afae37e61
+```
+
+Default algorithm is `md5`, but `xxhash32` is much faster for the long
+character vectors typical of SNT data and produces shorter IDs:
+
+``` r
+
+sl_dhis2 <- sl_dhis2 |>
+  dplyr::mutate(
+    hf_uid    = vdigest(paste0(adm1, adm2, hf), algo = "xxhash32"),
+    record_id = vdigest(paste(hf_uid, year_mon),  algo = "xxhash32")
+  )
+```
+
+## Numeric formatting helpers
+
+The small but frequently used numerics that prevent boilerplate in every
+script.
+
+``` r
+
+# thousands separator, with configurable mark and decimals
+big_mark(1234567.89)
+#> [1] "1,234,567.89"
+
+big_mark(c(1234.56, 7890123.45), decimals = 1, big_mark = " ")
+#> [1] "1 234.6"     "7 890 123.5"
+
+# NA-safe wrappers
+sum2(c(1, 2, NA, 4))
+#> [1] 7
+
+mean2(c(1, 2, NA, 4))
+#> [1] 2.333333
+
+median2(c(1, 2, NA, 4, 5))
+#> [1] 3
+```
+
+[`safe_sum()`](https://ahadi-analytics.github.io/sntutils/reference/safe_sum.md),
+[`fallback_row_sum()`](https://ahadi-analytics.github.io/sntutils/reference/fallback_row_sum.md)
+and
+[`fallback_diff()`](https://ahadi-analytics.github.io/sntutils/reference/fallback_diff.md)
+are defensively-typed helpers that show up inside the imputation and
+outlier-correction paths. They tolerate all-NA rows, return zeros where
+appropriate, and stop you from accidentally summing characters.
+
+## Plot helpers
+
+A handful of internal building blocks are exported because country teams
+reuse them in custom one-off charts:
+
+- [`get_palette()`](https://ahadi-analytics.github.io/sntutils/reference/get_palette.md)
+  /
+  [`list_palettes()`](https://ahadi-analytics.github.io/sntutils/reference/list_palettes.md)
+  — AHADI-branded discrete and gradient palettes (`ahadi_main`,
+  `ahadi_warm`, `ahadi_cool`, …).
+- [`auto_bin()`](https://ahadi-analytics.github.io/sntutils/reference/auto_bin.md)
+  — choose bin edges for an indicator using Fisher-Jenks or quantile
+  breaks, returning a labelled factor.
+- [`detect_factors()`](https://ahadi-analytics.github.io/sntutils/reference/detect_factors.md),
+  [`detect_time_pattern()`](https://ahadi-analytics.github.io/sntutils/reference/detect_time_pattern.md),
+  [`extract_time_components()`](https://ahadi-analytics.github.io/sntutils/reference/extract_time_components.md)
+  — utilities that power the auto-parsers but are exposed for ad-hoc
+  use.
+- [`get_model()`](https://ahadi-analytics.github.io/sntutils/reference/get_model.md),
+  [`generate_ir_plot()`](https://ahadi-analytics.github.io/sntutils/reference/generate_ir_plot.md),
+  [`run_resistance_trend()`](https://ahadi-analytics.github.io/sntutils/reference/run_resistance_trend.md)
+  — fit and render incidence-rate / resistance-trend plots used in
+  insecticide-resistance reports.
+- [`prepare_plot_data()`](https://ahadi-analytics.github.io/sntutils/reference/prepare_plot_data.md),
+  [`get_pathway_vars()`](https://ahadi-analytics.github.io/sntutils/reference/get_pathway_vars.md)
+  — internal data-shaping helpers that show up in custom reporting
+  pipelines.
+
+## Putting it together
+
+A typical script header at AHADI ends up looking like this:
+
+``` r
+
+library(sntutils)
+
+# 1. resolve where everything lives
+paths <- setup_project_paths()
+
+# 2. read with audit trail
+sl_dhis2 <- read_snt_data(paths$dhis2, "sl_dhis2_clean")
+
+# 3. mint stable IDs
+sl_dhis2 <- sl_dhis2 |>
+  dplyr::mutate(
+    hf_uid    = vdigest(paste0(adm1, adm2, hf), algo = "xxhash32"),
+    record_id = vdigest(paste(hf_uid, year_mon),  algo = "xxhash32")
+  )
+
+# 4. produce country-team-language outputs
+reporting_rate_plot(
+  data             = sl_dhis2,
+  vars_of_interest = "conf",
+  x_var            = "year_mon",
+  y_var            = "adm2",
+  hf_col           = "hf_uid",
+  key_indicators   = c("allout", "test", "treat", "conf", "pres"),
+  target_language  = "fr",
+  compress_image   = TRUE,
+  plot_path        = paths$final_fig
+)
+```
+
+That’s six lines of script for a country-month reporting plot with audit
+trail, stable IDs, French labels and a compressed PNG ready to drop into
+a PDF. The plumbing in this article is what makes the analysis lines
+above this header so short.

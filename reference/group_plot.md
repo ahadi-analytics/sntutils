@@ -1,0 +1,105 @@
+# Create plots with a grouping variable on the y-axis
+
+Creates reporting rate or missing data plots with a grouping variable on
+the y-axis and facets for each variable being analyzed.
+
+## Usage
+
+``` r
+group_plot(
+  plot_data,
+  x_var,
+  y_var,
+  vars_of_interest,
+  fill_var,
+  fill_label,
+  title_prefix,
+  subtitle = NULL,
+  include_plot_title = TRUE,
+  plot_caption = NULL,
+  y_axis_label,
+  common_elements,
+  target_language = "en",
+  source_language = "en",
+  lang_cache_path = tempdir(),
+  x_axis_breaks = 6,
+  use_reprate = TRUE
+)
+```
+
+## Arguments
+
+- plot_data:
+
+  A prepared data frame containing summarized missing data information
+
+- x_var:
+
+  The time variable name (e.g., "year", "month")
+
+- y_var:
+
+  The grouping variable name (e.g., "district", "state")
+
+- vars_of_interest:
+
+  Variables being visualized for missing data
+
+- fill_var:
+
+  The column to use for fill values ("reprate" or "missrate")
+
+- fill_label:
+
+  Label for the fill scale
+
+- title_prefix:
+
+  Title prefix based on whether showing reporting or missing rates
+
+- subtitle:
+
+  Optional subtitle text to display under the title. Default NULL.
+
+- include_plot_title:
+
+  Logical. If TRUE, plot titles are included. Default TRUE.
+
+- plot_caption:
+
+  Optional caption text to display at the bottom of the plot. Default
+  NULL.
+
+- y_axis_label:
+
+  Label for the y-axis
+
+- common_elements:
+
+  Common ggplot elements to apply to all plots
+
+- target_language:
+
+  Language code for labels (ISO 639-1)
+
+- source_language:
+
+  Source language code, defaults to NULL
+
+- lang_cache_path:
+
+  Path for translation cache, defaults to tempdir()
+
+- x_axis_breaks:
+
+  Numeric value specifying the interval for x-axis breaks. Default `6`.
+  For example, `2` shows every second tick and `6` every sixth.
+
+- use_reprate:
+
+  Logical. If TRUE, displays reporting rate; if FALSE, displays missing
+  rate with special handling for 100% missing values. Default TRUE.
+
+## Value
+
+A ggplot2 object

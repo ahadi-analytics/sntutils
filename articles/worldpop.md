@@ -1,0 +1,327 @@
+# WorldPop population rasters
+
+Intermediate
+
+WorldPop is the canonical sub-national population surface for African
+SNT work. `sntutils` wraps both WorldPop releases (legacy 2000–2020 and
+R2025A 2015–2030) behind one consistent API, with helpers for age bands,
+urbanicity, multi-year extrapolation, and the final long-format reshape
+into the SNT population table.
+
+The headline functions are:
+
+| Function | What it does |
+|----|----|
+| [`download_worldpop()`](https://ahadi-analytics.github.io/sntutils/reference/download_worldpop.md) | Total population, persons-per-pixel or persons-per-km² |
+| [`download_worldpop_age_band()`](https://ahadi-analytics.github.io/sntutils/reference/download_worldpop_age_band.md) | Population for a specified age range, by sex |
+| [`download_worldpop_urbanicity()`](https://ahadi-analytics.github.io/sntutils/reference/download_worldpop_urbanicity.md) | Urban / peri-urban / rural classification |
+| [`get_worldpop_paths()`](https://ahadi-analytics.github.io/sntutils/reference/get_worldpop_paths.md) | Resolve where downloaded files live on disk |
+| [`extrapolate_pop()`](https://ahadi-analytics.github.io/sntutils/reference/extrapolate_pop.md) | Fill years between (or beyond) observed years |
+| [`snt_process_population()`](https://ahadi-analytics.github.io/sntutils/reference/snt_process_population.md) | Reshape & summarise into the SNT long format |
+
+For aggregating these rasters to admin polygons (zonal stats, weighted
+extraction), see the [Climate downloads and raster
+extraction](https://ahadi-analytics.github.io/sntutils/articles/climate.md)
+article.
+
+## Total population: `download_worldpop()`
+
+The default download. Automatically picks the right WorldPop release
+based on the years requested:
+
+- **Legacy (2000–2020)** — UN-adjusted, 1 km, `count` or `density`.
+- **R2025A (2015–2030)** — constrained to built-up areas, 1 km **or 100
+  m**, `count` only.
+
+If your year range spans both releases (e.g. 2010:2020) the function
+pulls from both and stitches them.
+
+``` r
+
+library(sntutils)
+
+# Guinea, 2015–2020, 1 km count (default)
+download_worldpop(
+  country_codes = "GIN",
+  years         = 2015:2020,
+  type          = "count",
+  resolution    = "1km",
+  dest_dir      = "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters"
+)
+
+# legacy persons-per-km² for the same country
+download_worldpop(
+  country_codes = "GIN",
+  years         = 2010:2014,
+  type          = "density",
+  resolution    = "1km",
+  dest_dir      = "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters"
+)
+
+# high-resolution: 100 m, R2025A only
+download_worldpop(
+  country_codes = "SLE",
+  years         = 2020:2024,
+  resolution    = "100m",
+  dest_dir      = "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters"
+)
+```
+
+### Global mosaic
+
+Pass `"GLOBAL"` (case-insensitive) instead of an ISO3 code to download
+the worldwide mosaic from WorldPop’s `0_Mosaicked` directory. This is
+the right input for multi-country / continental analyses where you don’t
+want to stitch per-country rasters yourself. `GLOBAL` requires year ≥
+2015, 1 km, and `type = "count"`.
+
+``` r
+
+download_worldpop(
+  country_codes = "GLOBAL",
+  years         = 2020:2024,
+  dest_dir      = "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters"
+)
+```
+
+### Resumable, never re-downloads
+
+[`download_worldpop()`](https://ahadi-analytics.github.io/sntutils/reference/download_worldpop.md)
+skips files that already exist with the right size, so re-running the
+same call is a no-op. The returned (invisible) list has the resolved
+file paths and a per-country success counter for logging.
+
+## Age bands: `download_worldpop_age_band()`
+
+For interventions targeted at specific demographic groups (women of
+reproductive age for ITN allocation, children under 5 for SMC, etc.)
+WorldPop publishes 5-year age-band rasters. `sntutils` does the download
+in two modes:
+
+- **For years ≥ 2015** with `sex = "both"`, the function fetches the
+  single pre-summed `"t"` total raster (one download per band).
+- **For years \< 2015** (or when an explicit sex is requested), male and
+  female rasters are downloaded and summed locally.
+
+``` r
+
+# women 15–49 (reproductive age) for ITN allocation
+download_worldpop_age_band(
+  country_codes = "SLE",
+  years         = 2020:2024,
+  age_range     = c(15, 49),
+  sex           = "female",
+  resolution    = "1km",
+  release       = "R2025A",
+  out_dir       = "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters"
+)
+
+# children 1–9 (both sexes, total) — uses the "t" variant under the hood
+download_worldpop_age_band(
+  country_codes = "SLE",
+  years         = 2020:2024,
+  age_range     = c(1, 9),
+  sex           = "both",
+  resolution    = "1km",
+  release       = "R2025A",
+  out_dir       = "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters"
+)
+```
+
+Switch `release = "R2024B"` if you specifically need the previous
+release; the default is `R2025A`. The global mosaic
+(`country_codes = "GLOBAL"`) also works here for years ≥ 2015 at 1 km.
+
+## Urbanicity: `download_worldpop_urbanicity()`
+
+WorldPop’s urbanicity layer classifies each pixel as urban / peri-urban
+/ rural. Used in SNT for urban microstratification and to weight
+interventions differently across the urban gradient.
+
+``` r
+
+download_worldpop_urbanicity(
+  country_codes = c("SLE", "TGO"),
+  years         = 2020,
+  out_dir       = "01_data/1.5_environment/1.5c_land_use"
+)
+```
+
+## Resolving paths: `get_worldpop_paths()`
+
+After a series of downloads spread over different days, you usually need
+to know “where did the 2020 1 km count raster end up?”.
+[`get_worldpop_paths()`](https://ahadi-analytics.github.io/sntutils/reference/get_worldpop_paths.md)
+returns the resolved paths for a country × year matrix:
+
+``` r
+
+get_worldpop_paths(
+  country_codes = c("SLE", "TGO"),
+  years         = 2020:2024,
+  dest_dir      = "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters"
+)
+#> # A tibble: 10 × 4
+#>    country year  resolution path
+#>    <chr>   <int> <chr>      <chr>
+#>  1 SLE     2020  1km        .../sle_ppp_2020_1km_Aggregated_UNadj.tif
+#>  2 SLE     2021  1km        .../sle_ppp_2021_1km_Aggregated_UNadj.tif
+#>  ...
+```
+
+Feed the resulting `path` column into
+[`process_weighted_raster_collection()`](https://ahadi-analytics.github.io/sntutils/reference/process_weighted_raster_collection.md)
+to do population-weighted climate extraction, or into
+[`process_raster_collection()`](https://ahadi-analytics.github.io/sntutils/reference/process_raster_collection.md)
+for plain zonal sums of population by admin.
+
+## Extrapolating to missing years: `extrapolate_pop()`
+
+WorldPop ends at 2030 (R2025A). For the years where WorldPop doesn’t
+publish,
+[`extrapolate_pop()`](https://ahadi-analytics.github.io/sntutils/reference/extrapolate_pop.md)
+fills the gap. It supports three strategies:
+
+1.  **Automatic growth rate** — fit a growth rate from observed years
+    per location.
+2.  **Single multiplier** — apply the same growth to every column /
+    year.
+3.  **Per-column, per-year multipliers** — full control via a named
+    list.
+
+``` r
+
+dummy_pop <- expand.grid(
+  adm0 = "COUNTRYX",
+  adm1 = c("RegionA", "RegionB"),
+  adm2 = c("District1", "District2"),
+  year = 2018:2020
+) |>
+  dplyr::mutate(
+    adm3      = paste0(adm2, "_Sub"),
+    pop_total = sample(1000:5000, dplyr::n(), replace = TRUE),
+    pop_0_11m = pop_total * 0.08,
+    pop_0_4y  = pop_total * 0.15,
+    pop_u15   = pop_total * 0.45
+  )
+
+# 1. let the function figure out the growth rate
+extrapolate_pop(
+  data            = dummy_pop,
+  year_col        = "year",
+  pop_cols        = c("pop_total", "pop_0_11m", "pop_0_4y", "pop_u15"),
+  group_cols      = c("adm0", "adm1", "adm2", "adm3"),
+  years_to_extrap = c(2021, 2022)
+)
+
+# 2. flat 3% growth across everything
+extrapolate_pop(
+  data            = dummy_pop,
+  year_col        = "year",
+  pop_cols        = c("pop_total", "pop_0_11m", "pop_0_4y", "pop_u15"),
+  group_cols      = c("adm0", "adm1", "adm2", "adm3"),
+  years_to_extrap = c(2021, 2022),
+  multiplier      = 1.03
+)
+
+# 3. per-column, per-year — fine control
+extrapolate_pop(
+  data            = dummy_pop,
+  year_col        = "year",
+  pop_cols        = c("pop_total", "pop_0_11m"),
+  group_cols      = c("adm0", "adm1", "adm2", "adm3"),
+  years_to_extrap = c(2021, 2022),
+  multiplier = list(
+    pop_total = c(`2021` = 1.03, `2022` = 1.025),
+    pop_0_11m = c(`2021` = 1.035, `2022` = 1.030)
+  )
+)
+```
+
+Extrapolation can also be backward (years earlier than the earliest
+observed) using the same syntax — pass the older years to
+`years_to_extrap`.
+
+## SNT-shape reshape: `snt_process_population()`
+
+The final step before stratification: reshape the wide population tibble
+into the canonical SNT long format, optionally with translated labels
+for country-team reports.
+
+``` r
+
+snt_process_population(
+  pop_data    = pop_long,
+  pop_cols    = c("pop_total", "pop_u5", "pop_5_14", "pop_ov15"),
+  translate   = TRUE,
+  language    = "fr",
+  infer_types = TRUE
+)
+```
+
+[`snt_process_population()`](https://ahadi-analytics.github.io/sntutils/reference/snt_process_population.md)
+builds per-admin-level summaries (adm0..adm3, whichever are present),
+produces a bilingual EN + optional FR data dictionary, and records which
+admin levels were available — exactly the inputs the downstream plotting
+and stratification functions expect.
+
+## A WorldPop pipeline, end to end
+
+``` r
+
+# 1. download total + age-band rasters for Sierra Leone, 2020–2024
+download_worldpop(
+  country_codes = "SLE",
+  years         = 2020:2024,
+  type          = "count",
+  resolution    = "1km",
+  dest_dir      = "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters"
+)
+
+download_worldpop_age_band(
+  country_codes = "SLE",
+  years         = 2020:2024,
+  age_range     = c(0, 4),
+  sex           = "both",
+  resolution    = "1km",
+  out_dir       = "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters"
+)
+
+# 2. resolve their paths and aggregate to adm2 (sum across pixels)
+paths <- get_worldpop_paths(
+  country_codes = "SLE",
+  years         = 2020:2024,
+  dest_dir      = "01_data/1.1_foundational/1.1c_population/1.1cii_worldpop_rasters"
+)
+
+pop_adm2 <- process_raster_collection(
+  directory    = unique(dirname(paths$path)),
+  shapefile    = sle_adm2_clean,
+  id_cols      = c("adm0_name", "adm1_name", "adm2_name"),
+  aggregations = "sum",
+  pattern      = "_ppp_\\d{4}_1km.*\\.tif$"
+)
+
+# 3. extend to 2025–2026 (out of WorldPop's window)
+pop_adm2 <- extrapolate_pop(
+  data            = pop_adm2,
+  year_col        = "year",
+  pop_cols        = "sum",
+  group_cols      = c("adm0_name", "adm1_name", "adm2_name"),
+  years_to_extrap = c(2025, 2026),
+  multiplier      = 1.029
+)
+
+# 4. reshape into the canonical SNT long format with French labels
+pop_snt <- snt_process_population(
+  pop_data = pop_adm2,
+  pop_cols = "sum",
+  translate = TRUE,
+  language  = "fr"
+)
+```
+
+The result is one tibble keyed by admin and year, with both total and
+age-band populations, extrapolated to whatever year the project ends —
+the canonical denominator for incidence, intervention coverage and
+need-based allocation downstream.
