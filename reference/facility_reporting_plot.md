@@ -195,7 +195,7 @@ facility_reporting_plot(
   data = toy_data,
   hf_col = "hf_uid_new"
 )
-#> Locale "en_US.UTF-8" not available; using system default.
+#> Warning: Locale NA not available. Using system default.
 
 
 # Binary classification example
@@ -204,5 +204,5 @@ facility_reporting_plot(
   hf_col = "hf_uid_new",
   binary_classification = TRUE
 )
-#> Locale "en_US.UTF-8" not available; using system default.
+#> Warning: Locale NA not available. Using system default.
 ```

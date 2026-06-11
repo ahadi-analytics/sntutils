@@ -15,7 +15,7 @@
 ## Citation
 
 Source:
-[`DESCRIPTION`](https://github.com/ahadi-analytics/sntutils/blob/master/DESCRIPTION)
+[`DESCRIPTION`](https://github.com/ahadi-analytics/sntutils/blob/v2.0.0/DESCRIPTION)
 
 Yusuf M, Mwandikwa Mbivya S, Rop C, Gerardin J (2026). *sntutils:
 Utility Functions for Data Preparation and Analysis in Subnational
