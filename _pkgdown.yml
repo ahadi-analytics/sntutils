@@ -19,18 +19,14 @@ template:
     base_font: {google: "Inter"}
     heading_font: {google: "Inter"}
     code_font: {google: "JetBrains Mono"}
-  includes:
-    in_header: |
-      <link rel="icon" type="image/png" href="favicon.png">
-  opengraph:
-    image:
-      src: man/figures/logo.png
-      alt: "sntutils — utilities for Subnational Tailoring of malaria interventions"
-    twitter:
-      card: summary
 
 development:
   mode: auto
+
+opengraph:
+  image:
+    src: man/figures/logo.png
+    alt: "sntutils — utilities for Subnational Tailoring of malaria interventions"
 
 home:
   title: sntutils — utilities for Subnational Tailoring of malaria interventions
@@ -257,6 +253,23 @@ reference:
   - median2
   - vdigest
   - compress_png
+
+- title: internal
+  desc: Internal helpers and datasets — documented for completeness but not part of the public API.
+  contents:
+  - batch_extract_weighted_stats
+  - calculate_plot_dimensions
+  - create_common_elements
+  - dot-get_filename_abbrev
+  - ensure_packages
+  - get_translated_terms
+  - group_plot
+  - print.dhs_duckdb
+  - save_single_plot
+  - snt_var_tree
+  - translate_plot_labels
+  - validation_terms
+  - variables_plot
 
 articles:
 - title: Getting started
