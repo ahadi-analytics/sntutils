@@ -1,0 +1,217 @@
+---
+title: "DHS indicators and microdata"
+description: >
+  Discover, fetch and query DHS / MIS indicators via the DHS API, and
+  open large local DHS parquet datasets through DuckDB for analysis.
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{DHS indicators and microdata}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+[Intermediate]{.tag .tag-intermediate}
+
+DHS (Demographic and Health Surveys) and MIS (Malaria Indicator
+Surveys) are core inputs for SNT: they're the only consistent source
+of household-level intervention coverage, child mortality and
+biomarker data across most malaria-endemic countries.
+
+`sntutils` exposes two paths into DHS:
+
+1. **DHS API** — discover and download published, pre-tabulated
+   indicators (national and subnational) for any country / survey.
+2. **Local parquet via DuckDB** — register downloaded DHS microdata
+   (`get_dhs_data()`) as queryable views, so we can compute custom
+   indicators without loading full SPSS / Stata files into memory.
+
+## Discovering indicators: `check_dhs_indicators()`
+
+Before downloading anything, find the indicator IDs we want.
+`check_dhs_indicators()` is a thin wrapper around the DHS API's
+metadata endpoint, returning the indicator catalogue as a tibble.
+
+```r
+library(sntutils)
+
+# what indicators exist for Sierra Leone surveys
+sl_indicators <- check_dhs_indicators(countryIds = "SL")
+
+sl_indicators |>
+  dplyr::filter(stringr::str_detect(Label, "ITN|net")) |>
+  dplyr::select(IndicatorId, Label) |>
+  utils::head()
+#> # A tibble: 6 × 2
+#>   IndicatorId        Label
+#>   <chr>              <chr>
+#> 1 ML_NETP_H_IT0      Households with at least one ITN
+#> 2 ML_NETP_H_IT2      Households with at least one ITN per two persons
+#> 3 ML_NETC_C_ITN      Children under 5 who slept under an ITN last night
+#> 4 ML_NETW_W_ITN      Women 15-49 who slept under an ITN last night
+#> 5 ML_NETP_H_ANY      Households with any mosquito net
+#> 6 ML_NETC_C_NET      Children under 5 who slept under any net last night
+```
+
+Filter by survey type, year range or characteristic to narrow down:
+
+```r
+# only MIS surveys since 2015
+check_dhs_indicators(
+  countryIds       = "SL",
+  surveyType       = "MIS",
+  surveyYearStart  = 2015
+)
+```
+
+Returned fields include `IndicatorId`, `Label`, and `Definition` by
+default — pass `returnFields` to add more.
+
+## Downloading values: `download_dhs_indicators()`
+
+Once we have indicator IDs, `download_dhs_indicators()` pulls the
+estimates themselves. It hits the DHS data endpoint directly (no
+`rdhs` dependency, no caching to a SQLite store).
+
+```r
+# national-level malaria indicators for Sierra Leone & Togo, 2010+
+dhs_df <- download_dhs_indicators(
+  countryIds   = "SL,TG",
+  indicatorIds = "ML_NETP_H_IT2,ML_PMAL_C_RDT,CN_NUTS_C_WH2",
+  surveyYearStart = 2010,
+  breakdown    = "national"
+)
+
+dplyr::glimpse(dhs_df)
+#> Rows: 18
+#> Columns: 11
+#> $ DataId         <int> ...
+#> $ Indicator      <chr> "Households with at least one ITN per two...
+#> $ IndicatorId    <chr> "ML_NETP_H_IT2", ...
+#> $ Value          <dbl> 52.3, 60.1, ...
+#> $ Precision      <int> 1, 1, ...
+#> $ SurveyId       <chr> "SL2016MIS", "SL2019DHS", ...
+#> $ SurveyYear     <int> 2016, 2019, ...
+#> $ CountryName    <chr> "Sierra Leone", "Sierra Leone", ...
+#> $ ...
+```
+
+### Subnational breakdowns
+
+For SNT we usually want subnational values:
+
+```r
+download_dhs_indicators(
+  countryIds   = "SL",
+  indicatorIds = "ML_NETC_C_ITN",
+  surveyYear   = 2019,
+  breakdown    = "subnational"
+)
+```
+
+The output adds region-level rows whose `CharacteristicLabel` columns
+identify the admin unit reported (typically adm1).
+
+### A specific survey
+
+When we know exactly which survey we want:
+
+```r
+download_dhs_indicators(
+  countryIds   = "SL",
+  surveyIds    = "SL2016MIS",
+  indicatorIds = "ML_NETW_W_ITN,ML_PMAL_C_RDT"
+)
+```
+
+## Local DHS microdata via DuckDB: `get_dhs_data()`
+
+When the published indicators don't cover what we need (custom
+denominators, multi-variable cross-tabs, restricted populations), the
+answer is the DHS microdata. AHADI projects typically store these as
+parquet datasets per file type (HR, IR, KR, PR, BR, MR, …).
+`get_dhs_data()` registers a directory of those parquet files as
+DuckDB views, returning a list ready for `dplyr` / `dbplyr` queries.
+
+```r
+dhs <- get_dhs_data(
+  path  = "01_data/1.6_health_systems/1.6a_dhs/parquet",
+  types = c("HR", "IR", "KR")     # household, individual women, children
+)
+
+dhs$HR |> dplyr::tbl()
+#> # Source:   table<HR> [?? x ??]
+#> # Database: DuckDB
+#>    hv001 hv002 hv005    hv024 hv025 ...
+#> 1     1     2    ...      Bo Urban
+#> ...
+```
+
+The function:
+
+- skips parquet files that fail to open (so a corrupted month doesn't
+  block the whole load),
+- exposes a `con` element for direct SQL queries,
+- and stores file metadata in `dhs$metadata` (per-file row counts,
+  schemas) for audit.
+
+To get a tibble back into memory:
+
+```r
+itn_by_region <- dhs$HR |>
+  dplyr::tbl() |>
+  dplyr::group_by(hv024) |>
+  dplyr::summarise(
+    has_itn = mean(as.integer(hml1 >= 1), na.rm = TRUE)
+  ) |>
+  dplyr::collect()
+```
+
+Close the connection when done with `DBI::dbDisconnect(dhs$con)`.
+
+## A DHS pipeline, end to end
+
+```r
+# 1. find the indicator IDs for the malaria coverage chapter
+itn_meta <- check_dhs_indicators(
+  countryIds = "SL,TG",
+  surveyType = "MIS"
+) |>
+  dplyr::filter(stringr::str_detect(Label, "ITN|net"))
+
+# 2. pull the subnational values for those indicators
+itn_subnat <- download_dhs_indicators(
+  countryIds      = "SL,TG",
+  indicatorIds    = paste(itn_meta$IndicatorId, collapse = ","),
+  surveyYearStart = 2015,
+  breakdown       = "subnational"
+)
+
+# 3. if we need a custom denominator, drop to microdata via DuckDB
+dhs <- get_dhs_data(
+  path  = "01_data/1.6_health_systems/1.6a_dhs/parquet",
+  types = c("HR", "PR")
+)
+
+custom <- dhs$HR |>
+  dplyr::tbl() |>
+  dplyr::filter(hv025 == 1) |>            # urban only
+  dplyr::group_by(hv024) |>
+  dplyr::summarise(
+    has_itn = mean(as.integer(hml1 >= 1), na.rm = TRUE)
+  ) |>
+  dplyr::collect()
+
+DBI::dbDisconnect(dhs$con)
+```
+
+The published indicators get us 80% of the way; the microdata path is
+there for the 20% where the country team needs something the DHS
+chapter never published.

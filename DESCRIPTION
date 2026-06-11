@@ -12,7 +12,7 @@ Authors@R: c(
 Maintainer: Mohamed A. Yusuf <myusuf@appliedhealthanalytics.org>
 Description: A helper package for the Subnational Tailoring (SNT) process which includes a number of utility functions to help users with data cleaning, management, visualization, and analysis.
 License: CC BY 4.0
-URL: https://github.com/ahadi-analytics/sntutils
+URL: https://github.com/ahadi-analytics/sntutils, https://ahadi-analytics.github.io/sntutils/
 BugReports: https://github.com/ahadi-analytics/sntutils/issues
 Depends:
     R (>= 4.2.0)
@@ -57,6 +57,7 @@ Suggests:
     here,
     httr2,
     jsonlite,
+    knitr,
     lifecycle,
     matrixStats,
     memoise,
@@ -64,11 +65,13 @@ Suggests:
     ncdf4,
     nngeo,
     parzer,
+    pkgdown,
     progress,
     qs2,
     R.utils,
     raster,
     readxl,
+    rmarkdown,
     rnaturalearth,
     rprojroot,
     rstudioapi,
@@ -94,3 +97,4 @@ LazyData: true
 Roxygen: list(markdown = TRUE)
 LazyDataCompression: xz
 Config/roxygen2/version: 8.0.0
+VignetteBuilder: knitr

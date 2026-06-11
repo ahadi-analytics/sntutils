@@ -7,11 +7,11 @@
 ^README_files$
 AGENTS.md
 generate_svg_badge.R
-.claude/settings.local.json
+.claude/
 CLAUDE.md
-.nanocoder/commands/review.md
-.nanocoder/commands/test.md
+.nanocoder/
 agents.config.json
 test-changed-smart.sh
 /src
 data-raw/rebuild_snt_var_tree.R
+docs/

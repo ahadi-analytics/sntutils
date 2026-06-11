@@ -1,0 +1,242 @@
+// =============================================================================
+// sntutils pkgdown — AHADI brand styling
+// Mirrors the palette and feel of the SNT code library
+// (https://ahadi-analytics.github.io/snt-code-library/).
+// =============================================================================
+
+$ahadi-navy:   #0F2333; // deep navy — h1, titles, navbar bg
+$ahadi-steel:  #628DA5; // muted steel blue — h2, secondary
+$ahadi-sky:    #5EAADD; // soft sky — h3
+$ahadi-azure:  #70B0CC; // light azure — h4
+$ahadi-corn:   #96C8E2; // pale cornflower — h5
+$ahadi-ice:    #BEDFF0; // very light ice — h6
+$ahadi-link:   #4682B4; // link colour
+$ahadi-gold:   #FFC225; // accent / hover
+$ahadi-green:  #B3CB72; // accent green
+$ahadi-coral:  #ff7a7a; // caution
+
+// -----------------------------------------------------------------------------
+// Navbar
+// -----------------------------------------------------------------------------
+
+.navbar {
+  background-color: $ahadi-navy !important;
+}
+
+.navbar .navbar-brand,
+.navbar .navbar-nav .nav-link {
+  color: #FFFFFF !important;
+}
+
+.navbar .navbar-nav .nav-link:hover,
+.navbar .navbar-nav .nav-link:focus,
+.navbar .navbar-nav .nav-link.active {
+  color: $ahadi-gold !important;
+}
+
+.navbar-brand img {
+  max-height: 38px;
+  width: auto;
+}
+
+// -----------------------------------------------------------------------------
+// Typography
+// -----------------------------------------------------------------------------
+
+h1, .h1, .template-title h1 { color: $ahadi-navy  !important; }
+h2, .h2                     { color: $ahadi-steel !important; }
+h3, .h3                     { color: $ahadi-sky   !important; }
+h4, .h4                     { color: $ahadi-azure !important; }
+h5, .h5                     { color: $ahadi-corn  !important; }
+h6, .h6                     { color: $ahadi-ice   !important; }
+
+// page title block
+.template-home .page-header,
+.template-article .page-header,
+.template-reference-index .page-header,
+.template-reference-topic .page-header {
+  border-bottom: 2px solid $ahadi-steel;
+  padding-bottom: 0.4rem;
+  margin-bottom: 1.2rem;
+}
+
+// -----------------------------------------------------------------------------
+// Links
+// -----------------------------------------------------------------------------
+
+a,
+.contents a {
+  color: $ahadi-link;
+}
+
+a:hover,
+.contents a:hover {
+  color: $ahadi-gold;
+  text-decoration: underline;
+}
+
+// reference index — section cards
+.section h2 {
+  color: $ahadi-steel !important;
+  border-bottom: 1px solid lighten($ahadi-steel, 25%);
+  padding-bottom: 0.25rem;
+}
+
+// -----------------------------------------------------------------------------
+// Sidebar / TOC
+// -----------------------------------------------------------------------------
+
+#toc .nav > li > a,
+.aside .toc-action,
+.contents .nav > li > a {
+  color: $ahadi-steel !important;
+}
+
+#toc .nav > li > a:hover,
+#toc .nav > li > a.active {
+  color: $ahadi-gold !important;
+  border-left-color: $ahadi-gold !important;
+}
+
+// -----------------------------------------------------------------------------
+// Code blocks
+// -----------------------------------------------------------------------------
+
+pre, code {
+  font-size: 0.875em;
+}
+
+pre {
+  background-color: #f7f9fb;
+  border: 1px solid #e3e9ee;
+  border-radius: 6px;
+  padding: 0.85rem 1rem;
+}
+
+code {
+  color: $ahadi-navy;
+  background-color: #f1f5f8;
+  padding: 0.1em 0.3em;
+  border-radius: 3px;
+}
+
+pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+
+// inline R output
+.sourceCode + pre,
+pre.r + pre,
+.cell-output pre {
+  background-color: #fafbfc;
+  border-left: 4px solid $ahadi-steel;
+  border-top: none;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 0 6px 6px 0;
+}
+
+// -----------------------------------------------------------------------------
+// Tables
+// -----------------------------------------------------------------------------
+
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1.25px solid #d0d7de;
+  border-radius: 8px;
+  overflow: hidden;
+  font-size: 0.92rem;
+}
+
+table thead th {
+  background-color: #eef2f5 !important;
+  color: $ahadi-navy !important;
+  border-bottom: 1.5px solid #c5cdd4 !important;
+  font-weight: 600;
+}
+
+table td, table th {
+  padding: 6px 10px;
+}
+
+// -----------------------------------------------------------------------------
+// Callouts (Bootstrap alerts as used by pkgdown / rmarkdown)
+// -----------------------------------------------------------------------------
+
+.alert-primary,
+.alert-info {
+  border-left: 5px solid $ahadi-sky !important;
+  background: rgba($ahadi-sky, 0.08);
+  border-top: none; border-right: none; border-bottom: none;
+}
+
+.alert-success,
+.alert-tip {
+  border-left: 5px solid $ahadi-steel !important;
+  background: rgba($ahadi-steel, 0.08);
+  border-top: none; border-right: none; border-bottom: none;
+}
+
+.alert-warning {
+  border-left: 5px solid $ahadi-gold !important;
+  background: rgba($ahadi-gold, 0.08);
+  border-top: none; border-right: none; border-bottom: none;
+}
+
+.alert-danger {
+  border-left: 5px solid $ahadi-coral !important;
+  background: rgba($ahadi-coral, 0.08);
+  border-top: none; border-right: none; border-bottom: none;
+}
+
+// -----------------------------------------------------------------------------
+// Badges / skill-level tags (compatible with the SNT code library)
+// -----------------------------------------------------------------------------
+
+.tag {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.15em 0.6em;
+  margin-left: 0.4em;
+  border-radius: 0.3em;
+  color: white;
+  line-height: 1.4;
+  vertical-align: middle;
+}
+
+.tag-beginner     { background-color: #2dba4e; color: #fff; }
+.tag-intermediate { background-color: $ahadi-gold; color: #111; }
+.tag-advanced     { background-color: $ahadi-coral; color: #fff; }
+
+// -----------------------------------------------------------------------------
+// Home page
+// -----------------------------------------------------------------------------
+
+.template-home .row > main {
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.template-home img.logo {
+  max-width: 180px;
+  float: right;
+  margin: 0 0 1rem 1.5rem;
+}
+
+// pkgdown sidebar
+aside .roxygen .dont-index { display: none; }
+
+// footer
+footer {
+  border-top: 2px solid lighten($ahadi-steel, 30%);
+  padding-top: 1rem;
+  color: $ahadi-steel;
+  font-size: 0.9rem;
+}
+
+footer a { color: $ahadi-link; }
+footer a:hover { color: $ahadi-gold; }

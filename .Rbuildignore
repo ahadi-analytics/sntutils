@@ -20,3 +20,6 @@ AGENTS.md
 agents.config.json
 ^src$
 ^data-raw
+^_pkgdown\.yml$
+^pkgdown$
+^docs$

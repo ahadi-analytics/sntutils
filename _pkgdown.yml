@@ -1,0 +1,302 @@
+url: https://ahadi-analytics.github.io/sntutils/
+
+template:
+  bootstrap: 5
+  bootswatch: flatly
+  light-switch: true
+  bslib:
+    primary: "#0F2333"
+    secondary: "#628DA5"
+    success: "#B3CB72"
+    info: "#5EAADD"
+    warning: "#FFC225"
+    danger: "#ff7a7a"
+    link-color: "#4682B4"
+    link-hover-color: "#FFC225"
+    navbar-bg: "#0F2333"
+    navbar-fg: "#FFFFFF"
+    headings-color: "#0F2333"
+    base_font: {google: "Inter"}
+    heading_font: {google: "Inter"}
+    code_font: {google: "JetBrains Mono"}
+  includes:
+    in_header: |
+      <link rel="icon" type="image/png" href="favicon.png">
+  opengraph:
+    image:
+      src: man/figures/logo.png
+      alt: "sntutils — utilities for Subnational Tailoring of malaria interventions"
+    twitter:
+      card: summary
+
+development:
+  mode: auto
+
+home:
+  title: sntutils — utilities for Subnational Tailoring of malaria interventions
+  description: >
+    R package developed by AHADI to support the Subnational Tailoring (SNT) of
+    malaria interventions. Standardises and streamlines data preparation,
+    cleaning, spatial validation, climate downloads, reporting-rate analytics,
+    population processing and visualisation for evidence-based decisions at
+    district level and below.
+  sidebar:
+    structure: [links, license, community, citation, authors, dev]
+  links:
+    - text: AHADI website
+      href: https://appliedhealthanalytics.org
+    - text: Subnational Tailoring code library
+      href: https://ahadi-analytics.github.io/snt-code-library/
+
+navbar:
+  bg: primary
+  structure:
+    left:  [intro, articles, reference, news]
+    right: [search, lightswitch, github]
+  components:
+    intro:
+      text: Get started
+      href: articles/getting-started.html
+    articles:
+      text: Articles
+      menu:
+      - text: Get started
+        href: articles/getting-started.html
+      - text: "---"
+      - text: "Data preparation"
+      - text: Data I/O and cleaning
+        href: articles/data-io-and-cleaning.html
+      - text: Spatial validation and mapping
+        href: articles/spatial.html
+      - text: "---"
+      - text: "Routine surveillance"
+      - text: Reporting rates
+        href: articles/reporting-rates.html
+      - text: Data quality — consistency, outliers
+        href: articles/data-quality.html
+      - text: "---"
+      - text: "External data sources"
+      - text: Climate downloads and raster extraction
+        href: articles/climate.html
+      - text: WorldPop population rasters
+        href: articles/worldpop.html
+      - text: DHS indicators and microdata
+        href: articles/dhs.html
+      - text: "---"
+      - text: "Project plumbing"
+      - text: Project setup and utilities
+        href: articles/project-and-utilities.html
+    reference:
+      text: Reference
+      href: reference/index.html
+    news:
+      text: Changelog
+      href: news/index.html
+    github:
+      icon: fa-github fa-lg
+      href: https://github.com/ahadi-analytics/sntutils
+      aria-label: GitHub
+
+reference:
+- title: Data import and export
+  desc: Read and write a wide range of tabular and spatial formats, with an SNT-aware wrapper that hashes, fingerprints and writes sidecar metadata.
+  contents:
+  - read
+  - write
+  - read_snt_data
+  - write_snt_data
+
+- title: Data cleaning and standardisation
+  desc: Type inference, date parsing, name and column harmonisation, and dictionary building.
+  contents:
+  - auto_parse_types
+  - autoparse_dates
+  - available_date_formats
+  - standardize_names
+  - clean_filenames
+  - prep_geonames
+  - build_dictionary
+  - snt_data_dict
+  - check_snt_var
+
+- title: Spatial validation and mapping
+  desc: Validate and harmonise admin geometries and facility coordinates, crosswalk between shapefile vintages, fuzzy-match names, and render maps.
+  contents:
+  - validate_process_spatial
+  - validate_process_coordinates
+  - fuzzy_match_facilities
+  - calculate_match_stats
+  - crosswalk_shapefiles_sf
+  - dhis2_map
+  - plot_admin_map_distinct
+  - facetted_map_bins
+  - facetted_map_gradient
+  - get_palette
+  - list_palettes
+  - download_shapefile
+
+- title: Routine surveillance — reporting rates
+  desc: Quantify and visualise how completely health facilities are reporting, by time and admin unit.
+  contents:
+  - calculate_reporting_metrics
+  - calculate_reporting_metrics_dates
+  - reporting_rate_plot
+  - reporting_rate_map
+  - facility_reporting_plot
+  - classify_facility_activity
+  - get_active_facilities
+  - validate_routine_hf_data
+
+- title: Routine surveillance — data quality
+  desc: Cascade consistency checks, outlier detection and correction, imputation helpers.
+  contents:
+  - consistency_check
+  - consistency_map
+  - detect_outliers
+  - outlier_plot
+  - correct_outliers
+  - impute_outlier_ma
+  - impute_higher_admin
+  - compare_methods_plot
+  - fallback_diff
+  - fallback_row_sum
+  - safe_sum
+
+- title: Climate and environmental downloads
+  desc: Pull rainfall, temperature, land cover and other environmental rasters from public archives.
+  contents:
+  - download_chirps
+  - check_chirps_available
+  - chirps_options
+  - download_era5
+  - check_era5_available
+  - era5_options
+  - get_era5_metadata
+  - print_era5_metadata
+  - read_era5
+  - migrate_era5_filenames
+  - download_modis
+  - modis_options
+  - download_process_nasapower
+  - process_ihme_u5m_raster
+
+- title: Population downloads and processing
+  desc: WorldPop downloads (totals, age-bands, urbanicity), extrapolation, and SNT-shaped population outputs.
+  contents:
+  - download_worldpop
+  - download_worldpop_age_band
+  - download_worldpop_urbanicity
+  - get_worldpop_paths
+  - extrapolate_pop
+  - snt_process_population
+
+- title: Raster batch processing
+  desc: Aggregate raster stacks to admin units (zonal stats), with optional population weighting and time-varying boundaries.
+  contents:
+  - process_raster_collection
+  - process_raster_with_boundaries
+  - process_rasters_by_year
+  - process_weighted_raster_collection
+  - process_weighted_raster_stacks
+  - normalize_raster_by_polygon
+  - tidy_malaria_raster_names
+
+- title: DHS indicators
+  desc: Bulk download and lookup of DHS/MIS indicators.
+  contents:
+  - download_dhs_indicators
+  - check_dhs_indicators
+  - get_dhs_data
+
+- title: EMOD demography and weather inputs
+  desc: Build demographic and climate inputs for EMOD-style simulations from SNT data.
+  contents:
+  - build_emod_demog
+  - build_emod_demog_from_wpp
+  - write_emod_demog_by_adm2
+  - read_emod_weather
+  - write_emod_weather
+  - write_emod_weather_by_adm2
+
+- title: Project structure and paths
+  desc: Create the AHADI hierarchical data folders, set up a full project skeleton, resolve standardised paths.
+  contents:
+  - setup_project_paths
+  - create_data_structure
+  - initialize_project_structure
+  - ahadi_path
+  - clear_snt_cache
+
+- title: Translation and localisation
+  desc: Cached Google Translate wrappers plus locale-aware year-month formatting.
+  contents:
+  - translate_text
+  - translate_text_vec
+  - translate_yearmon
+  - french_malaria_acronyms
+
+- title: Plotting helpers and trend models
+  desc: Reusable building blocks for SNT plots — palettes, model wrappers, IR plots.
+  contents:
+  - get_model
+  - generate_ir_plot
+  - run_resistance_trend
+  - prepare_plot_data
+  - get_pathway_vars
+  - auto_bin
+  - detect_factors
+  - detect_time_pattern
+  - extract_time_components
+
+- title: Numeric and hashing utilities
+  desc: Small but very-used helpers that show up across SNT pipelines.
+  contents:
+  - big_mark
+  - sum2
+  - mean2
+  - median2
+  - vdigest
+  - compress_png
+
+articles:
+- title: Getting started
+  navbar: ~
+  contents:
+  - getting-started
+
+- title: Data preparation
+  navbar: Data preparation
+  contents:
+  - data-io-and-cleaning
+  - spatial
+
+- title: Routine surveillance
+  navbar: Routine surveillance
+  contents:
+  - reporting-rates
+  - data-quality
+
+- title: External data sources
+  navbar: External data sources
+  contents:
+  - climate
+  - worldpop
+  - dhs
+
+- title: Project plumbing
+  navbar: Project plumbing
+  contents:
+  - project-and-utilities
+
+news:
+  releases:
+  - text: "Version 1.12.x"
+    href: news/index.html
+
+footer:
+  structure:
+    left: developed_by
+    right: built_with
+  components:
+    developed_by: |
+      Developed by [Applied Health Analytics for Delivery and Innovation (AHADI)](https://appliedhealthanalytics.org).
