@@ -138,7 +138,7 @@
   [`fs::file_move`](https://fs.r-lib.org/reference/file_move.html),
   resilience to path and lock failures, tests skipped on Windows where
   reliable behaviour can’t be guaranteed.
-- CI workflows slimmed down — live integrations gated, oldrel-1 dropped
+- CI workflows slimmed down - live integrations gated, oldrel-1 dropped
   now that `ggrepel` requires R \>= 4.5.0; Windows dependency install
   step added.
 - System-dependency install script for macOS, Ubuntu and Fedora.
@@ -584,8 +584,8 @@
 
 - [`validate_process_coordinates()`](https://ahadi-analytics.github.io/sntutils/reference/validate_process_coordinates.md)
   and
-  [`validate_process_spatial()`](https://ahadi-analytics.github.io/sntutils/reference/validate_process_spatial.md)
-  — the full spatial-validation pipeline.
+  [`validate_process_spatial()`](https://ahadi-analytics.github.io/sntutils/reference/validate_process_spatial.md) -
+  the full spatial-validation pipeline.
 - [`read_snt_data()`](https://ahadi-analytics.github.io/sntutils/reference/read_snt_data.md)
   /
   [`write_snt_data()`](https://ahadi-analytics.github.io/sntutils/reference/write_snt_data.md)
@@ -704,20 +704,20 @@ Initial public version of the package, established as `sntutils`
 
 ### Core features
 
-- Data I/O —
+- Data I/O -
   [`read()`](https://ahadi-analytics.github.io/sntutils/reference/read.md)
   and
   [`write()`](https://ahadi-analytics.github.io/sntutils/reference/write.md)
   supporting CSV, XLSX, GeoJSON, shapefiles and more.
-- Data quality —
+- Data quality -
   [`consistency_check()`](https://ahadi-analytics.github.io/sntutils/reference/consistency_check.md),
   `missing_plot()`,
   [`auto_parse_types()`](https://ahadi-analytics.github.io/sntutils/reference/auto_parse_types.md),
   [`autoparse_dates()`](https://ahadi-analytics.github.io/sntutils/reference/autoparse_dates.md),
   [`standardize_names()`](https://ahadi-analytics.github.io/sntutils/reference/standardize_names.md),
   outlier detection.
-- Spatial — initial shapefile validation and cleaning.
-- Reporting — initial reporting-rate function.
+- Spatial - initial shapefile validation and cleaning.
+- Reporting - initial reporting-rate function.
 - Translation system with caching, plus vectorized
   [`translate_text()`](https://ahadi-analytics.github.io/sntutils/reference/translate_text.md).
 - PNG compression
@@ -751,6 +751,6 @@ Initial public version of the package, established as `sntutils`
 
 ### Internals
 
-- [`vdigest()`](https://ahadi-analytics.github.io/sntutils/reference/vdigest.md)
-  — vectorized digest.
+- [`vdigest()`](https://ahadi-analytics.github.io/sntutils/reference/vdigest.md) -
+  vectorized digest.
 - GitHub Actions for R CMD check and test coverage.
