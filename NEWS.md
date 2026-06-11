@@ -110,7 +110,7 @@
 * Atomic write path hardened on Windows: retrying `fs::file_move`,
   resilience to path and lock failures, tests skipped on Windows where
   reliable behaviour can't be guaranteed.
-* CI workflows slimmed down — live integrations gated, oldrel-1 dropped
+* CI workflows slimmed down - live integrations gated, oldrel-1 dropped
   now that `ggrepel` requires R >= 4.5.0; Windows dependency install
   step added.
 * System-dependency install script for macOS, Ubuntu and Fedora.
@@ -497,7 +497,7 @@
 
 ## New features
 
-* `validate_process_coordinates()` and `validate_process_spatial()` —
+* `validate_process_coordinates()` and `validate_process_spatial()` -
   the full spatial-validation pipeline.
 * `read_snt_data()` / `write_snt_data()` with standardized formats;
   `qs2` save/read format.
@@ -595,13 +595,13 @@ Initial public version of the package, established as `sntutils`
 
 ## Core features
 
-* Data I/O — `read()` and `write()` supporting CSV, XLSX, GeoJSON,
+* Data I/O - `read()` and `write()` supporting CSV, XLSX, GeoJSON,
   shapefiles and more.
-* Data quality — `consistency_check()`, `missing_plot()`,
+* Data quality - `consistency_check()`, `missing_plot()`,
   `auto_parse_types()`, `autoparse_dates()`, `standardize_names()`,
   outlier detection.
-* Spatial — initial shapefile validation and cleaning.
-* Reporting — initial reporting-rate function.
+* Spatial - initial shapefile validation and cleaning.
+* Reporting - initial reporting-rate function.
 * Translation system with caching, plus vectorized `translate_text()`.
 * PNG compression (`compress_png()`).
 * `impute_higher_admin()` for admin-level imputation.
@@ -626,5 +626,5 @@ Initial public version of the package, established as `sntutils`
 
 ## Internals
 
-* `vdigest()` — vectorized digest.
+* `vdigest()` - vectorized digest.
 * GitHub Actions for R CMD check and test coverage.
