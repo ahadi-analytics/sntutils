@@ -88,7 +88,520 @@
 </nav><div class="container template-home">
 <div class="row">
   <main id="main" class="col-md-9">
-A helper package for the Subnational Tailoring (SNT) process which includes a number of utility functions to help users with data cleaning, management, visualization, and analysis.
+<div class="section level1">
+<div class="page-header">
+<img src="logo.png" class="logo" alt=""><h1 id="sntutils-">sntutils <a class="anchor" aria-label="anchor" href="#sntutils-"></a>
+</h1>
+</div>
+<p><code>sntutils</code> is an R package developed by <a href="https://appliedhealthanalytics.org" class="external-link">AHADI</a> to support the <strong>Subnational Tailoring (SNT)</strong> of malaria interventions. It bundles the small, repeated operations every SNT support analysis does — reading DHIS2 exports, harmonising admin names across shapefile vintages, validating facility coordinates, calculating reporting rates, extracting climate and population rasters to admin units, and rendering country-team-language plots and maps.</p>
+<blockquote>
+<p><strong>Full documentation, with worked examples for every workflow, lives at <a href="https://ahadi-analytics.github.io/sntutils/" class="uri">https://ahadi-analytics.github.io/sntutils/</a></strong></p>
+</blockquote>
+<p>The pkgdown site is the canonical reference. This README is a short orientation and an index of the package’s surface area.</p>
+<div class="section level2">
+<h2 id="install">Install<a class="anchor" aria-label="anchor" href="#install"></a>
+</h2>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># install pak if needed</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"pak"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># install sntutils from GitHub</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pkg_install.html" class="external-link">pkg_install</a></span><span class="op">(</span><span class="st">"ahadi-analytics/sntutils"</span><span class="op">)</span></span></code></pre></div>
+<p>System dependencies: <code>sntutils</code> uses <code>sf</code> and <code>terra</code>, which require GDAL, GEOS and PROJ. On macOS install with <code>brew install gdal proj geos</code>; on Ubuntu use the GDAL PPA.</p>
+</div>
+<div class="section level2">
+<h2 id="quick-start">Quick start<a class="anchor" aria-label="anchor" href="#quick-start"></a>
+</h2>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/ahadi-analytics/sntutils" class="external-link">sntutils</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># 1. read a DHIS2-style export (any common format works)</span></span>
+<span><span class="va">sl_dhis2</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/read.html">read</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"extdata"</span>, <span class="st">"sl_exmaple_dhis2.rds"</span>, package <span class="op">=</span> <span class="st">"sntutils"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># 2. clean it</span></span>
+<span><span class="va">sl_dhis2</span> <span class="op">&lt;-</span> <span class="va">sl_dhis2</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/standardize_names.html">standardize_names</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu"><a href="reference/autoparse_dates.html">autoparse_dates</a></span><span class="op">(</span>date_cols <span class="op">=</span> <span class="st">"date"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/rename.html" class="external-link">rename</a></span><span class="op">(</span>year_mon <span class="op">=</span> <span class="va">date</span><span class="op">)</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/mutate.html" class="external-link">mutate</a></span><span class="op">(</span></span>
+<span>    hf_uid <span class="op">=</span> <span class="fu"><a href="reference/vdigest.html">vdigest</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="va">adm1</span>, <span class="va">adm2</span>, <span class="va">hf</span><span class="op">)</span>, algo <span class="op">=</span> <span class="st">"xxhash32"</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="co"># 3. calculate district-month reporting rates</span></span>
+<span><span class="fu"><a href="reference/calculate_reporting_metrics.html">calculate_reporting_metrics</a></span><span class="op">(</span></span>
+<span>  data             <span class="op">=</span> <span class="va">sl_dhis2</span>,</span>
+<span>  vars_of_interest <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conf"</span>, <span class="st">"pres"</span><span class="op">)</span>,</span>
+<span>  x_var            <span class="op">=</span> <span class="st">"year_mon"</span>,</span>
+<span>  y_var            <span class="op">=</span> <span class="st">"adm2"</span>,</span>
+<span>  hf_col           <span class="op">=</span> <span class="st">"hf_uid"</span>,</span>
+<span>  key_indicators   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"allout"</span>, <span class="st">"test"</span>, <span class="st">"treat"</span>, <span class="st">"conf"</span>, <span class="st">"pres"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The <a href="https://ahadi-analytics.github.io/sntutils/articles/getting-started.html">Get started article</a> walks through the same example end-to-end with plotted output.</p>
+</div>
+<div class="section level2">
+<h2 id="whats-inside">What’s inside<a class="anchor" aria-label="anchor" href="#whats-inside"></a>
+</h2>
+<p>The package exports ~100 functions, grouped by workflow stage. Each row links to the article that covers that group in depth.</p>
+<div class="section level3">
+<h3 id="data-io-and-cleaning-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/data-io-and-cleaning.html">Data I/O and cleaning →</a><a class="anchor" aria-label="anchor" href="#data-io-and-cleaning-"></a>
+</h3>
+<p>Read and write any common SNT format, parse messy dates, infer column types, standardise admin and facility names, build data dictionaries.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Function</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code><a href="reference/read.html">read()</a></code>, <code><a href="reference/write.html">write()</a></code>
+</td>
+<td>Read / write CSV, Excel, Stata, SPSS, RDS, GeoJSON, shapefile, …</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/read_snt_data.html">read_snt_data()</a></code>, <code><a href="reference/write_snt_data.html">write_snt_data()</a></code>
+</td>
+<td>Atomic, hashed reads / writes with sidecar metadata</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/autoparse_dates.html">autoparse_dates()</a></code>, <code>available_date_formats</code>
+</td>
+<td>Detect and standardise mixed date formats</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/auto_parse_types.html">auto_parse_types()</a></code>, <code><a href="reference/detect_factors.html">detect_factors()</a></code>
+</td>
+<td>Infer numeric / integer / factor / date types</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/standardize_names.html">standardize_names()</a></code>, <code><a href="reference/clean_filenames.html">clean_filenames()</a></code>
+</td>
+<td>Tidy admin / facility names and file names</td>
+</tr>
+<tr>
+<td><code><a href="reference/prep_geonames.html">prep_geonames()</a></code></td>
+<td>Interactive admin-name harmonisation with caching</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/build_dictionary.html">build_dictionary()</a></code>, <code><a href="reference/snt_data_dict.html">snt_data_dict()</a></code>, <code><a href="reference/check_snt_var.html">check_snt_var()</a></code>
+</td>
+<td>Variable dictionaries</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="spatial-validation-and-mapping-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/spatial.html">Spatial validation and mapping →</a><a class="anchor" aria-label="anchor" href="#spatial-validation-and-mapping-"></a>
+</h3>
+<p>Validate admin geometries and facility coordinates, crosswalk between shapefile vintages, fuzzy-match facilities, render maps.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Function</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code><a href="reference/download_shapefile.html">download_shapefile()</a></code></td>
+<td>Pull WHO geohub boundaries by ISO3 and admin level</td>
+</tr>
+<tr>
+<td><code><a href="reference/validate_process_spatial.html">validate_process_spatial()</a></code></td>
+<td>Validate / repair admin shapefiles</td>
+</tr>
+<tr>
+<td><code><a href="reference/validate_process_coordinates.html">validate_process_coordinates()</a></code></td>
+<td>Validate facility lat / lon, drop low-precision rows</td>
+</tr>
+<tr>
+<td><code><a href="reference/crosswalk_shapefiles_sf.html">crosswalk_shapefiles_sf()</a></code></td>
+<td>Area-weighted overlap between two shapefile vintages</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/fuzzy_match_facilities.html">fuzzy_match_facilities()</a></code>, <code><a href="reference/calculate_match_stats.html">calculate_match_stats()</a></code>
+</td>
+<td>Match DHIS2 facilities to the master list</td>
+</tr>
+<tr>
+<td><code><a href="reference/dhis2_map.html">dhis2_map()</a></code></td>
+<td>Rename DHIS2 columns via a dictionary</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/plot_admin_map_distinct.html">plot_admin_map_distinct()</a></code>, <code><a href="reference/facetted_map_bins.html">facetted_map_bins()</a></code>, <code><a href="reference/facetted_map_gradient.html">facetted_map_gradient()</a></code>
+</td>
+<td>Categorical and continuous admin maps</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/get_palette.html">get_palette()</a></code>, <code><a href="reference/list_palettes.html">list_palettes()</a></code>
+</td>
+<td>AHADI-branded plot palettes</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="reporting-rates-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/reporting-rates.html">Reporting rates →</a><a class="anchor" aria-label="anchor" href="#reporting-rates-"></a>
+</h3>
+<p>Measure how completely facilities are reporting, by time and admin unit.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Function</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code><a href="reference/calculate_reporting_metrics.html">calculate_reporting_metrics()</a></code></td>
+<td>Reporting / missing rate; three scenarios (facility, two-dim, time-only)</td>
+</tr>
+<tr>
+<td><code><a href="reference/calculate_reporting_metrics_dates.html">calculate_reporting_metrics_dates()</a></code></td>
+<td>Reporting rate from open / close dates</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/reporting_rate_plot.html">reporting_rate_plot()</a></code>, <code><a href="reference/reporting_rate_map.html">reporting_rate_map()</a></code>
+</td>
+<td>Plot and map reporting completeness</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/classify_facility_activity.html">classify_facility_activity()</a></code>, <code><a href="reference/get_active_facilities.html">get_active_facilities()</a></code>, <code><a href="reference/facility_reporting_plot.html">facility_reporting_plot()</a></code>
+</td>
+<td>Per-facility activity status and timelines</td>
+</tr>
+<tr>
+<td><code><a href="reference/compare_methods_plot.html">compare_methods_plot()</a></code></td>
+<td>Compare two reporting-rule choices side by side</td>
+</tr>
+<tr>
+<td><code><a href="reference/validate_routine_hf_data.html">validate_routine_hf_data()</a></code></td>
+<td>Structural checks before any of the above</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="data-quality--consistency-outliers-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/data-quality.html">Data quality — consistency, outliers →</a><a class="anchor" aria-label="anchor" href="#data-quality--consistency-outliers-"></a>
+</h3>
+<p>Cascade consistency, outlier detection (3 methods), correction and imputation.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Function</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code><a href="reference/consistency_check.html">consistency_check()</a></code>, <code><a href="reference/consistency_map.html">consistency_map()</a></code>
+</td>
+<td>Flag cascade violations (e.g. tests &lt; confirmed cases)</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/detect_outliers.html">detect_outliers()</a></code>, <code><a href="reference/outlier_plot.html">outlier_plot()</a></code>
+</td>
+<td>Detect outliers with mean / median / IQR rules</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/correct_outliers.html">correct_outliers()</a></code>, <code><a href="reference/impute_outlier_ma.html">impute_outlier_ma()</a></code>, <code><a href="reference/impute_higher_admin.html">impute_higher_admin()</a></code>
+</td>
+<td>Replace flagged values</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/fallback_diff.html">fallback_diff()</a></code>, <code><a href="reference/fallback_row_sum.html">fallback_row_sum()</a></code>, <code><a href="reference/safe_sum.html">safe_sum()</a></code>
+</td>
+<td>Defensive numerical helpers</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="climate-downloads-and-raster-extraction-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/climate.html">Climate downloads and raster extraction →</a><a class="anchor" aria-label="anchor" href="#climate-downloads-and-raster-extraction-"></a>
+</h3>
+<p>CHIRPS, ERA5, MODIS, NASA POWER, IHME — plus the batch raster processors that bring them to admin units.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Function</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code><a href="reference/download_chirps.html">download_chirps()</a></code>, <code><a href="reference/check_chirps_available.html">check_chirps_available()</a></code>, <code><a href="reference/chirps_options.html">chirps_options()</a></code>
+</td>
+<td>CHIRPS monthly rainfall</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/download_era5.html">download_era5()</a></code>, <code><a href="reference/check_era5_available.html">check_era5_available()</a></code>, <code><a href="reference/era5_options.html">era5_options()</a></code>, <code><a href="reference/read_era5.html">read_era5()</a></code>, <code><a href="reference/get_era5_metadata.html">get_era5_metadata()</a></code>, <code><a href="reference/print_era5_metadata.html">print_era5_metadata()</a></code>, <code><a href="reference/migrate_era5_filenames.html">migrate_era5_filenames()</a></code>
+</td>
+<td>ERA5 reanalysis</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/download_modis.html">download_modis()</a></code>, <code><a href="reference/modis_options.html">modis_options()</a></code>
+</td>
+<td>MODIS land-surface variables</td>
+</tr>
+<tr>
+<td><code><a href="reference/download_process_nasapower.html">download_process_nasapower()</a></code></td>
+<td>NASA POWER agro-climate at points</td>
+</tr>
+<tr>
+<td><code><a href="reference/process_ihme_u5m_raster.html">process_ihme_u5m_raster()</a></code></td>
+<td>IHME under-5 mortality rasters → admin tibble</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/process_raster_collection.html">process_raster_collection()</a></code>, <code><a href="reference/process_raster_with_boundaries.html">process_raster_with_boundaries()</a></code>, <code><a href="reference/process_rasters_by_year.html">process_rasters_by_year()</a></code>
+</td>
+<td>Batch zonal stats</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/process_weighted_raster_collection.html">process_weighted_raster_collection()</a></code>, <code><a href="reference/process_weighted_raster_stacks.html">process_weighted_raster_stacks()</a></code>, <code><a href="reference/normalize_raster_by_polygon.html">normalize_raster_by_polygon()</a></code>
+</td>
+<td>Population-weighted extraction</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/tidy_malaria_raster_names.html">tidy_malaria_raster_names()</a></code>, <code><a href="reference/detect_time_pattern.html">detect_time_pattern()</a></code>, <code><a href="reference/extract_time_components.html">extract_time_components()</a></code>
+</td>
+<td>Raster-naming utilities</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="worldpop-population-rasters-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/worldpop.html">WorldPop population rasters →</a><a class="anchor" aria-label="anchor" href="#worldpop-population-rasters-"></a>
+</h3>
+<p>WorldPop downloads (totals, age bands, urbanicity, global mosaic), extrapolation and SNT-shape reshape.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Function</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code><a href="reference/download_worldpop.html">download_worldpop()</a></code></td>
+<td>Total population, legacy + R2025A, 1 km / 100 m, count / density</td>
+</tr>
+<tr>
+<td><code><a href="reference/download_worldpop_age_band.html">download_worldpop_age_band()</a></code></td>
+<td>Population for a specified age range and sex</td>
+</tr>
+<tr>
+<td><code><a href="reference/download_worldpop_urbanicity.html">download_worldpop_urbanicity()</a></code></td>
+<td>Urban / peri-urban / rural classification</td>
+</tr>
+<tr>
+<td><code><a href="reference/get_worldpop_paths.html">get_worldpop_paths()</a></code></td>
+<td>Resolve where downloaded files live</td>
+</tr>
+<tr>
+<td><code><a href="reference/extrapolate_pop.html">extrapolate_pop()</a></code></td>
+<td>Fill years between or beyond observed years</td>
+</tr>
+<tr>
+<td><code><a href="reference/snt_process_population.html">snt_process_population()</a></code></td>
+<td>Reshape into canonical SNT long format</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="dhs-indicators-and-microdata-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/dhs.html">DHS indicators and microdata →</a><a class="anchor" aria-label="anchor" href="#dhs-indicators-and-microdata-"></a>
+</h3>
+<p>Discover, download and query DHS / MIS indicators via the API; open DHS parquet microdata via DuckDB.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Function</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr>
+<td><code><a href="reference/check_dhs_indicators.html">check_dhs_indicators()</a></code></td>
+<td>DHS API indicator catalogue</td>
+</tr>
+<tr>
+<td><code><a href="reference/download_dhs_indicators.html">download_dhs_indicators()</a></code></td>
+<td>National / subnational indicator values</td>
+</tr>
+<tr>
+<td><code><a href="reference/get_dhs_data.html">get_dhs_data()</a></code></td>
+<td>Register DHS parquet datasets as DuckDB views</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="project-setup-and-utilities-">
+<a href="https://ahadi-analytics.github.io/sntutils/articles/project-and-utilities.html">Project setup and utilities →</a><a class="anchor" aria-label="anchor" href="#project-setup-and-utilities-"></a>
+</h3>
+<p>Folder scaffolding, paths, translation, hashing, image compression, small numeric helpers.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Function</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code><a href="reference/setup_project_paths.html">setup_project_paths()</a></code>, <code><a href="reference/ahadi_path.html">ahadi_path()</a></code>
+</td>
+<td>Resolve standardised project paths</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/create_data_structure.html">create_data_structure()</a></code>, <code><a href="reference/initialize_project_structure.html">initialize_project_structure()</a></code>
+</td>
+<td>Build the AHADI folder skeleton</td>
+</tr>
+<tr>
+<td><code><a href="reference/clear_snt_cache.html">clear_snt_cache()</a></code></td>
+<td>Reset in-memory caches</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/translate_text.html">translate_text()</a></code>, <code><a href="reference/translate_text_vec.html">translate_text_vec()</a></code>, <code><a href="reference/translate_yearmon.html">translate_yearmon()</a></code>, <code><a href="reference/french_malaria_acronyms.html">french_malaria_acronyms()</a></code>
+</td>
+<td>Cached translation and locale-aware formatting</td>
+</tr>
+<tr>
+<td><code><a href="reference/compress_png.html">compress_png()</a></code></td>
+<td>PNG compression for reports</td>
+</tr>
+<tr>
+<td><code><a href="reference/vdigest.html">vdigest()</a></code></td>
+<td>Vectorised hashing for stable IDs</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/big_mark.html">big_mark()</a></code>, <code><a href="reference/sum2.html">sum2()</a></code>, <code><a href="reference/mean2.html">mean2()</a></code>, <code><a href="reference/median2.html">median2()</a></code>
+</td>
+<td>NA-safe numeric helpers</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/get_model.html">get_model()</a></code>, <code><a href="reference/generate_ir_plot.html">generate_ir_plot()</a></code>, <code><a href="reference/run_resistance_trend.html">run_resistance_trend()</a></code>
+</td>
+<td>IR / resistance-trend plotting</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/auto_bin.html">auto_bin()</a></code>, <code><a href="reference/prepare_plot_data.html">prepare_plot_data()</a></code>, <code><a href="reference/get_pathway_vars.html">get_pathway_vars()</a></code>
+</td>
+<td>Internal plot building blocks</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="emod-simulation-inputs">EMOD simulation inputs<a class="anchor" aria-label="anchor" href="#emod-simulation-inputs"></a>
+</h3>
+<p>Used by AHADI’s malaria modelling team to feed EMOD-style simulations from SNT data.</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr>
+<th>Function</th>
+<th>What it does</th>
+</tr></thead>
+<tbody>
+<tr>
+<td>
+<code><a href="reference/build_emod_demog.html">build_emod_demog()</a></code>, <code><a href="reference/build_emod_demog_from_wpp.html">build_emod_demog_from_wpp()</a></code>
+</td>
+<td>Build demographic JSON</td>
+</tr>
+<tr>
+<td><code><a href="reference/write_emod_demog_by_adm2.html">write_emod_demog_by_adm2()</a></code></td>
+<td>Per-adm2 demography files</td>
+</tr>
+<tr>
+<td>
+<code><a href="reference/read_emod_weather.html">read_emod_weather()</a></code>, <code><a href="reference/write_emod_weather.html">write_emod_weather()</a></code>, <code><a href="reference/write_emod_weather_by_adm2.html">write_emod_weather_by_adm2()</a></code>
+</td>
+<td>Weather input files</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="section level2">
+<h2 id="where-to-start">Where to start<a class="anchor" aria-label="anchor" href="#where-to-start"></a>
+</h2>
+<ol style="list-style-type: decimal">
+<li>Read <a href="https://ahadi-analytics.github.io/sntutils/articles/getting-started.html">Get started</a> for a 5-minute tour and a tiny end-to-end example.</li>
+<li>Pick the workflow stage you’re working on from the <strong>Articles</strong> menu on the site.</li>
+<li>Use the <strong>Reference</strong> menu when you need the full argument list for a single function.</li>
+</ol>
+</div>
+<div class="section level2">
+<h2 id="contributing">Contributing<a class="anchor" aria-label="anchor" href="#contributing"></a>
+</h2>
+<p>Issues and pull requests welcome: <a href="https://github.com/ahadi-analytics/sntutils/issues" class="external-link uri">https://github.com/ahadi-analytics/sntutils/issues</a>.</p>
+<p>Each function should ship with roxygen docs (including a runnable <code>@examples</code> block) and a test in <code>tests/testthat/</code>.</p>
+</div>
+<div class="section level2">
+<h2 id="license">License<a class="anchor" aria-label="anchor" href="#license"></a>
+</h2>
+<p>CC BY 4.0.</p>
+</div>
+</div>
+
   </main><aside class="col-md-3"><div class="links">
 <h2 data-toc-skip>Links</h2>
 <ul class="list-unstyled">
