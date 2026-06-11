@@ -67,6 +67,12 @@ testthat::test_that("ahadi_find_onedrive_roots errors on Windows without USERNAM
 })
 
 testthat::test_that("ahadi_path resolves a mocked OneDrive layout", {
+  testthat::skip_if_not(
+    Sys.info()[["sysname"]] %in% c("Darwin", "Windows"),
+    "ahadi_path only supports macOS and Windows"
+  )
+  testthat::skip_if_not_installed("mockery")
+
   # build a fake "OneDrive shared library" tree
   root <- withr::local_tempdir()
   shared <- base::file.path(
@@ -100,6 +106,12 @@ testthat::test_that("ahadi_path resolves a mocked OneDrive layout", {
 })
 
 testthat::test_that("ahadi_path uses cached library root on subsequent calls", {
+  testthat::skip_if_not(
+    Sys.info()[["sysname"]] %in% c("Darwin", "Windows"),
+    "ahadi_path only supports macOS and Windows"
+  )
+  testthat::skip_if_not_installed("mockery")
+
   root <- withr::local_tempdir()
   shared <- base::file.path(
     root,
@@ -132,6 +144,12 @@ testthat::test_that("ahadi_path uses cached library root on subsequent calls", {
 })
 
 testthat::test_that("ahadi_path errors when base folder does not exist", {
+  testthat::skip_if_not(
+    Sys.info()[["sysname"]] %in% c("Darwin", "Windows"),
+    "ahadi_path only supports macOS and Windows"
+  )
+  testthat::skip_if_not_installed("mockery")
+
   root <- withr::local_tempdir()
   shared <- base::file.path(root, "OneDrive-SharedLibraries-AHADI")
   library_dir <- base::file.path(shared, "AHADI Information - technical")
@@ -153,6 +171,12 @@ testthat::test_that("ahadi_path errors when base folder does not exist", {
 })
 
 testthat::test_that("ahadi_path errors when no OneDrive roots are found", {
+  testthat::skip_if_not(
+    Sys.info()[["sysname"]] %in% c("Darwin", "Windows"),
+    "ahadi_path only supports macOS and Windows"
+  )
+  testthat::skip_if_not_installed("mockery")
+
   empty_root <- withr::local_tempdir()
   # contents: nothing — no shared-libraries-style folder
 

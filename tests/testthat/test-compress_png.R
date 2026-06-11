@@ -25,6 +25,8 @@ testthat::test_that("compression_stats verbose path runs without error", {
 })
 
 testthat::test_that("compress_png() warns when path does not exist", {
+  # this branch runs regardless of pngquant availability — both
+  # "pngquant not found" and "Path does not exist" messages contain "not"
   testthat::expect_message(
     res <- sntutils::compress_png("definitely/not/a/real/path.png"),
     regexp = "not"
@@ -33,7 +35,11 @@ testthat::test_that("compress_png() warns when path does not exist", {
 })
 
 testthat::test_that("compress_png() warns when path is neither file nor directory", {
-  # a regular non-png file
+  find <- cp_ns("find_pngquant")
+  testthat::skip_if(base::is.null(find(verbosity = FALSE)),
+    "pngquant not installed — early return prevents reaching path check"
+  )
+
   tmp <- withr::local_tempfile(fileext = ".txt")
   base::writeLines("not a png", tmp)
 
@@ -45,6 +51,11 @@ testthat::test_that("compress_png() warns when path is neither file nor director
 })
 
 testthat::test_that("compress_png() warns when directory has no PNGs", {
+  find <- cp_ns("find_pngquant")
+  testthat::skip_if(base::is.null(find(verbosity = FALSE)),
+    "pngquant not installed — early return prevents reaching path check"
+  )
+
   tmp <- withr::local_tempdir()
 
   testthat::expect_message(

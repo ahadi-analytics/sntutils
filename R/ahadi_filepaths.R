@@ -276,10 +276,15 @@ ahadi_fuzzy_match <- function(
     return(eq_idx[1L])
   }
 
-  # substring both ways
+  # substring both ways (per-candidate, since grepl() warns when its pattern
+  # argument is a vector and silently uses only the first element)
+  cand_in_target <- vapply(
+    cand_clean,
+    function(c) nzchar(c) && grepl(c, target_clean, fixed = TRUE),
+    logical(1L)
+  )
   contains_idx <- which(
-    grepl(target_clean, cand_clean, fixed = TRUE) |
-      grepl(cand_clean, target_clean, fixed = TRUE)
+    grepl(target_clean, cand_clean, fixed = TRUE) | cand_in_target
   )
 
   if (length(contains_idx) >= 1L) {

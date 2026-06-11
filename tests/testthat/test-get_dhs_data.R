@@ -29,8 +29,9 @@ testthat::test_that("get_dhs_data() handles an empty parquet tree gracefully", {
   tmp <- withr::local_tempdir()
   # path exists but has no PR/IR/HR... subfolders
 
-  result <- testthat::expect_message(
-    sntutils::get_dhs_data(path = tmp),
+  result <- NULL
+  testthat::expect_message(
+    result <- sntutils::get_dhs_data(path = tmp),
     regexp = "DHS"
   )
 
@@ -85,8 +86,9 @@ testthat::test_that("get_dhs_data() warns about corrupted parquet files", {
   # write a file that pretends to be parquet but isn't
   base::writeLines("not a parquet file", base::file.path(ir_dir, "broken.parquet"))
 
-  result <- testthat::expect_message(
-    sntutils::get_dhs_data(path = tmp, types = "IR"),
+  result <- NULL
+  testthat::expect_message(
+    result <- sntutils::get_dhs_data(path = tmp, types = "IR"),
     regexp = "corrupted|No valid"
   )
 

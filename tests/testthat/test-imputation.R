@@ -1,6 +1,7 @@
 testthat::test_that("get_pathway_vars('susp') has no upstream and full downstream", {
-  result <- testthat::expect_message(
-    sntutils::get_pathway_vars("susp"),
+  result <- NULL
+  testthat::expect_message(
+    result <- sntutils::get_pathway_vars("susp"),
     regexp = "Upstream"
   )
 
@@ -48,8 +49,9 @@ testthat::test_that("get_pathway_vars('maladm', inpatient) returns full upstream
 })
 
 testthat::test_that("get_pathway_vars('maladm', outpatient) blocks structural imputation", {
-  result <- testthat::expect_message(
-    sntutils::get_pathway_vars(
+  result <- NULL
+  testthat::expect_message(
+    result <- sntutils::get_pathway_vars(
       "maladm",
       facility_type = "health_post"
     ),

@@ -32,8 +32,9 @@ make_hf_data <- function() {
 testthat::test_that("get_active_facilities() returns active-only data with status column", {
   hf_data <- make_hf_data()
 
-  active <- testthat::expect_message(
-    sntutils::get_active_facilities(
+  active <- NULL
+  testthat::expect_message(
+    active <- sntutils::get_active_facilities(
       data = hf_data,
       hf_col = "facility_id",
       date_col = "date",
