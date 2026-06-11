@@ -1,4 +1,4 @@
-# sntutils 1.13.0 (2026-06-11)
+# sntutils 2.0.0 (2026-06-11)
 
 ## Documentation
 
