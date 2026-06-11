@@ -39,7 +39,7 @@ The same processors work for any raster source - the downloads articles
 ([Climate](climate.html), [WorldPop](worldpop.html)) deposit files on
 disk, then these functions reduce them to admin-level tibbles.
 
-## Basic zonal stats: `process_raster_collection()`
+## Basic zonal stats
 
 The default for CHIRPS / ERA5-monthly / MODIS-monthly. Dates are
 detected automatically from filenames; the function aligns CRS between
@@ -75,7 +75,7 @@ rainfall_df |> utils::head()
 Pass `aggregations = c("mean", "sum", "median", "max")` to get several
 stats in one pass.
 
-## Single raster, multiple boundaries: `process_raster_with_boundaries()`
+## Single raster, multiple boundaries
 
 Use this when the same raster needs to be extracted to several
 shapefiles (adm1, adm2, adm3 simultaneously), or with different ID
@@ -94,7 +94,7 @@ process_raster_with_boundaries(
 )
 ```
 
-## Time-varying boundaries: `process_rasters_by_year()`
+## Time-varying boundaries
 
 When the boundaries themselves change over time (post-redistricting in
 Sierra Leone 2017, Togo 2019, recent DRC changes), this wrapper aligns
@@ -125,7 +125,7 @@ an areal average), point the weighted extractors at a population
 raster of the same extent. Weights are applied per pixel during
 extraction.
 
-### `process_weighted_raster_collection()`
+### Population-weighted collection
 
 ```r
 process_weighted_raster_collection(
@@ -137,13 +137,13 @@ process_weighted_raster_collection(
 )
 ```
 
-### `process_weighted_raster_stacks()`
+### Population-weighted stacks
 
 The same idea but for raster stacks (multiple bands per file) - useful
 when WorldPop publishes a multi-year stack or an ERA5 NetCDF has many
 variables in one file.
 
-### `normalize_raster_by_polygon()`
+### Normalising weights within a polygon
 
 The building block under the weighted extractors. Normalises a raster's
 values so they sum to 1 within each polygon - which is what lets the

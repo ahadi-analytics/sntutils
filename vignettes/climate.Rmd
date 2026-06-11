@@ -214,7 +214,7 @@ rain_annual_sf <- rain_adm2 |>
   sf::st_as_sf()
 ```
 
-### Continuous scale: `facetted_map_gradient()`
+### Continuous scale
 
 For a continuous indicator like rainfall, `facetted_map_gradient()`
 draws a small-multiples choropleth straight from the joined `sf`. Pick
@@ -240,7 +240,7 @@ facetted_map_gradient(
 )
 ```
 
-### Discrete bands: `facetted_map_bins()`
+### Discrete bands
 
 When the indicator is more naturally read in categories - e.g. low /
 moderate / high rainfall - bin the values with `auto_bin()` (or

@@ -48,7 +48,7 @@ For aggregating these rasters to admin polygons (zonal stats, weighted
 extraction), see the
 [Climate downloads and raster extraction](climate.html) article.
 
-## Total population: `download_worldpop()`
+## Total population
 
 The default download. Automatically picks the right WorldPop release
 based on the years requested:
@@ -113,7 +113,7 @@ size, so re-running the same call is a no-op. The returned (invisible)
 list has the resolved file paths and a per-country success counter for
 logging.
 
-## Age bands: `download_worldpop_age_band()`
+## Population by age band
 
 For interventions targeted at specific demographic groups (women of
 reproductive age for ITN allocation, children under 5 for SMC, etc.)
@@ -153,7 +153,7 @@ Switch `release = "R2024B"` if you specifically need the previous
 release; the default is `R2025A`. The global mosaic
 (`country_codes = "GLOBAL"`) also works here for years ≥ 2015 at 1 km.
 
-## Urbanicity: `download_worldpop_urbanicity()`
+## Urbanicity
 
 WorldPop's urbanicity layer classifies each pixel as urban / peri-urban
 / rural. Used in SNT for urban microstratification and to weight
@@ -167,7 +167,7 @@ download_worldpop_urbanicity(
 )
 ```
 
-## Resolving paths: `get_worldpop_paths()`
+## Resolving download paths
 
 After a series of downloads spread over different days, you usually
 need to know "where did the 2020 1 km count raster end up?".
@@ -193,7 +193,7 @@ to do population-weighted climate extraction, or into
 `process_raster_collection()` for plain zonal sums of population by
 admin.
 
-## Extrapolating to missing years: `extrapolate_pop()`
+## Extrapolating to missing years
 
 > **Methodology note.** The code library's
 > [Population rasters chapter](https://ahadi-analytics.github.io/snt-code-library/english/library/data/population/population_raster.html)
@@ -266,7 +266,7 @@ Extrapolation can also be backward (years earlier than the earliest
 observed) using the same syntax - pass the older years to
 `years_to_extrap`.
 
-## SNT-shape reshape: `snt_process_population()`
+## Reshaping to the SNT long format
 
 The final step before stratification: reshape the wide population
 tibble into the canonical SNT long format, optionally with translated

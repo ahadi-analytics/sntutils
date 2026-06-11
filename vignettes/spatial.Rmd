@@ -36,7 +36,7 @@ might land in the ocean. `sntutils` provides a stack of focused
 functions to find and fix each of these issues, then a small mapping
 layer to plot the result.
 
-## Downloading boundaries: `download_shapefile()`
+## Downloading boundaries
 
 For most SNT work the WHO `geohub` boundaries are the canonical input.
 `download_shapefile()` pulls them by ISO3 code and admin level and
@@ -60,7 +60,7 @@ class(boundaries)
 When `dest_path` is `NULL` the file is downloaded to a session-scoped
 cache and not persisted across runs.
 
-## Validating admin geometries: `validate_process_spatial()`
+## Validating admin geometries
 
 Once a shapefile is in hand, `validate_process_spatial()` runs a battery
 of checks - invalid geometry, mixed Z/M dimensions, wrong CRS, missing
@@ -87,7 +87,7 @@ names(boundaries_clean)
 The `issues` tibble is the audit trail - keep it next to the shapefile
 on disk so reviewers can see what was changed.
 
-## Validating point coordinates: `validate_process_coordinates()`
+## Validating facility coordinates
 
 For facility data, `validate_process_coordinates()` checks that lat/lon
 columns parse, sit within plausible bounds, have enough decimal
@@ -118,7 +118,7 @@ hf_clean$summary
 Returns an `sf` of valid POINT geometry plus an `issues` tibble of dropped
 or flagged rows.
 
-## Crosswalking shapefile vintages: `crosswalk_shapefiles_sf()`
+## Crosswalking shapefile vintages
 
 When a country redistricts (Sierra Leone 2017, Togo 2019, several recent
 DRC changes), historical surveillance data is keyed to the old
@@ -150,7 +150,7 @@ xwalk |> dplyr::select(adm2_old, adm2_name, weight, primary) |> head()
 Multiply by `weight` and `dplyr::group_by(adm2_name) |> summarise(sum())`
 to push aggregate counts from old units to new.
 
-## Fuzzy-matching facilities: `fuzzy_match_facilities()`
+## Fuzzy-matching facilities
 
 DHIS2 facility names rarely line up perfectly with the master facility
 list. `fuzzy_match_facilities()` runs a staged matching pipeline:
@@ -217,7 +217,7 @@ column names match the canonical SNT schema (see
 
 ## Drawing maps
 
-### `plot_admin_map_distinct()` - categorical fills
+### Categorical fills
 
 For administrative reference maps and any other categorical layer:
 
@@ -233,7 +233,7 @@ plot_admin_map_distinct(
 Available palettes are listed via `list_palettes()`; pull a specific
 palette with `get_palette()`.
 
-### `facetted_map_bins()` and `facetted_map_gradient()`
+### Faceted choropleths
 
 When the map needs to faceted by year, indicator, scenario or
 intervention, these two helpers produce consistent small-multiples with

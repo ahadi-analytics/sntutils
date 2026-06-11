@@ -72,7 +72,7 @@ write(
 `read()` defers to the underlying reader for arguments, so you can pass
 `sheet`, `sep`, `skip`, `col_types` etc. exactly as you would directly.
 
-### Reproducible reads: `read_snt_data()` and `write_snt_data()`
+### Reproducible reads with metadata
 
 For data we want to track across runs - DHIS2 exports, processed
 intermediate files, anything that will land in `01_data/` - use
@@ -184,7 +184,7 @@ auto_parse_types(df)
 character column should become a factor based on cardinality
 (`max_levels`).
 
-## Harmonising admin names: `prep_geonames()`
+## Harmonising admin names
 
 The big one. `prep_geonames()` cleans hierarchical admin names by
 combining string-distance matching with an interactive picker and a
@@ -229,7 +229,7 @@ A demo of the interactive flow is in the
 Two flavours of dictionary live in `sntutils`. Both come up on every
 country project, so they're worth knowing well.
 
-### `snt_data_dict()` - the curated SNT variable dictionary
+### The curated SNT variable dictionary
 
 The package ships with a canonical schema of the SNT variable names
 that the rest of `sntutils` expects (`conf`, `pres`, `test`, `allout`,
@@ -268,7 +268,7 @@ check_snt_var("conf_uner5")     # typo
 Use it as a sanity check at the start of every analysis, before joining
 DHIS2 to anything else.
 
-### `build_dictionary()` - generate a dictionary for *your* dataset
+### Generate a dictionary for your own dataset
 
 Once a dataset is clean, `build_dictionary()` produces a per-variable
 summary tibble - name, type, number of unique values, value range or

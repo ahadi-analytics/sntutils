@@ -38,7 +38,7 @@ biomarker data across most malaria-endemic countries.
    (`get_dhs_data()`) as queryable views, so we can compute custom
    indicators without loading full SPSS / Stata files into memory.
 
-## Discovering indicators: `check_dhs_indicators()`
+## Discovering indicators
 
 Before downloading anything, find the indicator IDs we want.
 `check_dhs_indicators()` is a thin wrapper around the DHS API's
@@ -79,7 +79,7 @@ check_dhs_indicators(
 Returned fields include `IndicatorId`, `Label`, and `Definition` by
 default - pass `returnFields` to add more.
 
-## Downloading values: `download_dhs_indicators()`
+## Downloading indicator values
 
 Once we have indicator IDs, `download_dhs_indicators()` pulls the
 estimates themselves. It hits the DHS data endpoint directly (no
@@ -136,7 +136,7 @@ download_dhs_indicators(
 )
 ```
 
-## Local DHS microdata via DuckDB: `get_dhs_data()`
+## Local DHS microdata via DuckDB
 
 When the published indicators don't cover what we need (custom
 denominators, multi-variable cross-tabs, restricted populations), the

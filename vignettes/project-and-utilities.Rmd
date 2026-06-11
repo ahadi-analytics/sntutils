@@ -29,7 +29,7 @@ of `sntutils` feel coherent.
 AHADI projects follow a fixed top-level layout so that scripts written
 for one country drop straight into another. Two functions build it.
 
-### `create_data_structure()`
+### Just the data tree
 
 Creates only the data tree under `01_data/`. Each domain folder has
 `raw/` and `processed/` subfolders.
@@ -79,7 +79,7 @@ create_data_structure(base_path = ".")
 Every leaf folder (except `1.10_final/` and `1.1f_cache_files/`) gets its
 own `raw/` and `processed/` subfolders automatically.
 
-### `initialize_project_structure()`
+### Full project skeleton
 
 Same data tree plus the surrounding scaffolding for scripts, outputs
 and reports - use this on the first day of a new project.
@@ -101,7 +101,7 @@ my_snt_project/
 └── 05_metadata_docs/
 ```
 
-## Resolving paths: `setup_project_paths()`
+## Resolving paths
 
 Once the folders exist, `setup_project_paths()` returns a named list of
 absolute paths to every important location. Detects the project root via
@@ -146,7 +146,7 @@ weekly basis. Every plot and label function in `sntutils` accepts a
 `target_language` argument, which routes through this small translation
 stack.
 
-### `translate_text()`
+### Translate a single string
 
 Calls Google Translate (via the `gtranslate` package) once per unique
 string and caches the response to a local JSON file. The next call for
@@ -164,7 +164,7 @@ translate_text("Malaria cases",
 #> [1] "Casos de malária"
 ```
 
-### `translate_text_vec()`
+### Translate a column
 
 Vectorised wrapper for `translate_text()` - translate a whole column in
 one call, with caching shared across the batch.
@@ -184,7 +184,7 @@ df |>
 #> 3 Tests performed Pruebas realizadas
 ```
 
-### `translate_yearmon()`
+### Locale-aware month-year formatting
 
 Locale-aware month-year formatting for time-series axes.
 
@@ -198,7 +198,7 @@ translate_yearmon(dates, language = "es", format = "%B %Y")
 #> [1] "enero 2022" "febrero 2022" "marzo 2022"
 ```
 
-## French malaria acronyms: `french_malaria_acronyms()`
+## French malaria acronyms
 
 Google Translate consistently butchers technical malaria acronyms when
 asked to translate plot titles, labels and report text into French - it
@@ -228,7 +228,7 @@ need to call it directly, but it's worth knowing it exists when a
 French translation looks off and we want to extend or override the
 mapping for a country team.
 
-## Image compression: `compress_png()`
+## Image compression
 
 When SNT reports get assembled into PDFs or Word docs, embedded PNGs
 dominate the file size. `compress_png()` wraps `pngquant` (installed on
@@ -260,7 +260,7 @@ compress_png(
 )
 ```
 
-## Hashing: `vdigest()`
+## Hashing for stable IDs
 
 `vdigest()` is a vectorised version of `digest::digest()`. We use it
 constantly to mint stable IDs for facility-month records, deduplicate
