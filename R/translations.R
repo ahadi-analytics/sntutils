@@ -33,28 +33,36 @@ translate_yearmon <- function(date, language = "fr", format = "%b %Y") {
   # Get available locales
   available_locales <- system("locale -a", intern = TRUE)
 
-  # Map language codes to locales, checking availability
+  # NA-aware first-match-or-fallback: rlang::`%||%` only catches NULL, so
+  # without this helper `grep(...)[1]` returning NA leaks into the message
+  # below as a literal "Locale NA not available"
+  pick_locale <- function(pattern, fallback) {
+    match <- grep(pattern, available_locales, value = TRUE)[1]
+    if (is.na(match)) fallback else match
+  }
+
   locale <- switch(
     language,
-    "fr" = rlang::`%||%`(grep("^fr_.*\\.UTF-8$", available_locales, value = TRUE)[1], "fr_FR.UTF-8"),
-    "en" = rlang::`%||%`(grep("^en_.*\\.UTF-8$", available_locales, value = TRUE)[1], "en_US.UTF-8"),
-    "es" = rlang::`%||%`(grep("^es_.*\\.UTF-8$", available_locales, value = TRUE)[1], "es_ES.UTF-8"),
-    "de" = rlang::`%||%`(grep("^de_.*\\.UTF-8$", available_locales, value = TRUE)[1], "de_DE.UTF-8"),
-    "it" = rlang::`%||%`(grep("^it_.*\\.UTF-8$", available_locales, value = TRUE)[1], "it_IT.UTF-8"),
-    "pt" = rlang::`%||%`(grep("^pt_.*\\.UTF-8$", available_locales, value = TRUE)[1], "pt_PT.UTF-8"),
-    "ru" = rlang::`%||%`(grep("^ru_.*\\.UTF-8$", available_locales, value = TRUE)[1], "ru_RU.UTF-8"),
-    "zh" = rlang::`%||%`(grep("^zh_.*\\.UTF-8$", available_locales, value = TRUE)[1], "zh_CN.UTF-8"),
-    "ja" = rlang::`%||%`(grep("^ja_.*\\.UTF-8$", available_locales, value = TRUE)[1], "ja_JP.UTF-8"),
-    "ko" = rlang::`%||%`(grep("^ko_.*\\.UTF-8$", available_locales, value = TRUE)[1], "ko_KR.UTF-8"),
-    "ar" = rlang::`%||%`(grep("^ar_.*\\.UTF-8$", available_locales, value = TRUE)[1], "ar_SA.UTF-8"),
-    "hi" = rlang::`%||%`(grep("^hi_.*\\.UTF-8$", available_locales, value = TRUE)[1], "hi_IN.UTF-8")
+    "fr" = pick_locale("^fr_.*\\.UTF-8$", "fr_FR.UTF-8"),
+    "en" = pick_locale("^en_.*\\.UTF-8$", "en_US.UTF-8"),
+    "es" = pick_locale("^es_.*\\.UTF-8$", "es_ES.UTF-8"),
+    "de" = pick_locale("^de_.*\\.UTF-8$", "de_DE.UTF-8"),
+    "it" = pick_locale("^it_.*\\.UTF-8$", "it_IT.UTF-8"),
+    "pt" = pick_locale("^pt_.*\\.UTF-8$", "pt_PT.UTF-8"),
+    "ru" = pick_locale("^ru_.*\\.UTF-8$", "ru_RU.UTF-8"),
+    "zh" = pick_locale("^zh_.*\\.UTF-8$", "zh_CN.UTF-8"),
+    "ja" = pick_locale("^ja_.*\\.UTF-8$", "ja_JP.UTF-8"),
+    "ko" = pick_locale("^ko_.*\\.UTF-8$", "ko_KR.UTF-8"),
+    "ar" = pick_locale("^ar_.*\\.UTF-8$", "ar_SA.UTF-8"),
+    "hi" = pick_locale("^hi_.*\\.UTF-8$", "hi_IN.UTF-8")
   )
 
-  # Check if locale is available
+  # Check if locale is available. Use cli::cli_inform rather than warning()
+  # so that minimal-locale environments (CI runners, slim Docker images)
+  # don't accumulate testthat warnings every time a plot is rendered
   if (!locale %in% available_locales) {
-    warning(
-      "Locale ", locale,
-      " not available. Using system default."
+    cli::cli_inform(
+      "Locale {.val {locale}} not available; using system default."
     )
     locale <- Sys.getlocale("LC_TIME")
   }
