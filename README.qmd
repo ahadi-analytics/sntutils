@@ -14,9 +14,7 @@ format:
 [![CodeFactor](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils/badge)](https://www.codefactor.io/repository/github/ahadi-analytics/sntutils)
 ![Coverage](man/badges/coverage.svg)
 
-<img src="man/figures/logo.png" align="right" height="140" alt="sntutils hex logo" />
-
-# sntutils
+# sntutils <img src="man/figures/logo.png" align="right" height="140" alt="sntutils hex logo" />
 
 `sntutils` is an R package developed by [AHADI](https://appliedhealthanalytics.org) to support the **Subnational Tailoring (SNT)** of malaria interventions. It bundles the small, repeated operations every SNT support analysis does — reading DHIS2 exports, harmonising admin names across shapefile vintages, validating facility coordinates, calculating reporting rates, extracting climate and population rasters to admin units, and rendering country-team-language plots and maps.
 
