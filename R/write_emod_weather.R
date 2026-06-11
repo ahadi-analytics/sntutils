@@ -285,7 +285,14 @@ write_emod_weather_by_adm2 <- function(
   cli::cli_process_start("Writing EMOD weather files per adm2")
 
   purrr::pwalk(node_coord, function(node_id, adm2, ...) {
-    adm2_clean <- gsub("[^A-Za-z0-9]+", "_", adm2) |> case_fn()
+    # normalize separators to whitespace BEFORE case_fn so that
+    # `stringr::str_to_title` recognises word boundaries (it does not treat
+    # `_` or `-` as boundaries), then collapse whitespace to underscores
+    adm2_clean <- adm2 |>
+      gsub("[^A-Za-z0-9]+", " ", x = _) |>
+      trimws() |>
+      case_fn() |>
+      gsub("\\s+", "_", x = _)
 
     adm2_df <- df[df$node_id == node_id, ]
     adm2_df$node_id <- 1L

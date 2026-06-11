@@ -281,7 +281,8 @@ ahadi_fuzzy_match <- function(
   cand_in_target <- vapply(
     cand_clean,
     function(c) nzchar(c) && grepl(c, target_clean, fixed = TRUE),
-    logical(1L)
+    logical(1L),
+    USE.NAMES = FALSE
   )
   contains_idx <- which(
     grepl(target_clean, cand_clean, fixed = TRUE) | cand_in_target
@@ -391,6 +392,15 @@ ahadi_find_shared_root <- function(
       function(pat) grepl(pat, base_clean, fixed = TRUE),
       logical(length(base_clean))
     )
+    # vapply collapses to a vector when length(base_clean) == 1; coerce to
+    # matrix so the per-row reduction below works for any candidate count
+    if (is.null(dim(is_shared_like))) {
+      is_shared_like <- matrix(
+        is_shared_like,
+        nrow = length(base_clean),
+        ncol = length(shared_patterns)
+      )
+    }
     is_shared_like <- apply(is_shared_like, 1L, any)
 
     org_like <- grepl(org_clean, base_clean, fixed = TRUE) |
