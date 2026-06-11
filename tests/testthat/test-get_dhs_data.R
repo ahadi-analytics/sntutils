@@ -47,14 +47,14 @@ testthat::test_that("get_dhs_data() registers a valid parquet file as a view", {
   testthat::skip_if_not_installed("arrow")
   testthat::skip_if_not_installed("DBI")
 
+  # the source calls read_parquet(..., hive_partitioning = TRUE), so the
+  # fixture follows hive layout: partition columns live in the directory
+  # name (key=value) and are NOT inside the parquet file itself
   tmp <- withr::local_tempdir()
-  pr_dir <- base::file.path(tmp, "PR")
-  base::dir.create(pr_dir)
+  pr_dir <- base::file.path(tmp, "PR", "country_code=KE", "survey_year=2014")
+  base::dir.create(pr_dir, recursive = TRUE)
 
-  # write a small valid parquet
   df <- tibble::tibble(
-    country_code = c("KE", "KE"),
-    survey_year = c(2014L, 2014L),
     survey_id = c("KE2014", "KE2014"),
     val = c(1, 2)
   )
@@ -64,15 +64,7 @@ testthat::test_that("get_dhs_data() registers a valid parquet file as a view", {
   on.exit(DBI::dbDisconnect(result$con, shutdown = TRUE), add = TRUE)
 
   testthat::expect_s3_class(result, "dhs_duckdb")
-
-  # View registration can fail silently in tryCatch on some platforms where
-  # arrow/duckdb disagree on the parquet dialect produced by write_parquet.
-  # Skip the downstream assertions in that case rather than fail CI; the
-  # other tests in this file already cover the error-path behaviour.
-  testthat::skip_if(
-    base::is.null(result$pr),
-    "PR view did not register (platform-specific arrow/duckdb interaction)"
-  )
+  testthat::expect_false(base::is.null(result$pr))
 
   # print method exercises a lot of formatting code
   testthat::expect_output(
