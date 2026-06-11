@@ -188,11 +188,18 @@ matches$results |>
 `calculate_match_stats()` summarises the same results by method so we
 can compare matching strategies side by side.
 
-## Joining DHIS2 columns: `dhis2_map()`
+## Renaming DHIS2 columns: `dhis2_map()`
 
 `dhis2_map()` renames a DHIS2 export's columns using a name-mapping
-dictionary, so we can keep the upstream names intact on disk and only
-remap when we load the data.
+dictionary, so we can keep the upstream column labels intact on disk
+and only remap to SNT names when we load the data. It's a small but
+critical step in every DHIS2 import workflow.
+
+> **Used in:** the
+> [DHIS2 import and preprocessing](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/import.html)
+> chapter of the SNT Code Library walks through where this fits in the
+> end-to-end DHIS2 cleaning pipeline. `dhis2_map()` is the helper that
+> performs the rename step described there.
 
 ```r
 mapped <- dhis2_map(
@@ -203,6 +210,10 @@ mapped <- dhis2_map(
   drop_unmatched = FALSE
 )
 ```
+
+Pair it with `check_snt_var()` after the rename to confirm the resulting
+column names match the canonical SNT schema (see
+[Read & clean](data-io-and-cleaning.html#dictionaries-producing-one-and-using-the-curated-snt-schema)).
 
 ## Drawing maps
 
