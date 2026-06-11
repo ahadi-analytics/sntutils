@@ -1,7 +1,5 @@
 # Reporting rates
 
-Intermediate
-
 Before any stratification, trend analysis or modelling step, an SNT
 analyst needs to know **how completely facilities are reporting**.
 [`calculate_reporting_metrics()`](https://ahadi-analytics.github.io/sntutils/reference/calculate_reporting_metrics.md)

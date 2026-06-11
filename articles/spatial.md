@@ -1,7 +1,5 @@
 # Spatial validation and mapping
 
-Intermediate
-
 Spatial work is where SNT analyses fail most quietly. Geometry might be
 invalid, CRS might disagree, district names might have been renamed
 between the shapefile and the DHIS2 export, or facility coordinates

@@ -1,7 +1,5 @@
 # Data quality — consistency, outliers, imputation
 
-Intermediate
-
 Reporting completeness (covered in [Reporting
 rates](https://ahadi-analytics.github.io/sntutils/articles/reporting-rates.md))
 tells us *whether* facilities reported. This article covers the next two

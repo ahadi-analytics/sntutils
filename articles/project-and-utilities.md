@@ -1,7 +1,5 @@
 # Project setup and utilities
 
-Beginner
-
 The other articles cover the headline analyses. This one rounds up the
 day-to-day plumbing — folder scaffolding, paths, translation, hashing,
 image compression, and the small numerical helpers — that make the rest

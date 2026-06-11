@@ -1,7 +1,5 @@
 # WorldPop population rasters
 
-Intermediate
-
 WorldPop is the canonical sub-national population surface for African
 SNT work. `sntutils` wraps both WorldPop releases (legacy 2000–2020 and
 R2025A 2015–2030) behind one consistent API, with helpers for age bands,

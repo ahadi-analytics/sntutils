@@ -1,7 +1,5 @@
 # Get started with sntutils
 
-Beginner
-
 ## What is `sntutils`?
 
 `sntutils` is an R package developed by AHADI to support the

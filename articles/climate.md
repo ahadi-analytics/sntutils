@@ -1,7 +1,5 @@
 # Climate downloads and raster extraction
 
-Intermediate
-
 Every SNT study eventually needs climate covariates joined to admin
 units. `sntutils` exposes a small, consistent API over the messy world
 of public climate archives so we don’t write custom FTP / HTTPS /

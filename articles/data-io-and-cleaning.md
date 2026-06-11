@@ -1,7 +1,5 @@
 # Data I/O and cleaning
 
-Beginner
-
 Most of an SNT analysis is data wrangling: pulling spreadsheets out of
 DHIS2 exports, parsing dates that have been entered four different ways,
 matching district names that disagree across files, and producing a
