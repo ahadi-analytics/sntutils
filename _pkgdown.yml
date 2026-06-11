@@ -260,7 +260,6 @@ reference:
   - batch_extract_weighted_stats
   - calculate_plot_dimensions
   - create_common_elements
-  - dot-get_filename_abbrev
   - ensure_packages
   - get_translated_terms
   - group_plot

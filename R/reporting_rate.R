@@ -2678,6 +2678,7 @@ calculate_plot_dimensions <- function(plot_data, x_var, y_var = NULL) {
 #' @param target_language Target language code (e.g., "fr", "en")
 #'
 #' @return Abbreviated slug string
+#' @noRd
 .get_filename_abbrev <- function(term, target_language) {
   # mapping of English terms to abbreviated slugs per language
   abbrev_map <- list(
