@@ -37,9 +37,9 @@ final_tbl, model_fig, model_tbl.
 tmp <- tempdir()
 paths <- setup_project_paths(base_path = tmp, quiet = TRUE)
 paths$admin_shp
-#> /tmp/RtmpnDe5TO/01_data/1.1_foundational/1.1a_admin_boundaries
+#> /tmp/RtmpmeeYjE/01_data/1.1_foundational/1.1a_admin_boundaries
 paths$val_fig
-#> /tmp/RtmpnDe5TO/03_outputs/3.1_validation/figures
+#> /tmp/RtmpmeeYjE/03_outputs/3.1_validation/figures
 paths$interm_tbl
-#> /tmp/RtmpnDe5TO/03_outputs/3.2_intermediate_products/tables
+#> /tmp/RtmpmeeYjE/03_outputs/3.2_intermediate_products/tables
 ```
