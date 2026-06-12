@@ -17,7 +17,8 @@ download_worldpop_age_band(
   resolution = "1km",
   release = "R2025A",
   out_dir = ".",
-  quiet = FALSE
+  quiet = FALSE,
+  keep_band_files = FALSE
 )
 ```
 
@@ -68,6 +69,13 @@ download_worldpop_age_band(
 - quiet:
 
   Logical; if TRUE, suppresses progress messages (default: FALSE).
+
+- keep_band_files:
+
+  Logical. If FALSE (default), the individual per-band rasters
+  downloaded to build each combined output are deleted once the combined
+  raster is written. Set TRUE to keep them, e.g. for reuse across calls
+  with overlapping age ranges.
 
 ## Value
 
