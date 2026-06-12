@@ -72,8 +72,11 @@
 
 # internal helper: download many urls to dests concurrently. skips files
 # that already exist, writes to a .part file and renames on success so an
-# interrupted download never leaves a corrupt raster behind. returns a
-# logical vector, TRUE where the file is present after the call.
+# interrupted download never leaves a corrupt raster behind. tries the
+# worldpop ftp mirror first (same /GIS tree, ~60x faster than the
+# per-connection throttle on data.worldpop.org), then falls back to https
+# per file for networks that block ftp. returns a logical vector, TRUE
+# where the file is present after the call.
 # requires httr2 >= 1.1.0 so req_retry() is honoured in parallel.
 #' @noRd
 .worldpop_fetch <- function(urls, dests, quiet = FALSE, max_active = 6) {
@@ -83,25 +86,56 @@
   }
 
   part_paths <- paste0(dests[missing_idx], ".part")
-  requests <- lapply(urls[missing_idx], function(url) {
-    httr2::request(url) |>
-      httr2::req_timeout(600) |>
-      httr2::req_retry(max_tries = 3, backoff = ~ 5)
-  })
+  unlink(part_paths)
 
-  responses <- httr2::req_perform_parallel(
-    requests,
-    paths = part_paths,
-    max_active = max_active,
-    on_error = "continue",
-    progress = !quiet
+  ftp_urls <- sub(
+    "^https://data\\.worldpop\\.org/",
+    "ftp://ftp.worldpop.org.uk/",
+    urls[missing_idx]
   )
 
-  fetched <- vapply(
-    responses,
-    function(response) inherits(response, "httr2_response"),
-    logical(1)
-  )
+  # up to 3 ftp attempts: transient ftp errors are cheap to retry at full
+  # mirror speed, whereas the https fallback is throttled server-side
+  fetched <- rep(FALSE, length(missing_idx))
+  not_on_server <- rep(FALSE, length(missing_idx))
+  for (attempt in 1:3) {
+    todo <- which(!fetched & !not_on_server)
+    if (length(todo) == 0) break
+    if (attempt > 1) Sys.sleep(2)
+    ftp_results <- curl::multi_download(
+      ftp_urls[todo], part_paths[todo],
+      resume = FALSE, progress = !quiet, timeout = 600
+    )
+    fetched[todo] <- ftp_results$success %in% TRUE &
+      file.exists(part_paths[todo])
+    # a 550 means the file is not on the server; retrying cannot help
+    not_on_server[todo] <- !fetched[todo] &
+      grepl("550", ftp_results$error)
+  }
+
+  # fall back to https for anything the ftp mirror could not deliver
+  retry_idx <- which(!fetched)
+  if (length(retry_idx) > 0) {
+    unlink(part_paths[retry_idx])
+    requests <- lapply(urls[missing_idx][retry_idx], function(url) {
+      httr2::request(url) |>
+        httr2::req_timeout(600) |>
+        httr2::req_retry(max_tries = 3, backoff = ~ 5)
+    })
+    responses <- httr2::req_perform_parallel(
+      requests,
+      paths = part_paths[retry_idx],
+      max_active = max_active,
+      on_error = "continue",
+      progress = !quiet
+    )
+    fetched[retry_idx] <- vapply(
+      responses,
+      function(response) inherits(response, "httr2_response"),
+      logical(1)
+    )
+  }
+
   file.rename(part_paths[fetched], dests[missing_idx][fetched])
   unlink(part_paths[!fetched])
 

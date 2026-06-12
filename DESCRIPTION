@@ -22,6 +22,7 @@ Depends:
 Imports:
     cli,
     countrycode,
+    curl (>= 5.0.0),
     dplyr,
     ggplot2,
     purrr (>= 1.0.0),
@@ -50,7 +51,6 @@ Imports:
 Suggests:
     arrow,
     crayon,
-    curl,
     ecmwfr,
     filelock,
     forcats,
