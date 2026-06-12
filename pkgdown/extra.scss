@@ -329,3 +329,134 @@ footer {
 
 footer a { color: $ahadi-link; }
 footer a:hover { color: $ahadi-gold; }
+
+// =============================================================================
+// Dark mode overrides
+// pkgdown's light-switch toggles [data-bs-theme="dark"] on <html>.
+// The rules above use !important + light-bg colours, so we re-state them
+// here for the dark theme. Light mode is untouched.
+// =============================================================================
+
+$dark-surface:   #1a242f; // raised surface (code blocks, table headers, dropdowns)
+$dark-surface-2: #161e27; // sunken surface (R output blocks)
+$dark-border:    #2a3845;
+$dark-text:      #E6EEF5; // primary text on dark bg
+
+[data-bs-theme="dark"] {
+
+  // Headings — flip the cool-blue ramp so darker shades sit on top.
+  h1, .h1, .template-title h1 { color: $dark-text   !important; }
+  h2, .h2                     { color: $ahadi-corn  !important; }
+  h3, .h3                     { color: $ahadi-sky   !important; }
+  h4, .h4                     { color: $ahadi-azure !important; }
+  h5, .h5                     { color: $ahadi-steel !important; }
+  h6, .h6                     { color: $ahadi-steel !important; }
+
+  // Code blocks
+  pre {
+    background-color: $dark-surface;
+    border: 1px solid $dark-border;
+  }
+
+  code {
+    color: $ahadi-corn;
+    background-color: rgba($ahadi-sky, 0.12);
+  }
+
+  // R output (the `#>` block after a code chunk)
+  .sourceCode + pre,
+  pre.r + pre,
+  .cell-output pre {
+    background-color: $dark-surface-2;
+    border-left: 4px solid $ahadi-sky;
+  }
+
+  // Tables
+  table {
+    border: 1.25px solid $dark-border;
+  }
+
+  table thead th {
+    background-color: $dark-surface !important;
+    color: $ahadi-corn !important;
+    border-bottom: 1.5px solid $dark-border !important;
+  }
+
+  // Navbar dropdown (Articles menu)
+  .navbar .dropdown-menu {
+    background-color: $dark-surface;
+    border: 1px solid $dark-border;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  }
+
+  .navbar .dropdown-menu .dropdown-item,
+  .navbar .dropdown-menu a.dropdown-item {
+    color: $dark-text !important;
+  }
+
+  .navbar .dropdown-menu .dropdown-item:hover,
+  .navbar .dropdown-menu .dropdown-item:focus,
+  .navbar .dropdown-menu a.dropdown-item:hover,
+  .navbar .dropdown-menu a.dropdown-item:focus {
+    color: $ahadi-gold !important;
+    background-color: rgba($ahadi-gold, 0.08);
+  }
+
+  .navbar .dropdown-menu .dropdown-header {
+    color: $ahadi-corn !important;
+  }
+
+  // Sidebar / TOC / article side-nav
+  #toc .nav > li > a,
+  .aside .toc-action,
+  .contents .nav > li > a,
+  aside .nav-link,
+  aside a.nav-link,
+  .template-articles .nav-link {
+    color: $dark-text !important;
+  }
+
+  #toc .nav > li > a:hover,
+  #toc .nav > li > a.active,
+  aside .nav-link:hover,
+  aside a.nav-link:hover,
+  .template-articles .nav-link:hover {
+    color: $ahadi-gold !important;
+  }
+
+  // Reference-index section headers
+  .section h2 {
+    color: $ahadi-corn !important;
+    border-bottom: 1px solid $dark-border;
+  }
+
+  // Alerts / callouts — invert the forced-navy text
+  .alert-primary,
+  .alert-info {
+    color: $dark-text !important;
+    background: rgba($ahadi-sky, 0.12);
+  }
+
+  .alert-primary p,
+  .alert-info p,
+  .alert-primary li,
+  .alert-info li {
+    color: $dark-text !important;
+  }
+
+  .alert-primary strong,
+  .alert-info strong {
+    color: #FFFFFF !important;
+  }
+
+  .alert-success,
+  .alert-tip   { background: rgba($ahadi-steel, 0.14); }
+  .alert-warning { background: rgba($ahadi-gold,  0.12); }
+  .alert-danger  { background: rgba($ahadi-coral, 0.12); }
+
+  // Footer
+  footer {
+    border-top: 2px solid $dark-border;
+    color: $ahadi-corn;
+  }
+}

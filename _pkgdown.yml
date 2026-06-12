@@ -4,6 +4,21 @@ template:
   bootstrap: 5
   bootswatch: flatly
   light-switch: true
+  includes:
+    in_header: |
+      <script>
+        (function() {
+          try {
+            if (!localStorage.getItem('pkgdown-theme')) {
+              localStorage.setItem('pkgdown-theme', 'dark');
+            }
+            document.documentElement.dataset.bsTheme =
+              localStorage.getItem('pkgdown-theme');
+          } catch (e) {
+            document.documentElement.dataset.bsTheme = 'dark';
+          }
+        })();
+      </script>
   bslib:
     primary: "#0F2333"
     secondary: "#628DA5"
