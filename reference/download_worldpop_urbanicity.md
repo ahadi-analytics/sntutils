@@ -24,7 +24,11 @@ download_worldpop_urbanicity(
 - country_codes:
 
   Character vector of ISO3 country codes (e.g., "DZA", "GIN").
-  Case-insensitive; uppercased for URL building.
+  Case-insensitive; uppercased for URL building. Pass `"GLOBAL"` to
+  download every country available on the server. Unlike other WorldPop
+  products there is no worldwide DUG mosaic, so `"GLOBAL"` expands to
+  per-country rasters for all available countries (~240 per year; files
+  are small, roughly 50-500 KB each).
 
 - years:
 
@@ -91,6 +95,15 @@ download_worldpop_urbanicity("DZA")
 download_worldpop_urbanicity(
   country_codes = c("DZA", "GIN"),
   years = 2020:2024,
+  layers = "L1",
+  dest_dir = here::here("data/worldpop/dug")
+)
+
+# Every available country for one year (no mosaic exists, so GLOBAL
+# expands to ~240 per-country rasters)
+download_worldpop_urbanicity(
+  country_codes = "GLOBAL",
+  years = 2020,
   layers = "L1",
   dest_dir = here::here("data/worldpop/dug")
 )

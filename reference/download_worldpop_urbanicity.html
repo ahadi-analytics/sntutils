@@ -104,7 +104,11 @@ default.</p>
 
 <dl><dt id="arg-country-codes">country_codes<a class="anchor" aria-label="anchor" href="#arg-country-codes"></a></dt>
 <dd><p>Character vector of ISO3 country codes (e.g.,
-"DZA", "GIN"). Case-insensitive; uppercased for URL building.</p></dd>
+"DZA", "GIN"). Case-insensitive; uppercased for URL building.
+Pass <code>"GLOBAL"</code> to download every country available on the server.
+Unlike other WorldPop products there is no worldwide DUG mosaic, so
+<code>"GLOBAL"</code> expands to per-country rasters for all available
+countries (~240 per year; files are small, roughly 50-500 KB each).</p></dd>
 
 
 <dt id="arg-years">years<a class="anchor" aria-label="anchor" href="#arg-years"></a></dt>
@@ -167,6 +171,15 @@ a warning so the rest of the batch completes.</p>
 <span class="r-in"><span><span class="fu">download_worldpop_urbanicity</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  country_codes <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"DZA"</span>, <span class="st">"GIN"</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  years <span class="op">=</span> <span class="fl">2020</span><span class="op">:</span><span class="fl">2024</span>,</span></span>
+<span class="r-in"><span>  layers <span class="op">=</span> <span class="st">"L1"</span>,</span></span>
+<span class="r-in"><span>  dest_dir <span class="op">=</span> <span class="fu">here</span><span class="fu">::</span><span class="fu"><a href="https://here.r-lib.org/reference/here.html" class="external-link">here</a></span><span class="op">(</span><span class="st">"data/worldpop/dug"</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Every available country for one year (no mosaic exists, so GLOBAL</span></span></span>
+<span class="r-in"><span><span class="co"># expands to ~240 per-country rasters)</span></span></span>
+<span class="r-in"><span><span class="fu">download_worldpop_urbanicity</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  country_codes <span class="op">=</span> <span class="st">"GLOBAL"</span>,</span></span>
+<span class="r-in"><span>  years <span class="op">=</span> <span class="fl">2020</span>,</span></span>
 <span class="r-in"><span>  layers <span class="op">=</span> <span class="st">"L1"</span>,</span></span>
 <span class="r-in"><span>  dest_dir <span class="op">=</span> <span class="fu">here</span><span class="fu">::</span><span class="fu"><a href="https://here.r-lib.org/reference/here.html" class="external-link">here</a></span><span class="op">(</span><span class="st">"data/worldpop/dug"</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
