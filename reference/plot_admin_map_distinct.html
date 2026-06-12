@@ -9,7 +9,19 @@ administrative level (e.g., provinces at adm1), constructs a neighbor graph,
 assigns colors to the aggregated units ensuring that no adjacent units share
 the same color, and then maps those colors back to the adm2 polygons.
 Labels are placed at the centroid of each higher-level unit, and a
-ggplot2 map is produced. The plot can optionally be saved as a PNG."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+ggplot2 map is produced. The plot can optionally be saved as a PNG."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

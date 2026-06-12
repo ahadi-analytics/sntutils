@@ -5,7 +5,19 @@ maintaining visual quality. pngquant is a lossy compression tool that can
 reduce file sizes by up to 70% while preserving full alpha transparency."><meta property="og:description" content="This function compresses either a single PNG file or all PNG files in a
 specified directory using pngquant optimization to reduce file size while
 maintaining visual quality. pngquant is a lossy compression tool that can
-reduce file sizes by up to 70% while preserving full alpha transparency."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+reduce file sizes by up to 70% while preserving full alpha transparency."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

@@ -7,7 +7,19 @@ appropriate type."><meta property="og:description" content="Computes the differe
 If both values are present, returns pmax(abs(col1 - col2), minimum).
 If only one value is present, returns the non-missing value or minimum,
 whichever is greater. If both are missing, returns NA of the
-appropriate type."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+appropriate type."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

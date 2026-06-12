@@ -15,7 +15,19 @@ Although the function does not require limiting name matching exclusively to
 upper-level admins, optimal performance is achieved by confining to stricter
 within-admin stratifications,
 ensuring more accurate results. The function can also work with site names
-or even any string matching that has lookup data."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+or even any string matching that has lookup data."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

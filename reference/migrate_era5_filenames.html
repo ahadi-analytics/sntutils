@@ -5,7 +5,19 @@ filename. This prevents conflicts when downloading different variables for
 the same time period."><meta property="og:description" content="Renames ERA5 NetCDF files downloaded with the old naming scheme (without
 variable names) to the new format that includes variable names in the
 filename. This prevents conflicts when downloading different variables for
-the same time period."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+the same time period."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

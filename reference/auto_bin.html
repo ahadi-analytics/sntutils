@@ -5,7 +5,19 @@ breaks for highly skewed data, hybrid (quantile + tail) for moderately
 skewed data, and pure quantile for roughly symmetric data."><meta property="og:description" content="Selects an appropriate binning method based on data distribution and
 returns bins with matching colors. Three methods are available: head-tail
 breaks for highly skewed data, hybrid (quantile + tail) for moderately
-skewed data, and pure quantile for roughly symmetric data."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+skewed data, and pure quantile for roughly symmetric data."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

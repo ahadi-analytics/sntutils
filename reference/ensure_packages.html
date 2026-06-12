@@ -5,7 +5,19 @@ packages into the current session. In non-interactive sessions,
 installation is skipped with a warning."><meta property="og:description" content="This function checks if the specified packages are installed,
 prompts the user to install missing packages, and loads all
 packages into the current session. In non-interactive sessions,
-installation is skipped with a warning."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+installation is skipped with a warning."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

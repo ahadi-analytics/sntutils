@@ -7,7 +7,19 @@ exists, set overwrite = TRUE to replace it. Otherwise an error is thrown."><meta
 using standardized naming. Supports atomic writes, optional pruning of older
 versioned files, and returns a structured summary.
 When filenames are not versioned (no date and no tag) and a file already
-exists, set overwrite = TRUE to replace it. Otherwise an error is thrown."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+exists, set overwrite = TRUE to replace it. Otherwise an error is thrown."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

@@ -3,7 +3,19 @@
 of adjacent non-outlier values. Useful for smoothing time series data where
 outliers should be replaced with locally consistent values rather than removed."><meta property="og:description" content="Replaces outlier values (those exceeding a threshold) with the moving average
 of adjacent non-outlier values. Useful for smoothing time series data where
-outliers should be replaced with locally consistent values rather than removed."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+outliers should be replaced with locally consistent values rather than removed."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

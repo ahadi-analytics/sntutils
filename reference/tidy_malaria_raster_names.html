@@ -11,7 +11,19 @@ function renames files on disk and is idempotent: re-running after a
 fresh download only touches newly-added files.
 This is the recommended first step after downloading malariaAtlas
 rasters to ensure downstream processing functions can correctly extract
-years from filenames."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+years from filenames."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

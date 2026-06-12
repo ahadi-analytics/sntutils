@@ -7,7 +7,19 @@ rates from existing data when multipliers are not provided."><meta property="og:
 to the nearest available year within each location group. Can handle multiple
 population columns simultaneously. Supports extending forward beyond the latest
 data or backward before the earliest data. Automatically calculates growth
-rates from existing data when multipliers are not provided."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+rates from existing data when multipliers are not provided."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

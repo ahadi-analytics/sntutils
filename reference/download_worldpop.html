@@ -3,7 +3,19 @@
 years. Automatically selects the appropriate dataset based on years:
 legacy (2000-2020) or R2025A (2015-2030)."><meta property="og:description" content="Downloads population raster files from WorldPop for specified countries and
 years. Automatically selects the appropriate dataset based on years:
-legacy (2000-2020) or R2025A (2015-2030)."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+legacy (2000-2020) or R2025A (2015-2030)."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

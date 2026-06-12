@@ -5,7 +5,19 @@ styling and color schemes. The function displays the variables of interest in
 both the title and subtitle for clarity."><meta property="og:description" content="Creates faceted maps of reporting rates (or missing rates) by administrative
 unit and time. Designed to complement reporting_rate_plot() with consistent
 styling and color schemes. The function displays the variables of interest in
-both the title and subtitle for clarity."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+both the title and subtitle for clarity."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

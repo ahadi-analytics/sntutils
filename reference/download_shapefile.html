@@ -7,7 +7,19 @@ and can filter for current boundaries or include historical boundaries."><meta p
 countries and administrative levels. The function supports incremental
 updates, downloading only missing data when appending to existing files. It
 automatically converts date fields from milliseconds to proper Date format
-and can filter for current boundaries or include historical boundaries."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+and can filter for current boundaries or include historical boundaries."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

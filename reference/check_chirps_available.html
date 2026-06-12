@@ -3,7 +3,19 @@
 for a given dataset (e.g., "africa_monthly"). Extracts year and month
 from filenames where possible.'><meta property="og:description" content='Scrapes the UCSB CHIRPS archive to list available .tif.gz raster files
 for a given dataset (e.g., "africa_monthly"). Extracts year and month
-from filenames where possible.'><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"></head><body>
+from filenames where possible.'><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 

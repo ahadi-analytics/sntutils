@@ -23,6 +23,19 @@
 <meta property="og:description" content="Scaffold an AHADI project structure, resolve standardised paths, translate plot labels with caching, hash records, compress images, and use the small numeric helpers that show up in every SNT script.
 ">
 <meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png">
+<script>
+  (function() {
+    try {
+      if (!localStorage.getItem('pkgdown-theme')) {
+        localStorage.setItem('pkgdown-theme', 'dark');
+      }
+      document.documentElement.dataset.bsTheme =
+        localStorage.getItem('pkgdown-theme');
+    } catch (e) {
+      document.documentElement.dataset.bsTheme = 'dark';
+    }
+  })();
+</script>
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
