@@ -744,6 +744,16 @@ testthat::test_that("download_worldpop_urbanicity: url construction is correct",
   )
 })
 
+testthat::test_that(".worldpop_dug_countries: lists ISO3 codes from server", {
+  skip_if_not_integration("WorldPop DUG listing integration test skipped.")
+
+  codes <- sntutils:::.worldpop_dug_countries(2020, "R2025A", "v1")
+
+  testthat::expect_true(all(grepl("^[A-Z]{3}$", codes)))
+  testthat::expect_true(all(c("DZA", "GIN", "NGA") %in% codes))
+  testthat::expect_gt(length(codes), 200)
+})
+
 testthat::test_that("download_worldpop_urbanicity: input validation works", {
   temp_dir <- setup_temp_dir()
   on.exit(unlink(temp_dir, recursive = TRUE))

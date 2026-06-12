@@ -1001,6 +1001,27 @@ get_worldpop_paths <- function(
   result
 }
 
+# internal helper: list ISO3 codes available in the DUG tree for a year
+# by scraping the server's directory listing (no mosaic product exists)
+#' @noRd
+.worldpop_dug_countries <- function(year, release, version) {
+  listing_url <- sprintf(
+    "https://data.worldpop.org/GIS/DUG/Global_2015_2030/%s/%s/%s/",
+    release, version, year
+  )
+  listing_html <- httr2::request(listing_url) |>
+    httr2::req_timeout(60) |>
+    httr2::req_retry(max_tries = 3, backoff = ~ 5) |>
+    httr2::req_perform() |>
+    httr2::resp_body_string()
+
+  matches <- regmatches(
+    listing_html,
+    gregexpr('href="[A-Z]{3}/"', listing_html)
+  )[[1]]
+  unique(substr(matches, 7, 9))
+}
+
 # internal helper to build worldpop DUG urbanicity url and filename
 #' @noRd
 .build_worldpop_urbanicity_url <- function(cc, year, layer, release, version) {
@@ -1028,6 +1049,10 @@ get_worldpop_paths <- function(
 #'
 #' @param country_codes Character vector of ISO3 country codes (e.g.,
 #'   "DZA", "GIN"). Case-insensitive; uppercased for URL building.
+#'   Pass `"GLOBAL"` to download every country available on the server.
+#'   Unlike other WorldPop products there is no worldwide DUG mosaic, so
+#'   `"GLOBAL"` expands to per-country rasters for all available
+#'   countries (~240 per year; files are small, roughly 50-500 KB each).
 #' @param years Numeric vector of years to download (2015-2030).
 #'   Default: 2015:2024 (full available historical range).
 #' @param layers Character vector. Subset of `c("L1", "L2")`.
@@ -1074,6 +1099,15 @@ get_worldpop_paths <- function(
 #'   layers = "L1",
 #'   dest_dir = here::here("data/worldpop/dug")
 #' )
+#'
+#' # Every available country for one year (no mosaic exists, so GLOBAL
+#' # expands to ~240 per-country rasters)
+#' download_worldpop_urbanicity(
+#'   country_codes = "GLOBAL",
+#'   years = 2020,
+#'   layers = "L1",
+#'   dest_dir = here::here("data/worldpop/dug")
+#' )
 #' }
 #' @export
 download_worldpop_urbanicity <- function(
@@ -1108,6 +1142,20 @@ download_worldpop_urbanicity <- function(
   }
 
   country_codes <- toupper(country_codes)
+
+  # GLOBAL: no worldwide DUG mosaic exists, so expand to every country
+  # available on the server for the first requested year
+  if ("GLOBAL" %in% country_codes) {
+    country_codes <- .worldpop_dug_countries(min(years), release, version)
+    if (!quiet) {
+      cli::cli_alert_warning(
+        paste0(
+          "No worldwide DUG mosaic exists; downloading all ",
+          "{length(country_codes)} available countries instead"
+        )
+      )
+    }
+  }
 
   if (!quiet) {
     cli::cli_alert_info(
