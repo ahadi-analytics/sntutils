@@ -683,6 +683,46 @@ testthat::test_that("age band: uses 't' total when sex='both' + yr>=2015 (cached
   testthat::expect_false(file.exists(f_fn))
 })
 
+testthat::test_that("age band: drops band files unless keep_band_files", {
+  testthat::skip_if_not(
+    requireNamespace("terra", quietly = TRUE),
+    "terra package not available"
+  )
+
+  stage_t_raster <- function(dir) {
+    r <- suppressWarnings(terra::rast(nrows = 2, ncols = 2, vals = 1))
+    t_fname <- file.path(dir, "gin_t_00_2020_CN_1km_UA_v1.tif")
+    suppressWarnings(terra::writeRaster(r, t_fname))
+    t_fname
+  }
+
+  # default: band file is deleted after the combined raster is written
+  drop_dir <- setup_temp_dir()
+  on.exit(unlink(drop_dir, recursive = TRUE), add = TRUE)
+  t_fname <- stage_t_raster(drop_dir)
+  download_worldpop_age_band(
+    "GIN", years = 2020, age_range = c(0, 0),
+    out_dir = drop_dir, quiet = TRUE
+  )
+  testthat::expect_true(
+    file.exists(file.path(drop_dir, "gin_total_00_00_2020.tif"))
+  )
+  testthat::expect_false(file.exists(t_fname))
+
+  # keep_band_files = TRUE: band file is retained
+  keep_dir <- setup_temp_dir()
+  on.exit(unlink(keep_dir, recursive = TRUE), add = TRUE)
+  t_fname_kept <- stage_t_raster(keep_dir)
+  download_worldpop_age_band(
+    "GIN", years = 2020, age_range = c(0, 0),
+    out_dir = keep_dir, quiet = TRUE, keep_band_files = TRUE
+  )
+  testthat::expect_true(
+    file.exists(file.path(keep_dir, "gin_total_00_00_2020.tif"))
+  )
+  testthat::expect_true(file.exists(t_fname_kept))
+})
+
 testthat::test_that("filename generation works correctly", {
   # test output filename generation
   country_code <- "TUN"

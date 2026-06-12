@@ -102,10 +102,12 @@
     todo <- which(!fetched & !not_on_server)
     if (length(todo) == 0) break
     if (attempt > 1) Sys.sleep(2)
-    ftp_results <- curl::multi_download(
+    # failures are handled via the success column; silence curl's own
+    # per-transfer warnings so retries do not spam the console
+    ftp_results <- suppressWarnings(curl::multi_download(
       ftp_urls[todo], part_paths[todo],
       resume = FALSE, progress = !quiet, timeout = 600
-    )
+    ))
     fetched[todo] <- ftp_results$success %in% TRUE &
       file.exists(part_paths[todo])
     # a 550 means the file is not on the server; retrying cannot help
@@ -566,6 +568,10 @@ download_worldpop <- function(
 #'   saved. Default: ".".
 #' @param quiet Logical; if TRUE, suppresses progress messages
 #'   (default: FALSE).
+#' @param keep_band_files Logical. If FALSE (default), the individual
+#'   per-band rasters downloaded to build each combined output are
+#'   deleted once the combined raster is written. Set TRUE to keep them,
+#'   e.g. for reuse across calls with overlapping age ranges.
 #'
 #' @details
 #' ## Data Source
@@ -656,7 +662,8 @@ download_worldpop_age_band <- function(
     resolution = "1km",
     release = "R2025A",
     out_dir = ".",
-    quiet = FALSE) {
+    quiet = FALSE,
+    keep_band_files = FALSE) {
 
   sex <- match.arg(sex, choices = c("both", "m", "f"))
   resolution <- match.arg(resolution, choices = c("1km", "100m"))
@@ -713,9 +720,10 @@ download_worldpop_age_band <- function(
     character(1)
   )
 
+  # dedupe so no two combos can ever share (and delete) band files
   combos <- expand.grid(
-    country_code = country_codes,
-    year = years,
+    country_code = unique(country_codes),
+    year = unique(years),
     stringsAsFactors = FALSE
   )
 
@@ -854,13 +862,22 @@ download_worldpop_age_band <- function(
     acc <- NULL
     for (band_file in plan_files[[i]]$dests) {
       band_raster <- suppressWarnings(terra::rast(band_file))
-      acc <- if (is.null(acc)) band_raster else acc + band_raster
+      acc <- if (is.null(acc)) {
+        band_raster
+      } else {
+        suppressWarnings(acc + band_raster)
+      }
     }
 
     suppressWarnings(
       terra::writeRaster(acc, plan$out_fname, overwrite = TRUE)
     )
     if (!quiet) cli::cli_alert_success("Written: {basename(plan$out_fname)}")
+
+    # drop the per-band inputs now that the combined raster is written
+    if (!keep_band_files) {
+      unlink(plan_files[[i]]$dests)
+    }
   }
 }
 
