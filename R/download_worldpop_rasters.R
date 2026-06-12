@@ -70,6 +70,44 @@
   return(list(url = url, filename = local_fn))
 }
 
+# internal helper: download many urls to dests concurrently. skips files
+# that already exist, writes to a .part file and renames on success so an
+# interrupted download never leaves a corrupt raster behind. returns a
+# logical vector, TRUE where the file is present after the call.
+# requires httr2 >= 1.1.0 so req_retry() is honoured in parallel.
+#' @noRd
+.worldpop_fetch <- function(urls, dests, quiet = FALSE, max_active = 6) {
+  missing_idx <- which(!file.exists(dests))
+  if (length(missing_idx) == 0) {
+    return(rep(TRUE, length(dests)))
+  }
+
+  part_paths <- paste0(dests[missing_idx], ".part")
+  requests <- lapply(urls[missing_idx], function(url) {
+    httr2::request(url) |>
+      httr2::req_timeout(600) |>
+      httr2::req_retry(max_tries = 3, backoff = ~ 5)
+  })
+
+  responses <- httr2::req_perform_parallel(
+    requests,
+    paths = part_paths,
+    max_active = max_active,
+    on_error = "continue",
+    progress = !quiet
+  )
+
+  fetched <- vapply(
+    responses,
+    function(response) inherits(response, "httr2_response"),
+    logical(1)
+  )
+  file.rename(part_paths[fetched], dests[missing_idx][fetched])
+  unlink(part_paths[!fetched])
+
+  file.exists(dests)
+}
+
 #' Download Population Rasters from WorldPop
 #'
 #' Downloads population raster files from WorldPop for specified countries and
@@ -256,8 +294,9 @@ download_worldpop <- function(
     }
   }
 
+  downloaded_files <- unlist(all_results)
   invisible(list(
-    files = unlist(all_results),
+    files = downloaded_files[!is.na(downloaded_files)],
     counts = counts
   ))
 }
@@ -272,34 +311,33 @@ download_worldpop <- function(
     stringsAsFactors = FALSE
   )
 
-  results <- mapply(
-    function(cc, yr) {
-      url_info <- .build_worldpop_url(cc, yr, type, dataset, resolution)
-      fn <- url_info$filename
-      url <- url_info$url
-
-      dest <- file.path(dest_dir, fn)
-      if (file.exists(dest)) {
-        if (!quiet) cli::cli_alert_info("Exists: {fn}")
-        return(dest)
-      }
-
-      httr2::request(url) |>
-        httr2::req_timeout(600) |>
-        httr2::req_retry(max_tries = 3, backoff = ~ 5) |>
-        httr2::req_progress() |>
-        httr2::req_perform(path = dest)
-      dest
-    },
+  url_infos <- Map(
+    function(cc, yr) .build_worldpop_url(cc, yr, type, dataset, resolution),
     params$country,
-    params$year,
-    USE.NAMES = FALSE
+    params$year
+  )
+  urls <- vapply(url_infos, function(info) info$url, character(1))
+  dests <- file.path(
+    dest_dir,
+    vapply(url_infos, function(info) info$filename, character(1))
   )
 
-  success <- !is.na(results) & file.exists(results)
+  cached <- file.exists(dests)
+  if (!quiet && any(cached)) {
+    cli::cli_alert_info("Exists: {.file {basename(dests[cached])}}")
+  }
+
+  success <- .worldpop_fetch(urls, dests, quiet)
+  if (any(!success)) {
+    n_failed <- sum(!success)
+    cli::cli_alert_warning(paste0(
+      "Failed to download {n_failed} file{?s}: ",
+      "{.file {basename(dests[!success])}}"
+    ))
+  }
   params$success <- success
 
-  list(results = results, params = params)
+  list(results = ifelse(success, dests, NA_character_), params = params)
 }
 
 # internal helper to build worldpop age-band URL and local filename
@@ -399,64 +437,68 @@ download_worldpop <- function(
   list(url = url, filename = local_fn)
 }
 
-# internal helper: download age-band rasters for one (cc, yr) and sum across
-# bands * sexes. Returns a SpatRaster, or NULL when soft_fail = TRUE and any
-# download errors (used so the caller can transparently fall back to per-sex
-# 'm + f' when the 't' total variant is missing for a given country/year).
+# internal helper: build urls + dests for one (cc, yr) combo's band files
+# across bands * sexes
 #' @noRd
-.download_age_bands <- function(
-    cc, yr, matching_bands, sexes, resolution, release,
-    out_dir, quiet, soft_fail = FALSE) {
+.age_band_file_set <- function(
+    cc, yr, matching_bands, sexes, resolution, release, out_dir) {
 
-  acc <- NULL
-  for (band_code in matching_bands$code) {
-    for (sx in sexes) {
-      url_info <- .build_worldpop_age_band_url(
-        cc, sx, band_code, yr, resolution, release
+  combos <- expand.grid(
+    code = matching_bands$code,
+    sex = sexes,
+    stringsAsFactors = FALSE
+  )
+  url_infos <- Map(
+    function(band_code, sx) {
+      .build_worldpop_age_band_url(cc, sx, band_code, yr, resolution, release)
+    },
+    combos$code,
+    combos$sex
+  )
+
+  list(
+    urls = vapply(url_infos, function(info) info$url, character(1)),
+    dests = file.path(
+      out_dir,
+      vapply(url_infos, function(info) info$filename, character(1))
+    )
+  )
+}
+
+# internal helper: fetch every combo's band files in one parallel batch.
+# repairs corrupt cached files first so they are re-downloaded. returns a
+# logical per combo, TRUE when all of that combo's files are present.
+#' @noRd
+.fetch_age_band_files <- function(plan_files, quiet) {
+  all_urls <- unlist(lapply(plan_files, function(file_set) file_set$urls))
+  all_dests <- unlist(lapply(plan_files, function(file_set) file_set$dests))
+
+  # repair cached files if corrupt
+  for (cached_file in unique(all_dests[file.exists(all_dests)])) {
+    valid <- tryCatch(
+      { suppressWarnings(terra::rast(cached_file)); TRUE },
+      error = function(e) FALSE
+    )
+    if (!valid) {
+      cli::cli_alert_warning(
+        "Corrupt file {basename(cached_file)}, re-downloading"
       )
-      temp_fname <- file.path(out_dir, url_info$filename)
-
-      # repair cached file if corrupt
-      if (file.exists(temp_fname)) {
-        valid <- tryCatch(
-          { suppressWarnings(terra::rast(temp_fname)); TRUE },
-          error = function(e) FALSE
-        )
-        if (!valid) {
-          cli::cli_alert_warning(
-            "Corrupt file {basename(temp_fname)}, re-downloading"
-          )
-          unlink(temp_fname)
-        }
-      }
-
-      if (!file.exists(temp_fname)) {
-        if (!quiet) cli::cli_alert_info(
-          "Downloading {sx} band {band_code} for {cc}, {yr}"
-        )
-        ok <- tryCatch(
-          {
-            httr2::request(url_info$url) |>
-              httr2::req_timeout(600) |>
-              httr2::req_retry(max_tries = 3, backoff = ~ 5) |>
-              httr2::req_perform(path = temp_fname)
-            TRUE
-          },
-          error = function(e) {
-            if (file.exists(temp_fname)) unlink(temp_fname)
-            if (soft_fail) FALSE else stop(e)
-          }
-        )
-        if (!ok) return(NULL)
-      } else if (!quiet) {
-        cli::cli_alert_info("Using cached file {basename(temp_fname)}")
-      }
-
-      r <- suppressWarnings(terra::rast(temp_fname))
-      acc <- if (is.null(acc)) r else acc + r
+      unlink(cached_file)
     }
   }
-  acc
+
+  # dedupe so the same file is never fetched twice concurrently
+  unique_idx <- !duplicated(all_dests)
+  success <- .worldpop_fetch(
+    all_urls[unique_idx], all_dests[unique_idx], quiet
+  )
+  ok_by_dest <- stats::setNames(success, all_dests[unique_idx])
+
+  vapply(
+    plan_files,
+    function(file_set) all(ok_by_dest[file_set$dests]),
+    logical(1)
+  )
 }
 
 #' Download WorldPop Population Raster Data for Specific Age Bands
@@ -643,6 +685,8 @@ download_worldpop_age_band <- function(
     stringsAsFactors = FALSE
   )
 
+  # planning pass: work out bands, output file, and variant per combo
+  plans <- list()
   for (i in seq_len(nrow(combos))) {
     cc <- combos$country_code[i]
     yr <- combos$year[i]
@@ -716,35 +760,73 @@ download_worldpop_age_band <- function(
       next
     }
 
-    # try 't' (total) variant first when both sexes wanted and r2024b/r2025a
-    # applies — halves downloads and skips the local m+f sum
-    acc <- NULL
-    if (sex == "both" && yr >= 2015) {
-      acc <- .download_age_bands(
-        cc, yr, matching_bands, "t", resolution, release,
-        out_dir, quiet, soft_fail = TRUE
-      )
-      if (is.null(acc) && !quiet) {
-        cli::cli_alert_warning(
-          paste0(
-            "Total ('t') variant unavailable for {cc} {yr}; ",
-            "falling back to m+f"
-          )
-        )
+    plans[[length(plans) + 1]] <- list(
+      cc = cc, yr = yr, out_fname = out_fname,
+      matching_bands = matching_bands,
+      use_total = sex == "both" && yr >= 2015
+    )
+  }
+
+  if (length(plans) == 0) {
+    return(invisible(NULL))
+  }
+
+  sex_set <- if (sex == "both") c("m", "f") else sex
+
+  # round 1: fetch all combos' files in one parallel batch. eligible combos
+  # try the 't' (total) variant first — halves downloads and skips the
+  # local m+f sum
+  plan_files <- lapply(plans, function(plan) {
+    plan_sexes <- if (plan$use_total) "t" else sex_set
+    .age_band_file_set(
+      plan$cc, plan$yr, plan$matching_bands, plan_sexes,
+      resolution, release, out_dir
+    )
+  })
+  fetched <- .fetch_age_band_files(plan_files, quiet)
+
+  # round 2: fall back to m+f where the 't' variant is unavailable
+  retry_idx <- which(
+    vapply(plans, function(plan) plan$use_total, logical(1)) & !fetched
+  )
+  if (length(retry_idx) > 0) {
+    for (i in retry_idx) {
+      if (!quiet) {
+        cli::cli_alert_warning(paste0(
+          "Total ('t') variant unavailable for {plans[[i]]$cc} ",
+          "{plans[[i]]$yr}; falling back to m+f"
+        ))
       }
     }
-
-    # fall back to per-sex downloads if 't' was not tried or was unavailable
-    if (is.null(acc)) {
-      sex_set <- if (sex == "both") c("m", "f") else sex
-      acc <- .download_age_bands(
-        cc, yr, matching_bands, sex_set, resolution, release,
-        out_dir, quiet
+    plan_files[retry_idx] <- lapply(plans[retry_idx], function(plan) {
+      .age_band_file_set(
+        plan$cc, plan$yr, plan$matching_bands, sex_set,
+        resolution, release, out_dir
       )
+    })
+    fetched[retry_idx] <- .fetch_age_band_files(plan_files[retry_idx], quiet)
+  }
+
+  # assemble: sum each combo's band files locally and write its output
+  for (i in seq_along(plans)) {
+    plan <- plans[[i]]
+    if (!fetched[i]) {
+      cli::cli_alert_danger(
+        "Failed to download age-band files for {plan$cc}, {plan$yr}; skipping"
+      )
+      next
     }
 
-    suppressWarnings(terra::writeRaster(acc, out_fname, overwrite = TRUE))
-    if (!quiet) cli::cli_alert_success("Written: {basename(out_fname)}")
+    acc <- NULL
+    for (band_file in plan_files[[i]]$dests) {
+      band_raster <- suppressWarnings(terra::rast(band_file))
+      acc <- if (is.null(acc)) band_raster else acc + band_raster
+    }
+
+    suppressWarnings(
+      terra::writeRaster(acc, plan$out_fname, overwrite = TRUE)
+    )
+    if (!quiet) cli::cli_alert_success("Written: {basename(plan$out_fname)}")
   }
 }
 
@@ -1042,41 +1124,31 @@ download_worldpop_urbanicity <- function(
     layer = layers
   )
 
-  results <- purrr::pmap_chr(jobs, function(iso3, year, layer) {
-    url_info <- .build_worldpop_urbanicity_url(
-      iso3, year, layer, release, version
-    )
-    dest <- file.path(dest_dir, url_info$filename)
-
-    if (file.exists(dest)) {
-      if (!quiet) cli::cli_alert_info("Exists: {url_info$filename}")
-      return(dest)
-    }
-
-    if (!quiet) {
-      cli::cli_alert_info("Downloading {iso3} DUG {year} {layer}")
-    }
-
-    tryCatch(
-      {
-        httr2::request(url_info$url) |>
-          httr2::req_timeout(600) |>
-          httr2::req_retry(max_tries = 3, backoff = ~ 5) |>
-          httr2::req_progress() |>
-          httr2::req_perform(path = dest)
-        dest
-      },
-      error = function(e) {
-        if (file.exists(dest)) unlink(dest)
-        cli::cli_alert_warning(
-          "Failed to download {iso3} DUG {year} {layer}: {conditionMessage(e)}"
-        )
-        NA_character_
-      }
-    )
+  url_infos <- purrr::pmap(jobs, function(iso3, year, layer) {
+    .build_worldpop_urbanicity_url(iso3, year, layer, release, version)
   })
+  urls <- vapply(url_infos, function(info) info$url, character(1))
+  dests <- file.path(
+    dest_dir,
+    vapply(url_infos, function(info) info$filename, character(1))
+  )
 
-  jobs$success <- !is.na(results) & file.exists(results)
+  cached <- file.exists(dests)
+  if (!quiet && any(cached)) {
+    cli::cli_alert_info("Exists: {.file {basename(dests[cached])}}")
+  }
+
+  success <- .worldpop_fetch(urls, dests, quiet)
+  if (any(!success)) {
+    n_failed <- sum(!success)
+    cli::cli_alert_warning(paste0(
+      "Failed to download {n_failed} DUG file{?s}: ",
+      "{.file {basename(dests[!success])}}"
+    ))
+  }
+  results <- ifelse(success, dests, NA_character_)
+
+  jobs$success <- success
   counts <- tapply(jobs$success, jobs$iso3, sum)
 
   if (!quiet) {
