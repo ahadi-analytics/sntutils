@@ -18,23 +18,38 @@ on:
       - 'LICENSE'
       - '.gitignore'
       - '.Rbuildignore'
+  schedule:
+    # weekly full-matrix run (Sunday 06:00 UTC) to catch platform drift
+    - cron: '0 6 * * 0'
+  workflow_dispatch:
 
 name: R-CMD-check.yaml
 
 permissions: read-all
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   R-CMD-check:
     runs-on: ${{ matrix.config.os }}
 
+    # skip draft PRs; everything else runs
+    if: ${{ !github.event.pull_request.draft }}
+
     name: ${{ matrix.config.os }} (${{ matrix.config.r }})
 
+    timeout-minutes: 45
+
     strategy:
-      fail-fast: false
+      # PRs: stop the matrix on first failure to save minutes.
+      # Push/schedule: keep going so we see every platform's result.
+      fail-fast: ${{ github.event_name == 'pull_request' }}
       matrix:
-        config:
-          - {os: ubuntu-latest,  r: 'release'}
-          - {os: windows-latest, r: 'release'}
+        # PRs run Linux only (cheap). Push to master + weekly schedule run the
+        # full Linux + Windows matrix. Windows costs ~2x Linux per minute.
+        config: ${{ fromJSON(github.event_name == 'pull_request' && '[{"os":"ubuntu-latest","r":"release"}]' || '[{"os":"ubuntu-latest","r":"release"},{"os":"windows-latest","r":"release"}]') }}
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}

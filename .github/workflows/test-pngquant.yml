@@ -7,10 +7,15 @@ on:
       - ".github/workflows/test-pngquant.yml"
       - "R/compress_png.R"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pngquant-test:
     name: ubuntu | pngquant test (repo functions)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
 
     steps:
       - name: Checkout

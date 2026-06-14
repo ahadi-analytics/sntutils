@@ -1,10 +1,18 @@
 # Workflow derived from https://github.com/r-lib/actions/tree/v2/examples
-# Builds the pkgdown site on every push to master and on tags / manual
-# dispatch, then deploys to GitHub Pages on master.
+# Builds the pkgdown site on push to master, on tagged releases, and on
+# manual dispatch, then deploys to GitHub Pages. PRs do not build the site
+# (no preview deploy, so any PR build is pure waste).
 on:
   push:
     branches: [main, master]
-  pull_request:
+    paths:
+      - 'R/**'
+      - 'vignettes/**'
+      - '_pkgdown.yml'
+      - '_pkgdown.yaml'
+      - 'DESCRIPTION'
+      - 'README.md'
+      - '.github/workflows/pkgdown.yaml'
   release:
     types: [published]
   workflow_dispatch:
@@ -13,12 +21,14 @@ name: pkgdown.yaml
 
 permissions: read-all
 
+concurrency:
+  group: pkgdown-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   pkgdown:
     runs-on: ubuntu-latest
-    # only restrict concurrency for non-PR jobs
-    concurrency:
-      group: pkgdown-${{ github.event_name != 'pull_request' || github.run_id }}
+    timeout-minutes: 30
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
     permissions:
@@ -48,7 +58,6 @@ jobs:
         shell: Rscript {0}
 
       - name: Deploy to GitHub pages
-        if: github.event_name != 'pull_request'
         uses: JamesIves/github-pages-deploy-action@v4.5.0
         with:
           clean: false
