@@ -26,15 +26,23 @@ S: second
     // light between 06:00 and 18:00 local time, dark otherwise
     var hour = new Date().getHours();
     var timeOfDay = (hour >= 6 && hour < 18) ? 'light' : 'dark';
-    try {
-      if (!localStorage.getItem('pkgdown-theme')) {
-        localStorage.setItem('pkgdown-theme', timeOfDay);
-      }
-      document.documentElement.dataset.bsTheme =
-        localStorage.getItem('pkgdown-theme');
-    } catch (e) {
-      document.documentElement.dataset.bsTheme = timeOfDay;
-    }
+    var ls;
+    try { ls = window.localStorage; } catch (e) { ls = null; }
+    var userSet = ls && ls.getItem('pkgdown-theme-source') === 'user';
+    var stored = ls && ls.getItem('pkgdown-theme');
+    var theme = (userSet && stored) ? stored : timeOfDay;
+    if (ls && !userSet) ls.setItem('pkgdown-theme', timeOfDay);
+    document.documentElement.dataset.bsTheme = theme;
+    // any later change to data-bs-theme (via pkgdown's lightswitch)
+    // is an explicit user choice — remember it for next visit
+    new MutationObserver(function() {
+      var current = document.documentElement.dataset.bsTheme;
+      if (!current || !ls) return;
+      ls.setItem('pkgdown-theme', current);
+      ls.setItem('pkgdown-theme-source', 'user');
+    }).observe(document.documentElement, {
+      attributes: true, attributeFilter: ['data-bs-theme']
+    });
   })();
 </script></head><body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
