@@ -9,14 +9,17 @@ population columns simultaneously. Supports extending forward beyond the latest
 data or backward before the earliest data. Automatically calculates growth
 rates from existing data when multipliers are not provided."><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
   (function() {
+    // light between 06:00 and 18:00 local time, dark otherwise
+    var hour = new Date().getHours();
+    var timeOfDay = (hour >= 6 && hour < 18) ? 'light' : 'dark';
     try {
       if (!localStorage.getItem('pkgdown-theme')) {
-        localStorage.setItem('pkgdown-theme', 'dark');
+        localStorage.setItem('pkgdown-theme', timeOfDay);
       }
       document.documentElement.dataset.bsTheme =
         localStorage.getItem('pkgdown-theme');
     } catch (e) {
-      document.documentElement.dataset.bsTheme = 'dark';
+      document.documentElement.dataset.bsTheme = timeOfDay;
     }
   })();
 </script></head><body>

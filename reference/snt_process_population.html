@@ -9,14 +9,17 @@ bilingual (EN + optional FR) data dictionary, and a record of which
 admin levels were found. By default, column types are first inferred
 via auto_parse_types() with apply = TRUE and return = "data".'><meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png"><script>
   (function() {
+    // light between 06:00 and 18:00 local time, dark otherwise
+    var hour = new Date().getHours();
+    var timeOfDay = (hour >= 6 && hour < 18) ? 'light' : 'dark';
     try {
       if (!localStorage.getItem('pkgdown-theme')) {
-        localStorage.setItem('pkgdown-theme', 'dark');
+        localStorage.setItem('pkgdown-theme', timeOfDay);
       }
       document.documentElement.dataset.bsTheme =
         localStorage.getItem('pkgdown-theme');
     } catch (e) {
-      document.documentElement.dataset.bsTheme = 'dark';
+      document.documentElement.dataset.bsTheme = timeOfDay;
     }
   })();
 </script></head><body>
