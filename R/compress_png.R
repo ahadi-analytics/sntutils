@@ -76,13 +76,28 @@ ensure_pngquant <- function(verbosity = FALSE) {
       cli::cli_alert_info("downloading pngquant (windows zip)...")
     }
 
-    utils::download.file(
-      url = zip_url,
-      destfile = zip_file,
-      mode = "wb",
-      quiet = !verbosity
+    # bail out gracefully if the download (or unzip) fails — e.g. on CI
+    # runners with no network access. callers treat NULL as "unavailable".
+    dl_ok <- tryCatch(
+      {
+        utils::download.file(
+          url = zip_url,
+          destfile = zip_file,
+          mode = "wb",
+          quiet = !verbosity
+        )
+        utils::unzip(zip_file, exdir = tools_dir)
+        TRUE
+      },
+      error = function(e) FALSE,
+      warning = function(w) FALSE
     )
-    utils::unzip(zip_file, exdir = tools_dir)
+    if (!isTRUE(dl_ok)) {
+      if (verbosity) {
+        cli::cli_alert_warning("could not download pngquant zip.")
+      }
+      return(NULL)
+    }
 
     cand <- list.files(
       tools_dir,

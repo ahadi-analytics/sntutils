@@ -23,3 +23,5 @@ agents.config.json
 ^_pkgdown\.yml$
 ^pkgdown$
 ^docs$
+^ahadi_security_audit\.xlsx$
+^~\$.*\.xlsx$

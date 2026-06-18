@@ -18,3 +18,6 @@ docs/
 
 /.quarto/
 **/*.quarto_ipynb
+
+# Office lock files
+~$*
