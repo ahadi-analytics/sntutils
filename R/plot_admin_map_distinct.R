@@ -71,9 +71,23 @@ plot_admin_map_distinct <- function(
   shp <- sf::st_zm(shp, drop = TRUE, what = "ZM")
 
   # ---- dissolve adm2 to grouped units (adm1) ----
-  groups <- shp |>
-    dplyr::group_by(.data[[group_col]]) |>
-    dplyr::summarise(geometry = sf::st_union(geometry), .groups = "drop")
+  # Run the union under planar GEOS because some upstream pipelines hand
+  # us polygons that are GEOS-valid but s2-invalid (edges that just barely
+  # fail to snap on the sphere). Re-enable s2 and make_valid afterward so
+  # the rest of the function (st_touches, st_point_on_surface) sees clean
+  # geometries.
+  s2_was_on <- sf::sf_use_s2()
+  suppressMessages(sf::sf_use_s2(FALSE))
+  on.exit(suppressMessages(sf::sf_use_s2(s2_was_on)), add = TRUE)
+  groups <- suppressWarnings(suppressMessages(
+    shp |>
+      dplyr::group_by(.data[[group_col]]) |>
+      dplyr::summarise(geometry = sf::st_union(geometry), .groups = "drop")
+  ))
+  suppressMessages(sf::sf_use_s2(s2_was_on))
+  if (isTRUE(s2_was_on) && base::any(!sf::st_is_valid(groups))) {
+    groups <- suppressWarnings(suppressMessages(sf::st_make_valid(groups)))
+  }
 
   n_groups <- nrow(groups)
   n_pal <- length(palette)
