@@ -953,6 +953,28 @@ validate_process_spatial <- function(
     }
   }))
 
+  # All unions above ran under planar GEOS (sf_use_s2 = FALSE), so the layers
+  # are only GEOS-valid. Downstream consumers (st_union, st_intersection, etc.)
+  # default to s2 = TRUE and trip on edges that GEOS accepts but s2 rejects.
+  # Restore s2 and re-validate so the returned layers satisfy both engines.
+  suppressMessages(sf::sf_use_s2(s2_was_on))
+  if (isTRUE(s2_was_on)) {
+    for (level_name in names(spat_vec)) {
+      layer <- spat_vec[[level_name]]
+      invalid <- suppressWarnings(suppressMessages(
+        base::any(!sf::st_is_valid(layer))
+      ))
+      if (invalid) {
+        layer <- suppressWarnings(suppressMessages(sf::st_make_valid(layer)))
+        layer$geometry_hash <- sntutils::vdigest(
+          layer$geometry,
+          algo = "xxhash64"
+        )
+        spat_vec[[level_name]] <- layer
+      }
+    }
+  }
+
   if (!quiet) {
     cli::cli_progress_done()
   }
