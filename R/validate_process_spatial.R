@@ -850,10 +850,12 @@ validate_process_spatial <- function(
     cli::cli_progress_step("Creating admin level aggregations...")
   }
 
-  # Temporarily disable s2 to avoid edge-crossing errors in st_union
-  s2_was_on <- sf::sf_use_s2()
-  suppressMessages(sf::sf_use_s2(FALSE))
-  on.exit(suppressMessages(sf::sf_use_s2(s2_was_on)), add = TRUE)
+  # Run unions under s2 (the sf default). The previous "disable s2 to avoid
+  # edge-crossing errors" workaround produced GEOS-valid but s2-invalid output
+  # that broke every downstream consumer using s2 (plot_admin_map_distinct,
+  # ggplot's coord_sf, etc.). If a real polygon trips s2 here, fail at the
+  # source so the caller can fix the input rather than silently hand off
+  # broken geometries.
 
   spat_vec <- list()
 
@@ -874,103 +876,66 @@ validate_process_spatial <- function(
   spat_vec[[base_level_name]] <- shp
 
   # Create higher-level aggregations
-  # Suppress planar geometry messages and warnings (expected when s2 is off)
-  suppressWarnings(suppressMessages({
-    for (level in (highest_level - 1):0) {
-      level_name <- paste0("adm", level)
+  for (level in (highest_level - 1):0) {
+    level_name <- paste0("adm", level)
 
-      if (level_name %in% names(admin_mapping)) {
-        # Get grouping columns
-        group_cols <- paste0("adm", 0:level)
-        group_cols <- group_cols[group_cols %in% names(shp)]
+    if (level_name %in% names(admin_mapping)) {
+      # Get grouping columns
+      group_cols <- paste0("adm", 0:level)
+      group_cols <- group_cols[group_cols %in% names(shp)]
 
-        if (length(group_cols) > 0) {
-          # Get corresponding GUID columns
-          guid_cols <- paste0(group_cols, "_guid")
-          guid_cols <- guid_cols[guid_cols %in% names(shp)]
+      if (length(group_cols) > 0) {
+        # Get corresponding GUID columns
+        guid_cols <- paste0(group_cols, "_guid")
+        guid_cols <- guid_cols[guid_cols %in% names(shp)]
 
-          # Include country codes in grouping (iso3, iso2, dhs)
-          country_cols <- c("iso3_code", "iso2_code", "dhs_code")
-          country_cols <- country_cols[country_cols %in% names(shp)]
+        # Include country codes in grouping (iso3, iso2, dhs)
+        country_cols <- c("iso3_code", "iso2_code", "dhs_code")
+        country_cols <- country_cols[country_cols %in% names(shp)]
 
-          # Create aggregation
-          all_group_cols <- c(country_cols, group_cols, guid_cols)
+        # Create aggregation
+        all_group_cols <- c(country_cols, group_cols, guid_cols)
 
-          # Ensure geometries are valid before aggregation
-          shp_valid <- shp
-          if (any(!sf::st_is_valid(shp_valid))) {
-            shp_valid <- sf::st_make_valid(shp_valid)
-          }
+        # Ensure geometries are valid before aggregation
+        shp_valid <- shp
+        if (any(!sf::st_is_valid(shp_valid))) {
+          shp_valid <- sf::st_make_valid(shp_valid)
+        }
 
-          agg_shp <- shp_valid |>
-            dplyr::group_by(dplyr::across(dplyr::all_of(all_group_cols))) |>
-            dplyr::summarise(
-              geometry = sf::st_union(geometry),
-              .groups = "drop"
-            )
+        agg_shp <- shp_valid |>
+          dplyr::group_by(dplyr::across(dplyr::all_of(all_group_cols))) |>
+          dplyr::summarise(
+            geometry = sf::st_union(geometry),
+            .groups = "drop"
+          ) |>
+          dplyr::mutate(
+            geometry_hash = sntutils::vdigest(geometry, algo = "xxhash64")
+          )
 
-          # clean aggregated geometries
-          if (any(!sf::st_is_valid(agg_shp))) {
-            agg_shp <- sf::st_make_valid(agg_shp)
-          }
-
-          # Note: Do NOT remove holes from aggregated geometries. Even though
-          # st_remove_holes() preserves outer boundaries, it changes the total
-          # vertex count, causing misalignment with the union of base features.
-
-          # recompute geometry hash after cleaning
-          agg_shp <- agg_shp |>
-            dplyr::mutate(
-              geometry_hash = sntutils::vdigest(geometry, algo = "xxhash64")
-            )
-
-          # Ensure proper column ordering: iso3, iso2, dhs first
-          level_admin_cols <- c()
-          for (admin_level in paste0("adm", 0:level)) {
-            if (admin_level %in% names(agg_shp)) {
-              level_admin_cols <- c(level_admin_cols, admin_level)
-              guid_col <- paste0(admin_level, "_guid")
-              if (guid_col %in% names(agg_shp)) {
-                level_admin_cols <- c(level_admin_cols, guid_col)
-              }
+        # Ensure proper column ordering: iso3, iso2, dhs first
+        level_admin_cols <- c()
+        for (admin_level in paste0("adm", 0:level)) {
+          if (admin_level %in% names(agg_shp)) {
+            level_admin_cols <- c(level_admin_cols, admin_level)
+            guid_col <- paste0(admin_level, "_guid")
+            if (guid_col %in% names(agg_shp)) {
+              level_admin_cols <- c(level_admin_cols, guid_col)
             }
           }
-
-          agg_shp <- agg_shp |>
-            dplyr::select(
-              dplyr::any_of(c("iso3_code", "iso2_code", "dhs_code")),
-              dplyr::any_of(level_admin_cols),
-              geometry_hash,
-              geometry
-            ) |>
-            sf::st_sf() |>
-            # Enforce target CRS — st_union() can silently drop or alter CRS
-            sf::st_transform(geometry_crs)
-
-          spat_vec[[level_name]] <- agg_shp
         }
-      }
-    }
-  }))
 
-  # All unions above ran under planar GEOS (sf_use_s2 = FALSE), so the layers
-  # are only GEOS-valid. Downstream consumers (st_union, st_intersection, etc.)
-  # default to s2 = TRUE and trip on edges that GEOS accepts but s2 rejects.
-  # Restore s2 and re-validate so the returned layers satisfy both engines.
-  suppressMessages(sf::sf_use_s2(s2_was_on))
-  if (isTRUE(s2_was_on)) {
-    for (level_name in names(spat_vec)) {
-      layer <- spat_vec[[level_name]]
-      invalid <- suppressWarnings(suppressMessages(
-        base::any(!sf::st_is_valid(layer))
-      ))
-      if (invalid) {
-        layer <- suppressWarnings(suppressMessages(sf::st_make_valid(layer)))
-        layer$geometry_hash <- sntutils::vdigest(
-          layer$geometry,
-          algo = "xxhash64"
-        )
-        spat_vec[[level_name]] <- layer
+        agg_shp <- agg_shp |>
+          dplyr::select(
+            dplyr::any_of(c("iso3_code", "iso2_code", "dhs_code")),
+            dplyr::any_of(level_admin_cols),
+            geometry_hash,
+            geometry
+          ) |>
+          sf::st_sf() |>
+          # Enforce target CRS — st_union() can silently drop or alter CRS
+          sf::st_transform(geometry_crs)
+
+        spat_vec[[level_name]] <- agg_shp
       }
     }
   }
