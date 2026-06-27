@@ -66,11 +66,11 @@ function (or a small family of functions) at each step:
 |----|----|----|
 | 1\. Project setup | Create the AHADI folder skeleton, get standard paths | [`initialize_project_structure()`](https://ahadi-analytics.github.io/sntutils/reference/initialize_project_structure.md), [`setup_project_paths()`](https://ahadi-analytics.github.io/sntutils/reference/setup_project_paths.md) |
 | 2\. Ingest | Read CSV / Excel / Stata / RDS / shapefile inputs | [`read()`](https://ahadi-analytics.github.io/sntutils/reference/read.md), [`read_snt_data()`](https://ahadi-analytics.github.io/sntutils/reference/read_snt_data.md) |
-| 3\. Clean | Parse dates, infer types, standardise admin names | [`autoparse_dates()`](https://ahadi-analytics.github.io/sntutils/reference/autoparse_dates.md), [`auto_parse_types()`](https://ahadi-analytics.github.io/sntutils/reference/auto_parse_types.md), [`standardize_names()`](https://ahadi-analytics.github.io/sntutils/reference/standardize_names.md), [`prep_geonames()`](https://ahadi-analytics.github.io/sntutils/reference/prep_geonames.md) |
+| 3\. Clean | Parse dates, infer types, standardise admin names, rename DHIS2 columns, match facilities | [`autoparse_dates()`](https://ahadi-analytics.github.io/sntutils/reference/autoparse_dates.md), [`auto_parse_types()`](https://ahadi-analytics.github.io/sntutils/reference/auto_parse_types.md), [`standardize_names()`](https://ahadi-analytics.github.io/sntutils/reference/standardize_names.md), [`prep_geonames()`](https://ahadi-analytics.github.io/sntutils/reference/prep_geonames.md), [`dhis2_map()`](https://ahadi-analytics.github.io/sntutils/reference/dhis2_map.md), [`fuzzy_match_facilities()`](https://ahadi-analytics.github.io/sntutils/reference/fuzzy_match_facilities.md) |
 | 4\. Validate | Check facility coordinates and admin geometries | [`validate_process_coordinates()`](https://ahadi-analytics.github.io/sntutils/reference/validate_process_coordinates.md), [`validate_process_spatial()`](https://ahadi-analytics.github.io/sntutils/reference/validate_process_spatial.md) |
 | 5\. Analyse | Reporting rates, consistency, outliers | [`calculate_reporting_metrics()`](https://ahadi-analytics.github.io/sntutils/reference/calculate_reporting_metrics.md), [`consistency_check()`](https://ahadi-analytics.github.io/sntutils/reference/consistency_check.md), [`detect_outliers()`](https://ahadi-analytics.github.io/sntutils/reference/detect_outliers.md) |
 | 6\. Enrich | Pull climate / population / DHS, extract to admin units | [`download_chirps()`](https://ahadi-analytics.github.io/sntutils/reference/download_chirps.md), [`download_era5()`](https://ahadi-analytics.github.io/sntutils/reference/download_era5.md), [`download_worldpop()`](https://ahadi-analytics.github.io/sntutils/reference/download_worldpop.md), [`process_raster_collection()`](https://ahadi-analytics.github.io/sntutils/reference/process_raster_collection.md) |
-| 7\. Communicate | Maps, plots, translated labels, compressed PNGs | [`reporting_rate_plot()`](https://ahadi-analytics.github.io/sntutils/reference/reporting_rate_plot.md), [`dhis2_map()`](https://ahadi-analytics.github.io/sntutils/reference/dhis2_map.md), [`translate_text()`](https://ahadi-analytics.github.io/sntutils/reference/translate_text.md), [`compress_png()`](https://ahadi-analytics.github.io/sntutils/reference/compress_png.md) |
+| 7\. Communicate | Maps, plots, translated labels, compressed PNGs | [`reporting_rate_plot()`](https://ahadi-analytics.github.io/sntutils/reference/reporting_rate_plot.md), [`plot_admin_map_distinct()`](https://ahadi-analytics.github.io/sntutils/reference/plot_admin_map_distinct.md), [`translate_text()`](https://ahadi-analytics.github.io/sntutils/reference/translate_text.md), [`compress_png()`](https://ahadi-analytics.github.io/sntutils/reference/compress_png.md) |
 
 The articles in the **Workflows** menu walk through each stage in
 detail. This page just shows the whole pipeline once, end-to-end.
@@ -140,9 +140,10 @@ articles drill into each step.
 
 - **Data I/O and cleaning** - every
   [`read()`](https://ahadi-analytics.github.io/sntutils/reference/read.md)/[`write()`](https://ahadi-analytics.github.io/sntutils/reference/write.md)
-  shortcut plus name and date harmonisation.
+  shortcut, name and date harmonisation, DHIS2 column crosswalks and
+  fuzzy facility matching.
 - **Spatial validation and mapping** - admin geometries, coordinates,
-  shapefile crosswalks, fuzzy facility matching.
+  shapefile crosswalks and maps.
 - **Reporting rates and data quality** - the three reporting-rate
   scenarios, consistency checks and outlier methods.
 - **Climate and population downloads** - CHIRPS, ERA5, MODIS, NASA

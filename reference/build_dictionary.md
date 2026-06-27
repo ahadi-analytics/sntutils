@@ -12,6 +12,7 @@ column.
 build_dictionary(
   data,
   labels_path = base::getOption("snt.labels_en_path", NULL),
+  labels_df = NULL,
   language = NULL,
   max_levels = 50L,
   n_examples = 3L,
@@ -29,8 +30,13 @@ build_dictionary(
 
 - labels_path:
 
-  optional csv with columns like `name,label` to override english
-  labels.
+  optional path to a csv or xlsx file with columns like `name,label` to
+  override english labels. mutually exclusive with `labels_df`.
+
+- labels_df:
+
+  optional data.frame/tibble of labels with the same columns as the file
+  form. mutually exclusive with `labels_path`.
 
 - language:
 

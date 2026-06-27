@@ -14,14 +14,15 @@
   clean](https://ahadi-analytics.github.io/sntutils/articles/data-io-and-cleaning.md):
 
   Read and write any common SNT format, parse messy date columns, infer
-  variable types, standardise admin and facility names, and build a data
-  dictionary you can hand to a country team.
+  variable types, standardise admin and facility names, fuzzy-match
+  facilities to the master list, crosswalk DHIS2 column labels, and
+  build a data dictionary you can hand to a country team.
 
 - [Spatial](https://ahadi-analytics.github.io/sntutils/articles/spatial.md):
 
   Validate admin geometries and facility coordinates, crosswalk between
-  shapefile vintages, fuzzy-match facilities across DHIS2 and the master
-  facility list, and render publication-ready maps in the AHADI style.
+  shapefile vintages, and render publication-ready maps in the AHADI
+  style.
 
 ### Routine surveillance
 

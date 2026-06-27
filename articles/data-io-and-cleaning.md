@@ -23,6 +23,9 @@ Library](https://ahadi-analytics.github.io/snt-code-library/):**
 - [Final clean
   database](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/final_database.html) -
   what the cleaned, joined dataset should look like.
+- [Master facility
+  lists](https://ahadi-analytics.github.io/snt-code-library/english/library/data/health_facilities/master_facility_lists.html) -
+  matching DHIS2 to the MFL.
 
 ## Reading and writing
 
@@ -282,6 +285,53 @@ persisted to disk, so a second run on the same data is instant.
 A demo of the interactive flow is in the [README on
 GitHub](https://github.com/ahadi-analytics/sntutils#geolocation-name-cleaning).
 
+## Fuzzy-matching facility lists
+
+DHIS2 facility names rarely line up perfectly with the master facility
+list.
+[`fuzzy_match_facilities()`](https://ahadi-analytics.github.io/sntutils/reference/fuzzy_match_facilities.md)
+runs a staged matching pipeline:
+
+1.  exact match,
+2.  match after
+    [`standardize_names()`](https://ahadi-analytics.github.io/sntutils/reference/standardize_names.md)
+    normalisation,
+3.  string-distance match using one or more methods (`jw`, `lv`, `osa`,
+    …),
+4.  optional interactive picker for unresolved rows,
+
+and returns a tibble of best matches plus diagnostics by stage.
+
+``` r
+
+matches <- fuzzy_match_facilities(
+  target_df       = dhis2_facilities,        # what we're cleaning
+  lookup_df       = mfl_facilities,          # the reference list
+  admin_cols      = c("adm1", "adm2", "adm3"),
+  hf_col_name     = "hf",
+  uid_col         = "hf_uid",
+  fuzzy_methods   = c("jw", "osa"),
+  fuzzy_threshold = 95,
+  match_interactivity = TRUE,
+  save_path = "01_data/1.1_foundational/1.1b_health_facilities/processed"
+)
+
+matches$results |>
+  dplyr::count(match_status)
+#> # A tibble: 3 × 2
+#>   match_status     n
+#>   <chr>        <int>
+#> 1 high          4012
+#> 2 medium         147
+#> 3 low             54
+```
+
+[`calculate_match_stats()`](https://ahadi-analytics.github.io/sntutils/reference/calculate_match_stats.md)
+summarises the same results by method so we can compare matching
+strategies side by side. The matched facility table is the bridge
+between a DHIS2 export and the spatial master facility list used in
+[Spatial](https://ahadi-analytics.github.io/sntutils/articles/spatial.md).
+
 ## Dictionaries: producing one, and using the curated SNT schema
 
 Two flavours of dictionary live in `sntutils`. Both come up on every
@@ -366,6 +416,40 @@ dataset without writing it by hand.
 [`clear_snt_cache()`](https://ahadi-analytics.github.io/sntutils/reference/clear_snt_cache.md)
 resets the in-memory cache after editing the underlying labels CSV -
 call it if you’ve updated the schema mid-session.
+
+### Crosswalking DHIS2 columns: `dhis2_map()`
+
+[`dhis2_map()`](https://ahadi-analytics.github.io/sntutils/reference/dhis2_map.md)
+renames a DHIS2 export’s columns using a name-mapping dictionary, so we
+can keep the upstream column labels intact on disk and only remap to SNT
+names when we load the data. It’s a small but critical step in every
+DHIS2 import workflow, and a natural neighbour of
+[`check_snt_var()`](https://ahadi-analytics.github.io/sntutils/reference/check_snt_var.md)
+above - one renames, the other validates that the renamed columns hit
+the canonical schema.
+
+> **Used in:** the [DHIS2 import and
+> preprocessing](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/import.html)
+> chapter of the SNT Code Library walks through where this fits in the
+> end-to-end DHIS2 cleaning pipeline.
+> [`dhis2_map()`](https://ahadi-analytics.github.io/sntutils/reference/dhis2_map.md)
+> is the helper that performs the rename step described there.
+
+``` r
+
+mapped <- dhis2_map(
+  data    = sl_dhis2_raw,
+  dict    = dhis2_label_lookup,
+  new_col = "snt_name",
+  old_col = "dhis2_label",
+  drop_unmatched = FALSE
+)
+```
+
+Pair it with
+[`check_snt_var()`](https://ahadi-analytics.github.io/sntutils/reference/check_snt_var.md)
+immediately after the rename to confirm the resulting column names match
+the canonical SNT schema before joining DHIS2 to anything else.
 
 ## A clean pipeline, end to end
 

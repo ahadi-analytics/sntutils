@@ -403,10 +403,13 @@ recomputed via
 [`fallback_diff()`](https://ahadi-analytics.github.io/sntutils/reference/fallback_diff.md)
 so the resulting row stays internally consistent.
 
-## Plot helpers
+## Other exported helpers
 
 A handful of internal building blocks are exported because country teams
-reuse them in custom one-off charts:
+reuse them in custom one-off pipelines and charts. They fall into three
+loose groups:
+
+**Plot styling**
 
 - [`get_palette()`](https://ahadi-analytics.github.io/sntutils/reference/get_palette.md)
   /
@@ -416,20 +419,31 @@ reuse them in custom one-off charts:
 - [`auto_bin()`](https://ahadi-analytics.github.io/sntutils/reference/auto_bin.md) -
   choose bin edges for an indicator using Fisher-Jenks or quantile
   breaks, returning a labelled factor.
-- [`detect_factors()`](https://ahadi-analytics.github.io/sntutils/reference/detect_factors.md),
-  [`detect_time_pattern()`](https://ahadi-analytics.github.io/sntutils/reference/detect_time_pattern.md),
+
+**Parser internals reused elsewhere**
+
+- [`detect_factors()`](https://ahadi-analytics.github.io/sntutils/reference/detect_factors.md)
+  powers
+  [`auto_parse_types()`](https://ahadi-analytics.github.io/sntutils/reference/auto_parse_types.md)
+  (see [Read &
+  clean](https://ahadi-analytics.github.io/sntutils/articles/data-io-and-cleaning.html#inferring-variable-types)).
+- [`detect_time_pattern()`](https://ahadi-analytics.github.io/sntutils/reference/detect_time_pattern.md)
+  /
   [`extract_time_components()`](https://ahadi-analytics.github.io/sntutils/reference/extract_time_components.md)
-  - utilities that power the auto-parsers but are exposed for ad-hoc
-    use.
+  parse year and month components out of raster filenames (see
+  [Rasters](https://ahadi-analytics.github.io/sntutils/articles/rasters.html#filename-utilities)).
+
+**Insecticide-resistance trend reports**
+
 - [`get_model()`](https://ahadi-analytics.github.io/sntutils/reference/get_model.md),
   [`generate_ir_plot()`](https://ahadi-analytics.github.io/sntutils/reference/generate_ir_plot.md),
-  [`run_resistance_trend()`](https://ahadi-analytics.github.io/sntutils/reference/run_resistance_trend.md) -
-  fit and render incidence-rate / resistance-trend plots used in
+  [`run_resistance_trend()`](https://ahadi-analytics.github.io/sntutils/reference/run_resistance_trend.md)
+  fit and render incidence-rate and resistance-trend plots used in
   insecticide-resistance reports.
-- [`prepare_plot_data()`](https://ahadi-analytics.github.io/sntutils/reference/prepare_plot_data.md),
-  [`get_pathway_vars()`](https://ahadi-analytics.github.io/sntutils/reference/get_pathway_vars.md) -
-  internal data-shaping helpers that show up in custom reporting
-  pipelines.
+- [`prepare_plot_data()`](https://ahadi-analytics.github.io/sntutils/reference/prepare_plot_data.md)
+  and
+  [`get_pathway_vars()`](https://ahadi-analytics.github.io/sntutils/reference/get_pathway_vars.md)
+  are internal data-shapers for the same custom reporting pipelines.
 
 ## Putting it together
 

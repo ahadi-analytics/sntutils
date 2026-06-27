@@ -217,10 +217,12 @@ provides a function (or a small family of functions) at each step:</p>
 </tr>
 <tr class="odd">
 <td>3. Clean</td>
-<td>Parse dates, infer types, standardise admin names</td>
+<td>Parse dates, infer types, standardise admin names, rename DHIS2
+columns, match facilities</td>
 <td>
 <code><a href="../reference/autoparse_dates.html">autoparse_dates()</a></code>, <code><a href="../reference/auto_parse_types.html">auto_parse_types()</a></code>,
-<code><a href="../reference/standardize_names.html">standardize_names()</a></code>, <code><a href="../reference/prep_geonames.html">prep_geonames()</a></code>
+<code><a href="../reference/standardize_names.html">standardize_names()</a></code>, <code><a href="../reference/prep_geonames.html">prep_geonames()</a></code>,
+<code><a href="../reference/dhis2_map.html">dhis2_map()</a></code>, <code><a href="../reference/fuzzy_match_facilities.html">fuzzy_match_facilities()</a></code>
 </td>
 </tr>
 <tr class="even">
@@ -252,8 +254,9 @@ provides a function (or a small family of functions) at each step:</p>
 <td>7. Communicate</td>
 <td>Maps, plots, translated labels, compressed PNGs</td>
 <td>
-<code><a href="../reference/reporting_rate_plot.html">reporting_rate_plot()</a></code>, <code><a href="../reference/dhis2_map.html">dhis2_map()</a></code>,
-<code><a href="../reference/translate_text.html">translate_text()</a></code>, <code><a href="../reference/compress_png.html">compress_png()</a></code>
+<code><a href="../reference/reporting_rate_plot.html">reporting_rate_plot()</a></code>,
+<code><a href="../reference/plot_admin_map_distinct.html">plot_admin_map_distinct()</a></code>, <code><a href="../reference/translate_text.html">translate_text()</a></code>,
+<code><a href="../reference/compress_png.html">compress_png()</a></code>
 </td>
 </tr>
 </tbody>
@@ -326,11 +329,11 @@ articles drill into each step.</p>
 <ul>
 <li>
 <strong>Data I/O and cleaning</strong> - every
-<code><a href="../reference/read.html">read()</a></code>/<code><a href="../reference/write.html">write()</a></code> shortcut plus name and date
-harmonisation.</li>
+<code><a href="../reference/read.html">read()</a></code>/<code><a href="../reference/write.html">write()</a></code> shortcut, name and date
+harmonisation, DHIS2 column crosswalks and fuzzy facility matching.</li>
 <li>
 <strong>Spatial validation and mapping</strong> - admin geometries,
-coordinates, shapefile crosswalks, fuzzy facility matching.</li>
+coordinates, shapefile crosswalks and maps.</li>
 <li>
 <strong>Reporting rates and data quality</strong> - the three
 reporting-rate scenarios, consistency checks and outlier methods.</li>

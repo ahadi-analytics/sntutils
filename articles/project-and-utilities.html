@@ -486,10 +486,12 @@ consistent.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="plot-helpers">Plot helpers<a class="anchor" aria-label="anchor" href="#plot-helpers"></a>
+<h2 id="other-exported-helpers">Other exported helpers<a class="anchor" aria-label="anchor" href="#other-exported-helpers"></a>
 </h2>
 <p>A handful of internal building blocks are exported because country
-teams reuse them in custom one-off charts:</p>
+teams reuse them in custom one-off pipelines and charts. They fall into
+three loose groups:</p>
+<p><strong>Plot styling</strong></p>
 <ul>
 <li>
 <code><a href="../reference/get_palette.html">get_palette()</a></code> / <code><a href="../reference/list_palettes.html">list_palettes()</a></code> -
@@ -498,22 +500,27 @@ AHADI-branded discrete and gradient palettes (<code>ahadi_main</code>,
 <li>
 <code><a href="../reference/auto_bin.html">auto_bin()</a></code> - choose bin edges for an indicator using
 Fisher-Jenks or quantile breaks, returning a labelled factor.</li>
-<li>
-<code><a href="../reference/detect_factors.html">detect_factors()</a></code>, <code><a href="../reference/detect_time_pattern.html">detect_time_pattern()</a></code>,
-<code><a href="../reference/extract_time_components.html">extract_time_components()</a></code>
-<ul>
-<li>utilities that power the auto-parsers but are exposed for ad-hoc
-use.</li>
 </ul>
-</li>
+<p><strong>Parser internals reused elsewhere</strong></p>
+<ul>
+<li>
+<code><a href="../reference/detect_factors.html">detect_factors()</a></code> powers <code><a href="../reference/auto_parse_types.html">auto_parse_types()</a></code>
+(see <a href="data-io-and-cleaning.html#inferring-variable-types">Read
+&amp; clean</a>).</li>
+<li>
+<code><a href="../reference/detect_time_pattern.html">detect_time_pattern()</a></code> /
+<code><a href="../reference/extract_time_components.html">extract_time_components()</a></code> parse year and month components
+out of raster filenames (see <a href="rasters.html#filename-utilities">Rasters</a>).</li>
+</ul>
+<p><strong>Insecticide-resistance trend reports</strong></p>
+<ul>
 <li>
 <code><a href="../reference/get_model.html">get_model()</a></code>, <code><a href="../reference/generate_ir_plot.html">generate_ir_plot()</a></code>,
-<code><a href="../reference/run_resistance_trend.html">run_resistance_trend()</a></code> - fit and render incidence-rate /
+<code><a href="../reference/run_resistance_trend.html">run_resistance_trend()</a></code> fit and render incidence-rate and
 resistance-trend plots used in insecticide-resistance reports.</li>
 <li>
-<code><a href="../reference/prepare_plot_data.html">prepare_plot_data()</a></code>, <code><a href="../reference/get_pathway_vars.html">get_pathway_vars()</a></code> -
-internal data-shaping helpers that show up in custom reporting
-pipelines.</li>
+<code><a href="../reference/prepare_plot_data.html">prepare_plot_data()</a></code> and <code><a href="../reference/get_pathway_vars.html">get_pathway_vars()</a></code>
+are internal data-shapers for the same custom reporting pipelines.</li>
 </ul>
 </div>
 <div class="section level2">

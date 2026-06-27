@@ -18,9 +18,9 @@
 <link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Read &amp; clean">
-<meta name="description" content="Read and write any common SNT format, parse messy date columns, infer variable types, standardise admin and facility names, and build a data dictionary you can hand to a country team.
+<meta name="description" content="Read and write any common SNT format, parse messy date columns, infer variable types, standardise admin and facility names, fuzzy-match facilities to the master list, crosswalk DHIS2 column labels, and build a data dictionary you can hand to a country team.
 ">
-<meta property="og:description" content="Read and write any common SNT format, parse messy date columns, infer variable types, standardise admin and facility names, and build a data dictionary you can hand to a country team.
+<meta property="og:description" content="Read and write any common SNT format, parse messy date columns, infer variable types, standardise admin and facility names, fuzzy-match facilities to the master list, crosswalk DHIS2 column labels, and build a data dictionary you can hand to a country team.
 ">
 <meta property="og:image" content="https://ahadi-analytics.github.io/sntutils/logo.png">
 <script>
@@ -151,6 +151,9 @@ context</a> - background on what’s collected and how.</li>
 <a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/final_database.html" class="external-link">Final
 clean database</a> - what the cleaned, joined dataset should look
 like.</li>
+<li>
+<a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/health_facilities/master_facility_lists.html" class="external-link">Master
+facility lists</a> - matching DHIS2 to the MFL.</li>
 </ul>
 </div>
 <div class="section level2">
@@ -378,6 +381,46 @@ persisted to disk, so a second run on the same data is instant.</p>
 on GitHub</a>.</p>
 </div>
 <div class="section level2">
+<h2 id="fuzzy-matching-facility-lists">Fuzzy-matching facility lists<a class="anchor" aria-label="anchor" href="#fuzzy-matching-facility-lists"></a>
+</h2>
+<p>DHIS2 facility names rarely line up perfectly with the master
+facility list. <code><a href="../reference/fuzzy_match_facilities.html">fuzzy_match_facilities()</a></code> runs a staged
+matching pipeline:</p>
+<ol style="list-style-type: decimal">
+<li>exact match,</li>
+<li>match after <code><a href="../reference/standardize_names.html">standardize_names()</a></code> normalisation,</li>
+<li>string-distance match using one or more methods (<code>jw</code>,
+<code>lv</code>, <code>osa</code>, …),</li>
+<li>optional interactive picker for unresolved rows,</li>
+</ol>
+<p>and returns a tibble of best matches plus diagnostics by stage.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">matches</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/fuzzy_match_facilities.html">fuzzy_match_facilities</a></span><span class="op">(</span></span>
+<span>  target_df       <span class="op">=</span> <span class="va">dhis2_facilities</span>,        <span class="co"># what we're cleaning</span></span>
+<span>  lookup_df       <span class="op">=</span> <span class="va">mfl_facilities</span>,          <span class="co"># the reference list</span></span>
+<span>  admin_cols      <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"adm1"</span>, <span class="st">"adm2"</span>, <span class="st">"adm3"</span><span class="op">)</span>,</span>
+<span>  hf_col_name     <span class="op">=</span> <span class="st">"hf"</span>,</span>
+<span>  uid_col         <span class="op">=</span> <span class="st">"hf_uid"</span>,</span>
+<span>  fuzzy_methods   <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"jw"</span>, <span class="st">"osa"</span><span class="op">)</span>,</span>
+<span>  fuzzy_threshold <span class="op">=</span> <span class="fl">95</span>,</span>
+<span>  match_interactivity <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  save_path <span class="op">=</span> <span class="st">"01_data/1.1_foundational/1.1b_health_facilities/processed"</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">matches</span><span class="op">$</span><span class="va">results</span> <span class="op">|&gt;</span></span>
+<span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/count.html" class="external-link">count</a></span><span class="op">(</span><span class="va">match_status</span><span class="op">)</span></span>
+<span><span class="co">#&gt; # A tibble: 3 × 2</span></span>
+<span><span class="co">#&gt;   match_status     n</span></span>
+<span><span class="co">#&gt;   &lt;chr&gt;        &lt;int&gt;</span></span>
+<span><span class="co">#&gt; 1 high          4012</span></span>
+<span><span class="co">#&gt; 2 medium         147</span></span>
+<span><span class="co">#&gt; 3 low             54</span></span></code></pre></div>
+<p><code><a href="../reference/calculate_match_stats.html">calculate_match_stats()</a></code> summarises the same results by
+method so we can compare matching strategies side by side. The matched
+facility table is the bridge between a DHIS2 export and the spatial
+master facility list used in <a href="spatial.html">Spatial</a>.</p>
+</div>
+<div class="section level2">
 <h2 id="dictionaries-producing-one-and-using-the-curated-snt-schema">Dictionaries: producing one, and using the curated SNT schema<a class="anchor" aria-label="anchor" href="#dictionaries-producing-one-and-using-the-curated-snt-schema"></a>
 </h2>
 <p>Two flavours of dictionary live in <code>sntutils</code>. Both come
@@ -392,7 +435,7 @@ that the rest of <code>sntutils</code> expects (<code>conf</code>,
 curated dictionary as a tibble, with bilingual labels and a category tag
 for each variable. This is the source of truth for variable naming
 across country teams.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/snt_data_dict.html">snt_data_dict</a></span><span class="op">(</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/select.html" class="external-link">select</a></span><span class="op">(</span><span class="va">variable</span>, <span class="va">category</span>, <span class="va">label_en</span>, <span class="va">label_fr</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu">dplyr</span><span class="fu">::</span><span class="fu"><a href="https://dplyr.tidyverse.org/reference/filter.html" class="external-link">filter</a></span><span class="op">(</span><span class="va">category</span> <span class="op">==</span> <span class="st">"case_management"</span><span class="op">)</span> <span class="op">|&gt;</span></span>
@@ -409,7 +452,7 @@ across country teams.</p>
 <p><code><a href="../reference/check_snt_var.html">check_snt_var()</a></code> validates one or more variable names
 against the schema, with fuzzy matching when names are
 close-but-not-exact:</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/check_snt_var.html">check_snt_var</a></span><span class="op">(</span><span class="st">"maltreat_u5"</span><span class="op">)</span></span>
 <span><span class="co">#&gt; ✔ maltreat_u5 - Malaria cases treated, under 5</span></span>
 <span></span>
@@ -427,7 +470,7 @@ per-variable summary tibble - name, type, number of unique values, value
 range or top levels, and (where they’re known) the English label from
 the SNT schema. This is the artefact we hand to country teams as
 documentation for any processed dataset.</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">dd</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/build_dictionary.html">build_dictionary</a></span><span class="op">(</span><span class="va">sl_dhis2</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">dd</span> <span class="op">|&gt;</span></span>
@@ -449,13 +492,41 @@ alongside every processed dataset without writing it by hand.</p>
 editing the underlying labels CSV - call it if you’ve updated the schema
 mid-session.</p>
 </div>
+<div class="section level3">
+<h3 id="crosswalking-dhis2-columns-dhis2_map">Crosswalking DHIS2 columns: <code>dhis2_map()</code><a class="anchor" aria-label="anchor" href="#crosswalking-dhis2-columns-dhis2_map"></a>
+</h3>
+<p><code><a href="../reference/dhis2_map.html">dhis2_map()</a></code> renames a DHIS2 export’s columns using a
+name-mapping dictionary, so we can keep the upstream column labels
+intact on disk and only remap to SNT names when we load the data. It’s a
+small but critical step in every DHIS2 import workflow, and a natural
+neighbour of <code><a href="../reference/check_snt_var.html">check_snt_var()</a></code> above - one renames, the other
+validates that the renamed columns hit the canonical schema.</p>
+<blockquote>
+<p><strong>Used in:</strong> the <a href="https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/import.html" class="external-link">DHIS2
+import and preprocessing</a> chapter of the SNT Code Library walks
+through where this fits in the end-to-end DHIS2 cleaning pipeline.
+<code><a href="../reference/dhis2_map.html">dhis2_map()</a></code> is the helper that performs the rename step
+described there.</p>
+</blockquote>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mapped</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/dhis2_map.html">dhis2_map</a></span><span class="op">(</span></span>
+<span>  data    <span class="op">=</span> <span class="va">sl_dhis2_raw</span>,</span>
+<span>  dict    <span class="op">=</span> <span class="va">dhis2_label_lookup</span>,</span>
+<span>  new_col <span class="op">=</span> <span class="st">"snt_name"</span>,</span>
+<span>  old_col <span class="op">=</span> <span class="st">"dhis2_label"</span>,</span>
+<span>  drop_unmatched <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Pair it with <code><a href="../reference/check_snt_var.html">check_snt_var()</a></code> immediately after the
+rename to confirm the resulting column names match the canonical SNT
+schema before joining DHIS2 to anything else.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="a-clean-pipeline-end-to-end">A clean pipeline, end to end<a class="anchor" aria-label="anchor" href="#a-clean-pipeline-end-to-end"></a>
 </h2>
 <p>Putting it all together - the cleaning step from the <a href="getting-started.html">Get started</a> example, but with explicit
 intermediate writes so we can audit each stage:</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">raw</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/read.html">read</a></span><span class="op">(</span><span class="st">"01_data/1.2_epidemiology/1.2a_routine_surveillance/raw/sl_dhis2.csv"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">clean</span> <span class="op">&lt;-</span> <span class="va">raw</span> <span class="op">|&gt;</span></span>
