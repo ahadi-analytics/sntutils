@@ -452,14 +452,16 @@
   c(.smart_round(rng[1L]), .smart_round(rng[2L]))
 }
 
-#' read a name/label mapping from csv (internal)
+#' read a name/label mapping from a file or data.frame (internal)
 #'
 #' @description
-#' load a two-column csv of variable names and their labels. name column is
-#' matched from one of {"name","variable","key","column"}. label column is
-#' matched from {"label","label_en","english"}. later duplicates win.
+#' load a two-column mapping of variable names and their labels. accepts
+#' either a file path (csv, xlsx, or anything `sntutils::read()` handles)
+#' or a data.frame already in memory. name column is matched from one of
+#' {"name","variable","key","column"}. label column is matched from
+#' {"label","label_en","english"}. later duplicates win.
 #'
-#' @param path character scalar path to csv file.
+#' @param source character scalar path, or a data.frame/tibble.
 #'
 #' @return named character vector (variable -> label), or NULL on error.
 #'
@@ -470,41 +472,52 @@
 #'   tmp,
 #'   row.names = FALSE
 #' )
-#' .read_label_map_csv(tmp)
+#' .read_label_map(tmp)
 #'
 #' @keywords internal
 #' @noRd
-.read_label_map_csv <- function(path) {
-  # handle null or empty path
-  if (base::is.null(path) || !base::nzchar(path)) {
+.read_label_map <- function(source) {
+  # handle null
+  if (base::is.null(source)) {
     return(NULL)
   }
 
-  # path must exist and not be a directory
-  if (
-    !base::file.exists(path) ||
-      isTRUE(tryCatch(utils::file_test("-d", path), error = function(e) NA))
-  ) {
+  # acquire a data.frame, either directly or by reading the file
+  raw <- if (base::inherits(source, "data.frame")) {
+    source
+  } else {
+    # require a non-empty character path
+    if (!base::is.character(source) || !base::length(source) ||
+        !base::nzchar(source)) {
+      return(NULL)
+    }
+
+    # path must exist and not be a directory
+    if (
+      !base::file.exists(source) ||
+        isTRUE(tryCatch(utils::file_test("-d", source), error = function(e) NA))
+    ) {
+      return(NULL)
+    }
+
+    # delegate to the package's format-agnostic reader
+    tryCatch(read(source), error = function(e) NULL)
+  }
+
+  # bail if reading failed or yielded a non-frame
+  if (base::is.null(raw) || !base::inherits(raw, "data.frame")) {
     return(NULL)
   }
 
-  # try to read csv
+  # detect and extract columns
   out <- tryCatch(
     {
-      # read raw csv without altering names
-      df <- utils::read.csv(
-        path,
-        stringsAsFactors = FALSE,
-        check.names = FALSE
-      )
-
-      # detect columns
       name_col <- base::intersect(
-        base::names(df),
+        base::names(raw),
         c("name", "variable", "key", "column")
       )
       label_col <- base::intersect(
-        base::names(df),
+        base::names(raw),
         c("label", "label_en", "english")
       )
 
@@ -514,8 +527,8 @@
       }
 
       # extract and trim
-      nm <- base::trimws(df[[name_col[1L]]])
-      lb <- base::as.character(df[[label_col[1L]]])
+      nm <- base::trimws(base::as.character(raw[[name_col[1L]]]))
+      lb <- base::as.character(raw[[label_col[1L]]])
 
       # drop blanks or NA names
       keep_name <- !base::is.na(nm) & base::nzchar(nm)
@@ -629,8 +642,11 @@
 #' translated label column.
 #'
 #' @param data data.frame or tibble; sf columns allowed.
-#' @param labels_path optional csv with columns like `name,label` to
-#'   override english labels.
+#' @param labels_path optional path to a csv or xlsx file with columns like
+#'   `name,label` to override english labels. mutually exclusive with
+#'   `labels_df`.
+#' @param labels_df optional data.frame/tibble of labels with the same
+#'   columns as the file form. mutually exclusive with `labels_path`.
 #' @param language optional iso code (e.g., "fr") to add `label_<language>`.
 #' @param max_levels max factor levels to summarize in notes. default 50.
 #' @param n_examples number of example values to show. default 3.
@@ -660,6 +676,7 @@
 build_dictionary <- function(
   data,
   labels_path = base::getOption("snt.labels_en_path", NULL),
+  labels_df = NULL,
   language = NULL,
   max_levels = 50L,
   n_examples = 3L,
@@ -673,6 +690,20 @@ build_dictionary <- function(
   }
   if (!base::is.null(language) && !base::is.character(language)) {
     cli::cli_abort("`language` must be NULL or a character scalar.")
+  }
+
+  # validate labels_df shape if supplied
+  if (!base::is.null(labels_df) && !base::inherits(labels_df, "data.frame")) {
+    cli::cli_abort("`labels_df` must be a data.frame or tibble.")
+  }
+
+  # enforce either/or between labels_path and labels_df
+  has_path <- base::is.character(labels_path) &&
+    base::length(labels_path) == 1L && base::nzchar(labels_path)
+  if (has_path && !base::is.null(labels_df)) {
+    cli::cli_abort(
+      "Supply either {.arg labels_path} or {.arg labels_df}, not both."
+    )
   }
 
   # writing mode: if `data` already looks like a dictionary and labels_path
@@ -715,8 +746,8 @@ build_dictionary <- function(
     character(0)
   }
 
-  # load external map from csv and overlay
-  file_map <- .read_label_map_csv(labels_path)
+  # load external map from data.frame or file path and overlay
+  file_map <- .read_label_map(rlang::`%||%`(labels_df, labels_path))
   lbl_map <- base_map
   if (!base::is.null(file_map) && base::length(file_map)) {
     lbl_map[base::names(file_map)] <- base::unname(file_map)

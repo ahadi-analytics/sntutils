@@ -150,6 +150,67 @@ testthat::test_that("build_dictionary merges labels from CSV map", {
   testthat::expect_equal(unname(lem["z"]), "z")
 })
 
+testthat::test_that("build_dictionary merges labels from xlsx map", {
+  testthat::skip_if_not_installed("openxlsx")
+
+  tmp <- withr::local_tempdir()
+  map_path <- fs::path(tmp, "labels_en.xlsx")
+  lbl_df <- data.frame(
+    name = c("id", "grp"),
+    label = c("Identifier", "Group"),
+    stringsAsFactors = FALSE
+  )
+  openxlsx::write.xlsx(lbl_df, map_path)
+
+  df <- data.frame(
+    id = 1:2,
+    grp = factor(c("a", "b")),
+    z = 3:4
+  )
+  dict <- build_dictionary(data = df, labels_path = map_path)
+
+  lem <- setNames(dict$label_en, dict$variable)
+  testthat::expect_equal(unname(lem["id"]), "Identifier")
+  testthat::expect_equal(unname(lem["grp"]), "Group")
+  testthat::expect_equal(unname(lem["z"]), "z")
+})
+
+testthat::test_that("build_dictionary merges labels from in-memory labels_df", {
+  lbl_df <- tibble::tibble(
+    name = c("id", "grp"),
+    label = c("Identifier", "Group")
+  )
+
+  df <- data.frame(
+    id = 1:2,
+    grp = factor(c("a", "b")),
+    z = 3:4
+  )
+  dict <- build_dictionary(data = df, labels_df = lbl_df)
+
+  lem <- setNames(dict$label_en, dict$variable)
+  testthat::expect_equal(unname(lem["id"]), "Identifier")
+  testthat::expect_equal(unname(lem["grp"]), "Group")
+  testthat::expect_equal(unname(lem["z"]), "z")
+})
+
+testthat::test_that("build_dictionary errors when both labels_path and labels_df are supplied", {
+  tmp <- withr::local_tempdir()
+  map_path <- fs::path(tmp, "labels_en.csv")
+  utils::write.csv(
+    data.frame(name = "id", label = "Identifier"),
+    map_path,
+    row.names = FALSE
+  )
+  lbl_df <- tibble::tibble(name = "id", label = "Identifier")
+
+  df <- data.frame(id = 1:2)
+  testthat::expect_error(
+    build_dictionary(df, labels_path = map_path, labels_df = lbl_df),
+    "either"
+  )
+})
+
 testthat::test_that("build_dictionary handles geometry and lists cleanly", {
   # geometry (skip if sf not available)
   if (has_pkg("sf")) {

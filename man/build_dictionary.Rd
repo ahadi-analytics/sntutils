@@ -7,6 +7,7 @@
 build_dictionary(
   data,
   labels_path = base::getOption("snt.labels_en_path", NULL),
+  labels_df = NULL,
   language = NULL,
   max_levels = 50L,
   n_examples = 3L,
@@ -18,8 +19,12 @@ build_dictionary(
 \arguments{
 \item{data}{data.frame or tibble; sf columns allowed.}
 
-\item{labels_path}{optional csv with columns like \verb{name,label} to
-override english labels.}
+\item{labels_path}{optional path to a csv or xlsx file with columns like
+\verb{name,label} to override english labels. mutually exclusive with
+\code{labels_df}.}
+
+\item{labels_df}{optional data.frame/tibble of labels with the same
+columns as the file form. mutually exclusive with \code{labels_path}.}
 
 \item{language}{optional iso code (e.g., "fr") to add \verb{label_<language>}.}
 
