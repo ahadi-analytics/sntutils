@@ -2,8 +2,8 @@
 title: "Spatial"
 description: >
   Validate admin geometries and facility coordinates, crosswalk between
-  shapefile vintages, fuzzy-match facilities across DHIS2 and the master
-  facility list, and render publication-ready maps in the AHADI style.
+  shapefile vintages, and render publication-ready maps in the AHADI
+  style.
 output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{Spatial}
@@ -33,7 +33,6 @@ layer to plot the result.
 - [Shapefile management](https://ahadi-analytics.github.io/snt-code-library/english/library/data/shapefiles/shapefile_management.html) - the day-to-day workflow.
 - [Merging shapefiles with non-spatial data](https://ahadi-analytics.github.io/snt-code-library/english/library/data/shapefiles/merge_sf_excel.html).
 - [Health-facility coordinates](https://ahadi-analytics.github.io/snt-code-library/english/library/data/health_facilities/facility_coordinates.html) - validation, common errors.
-- [Master facility lists](https://ahadi-analytics.github.io/snt-code-library/english/library/data/health_facilities/master_facility_lists.html) - matching DHIS2 to the MFL.
 :::
 
 ## Downloading boundaries
@@ -150,71 +149,6 @@ xwalk |> dplyr::select(adm2_old, adm2_name, weight, primary) |> head()
 Multiply by `weight` and `dplyr::group_by(adm2_name) |> summarise(sum())`
 to push aggregate counts from old units to new.
 
-## Fuzzy-matching facilities
-
-DHIS2 facility names rarely line up perfectly with the master facility
-list. `fuzzy_match_facilities()` runs a staged matching pipeline:
-
-1. exact match,
-2. match after `standardize_names()` normalisation,
-3. string-distance match using one or more methods (`jw`, `lv`, `osa`, …),
-4. optional interactive picker for unresolved rows,
-
-and returns a tibble of best matches plus diagnostics by stage.
-
-```r
-matches <- fuzzy_match_facilities(
-  target_df       = dhis2_facilities,        # what we're cleaning
-  lookup_df       = mfl_facilities,          # the reference list
-  admin_cols      = c("adm1", "adm2", "adm3"),
-  hf_col_name     = "hf",
-  uid_col         = "hf_uid",
-  fuzzy_methods   = c("jw", "osa"),
-  fuzzy_threshold = 95,
-  match_interactivity = TRUE,
-  save_path = "01_data/1.1_foundational/1.1b_health_facilities/processed"
-)
-
-matches$results |>
-  dplyr::count(match_status)
-#> # A tibble: 3 × 2
-#>   match_status     n
-#>   <chr>        <int>
-#> 1 high          4012
-#> 2 medium         147
-#> 3 low             54
-```
-
-`calculate_match_stats()` summarises the same results by method so we
-can compare matching strategies side by side.
-
-## Renaming DHIS2 columns: `dhis2_map()`
-
-`dhis2_map()` renames a DHIS2 export's columns using a name-mapping
-dictionary, so we can keep the upstream column labels intact on disk
-and only remap to SNT names when we load the data. It's a small but
-critical step in every DHIS2 import workflow.
-
-> **Used in:** the
-> [DHIS2 import and preprocessing](https://ahadi-analytics.github.io/snt-code-library/english/library/data/routine_cases/import.html)
-> chapter of the SNT Code Library walks through where this fits in the
-> end-to-end DHIS2 cleaning pipeline. `dhis2_map()` is the helper that
-> performs the rename step described there.
-
-```r
-mapped <- dhis2_map(
-  data    = sl_dhis2_raw,
-  dict    = dhis2_label_lookup,
-  new_col = "snt_name",
-  old_col = "dhis2_label",
-  drop_unmatched = FALSE
-)
-```
-
-Pair it with `check_snt_var()` after the rename to confirm the resulting
-column names match the canonical SNT schema (see
-[Read & clean](data-io-and-cleaning.html#dictionaries-producing-one-and-using-the-curated-snt-schema)).
-
 ## Drawing maps
 
 ### Categorical fills
@@ -291,7 +225,9 @@ hf_geo <- validate_process_coordinates(
   fix_issues = TRUE
 )$shp
 
-# 4. fuzzy-match DHIS2 facility names to the master list
+# 4. fuzzy-match DHIS2 facility names to the master list -
+#    `fuzzy_match_facilities()` is documented in
+#    `vignette("data-io-and-cleaning")` under "Fuzzy-matching facility lists"
 match_results <- fuzzy_match_facilities(
   target_df  = sl_dhis2 |> dplyr::distinct(adm1, adm2, adm3, hf, hf_uid),
   lookup_df  = hf_geo,

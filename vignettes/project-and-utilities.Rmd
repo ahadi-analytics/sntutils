@@ -389,22 +389,34 @@ The same function powers the cascade-reconciliation step in
 cascade variable is recomputed via `fallback_diff()` so the resulting
 row stays internally consistent.
 
-## Plot helpers
+## Other exported helpers
 
 A handful of internal building blocks are exported because country
-teams reuse them in custom one-off charts:
+teams reuse them in custom one-off pipelines and charts. They fall
+into three loose groups:
+
+**Plot styling**
 
 - `get_palette()` / `list_palettes()` - AHADI-branded discrete and
   gradient palettes (`ahadi_main`, `ahadi_warm`, `ahadi_cool`, …).
 - `auto_bin()` - choose bin edges for an indicator using Fisher-Jenks
   or quantile breaks, returning a labelled factor.
-- `detect_factors()`, `detect_time_pattern()`, `extract_time_components()`
-  - utilities that power the auto-parsers but are exposed for ad-hoc use.
-- `get_model()`, `generate_ir_plot()`, `run_resistance_trend()` - fit
-  and render incidence-rate / resistance-trend plots used in
+
+**Parser internals reused elsewhere**
+
+- `detect_factors()` powers `auto_parse_types()` (see
+  [Read & clean](data-io-and-cleaning.html#inferring-variable-types)).
+- `detect_time_pattern()` / `extract_time_components()` parse year and
+  month components out of raster filenames (see
+  [Rasters](rasters.html#filename-utilities)).
+
+**Insecticide-resistance trend reports**
+
+- `get_model()`, `generate_ir_plot()`, `run_resistance_trend()` fit and
+  render incidence-rate and resistance-trend plots used in
   insecticide-resistance reports.
-- `prepare_plot_data()`, `get_pathway_vars()` - internal data-shaping
-  helpers that show up in custom reporting pipelines.
+- `prepare_plot_data()` and `get_pathway_vars()` are internal
+  data-shapers for the same custom reporting pipelines.
 
 ## Putting it together
 
