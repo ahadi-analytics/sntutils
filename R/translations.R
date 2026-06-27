@@ -222,13 +222,27 @@ translate_text <- function(text,
     }
   )
 
-  if (length(result) == 0 || all(is.na(result))) {
+  # gtranslate sometimes wraps the result in a list (or returns a list
+  # element that is itself character(0)); flatten to plain character so
+  # length/NA checks below behave as expected
+  result <- tryCatch(
+    base::as.character(base::unlist(result, use.names = FALSE)),
+    error = function(e) text
+  )
+
+  if (length(result) != length(text) || all(is.na(result)) ||
+    !any(nzchar(result, keepNA = TRUE), na.rm = TRUE)) {
     result <- text
   }
 
   # for EN -> FR, enforce acronyms on fresh results as well
   if (tolower(target_language) == "fr") {
     result <- .apply_fr_translation_fixups(result)
+  }
+
+  # post-fixup safety net: never persist a length-mismatched result
+  if (length(result) != length(text) || any(is.na(result))) {
+    result <- text
   }
 
   # Cache if successful
