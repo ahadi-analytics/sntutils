@@ -120,17 +120,22 @@
 
 #' Download files from NASA Earthdata with authentication
 #'
-#' Uses a temporary netrc file for Earthdata Login auth.
+#' Uses a temporary netrc file for Earthdata Login auth. Runs
+#' downloads concurrently via [httr2::req_perform_parallel()].
+#' Files that already exist on disk are skipped unless
+#' `overwrite = TRUE`.
 #'
 #' @param urls Character vector of download URLs.
 #' @param dest_dir Character. Directory to save files.
 #' @param username Character. Earthdata username.
 #' @param password Character. Earthdata password.
 #' @param overwrite Logical. Re-download existing files?
+#' @param max_workers Integer. Maximum concurrent downloads.
 #' @return Character vector of local file paths.
 #' @noRd
 .download_earthdata <- function(urls, dest_dir, username,
-                                password, overwrite) {
+                                password, overwrite,
+                                max_workers = 6) {
   netrc <- tempfile("netrc_")
   writeLines(
     sprintf(
@@ -141,18 +146,25 @@
   )
   on.exit(unlink(netrc), add = TRUE)
 
-  paths <- character(length(urls))
+  dests <- file.path(dest_dir, basename(urls))
 
-  for (i in seq_along(urls)) {
-    filename <- basename(urls[i])
-    dest <- file.path(dest_dir, filename)
+  # skip files already on disk unless overwrite = TRUE
+  needs_download <- overwrite | !file.exists(dests)
+  n_skipped <- sum(!needs_download)
 
-    if (file.exists(dest) && !overwrite) {
-      paths[i] <- dest
-      next
-    }
+  if (n_skipped > 0) {
+    cli::cli_alert_info(
+      "Skipping {n_skipped} already-downloaded HDF file(s)"
+    )
+  }
 
-    httr2::request(urls[i]) |>
+  urls_todo <- urls[needs_download]
+  dests_todo <- dests[needs_download]
+
+  if (length(urls_todo) == 0) return(dests)
+
+  reqs <- lapply(urls_todo, function(u) {
+    httr2::request(u) |>
       httr2::req_options(
         cookiefile = "",
         cookiejar = "",
@@ -163,13 +175,17 @@
         body = function(resp) {
           paste("HTTP", httr2::resp_status(resp))
         }
-      ) |>
-      httr2::req_perform(path = dest)
+      )
+  })
 
-    paths[i] <- dest
-  }
+  httr2::req_perform_parallel(
+    reqs,
+    paths = dests_todo,
+    max_active = max_workers,
+    progress = TRUE
+  )
 
-  paths
+  dests
 }
 
 #' Extract a subdataset from an HDF file by name
@@ -376,6 +392,11 @@ modis_options <- function(search = NULL) {
 #'   `{out_dir}/hdf/`.
 #' @param overwrite Logical. Re-download and reprocess existing
 #'   files? Default `FALSE`.
+#' @param max_workers Integer. Maximum concurrent HDF downloads.
+#'   Defaults to `parallel::detectCores() - 1`. Note: MODIS
+#'   downloads are network-bound, so more workers is not always
+#'   faster — NASA LPDAAC throttles above ~8 concurrent
+#'   connections. Cap manually if you see connection errors.
 #'
 #' @return Invisible character vector of output GeoTIFF paths.
 #'
@@ -432,7 +453,8 @@ download_modis <- function(
     version = "061",
     scale_factor = "auto",
     keep_hdf = FALSE,
-    overwrite = FALSE) {
+    overwrite = FALSE,
+    max_workers = max(1L, parallel::detectCores() - 1L)) {
 
   rlang::check_installed(
     "httr2",
@@ -521,18 +543,55 @@ download_modis <- function(
 
   cli::cli_alert_success("Found {length(urls)} tile(s)")
 
+  # ── skip months whose GeoTIFF already exists ──────────────
+  # parse dates from URLs so we can filter before downloading
+  band_clean <- .clean_band_name(band)
+  url_yearmons <- vapply(urls, function(u) {
+    d <- .parse_modis_date(u)
+    sprintf("%04d_%02d", d$year, d$month)
+  }, character(1))
+
+  existing_paths <- character(0)
+  done_ym <- character(0)
+
+  for (ym in unique(url_yearmons)) {
+    ym_compact <- gsub("_", "", ym)
+    out_name <- sprintf(
+      "modis_%s_%s.tif", band_clean, ym_compact
+    )
+    out_path <- file.path(out_dir, out_name)
+    if (file.exists(out_path) && !overwrite) {
+      cli::cli_alert_info(
+        "Skipping {out_name} (already exists)"
+      )
+      existing_paths <- c(existing_paths, out_path)
+      done_ym <- c(done_ym, ym)
+    }
+  }
+
+  urls_todo <- urls[!url_yearmons %in% done_ym]
+
+  if (length(urls_todo) == 0) {
+    cli::cli_alert_success(
+      "Done. {length(existing_paths)} GeoTIFF(s) in {.path {out_dir}}"
+    )
+    return(invisible(existing_paths))
+  }
+
   # ── download HDF files ────────────────────────────────────
-  cli::cli_alert_info("Downloading HDF files...")
+  cli::cli_alert_info(
+    "Downloading {length(urls_todo)} HDF file(s) with {max_workers} worker(s)..."
+  )
 
   hdf_files <- .download_earthdata(
-    urls, hdf_dir, username, password, overwrite
+    urls_todo, hdf_dir, username, password, overwrite, max_workers
   )
 
   cli::cli_alert_success(
     "Downloaded {length(hdf_files)} HDF file(s)"
   )
 
-  # ── extract dates and group by month ──────────────────────
+  # ── group downloaded HDFs by month ────────────────────────
   dates <- lapply(hdf_files, .parse_modis_date)
   yearmons <- vapply(dates, function(d) {
     sprintf("%04d_%02d", d$year, d$month)
@@ -545,7 +604,6 @@ download_modis <- function(
   )
 
   unique_dates <- unique(date_df$yearmon)
-  band_clean <- .clean_band_name(band)
   aoi_vect <- terra::vect(shapefile)
 
   # resolve scale factor
@@ -569,21 +627,14 @@ download_modis <- function(
   }
 
   # ── process each date ─────────────────────────────────────
-  output_paths <- character(0)
+  # months with existing GeoTIFFs were skipped before download
+  output_paths <- existing_paths
 
   for (ym in unique_dates) {
     # compact YYYYMM avoids clean_filenames() stripping the year
     ym_compact <- gsub("_", "", ym)
     out_name <- sprintf("modis_%s_%s.tif", band_clean, ym_compact)
     out_path <- file.path(out_dir, out_name)
-
-    if (file.exists(out_path) && !overwrite) {
-      cli::cli_alert_info(
-        "Skipping {out_name} (already exists)"
-      )
-      output_paths <- c(output_paths, out_path)
-      next
-    }
 
     tile_files <- date_df$filename[date_df$yearmon == ym]
 

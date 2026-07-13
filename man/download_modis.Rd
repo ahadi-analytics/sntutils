@@ -16,7 +16,8 @@ download_modis(
   version = "061",
   scale_factor = "auto",
   keep_hdf = FALSE,
-  overwrite = FALSE
+  overwrite = FALSE,
+  max_workers = max(1L, parallel::detectCores() - 1L)
 )
 }
 \arguments{
@@ -58,6 +59,12 @@ Default \code{FALSE} (deletes them). When \code{TRUE}, saved to
 
 \item{overwrite}{Logical. Re-download and reprocess existing
 files? Default \code{FALSE}.}
+
+\item{max_workers}{Integer. Maximum concurrent HDF downloads.
+Defaults to \code{parallel::detectCores() - 1}. Note: MODIS
+downloads are network-bound, so more workers is not always
+faster — NASA LPDAAC throttles above ~8 concurrent
+connections. Cap manually if you see connection errors.}
 }
 \value{
 Invisible character vector of output GeoTIFF paths.
