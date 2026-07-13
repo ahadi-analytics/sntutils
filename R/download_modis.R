@@ -182,7 +182,9 @@
     reqs,
     paths = dests_todo,
     max_active = max_workers,
-    progress = TRUE
+    progress = sprintf(
+      "Downloading %d MODIS HDF file(s)", length(urls_todo)
+    )
   )
 
   dests
