@@ -514,15 +514,15 @@ download_modis <- function(
     dir.create(out_dir, recursive = TRUE)
   }
 
+  # HDF cache survives across runs so that an interrupted
+  # download can resume — cleanup happens only after a full
+  # successful run (see end of function) when keep_hdf = FALSE.
   hdf_dir <- if (keep_hdf) {
     file.path(out_dir, "hdf")
   } else {
-    file.path(out_dir, ".hdf_temp")
+    file.path(out_dir, ".hdf_cache")
   }
   dir.create(hdf_dir, recursive = TRUE, showWarnings = FALSE)
-  if (!keep_hdf) {
-    on.exit(unlink(hdf_dir, recursive = TRUE), add = TRUE)
-  }
 
   # ── search CMR ────────────────────────────────────────────
   # sf::st_bbox → c(xmin, ymin, xmax, ymax) — same as CMR
@@ -574,6 +574,7 @@ download_modis <- function(
   urls_todo <- urls[!url_yearmons %in% done_ym]
 
   if (length(urls_todo) == 0) {
+    if (!keep_hdf) unlink(hdf_dir, recursive = TRUE)
     cli::cli_alert_success(
       "Done. {length(existing_paths)} GeoTIFF(s) in {.path {out_dir}}"
     )
@@ -670,8 +671,12 @@ download_modis <- function(
     output_paths <- c(output_paths, out_path)
   }
 
-  # ── summary ───────────────────────────────────────────────
-  if (keep_hdf) {
+  # ── cleanup + summary ─────────────────────────────────────
+  # only delete the HDF cache after a full successful run —
+  # partial runs leave it in place so a rerun resumes
+  if (!keep_hdf) {
+    unlink(hdf_dir, recursive = TRUE)
+  } else {
     cli::cli_alert_info(
       "HDF files kept in {.path {hdf_dir}}"
     )
