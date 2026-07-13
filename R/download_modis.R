@@ -83,7 +83,12 @@
 #' @noRd
 .search_cmr_granules <- function(product, version, start, end,
                                  bbox) {
-  resp <- httr2::request(
+  # CMR caps a single response at 2000 granules. Multi-year tiled
+  # searches (e.g. MOD13A3 over a region spanning many MODIS tiles)
+  # blow past that, so we paginate with CMR-Search-After — NASA's
+  # recommended header-based scroll. Missing this silently truncated
+  # NDVI downloads at ~2015.
+  base_req <- httr2::request(
     "https://cmr.earthdata.nasa.gov/search/granules.json"
   ) |>
     httr2::req_url_query(
@@ -95,14 +100,34 @@
       ),
       bounding_box = paste(bbox, collapse = ","),
       page_size = 2000
-    ) |>
-    httr2::req_perform()
+    )
 
-  entries <- httr2::resp_body_json(resp)$feed$entry
-  if (length(entries) == 0) return(character(0))
+  all_entries <- list()
+  search_after <- NULL
+
+  repeat {
+    req <- base_req
+    if (!is.null(search_after)) {
+      req <- req |>
+        httr2::req_headers(`CMR-Search-After` = search_after)
+    }
+
+    resp <- httr2::req_perform(req)
+    entries <- httr2::resp_body_json(resp)$feed$entry
+
+    if (length(entries) == 0) break
+
+    all_entries <- c(all_entries, entries)
+
+    # CMR returns this header only while more results remain
+    search_after <- httr2::resp_header(resp, "CMR-Search-After")
+    if (is.null(search_after) || nchar(search_after) == 0) break
+  }
+
+  if (length(all_entries) == 0) return(character(0))
 
   # extract data download URLs (HDF files)
-  urls <- vapply(entries, function(e) {
+  urls <- vapply(all_entries, function(e) {
     links <- e$links
     data_links <- Filter(function(l) {
       grepl("data#", l$rel %||% "") &&
