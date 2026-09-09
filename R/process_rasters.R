@@ -370,6 +370,71 @@ extract_time_components <- function(filename, info, year_extractor = NULL) {
 }
 
 
+#' Resolve administrative identifier columns from a shapefile
+#'
+#' @description
+#' Internal helper that works out which administrative key columns to carry
+#' through a raster-extraction call. Supports admin levels 0-4, so `adm3`
+#' (sub-district / chiefdom / sector) and `adm4` are picked up automatically
+#' whenever the supplied shapefile actually contains them.
+#'
+#' Two behaviours:
+#' * `id_cols = NULL` (the default in the processing functions) - the admin
+#'   columns present in `shapefile` are detected and returned in hierarchy
+#'   order. Hand in an `adm2` layer and you get `adm0/adm1/adm2`; hand in an
+#'   `adm3` layer carrying its parent names and you get `adm0/adm1/adm2/adm3`.
+#' * `id_cols` supplied explicitly - the vector is validated against the
+#'   shapefile and returned unchanged, so bespoke column names
+#'   (`"COUNTRY"`, `"DISTRICT"`, ...) keep working.
+#'
+#' @param shapefile An `sf` object (or anything with column names).
+#' @param id_cols Character vector of column names, or `NULL` to auto-detect.
+#' @param verbose Logical. Emit a cli message reporting the detected columns.
+#'   Default `TRUE`.
+#' @return Character vector of validated column names.
+#' @keywords internal
+resolve_admin_cols <- function(shapefile, id_cols = NULL, verbose = TRUE) {
+  shp_names <- base::names(shapefile)
+
+  if (base::is.null(id_cols)) {
+    # hierarchy order matters - the output key must read adm0 -> adm4
+    admin_hierarchy <- c("adm0", "adm1", "adm2", "adm3", "adm4")
+    id_cols <- base::intersect(admin_hierarchy, shp_names)
+
+    if (base::length(id_cols) == 0) {
+      cli::cli_abort(c(
+        "No {.field adm0}-{.field adm4} columns found in {.arg shapefile}.",
+        "i" = "Available columns: {.field {base::setdiff(shp_names,
+               attr(shapefile, 'sf_column'))}}",
+        "i" = "Pass {.arg id_cols} explicitly for non-standard column names."
+      ))
+    }
+
+    if (verbose) {
+      cli::cli_alert_info(
+        "Using admin columns: {.field {id_cols}}"
+      )
+    }
+
+    return(id_cols)
+  }
+
+  missing_cols <- base::setdiff(id_cols, shp_names)
+
+  if (base::length(missing_cols) > 0) {
+    cli::cli_abort(c(
+      "{.arg id_cols} column{?s} {.field {missing_cols}} not found in \\
+       {.arg shapefile}.",
+      "i" = "Available columns: {.field {base::setdiff(shp_names,
+             attr(shapefile, 'sf_column'))}}",
+      "x" = "If you meant sub-district level, pass the {.field adm3} layer \\
+             as {.arg shapefile} - {.arg id_cols} only labels the output, it \\
+             does not change extraction granularity."
+    ))
+  }
+
+  id_cols
+}
 #' Process raster data with administrative boundaries
 #'
 #' This function processes a single raster file by extracting zonal statistics
@@ -380,9 +445,13 @@ extract_time_components <- function(filename, info, year_extractor = NULL) {
 #' @param shapefile sf/SpatVector object with administrative boundaries. Must be
 #'   in the same coordinate reference system (CRS) as the raster data
 #' @param id_cols Vector of column names from the shapefile to include in
-#'   output. Default is c("adm0", "adm1") for country and first admin level
+#'   output. Default `NULL` auto-detects the `adm0`-`adm4` columns present in
+#'   `shapefile`, so sub-district (`adm3`) layers work without extra
+#'   arguments. Pass a vector explicitly for non-standard column names.
 #' @param aggregations Vector of aggregation methods to calculate. Supported
-#'   values are "mean", "sum", and "median". Default is c("mean")
+#'   values are "mean", "sum", "median", "weighted_mean", and
+#'   "weighted_median". The two weighted options require `pop_raster_file`.
+#'   Default is c("mean")
 #' @param raster_is_density Logical indicating if raster values represent density.
 #'   If TRUE, values are converted from density to counts using cell area.
 #'   Default is FALSE.
@@ -390,6 +459,12 @@ extract_time_components <- function(filename, info, year_extractor = NULL) {
 #'   multi-layer raster to extract. If the raster contains multiple layers
 #'   (e.g., different years or indicators), this argument selects the layer to
 #'   be processed. Default is 1
+#' @param pop_raster_file Optional path to a population raster used as weights
+#'   for `"weighted_mean"` and `"weighted_median"` aggregations. Reprojected
+#'   and resampled to match `raster_file`. Default is `NULL`.
+#' @param weight_na_as_zero Logical. If `TRUE`, missing weights are treated
+#'   as zero; if `FALSE`, as `NA`. Only used when weighted aggregations are
+#'   requested. Default is `TRUE`.
 #' @param pattern_info Optional. Pre-parsed time pattern from
 #'   \code{detect_time_pattern()}. If NULL, detected from filename.
 #' @param time_components Optional. Pre-parsed time components from
@@ -411,7 +486,9 @@ extract_time_components <- function(filename, info, year_extractor = NULL) {
 #' 2. Detects and extracts date information from filename
 #' 3. Loads raster data and handles no-data values (-9999)
 #' 4. If raster_is_density is TRUE, converts density to counts using cell area
-#' 5. Calculates zonal statistics using exactextractr
+#' 5. Calculates zonal statistics using exactextractr. When weighted
+#'    aggregations are requested, loads the population raster, reprojects and
+#'    resamples it to match the value raster, then uses it as per-cell weights
 #' 6. Combines results with shapefile attributes
 #' 7. Returns a clean data frame without geometry
 #'
@@ -425,27 +502,55 @@ extract_time_components <- function(filename, info, year_extractor = NULL) {
 #'   id_cols = c("COUNTRY", "DISTRICT"),
 #'   aggregations = c("mean", "sum", "median")
 #' )
+#'
+#' # Population-weighted statistics alongside plain ones
+#' results_weighted <- process_raster_with_boundaries(
+#'   raster_file = "pfpr_2022.tif",
+#'   shapefile = districts,
+#'   id_cols = c("COUNTRY", "DISTRICT"),
+#'   aggregations = c("mean", "weighted_mean", "weighted_median"),
+#'   pop_raster_file = "worldpop_2022.tif"
+#' )
 #' }
 #' @export
 process_raster_with_boundaries <- function(raster_file,
                                            shapefile,
-                                           id_cols = c("adm0", "adm1"),
+                                           id_cols = NULL,
                                            aggregations = c("mean"),
                                            raster_is_density = FALSE,
                                            layer_to_process = 1,
+                                           pop_raster_file = NULL,
+                                           weight_na_as_zero = TRUE,
                                            pattern_info = NULL,
                                            time_components = NULL) {
 
-  valid_aggs <- c("mean", "sum", "median")
+  valid_aggs <- c(
+    "mean", "sum", "median", "weighted_mean", "weighted_median"
+  )
   if (!all(aggregations %in% valid_aggs)) {
     cli::cli_abort("Invalid aggregation method. Use: {valid_aggs}")
   }
 
-  # use pre-parsed time info if provided, otherwise detect
-  if (is.null(pattern_info)) {
-    pattern_info <- detect_time_pattern(raster_file)
+  id_cols <- resolve_admin_cols(shapefile, id_cols, verbose = FALSE)
+
+  weighted_aggs <- c("weighted_mean", "weighted_median")
+  needs_weights <- base::any(aggregations %in% weighted_aggs)
+  if (needs_weights && base::is.null(pop_raster_file)) {
+    cli::cli_abort(
+      "{.arg pop_raster_file} is required for weighted aggregations."
+    )
   }
-  if (is.null(time_components)) {
+
+  # use pre-parsed time info if provided, otherwise detect.
+  # filenames without a recognizable date pattern fall through silently —
+  # the function still works for static rasters (e.g. travel time).
+  if (is.null(pattern_info)) {
+    pattern_info <- base::tryCatch(
+      detect_time_pattern(raster_file),
+      error = function(e) NULL
+    )
+  }
+  if (!base::is.null(pattern_info) && base::is.null(time_components)) {
     time_components <- extract_time_components(
       raster_file, pattern_info
     )
@@ -453,13 +558,6 @@ process_raster_with_boundaries <- function(raster_file,
   components <- time_components
 
   rast <- terra::rast(raster_file)[[layer_to_process]]
-  rast[rast == -9999] <- NA
-
-  if (raster_is_density) {
-    # Convert density to counts using cell area in km²
-    cell_area_km2 <- terra::cellSize(rast, unit = "km")
-    rast <- rast * cell_area_km2
-  }
 
   rast_crs <- terra::crs(rast)
   shp_crs <- sf::st_crs(shapefile)
@@ -468,31 +566,104 @@ process_raster_with_boundaries <- function(raster_file,
     shapefile <- sf::st_transform(shapefile, rast_crs)
   }
 
-  zonal_stats <- exactextractr::exact_extract(
-    rast, shapefile,
-    fun = aggregations,
-    progress = FALSE
+  # crop to the shapefile bbox before any per-cell work — same output,
+  # avoids touching cells outside the area of interest
+  rast <- terra::crop(
+    rast, terra::vect(shapefile), snap = "out"
   )
 
-  if (length(aggregations) == 1) {
-    extracted <- unlist(zonal_stats)
-    if (length(extracted) != nrow(shapefile)) {
-      cli::cli_abort("Mismatch in extracted values and shapefile rows.")
-    }
-    result_df <- shapefile |>
-      dplyr::mutate(!!rlang::sym(aggregations) := extracted)
-  } else {
-    stats_df <- as.data.frame(
-      zonal_stats)[, !grepl("coverage_fraction", names(zonal_stats))]
-    result_df <- dplyr::bind_cols(shapefile, stats_df)
+  rast[rast == -9999] <- NA
+
+  if (raster_is_density) {
+    # Convert density to counts using cell area in km²
+    cell_area_km2 <- terra::cellSize(rast, unit = "km")
+    rast <- rast * cell_area_km2
   }
 
+  # split aggregations into unweighted vs weighted
+  unweighted <- base::setdiff(aggregations, weighted_aggs)
+  weighted <- base::intersect(aggregations, weighted_aggs)
+
+  stats_df <- tibble::tibble(.rows = base::nrow(shapefile))
+
+  if (base::length(unweighted) > 0) {
+    zonal_stats <- exactextractr::exact_extract(
+      rast, shapefile,
+      fun = unweighted,
+      progress = FALSE
+    )
+
+    if (base::length(unweighted) == 1) {
+      extracted <- base::unlist(zonal_stats)
+      if (base::length(extracted) != base::nrow(shapefile)) {
+        cli::cli_abort("Mismatch in extracted values and shapefile rows.")
+      }
+      stats_df[[unweighted]] <- extracted
+    } else {
+      zonal_df <- base::as.data.frame(zonal_stats)
+      zonal_df <- zonal_df[
+        , !base::grepl("coverage_fraction", base::names(zonal_df)),
+        drop = FALSE
+      ]
+      stats_df <- dplyr::bind_cols(stats_df, tibble::as_tibble(zonal_df))
+    }
+  }
+
+  if (base::length(weighted) > 0) {
+    # align population raster to value raster.
+    # crop in the pop raster's native CRS first — projecting a global
+    # raster to match the value raster is the dominant cost, so cutting
+    # it down to the shapefile bbox before that makes a big difference.
+    pop_rast <- terra::rast(pop_raster_file)[[1]]
+    shp_in_pop_crs <- sf::st_transform(shapefile, terra::crs(pop_rast))
+    pop_rast <- terra::crop(
+      pop_rast, terra::vect(shp_in_pop_crs), snap = "out"
+    )
+    if (!base::identical(terra::crs(pop_rast), terra::crs(rast))) {
+      pop_rast <- terra::project(pop_rast, terra::crs(rast))
+    }
+    pop_rast <- terra::resample(pop_rast, rast, method = "bilinear")
+
+    default_w <- if (weight_na_as_zero) 0 else NA
+
+    weighted_median_fun <- function(values, coverage_fractions, weights) {
+      total_weights <- weights * coverage_fractions
+      valid_idx <- !base::is.na(values) &
+        !base::is.na(total_weights) &
+        total_weights > 0 &
+        coverage_fractions > 0
+      if (base::sum(valid_idx) == 0) {
+        return(NA_real_)
+      }
+      matrixStats::weightedMedian(
+        values[valid_idx],
+        w = total_weights[valid_idx],
+        na.rm = TRUE
+      )
+    }
+
+    for (agg in weighted) {
+      fun <- if (agg == "weighted_mean") {
+        "weighted_mean"
+      } else {
+        weighted_median_fun
+      }
+      base::suppressWarnings(
+        stats_df[[agg]] <- exactextractr::exact_extract(
+          rast, shapefile,
+          fun = fun,
+          weights = pop_rast,
+          default_weight = default_w,
+          progress = FALSE
+        )
+      )
+    }
+  }
+
+  result_df <- dplyr::bind_cols(shapefile, stats_df)
+
   result_df <- result_df |>
-    dplyr::mutate(
-      file_name = basename(raster_file),
-      file_date = components$date,
-      year = components$year
-    ) |>
+    dplyr::mutate(file_name = base::basename(raster_file)) |>
     dplyr::mutate(
       dplyr::across(
         .cols = where(is.numeric) & dplyr::matches("sum"),
@@ -500,11 +671,21 @@ process_raster_with_boundaries <- function(raster_file,
       )
     )
 
-  if (pattern_info$pattern == "monthly") {
-    result_df <- result_df |> dplyr::mutate(month = components$month)
+  # add time columns only when a date pattern was detected
+  if (!base::is.null(pattern_info)) {
+    result_df <- result_df |>
+      dplyr::mutate(
+        file_date = components$date,
+        year = components$year
+      )
+    if (pattern_info$pattern == "monthly") {
+      result_df <- result_df |> dplyr::mutate(month = components$month)
+    }
   }
 
-  time_cols <- if (pattern_info$pattern == "monthly") {
+  time_cols <- if (base::is.null(pattern_info)) {
+    base::character(0)
+  } else if (pattern_info$pattern == "monthly") {
     c("year", "month")
   } else {
     "year"
@@ -530,7 +711,9 @@ process_raster_with_boundaries <- function(raster_file,
 #' @param shapefile sf/SpatVector object with administrative boundaries. Must be
 #'   in the same coordinate reference system (CRS) as the raster data
 #' @param id_cols Vector of column names from shapefile to include in output.
-#'   Default is c("adm0", "adm1", "adm2") for country and first admin level
+#'   Default `NULL` auto-detects the `adm0`-`adm4` columns present in
+#'   `shapefile`, so sub-district (`adm3`) layers work without extra
+#'   arguments. Pass a vector explicitly for non-standard column names.
 #' @param pattern Regular expression pattern to match raster files. Default is
 #'   "\\.tif$" to match all .tif files
 #' @param aggregations Vector of aggregation methods to calculate. Supported
@@ -576,12 +759,14 @@ process_raster_with_boundaries <- function(raster_file,
 #' @export
 process_raster_collection <- function(directory,
                                       shapefile,
-                                      id_cols = c("adm0", "adm1", "adm2"),
+                                      id_cols = NULL,
                                       pattern = "\\.tif$",
                                       aggregations = c("mean"),
                                       layer_to_process = 1,
                                       raster_is_density = FALSE,
                                       year_extractor = NULL) {
+
+  id_cols <- resolve_admin_cols(shapefile, id_cols)
 
   # get raster files (original paths stay untouched)
   raster_files <- base::list.files(
@@ -641,7 +826,8 @@ process_raster_collection <- function(directory,
 #'   weight (e.g., PfPR2-10)
 #' @param pop_raster_file Path to the population raster file used for weighting
 #' @param shapefile sf or SpatVector object of administrative boundaries
-#' @param id_cols Character vector of administrative columns to keep
+#' @param id_cols Character vector of administrative columns to keep, or
+#'   `NULL` (default) to auto-detect `adm0`-`adm4` from `shapefile`
 #' @param value_layer_to_process Integer or character. Specifies which layer in a
 #'   multi-layer raster to extract. If the raster contains multiple layers
 #'   (e.g., different years or indicators), this argument selects the layer to
@@ -666,7 +852,7 @@ batch_extract_weighted_stats <- function(
   value_raster_file,
   pop_raster_file,
   shapefile,
-  id_cols = c("adm0", "adm1", "adm2"),
+  id_cols = NULL,
   value_layer_to_process = 1,
   weight_na_as_zero = TRUE,
   stat_type = "mean",
@@ -677,6 +863,9 @@ batch_extract_weighted_stats <- function(
   if (!stat_type %in% c("mean", "median", "both")) {
     cli::cli_abort("stat_type must be 'mean', 'median', or 'both'")
   }
+
+  # quiet here - the caller has already reported the resolved columns
+  id_cols <- resolve_admin_cols(shapefile, id_cols, verbose = FALSE)
 
   # use pre-parsed time info if provided, otherwise detect
   if (is.null(pattern_info)) {
@@ -693,14 +882,32 @@ batch_extract_weighted_stats <- function(
   value_rast <- terra::rast(value_raster_file)[[value_layer_to_process]]
   pop_rast <- terra::rast(pop_raster_file)[[1]]
 
-  # reproject and resample population raster to match value raster exactly
-  pop_rast_proj <- terra::project(pop_rast, terra::crs(value_rast))
-  pop_rast_proj <- terra::resample(pop_rast_proj, value_rast, method = "bilinear")
-
-  # reproject shapefile if needed
-  if (!sf::st_crs(shapefile)$wkt == terra::crs(value_rast)) {
+  # reproject shapefile first so it can drive the crops below
+  if (!base::identical(sf::st_crs(shapefile)$wkt, terra::crs(value_rast))) {
     shapefile <- sf::st_transform(shapefile, terra::crs(value_rast))
   }
+
+  shp_vect <- terra::vect(shapefile)
+
+  # crop the value raster to the area of interest - same output, but no
+  # per-cell work outside it
+  value_rast <- terra::crop(value_rast, shp_vect, snap = "out")
+
+  # crop the population raster in its NATIVE crs before projecting.
+  # projecting a global raster is the dominant cost of this function, so
+  # cutting it to the aoi bbox first is what makes adm3 runs affordable.
+  shp_in_pop_crs <- sf::st_transform(shapefile, terra::crs(pop_rast))
+  pop_rast <- terra::crop(
+    pop_rast, terra::vect(shp_in_pop_crs), snap = "out"
+  )
+
+  if (!base::identical(terra::crs(pop_rast), terra::crs(value_rast))) {
+    pop_rast <- terra::project(pop_rast, terra::crs(value_rast))
+  }
+
+  pop_rast_proj <- terra::resample(
+    pop_rast, value_rast, method = "bilinear"
+  )
 
   # calculate polygon population sum
   suppressWarnings(
@@ -845,8 +1052,14 @@ batch_extract_weighted_stats <- function(
 #' @param value_raster_dir Character. Directory containing value raster files
 #' @param pop_raster_dir Character. Directory containing population raster files
 #' @param shapefile sf/SpatVector object. Shapefile for spatial aggregation
-#' @param id_cols Character vector. Column names for spatial identifiers
-#'        (default: c("adm0", "adm1", "adm2"))
+#' @param id_cols Character vector. Column names for spatial identifiers.
+#'        Defaults to `NULL`, which auto-detects the `adm0`-`adm4` columns
+#'        present in `shapefile` and returns them in hierarchy order - so
+#'        passing an `adm3` layer yields an `adm0/adm1/adm2/adm3` key with no
+#'        extra arguments. Pass a vector explicitly for non-standard column
+#'        names. Note that `id_cols` only *labels* the output: extraction
+#'        granularity is set by the geometry of `shapefile`, so sub-district
+#'        results require the `adm3` layer, not just `"adm3"` in `id_cols`.
 #' @param value_pattern Character. Regex pattern to match value raster files
 #'        (default: "\\.tiff$")
 #' @param pop_pattern Character. Regex pattern to match population raster files
@@ -884,13 +1097,20 @@ batch_extract_weighted_stats <- function(
 #'   shapefile = my_shapefile,
 #'   id_cols = c("adm0", "adm1")
 #' )
+#'
+#' # Sub-district (adm3): pass the adm3 layer - id_cols is auto-detected
+#' results_adm3 <- process_weighted_raster_collection(
+#'   value_raster_dir = "path/to/values",
+#'   pop_raster_dir = "path/to/population",
+#'   shapefile = shp_list$adm3
+#' )
 #' }
 #' @export
 process_weighted_raster_collection <- function(
   value_raster_dir,
   pop_raster_dir,
   shapefile,
-  id_cols = c("adm0", "adm1", "adm2"),
+  id_cols = NULL,
   value_pattern = "\\.tiff$",
   pop_pattern = "\\.tif$",
   value_layer_to_process = 1,
@@ -902,6 +1122,10 @@ process_weighted_raster_collection <- function(
   if (!stat_type %in% c("mean", "median", "both")) {
     cli::cli_abort("stat_type must be 'mean', 'median', or 'both'")
   }
+
+  # resolve admin keys once, up front - detects adm0-adm4 from the layer
+  # handed in, so an adm3 shapefile yields an adm3 output key
+  id_cols <- resolve_admin_cols(shapefile, id_cols)
 
   # list value rasters (original paths stay untouched)
   value_raster_files <- base::list.files(
@@ -1461,4 +1685,161 @@ process_weighted_raster_stacks <- function(
   )
 
   dplyr::bind_rows(results_list)
+}
+
+#' Process Year-Indexed Rasters Against Time-Varying Admin Boundaries
+#'
+#' Wrapper around [process_raster_with_boundaries()] for the case where the
+#' admin boundaries change over time (one row per admin x year in the
+#' shapefile, identified by a year column). For each raster, detects the
+#' year from the filename, filters the shapefile to just that year's
+#' boundaries, extracts zonal statistics against those polygons, and
+#' row-binds the results.
+#'
+#' @param raster_files Character vector of raster file paths.
+#' @param shapefile An `sf` object whose rows are admin units valid for a
+#'   specific year. Each (admin x year) combination is a row; the year is
+#'   stored in the column named by `year_col`.
+#' @param id_cols Character vector of shapefile columns to carry into the
+#'   output (e.g., admin names or codes). Default `NULL` auto-detects the
+#'   `adm0`-`adm4` columns present in `shapefile`.
+#' @param year_col Character. Name of the year column in `shapefile`.
+#'   Default: `"year"`.
+#' @param aggregations Vector of aggregation methods. Same options as for
+#'   [process_raster_with_boundaries()]. Default: `c("mean")`. For
+#'   population count rasters, use `"sum"`.
+#' @param layer_to_process Integer or character. Layer index for
+#'   multi-layer rasters. Default: 1.
+#' @param raster_is_density Logical. Convert density to counts using cell
+#'   area before extraction. Default: FALSE.
+#' @param year_extractor Optional function `(filename) -> year`, used when
+#'   the default "last plausible 4-digit year in filename" heuristic picks
+#'   the wrong year. See [extract_time_components()].
+#'
+#' @return A tibble with one row per (admin, year) combination, holding
+#'   `id_cols`, `year`, and the requested aggregation columns. Rasters
+#'   whose year is not present in the shapefile are skipped with a
+#'   warning.
+#'
+#' @examples
+#' \dontrun{
+#' # population rasters with year-varying districts
+#' shp_by_year <- sf::read_sf("districts_by_year.gpkg")
+#' raster_paths <- list.files(
+#'   "data/worldpop/raw", pattern = "_pop_.*\\.tif$", full.names = TRUE
+#' )
+#' pop_by_admin <- process_rasters_by_year(
+#'   raster_files = raster_paths,
+#'   shapefile = shp_by_year,
+#'   id_cols = c("adm0", "adm1", "adm2"),
+#'   aggregations = "sum"
+#' )
+#' }
+#' @export
+process_rasters_by_year <- function(
+    raster_files,
+    shapefile,
+    id_cols = NULL,
+    year_col = "year",
+    aggregations = c("mean"),
+    layer_to_process = 1,
+    raster_is_density = FALSE,
+    year_extractor = NULL) {
+
+  if (!is.character(raster_files) || length(raster_files) == 0) {
+    cli::cli_abort("{.arg raster_files} must be a non-empty character vector")
+  }
+
+  missing <- raster_files[!file.exists(raster_files)]
+  if (length(missing) > 0) {
+    cli::cli_abort(c(
+      "Some raster files do not exist:",
+      "x" = "{.path {missing}}"
+    ))
+  }
+
+  if (!inherits(shapefile, "sf")) {
+    cli::cli_abort("{.arg shapefile} must be an {.cls sf} object")
+  }
+
+  if (!year_col %in% names(shapefile)) {
+    cli::cli_abort(c(
+      "Column {.val {year_col}} not found in shapefile",
+      "i" = "Available columns: {.val {names(shapefile)}}"
+    ))
+  }
+
+  id_cols <- resolve_admin_cols(shapefile, id_cols)
+
+  # detect time pattern once across the whole batch
+  cleaned_names <- clean_filenames(raster_files)
+  pattern_info <- detect_time_pattern(cleaned_names)
+  if (is.null(pattern_info)) {
+    cli::cli_abort(
+      "Could not detect a time pattern in raster filenames"
+    )
+  }
+
+  # coerce shapefile years to integer once; allows character or numeric
+  # year columns and isolates the comparison logic from input type
+  shp_years_int <- base::suppressWarnings(
+    base::as.integer(shapefile[[year_col]])
+  )
+  if (base::all(base::is.na(shp_years_int))) {
+    cli::cli_abort(
+      "Could not coerce {.val {year_col}} values to integer years"
+    )
+  }
+
+  results <- purrr::map(
+    base::seq_along(raster_files),
+    function(i) {
+      components <- extract_time_components(
+        cleaned_names[i], pattern_info, year_extractor = year_extractor
+      )
+      raster_year <- base::as.integer(components$year)
+
+      keep <- !base::is.na(shp_years_int) & shp_years_int == raster_year
+      shp_year <- shapefile[keep, , drop = FALSE]
+
+      if (base::nrow(shp_year) == 0) {
+        cli::cli_alert_warning(
+          paste0(
+            "No shapefile rows for year ", raster_year,
+            "; skipping ", base::basename(raster_files[i])
+          )
+        )
+        return(NULL)
+      }
+
+      process_raster_with_boundaries(
+        raster_file = raster_files[i],
+        shapefile = shp_year,
+        id_cols = id_cols,
+        aggregations = aggregations,
+        raster_is_density = raster_is_density,
+        layer_to_process = layer_to_process,
+        pattern_info = pattern_info,
+        time_components = components
+      )
+    },
+    .progress = "Processing rasters by year"
+  ) |>
+    purrr::compact() |>
+    purrr::list_rbind()
+
+  if (base::nrow(results) == 0) {
+    cli::cli_alert_warning(
+      "No results produced: no raster years matched the shapefile"
+    )
+    return(results)
+  }
+
+  sort_cols <- base::intersect(c("year", "month"), base::names(results))
+  if (base::length(sort_cols) > 0) {
+    results <- dplyr::arrange(
+      results, dplyr::across(dplyr::all_of(sort_cols))
+    )
+  }
+  results
 }
