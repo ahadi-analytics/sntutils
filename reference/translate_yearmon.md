@@ -57,11 +57,11 @@ A character string with the month and year in the specified language
 ``` r
 translate_yearmon(Sys.Date(), "en")
 #> Warning: Locale NA not available. Using system default.
-#> [1] "Jul 2026"
+#> [1] "Oct 2026"
 translate_yearmon(Sys.Date(), "fr")
 #> Warning: Locale NA not available. Using system default.
-#> [1] "Jul 2026"
+#> [1] "Oct 2026"
 translate_yearmon(Sys.Date(), "fr", format = "%B %Y")
 #> Warning: Locale NA not available. Using system default.
-#> [1] "July 2026"
+#> [1] "October 2026"
 ```
