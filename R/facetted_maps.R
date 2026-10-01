@@ -30,6 +30,17 @@
 #'   faceting rows. When provided, the function uses `facet_grid(row ~ col)`
 #'   instead of `facet_wrap()`. Default is `NULL`.
 #'
+#' @param strip_y_position Character scalar, either `"right"` or `"left"`.
+#'   Controls which side the row facet labels appear on. Only applies when
+#'   both `facet_col` and `facet_row` are provided (i.e., `facet_grid()`).
+#'   Default is `"right"`.
+#'
+#' @param strip_y_angle Optional numeric scalar, one of `-90`, `0` or `90`.
+#'   Rotation of the row facet labels: `-90` reads top-to-bottom, `90` reads
+#'   bottom-to-top and `0` is horizontal. When `NULL`, the angle follows
+#'   `strip_y_position` (`-90` on the right, `90` on the left). Only applies
+#'   when `facet_row` is provided. Default is `NULL`.
+#'
 #' @param adm1_shp Optional `sf` object containing higher-level administrative
 #'   boundaries (e.g. ADM1). When provided, boundaries are overlaid as thin
 #'   black outlines. Default is `NULL`.
@@ -86,7 +97,13 @@
 #' - Uses `scale_fill_manual()` with explicit legend control to ensure
 #'   consistent color interpretation across plots.
 #' - Faceting is implemented via `facet_wrap()` using a dynamically
-#'   constructed formula.
+#'   constructed formula, or `facet_grid()` when `facet_row` is supplied.
+#' - Row strips are drawn on the right by default. Set
+#'   `strip_y_position = "left"` to move them to the left of the first
+#'   map column.
+#' - Row strip text rotation is controlled by `strip_y_angle`. Horizontal
+#'   labels (`0`) widen the strip column and are right-aligned on the left
+#'   and left-aligned on the right so they sit next to the maps.
 #' - The function does not perform binning internally. All binning logic
 #'   should be applied upstream.
 #'
@@ -117,6 +134,17 @@
 #'     "burundi_crude_incidence.png"
 #'   )
 #' )
+#'
+#' # row facets on the left-hand side with horizontal labels
+#' facetted_map_bins(
+#'   data = incidence_shp,
+#'   fill_col = "n1_incidence_bin",
+#'   facet_col = "year",
+#'   facet_row = "age_group",
+#'   strip_y_position = "left",
+#'   strip_y_angle = 0,
+#'   fill_colors = incidence_colors
+#' )
 #' }
 #'
 #' @export
@@ -125,6 +153,8 @@ facetted_map_bins <- function(
   fill_col,
   facet_col = NULL,
   facet_row = NULL,
+  strip_y_position = c("right", "left"),
+  strip_y_angle = NULL,
   adm1_shp = NULL,
   fill_colors,
   title = NULL,
@@ -142,6 +172,30 @@ facetted_map_bins <- function(
   legend_title_size = 10,
   compress_image = TRUE
 ) {
+  strip_y_position <- match.arg(strip_y_position)
+
+  # default angle follows the strip side: -90 on the right, 90 on the left
+  if (is.null(strip_y_angle)) {
+    strip_y_angle <- if (strip_y_position == "left") 90 else -90
+  }
+
+  if (
+    !is.numeric(strip_y_angle) ||
+      length(strip_y_angle) != 1 ||
+      !strip_y_angle %in% c(-90, 0, 90)
+  ) {
+    cli::cli_abort("{.arg strip_y_angle} must be one of -90, 0 or 90.")
+  }
+
+  # horizontal labels sit against the maps: right-aligned on the left strip,
+  # left-aligned on the right strip; rotated labels stay centred
+  strip_y_hjust <-
+    if (strip_y_angle == 0) {
+      if (strip_y_position == "left") 1 else 0
+    } else {
+      0.5
+    }
+
   plot_obj <-
     ggplot2::ggplot(data) +
     ggplot2::geom_sf(
@@ -191,7 +245,8 @@ facetted_map_bins <- function(
         ggplot2::facet_grid(
           rows = ggplot2::vars(.data[[facet_row]]),
           cols = ggplot2::vars(.data[[facet_col]]),
-          drop = FALSE
+          drop = FALSE,
+          switch = if (strip_y_position == "left") "y" else NULL
         )
     } else {
       plot_obj <-
@@ -219,7 +274,16 @@ facetted_map_bins <- function(
         size = 10,
         margin = ggplot2::margin(t = 2, b = 6, l = 4, r = 4)
       ),
-      strip.text.y = ggplot2::element_text(angle = -90),
+      # row strip text: same angle/alignment whichever side the strip is on
+      strip.text.y = ggplot2::element_text(
+        angle = strip_y_angle,
+        hjust = strip_y_hjust
+      ),
+      strip.text.y.left = ggplot2::element_text(
+        angle = strip_y_angle,
+        hjust = strip_y_hjust
+      ),
+      strip.switch.pad.grid = grid::unit(4, "pt"),
       panel.spacing = grid::unit(4, "pt"),
       legend.box.margin = ggplot2::margin(t = 8),
       plot.title = ggplot2::element_text(
@@ -295,6 +359,17 @@ facetted_map_bins <- function(
 #'   faceting rows. When provided, the function uses `facet_grid(row ~ col)`
 #'   instead of `facet_wrap()`. Default is `NULL`.
 #'
+#' @param strip_y_position Character scalar, either `"right"` or `"left"`.
+#'   Controls which side the row facet labels appear on. Only applies when
+#'   both `facet_col` and `facet_row` are provided (i.e., `facet_grid()`).
+#'   Default is `"right"`.
+#'
+#' @param strip_y_angle Optional numeric scalar, one of `-90`, `0` or `90`.
+#'   Rotation of the row facet labels: `-90` reads top-to-bottom, `90` reads
+#'   bottom-to-top and `0` is horizontal. When `NULL`, the angle follows
+#'   `strip_y_position` (`-90` on the right, `90` on the left). Only applies
+#'   when `facet_row` is provided. Default is `NULL`.
+#'
 #' @param adm1_shp Optional `sf` object containing higher-level administrative
 #'   boundaries (e.g. ADM1). When provided, boundaries are overlaid as thin
 #'   black outlines. Default is `NULL`.
@@ -348,6 +423,12 @@ facetted_map_bins <- function(
 #' - Uses `scale_fill_gradientn()` to create a smooth color gradient.
 #' - Faceting is implemented via `facet_wrap()` or `facet_grid()` using a
 #'   dynamically constructed formula.
+#' - Row strips are drawn on the right by default. Set
+#'   `strip_y_position = "left"` to move them to the left of the first
+#'   map column.
+#' - Row strip text rotation is controlled by `strip_y_angle`. Horizontal
+#'   labels (`0`) widen the strip column and are right-aligned on the left
+#'   and left-aligned on the right so they sit next to the maps.
 #' - The function works directly with continuous numeric data without binning.
 #'
 #' @examples
@@ -377,6 +458,19 @@ facetted_map_bins <- function(
 #'   title = "ITN Coverage (%)",
 #'   fill_label = "Coverage (%)"
 #' )
+#'
+#' # gene (rows) by year (columns), left-hand labels, horizontal text
+#' facetted_map_gradient(
+#'   data = res_marker_sf,
+#'   fill_col = "mean_freq",
+#'   limits = c(0, 1),
+#'   facet_col = "year",
+#'   facet_row = "gene",
+#'   strip_y_position = "left",
+#'   strip_y_angle = 0,
+#'   adm1_shp = shp_file$adm1,
+#'   fill_label = "Mean mutation frequency"
+#' )
 #' }
 #'
 #' @export
@@ -390,6 +484,8 @@ facetted_map_gradient <- function(
   limits = NULL,
   facet_col = NULL,
   facet_row = NULL,
+  strip_y_position = c("right", "left"),
+  strip_y_angle = NULL,
   adm1_shp = NULL,
   title = NULL,
   subtitle = NULL,
@@ -406,6 +502,30 @@ facetted_map_gradient <- function(
   legend_title_size = 10,
   compress_image = TRUE
 ) {
+  strip_y_position <- match.arg(strip_y_position)
+
+  # default angle follows the strip side: -90 on the right, 90 on the left
+  if (is.null(strip_y_angle)) {
+    strip_y_angle <- if (strip_y_position == "left") 90 else -90
+  }
+
+  if (
+    !is.numeric(strip_y_angle) ||
+      length(strip_y_angle) != 1 ||
+      !strip_y_angle %in% c(-90, 0, 90)
+  ) {
+    cli::cli_abort("{.arg strip_y_angle} must be one of -90, 0 or 90.")
+  }
+
+  # horizontal labels sit against the maps: right-aligned on the left strip,
+  # left-aligned on the right strip; rotated labels stay centred
+  strip_y_hjust <-
+    if (strip_y_angle == 0) {
+      if (strip_y_position == "left") 1 else 0
+    } else {
+      0.5
+    }
+
   plot_obj <-
     ggplot2::ggplot(data) +
     ggplot2::geom_sf(
@@ -448,7 +568,8 @@ facetted_map_gradient <- function(
         ggplot2::facet_grid(
           rows = ggplot2::vars(.data[[facet_row]]),
           cols = ggplot2::vars(.data[[facet_col]]),
-          drop = FALSE
+          drop = FALSE,
+          switch = if (strip_y_position == "left") "y" else NULL
         )
     } else {
       plot_obj <-
@@ -476,7 +597,16 @@ facetted_map_gradient <- function(
         size = 10,
         margin = ggplot2::margin(t = 2, b = 6, l = 4, r = 4)
       ),
-      strip.text.y = ggplot2::element_text(angle = -90),
+      # row strip text: same angle/alignment whichever side the strip is on
+      strip.text.y = ggplot2::element_text(
+        angle = strip_y_angle,
+        hjust = strip_y_hjust
+      ),
+      strip.text.y.left = ggplot2::element_text(
+        angle = strip_y_angle,
+        hjust = strip_y_hjust
+      ),
+      strip.switch.pad.grid = grid::unit(4, "pt"),
       panel.spacing = grid::unit(4, "pt"),
       legend.box.margin = ggplot2::margin(t = 8),
       plot.title = ggplot2::element_text(
