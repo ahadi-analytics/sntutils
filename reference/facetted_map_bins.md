@@ -25,6 +25,8 @@ facetted_map_bins(
   fill_col,
   facet_col = NULL,
   facet_row = NULL,
+  strip_y_position = c("right", "left"),
+  strip_y_angle = NULL,
   adm1_shp = NULL,
   fill_colors,
   title = NULL,
@@ -68,6 +70,20 @@ facetted_map_bins(
   Optional character scalar. Name of the column used for faceting rows.
   When provided, the function uses `facet_grid(row ~ col)` instead of
   `facet_wrap()`. Default is `NULL`.
+
+- strip_y_position:
+
+  Character scalar, either `"right"` or `"left"`. Controls which side
+  the row facet labels appear on. Only applies when both `facet_col` and
+  `facet_row` are provided (i.e., `facet_grid()`). Default is `"right"`.
+
+- strip_y_angle:
+
+  Optional numeric scalar, one of `-90`, `0` or `90`. Rotation of the
+  row facet labels: `-90` reads top-to-bottom, `90` reads bottom-to-top
+  and `0` is horizontal. When `NULL`, the angle follows
+  `strip_y_position` (`-90` on the right, `90` on the left). Only
+  applies when `facet_row` is provided. Default is `NULL`.
 
 - adm1_shp:
 
@@ -160,7 +176,15 @@ written to disk using `ggsave()`.
   consistent color interpretation across plots.
 
 - Faceting is implemented via `facet_wrap()` using a dynamically
-  constructed formula.
+  constructed formula, or `facet_grid()` when `facet_row` is supplied.
+
+- Row strips are drawn on the right by default. Set
+  `strip_y_position = "left"` to move them to the left of the first map
+  column.
+
+- Row strip text rotation is controlled by `strip_y_angle`. Horizontal
+  labels (`0`) widen the strip column and are right-aligned on the left
+  and left-aligned on the right so they sit next to the maps.
 
 - The function does not perform binning internally. All binning logic
   should be applied upstream.
@@ -193,6 +217,17 @@ facetted_map_bins(
     "outputs",
     "burundi_crude_incidence.png"
   )
+)
+
+# row facets on the left-hand side with horizontal labels
+facetted_map_bins(
+  data = incidence_shp,
+  fill_col = "n1_incidence_bin",
+  facet_col = "year",
+  facet_row = "age_group",
+  strip_y_position = "left",
+  strip_y_angle = 0,
+  fill_colors = incidence_colors
 )
 } # }
 ```

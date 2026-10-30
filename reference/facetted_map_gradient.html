@@ -132,6 +132,8 @@ and maps it to a color gradient.</p>
 <span>  limits <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  facet_col <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  facet_row <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  strip_y_position <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"right"</span>, <span class="st">"left"</span><span class="op">)</span>,</span>
+<span>  strip_y_angle <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  adm1_shp <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  title <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  subtitle <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -186,6 +188,21 @@ no faceting is applied and a single map is produced. Default is <code>NULL</code
 <dd><p>Optional character scalar. Name of the column used for
 faceting rows. When provided, the function uses <code>facet_grid(row ~ col)</code>
 instead of <code>facet_wrap()</code>. Default is <code>NULL</code>.</p></dd>
+
+
+<dt id="arg-strip-y-position">strip_y_position<a class="anchor" aria-label="anchor" href="#arg-strip-y-position"></a></dt>
+<dd><p>Character scalar, either <code>"right"</code> or <code>"left"</code>.
+Controls which side the row facet labels appear on. Only applies when
+both <code>facet_col</code> and <code>facet_row</code> are provided (i.e., <code>facet_grid()</code>).
+Default is <code>"right"</code>.</p></dd>
+
+
+<dt id="arg-strip-y-angle">strip_y_angle<a class="anchor" aria-label="anchor" href="#arg-strip-y-angle"></a></dt>
+<dd><p>Optional numeric scalar, one of <code>-90</code>, <code>0</code> or <code>90</code>.
+Rotation of the row facet labels: <code>-90</code> reads top-to-bottom, <code>90</code> reads
+bottom-to-top and <code>0</code> is horizontal. When <code>NULL</code>, the angle follows
+<code>strip_y_position</code> (<code>-90</code> on the right, <code>90</code> on the left). Only applies
+when <code>facet_row</code> is provided. Default is <code>NULL</code>.</p></dd>
 
 
 <dt id="arg-adm-shp">adm1_shp<a class="anchor" aria-label="anchor" href="#arg-adm-shp"></a></dt>
@@ -274,6 +291,12 @@ to disk using <code>ggsave()</code>.</p>
 <li><p>Uses <code>scale_fill_gradientn()</code> to create a smooth color gradient.</p></li>
 <li><p>Faceting is implemented via <code>facet_wrap()</code> or <code>facet_grid()</code> using a
 dynamically constructed formula.</p></li>
+<li><p>Row strips are drawn on the right by default. Set
+<code>strip_y_position = "left"</code> to move them to the left of the first
+map column.</p></li>
+<li><p>Row strip text rotation is controlled by <code>strip_y_angle</code>. Horizontal
+labels (<code>0</code>) widen the strip column and are right-aligned on the left
+and left-aligned on the right so they sit next to the maps.</p></li>
 <li><p>The function works directly with continuous numeric data without binning.</p></li>
 </ul></div>
 
@@ -304,6 +327,19 @@ dynamically constructed formula.</p></li>
 <span class="r-in"><span>  facet_col <span class="op">=</span> <span class="st">"year"</span>,</span></span>
 <span class="r-in"><span>  title <span class="op">=</span> <span class="st">"ITN Coverage (%)"</span>,</span></span>
 <span class="r-in"><span>  fill_label <span class="op">=</span> <span class="st">"Coverage (%)"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># gene (rows) by year (columns), left-hand labels, horizontal text</span></span></span>
+<span class="r-in"><span><span class="fu">facetted_map_gradient</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  data <span class="op">=</span> <span class="va">res_marker_sf</span>,</span></span>
+<span class="r-in"><span>  fill_col <span class="op">=</span> <span class="st">"mean_freq"</span>,</span></span>
+<span class="r-in"><span>  limits <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  facet_col <span class="op">=</span> <span class="st">"year"</span>,</span></span>
+<span class="r-in"><span>  facet_row <span class="op">=</span> <span class="st">"gene"</span>,</span></span>
+<span class="r-in"><span>  strip_y_position <span class="op">=</span> <span class="st">"left"</span>,</span></span>
+<span class="r-in"><span>  strip_y_angle <span class="op">=</span> <span class="fl">0</span>,</span></span>
+<span class="r-in"><span>  adm1_shp <span class="op">=</span> <span class="va">shp_file</span><span class="op">$</span><span class="va">adm1</span>,</span></span>
+<span class="r-in"><span>  fill_label <span class="op">=</span> <span class="st">"Mean mutation frequency"</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>

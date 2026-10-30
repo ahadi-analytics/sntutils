@@ -8,7 +8,14 @@ Files are downloaded and optionally unzipped to a local directory.
 ## Usage
 
 ``` r
-download_chirps(dataset, start, end = NULL, out_dir = ".", unzip = TRUE)
+download_chirps(
+  dataset,
+  start,
+  end = NULL,
+  out_dir = ".",
+  unzip = TRUE,
+  max_workers = 6L
+)
 ```
 
 ## Arguments
@@ -36,6 +43,10 @@ download_chirps(dataset, start, end = NULL, out_dir = ".", unzip = TRUE)
 
   Logical. If `TRUE`, the `.tif.gz` files will be unzipped after
   download.
+
+- max_workers:
+
+  Integer. Maximum concurrent downloads. Defaults to `6`.
 
 ## Value
 
