@@ -11,6 +11,8 @@ facetted_map_gradient(
   limits = NULL,
   facet_col = NULL,
   facet_row = NULL,
+  strip_y_position = c("right", "left"),
+  strip_y_angle = NULL,
   adm1_shp = NULL,
   title = NULL,
   subtitle = NULL,
@@ -50,6 +52,17 @@ no faceting is applied and a single map is produced. Default is \code{NULL}.}
 \item{facet_row}{Optional character scalar. Name of the column used for
 faceting rows. When provided, the function uses \code{facet_grid(row ~ col)}
 instead of \code{facet_wrap()}. Default is \code{NULL}.}
+
+\item{strip_y_position}{Character scalar, either \code{"right"} or \code{"left"}.
+Controls which side the row facet labels appear on. Only applies when
+both \code{facet_col} and \code{facet_row} are provided (i.e., \code{facet_grid()}).
+Default is \code{"right"}.}
+
+\item{strip_y_angle}{Optional numeric scalar, one of \code{-90}, \code{0} or \code{90}.
+Rotation of the row facet labels: \code{-90} reads top-to-bottom, \code{90} reads
+bottom-to-top and \code{0} is horizontal. When \code{NULL}, the angle follows
+\code{strip_y_position} (\code{-90} on the right, \code{90} on the left). Only applies
+when \code{facet_row} is provided. Default is \code{NULL}.}
 
 \item{adm1_shp}{Optional \code{sf} object containing higher-level administrative
 boundaries (e.g. ADM1). When provided, boundaries are overlaid as thin
@@ -123,6 +136,12 @@ Typical use cases include:
 \item Uses \code{scale_fill_gradientn()} to create a smooth color gradient.
 \item Faceting is implemented via \code{facet_wrap()} or \code{facet_grid()} using a
 dynamically constructed formula.
+\item Row strips are drawn on the right by default. Set
+\code{strip_y_position = "left"} to move them to the left of the first
+map column.
+\item Row strip text rotation is controlled by \code{strip_y_angle}. Horizontal
+labels (\code{0}) widen the strip column and are right-aligned on the left
+and left-aligned on the right so they sit next to the maps.
 \item The function works directly with continuous numeric data without binning.
 }
 }
@@ -152,6 +171,19 @@ facetted_map_gradient(
   facet_col = "year",
   title = "ITN Coverage (\%)",
   fill_label = "Coverage (\%)"
+)
+
+# gene (rows) by year (columns), left-hand labels, horizontal text
+facetted_map_gradient(
+  data = res_marker_sf,
+  fill_col = "mean_freq",
+  limits = c(0, 1),
+  facet_col = "year",
+  facet_row = "gene",
+  strip_y_position = "left",
+  strip_y_angle = 0,
+  adm1_shp = shp_file$adm1,
+  fill_label = "Mean mutation frequency"
 )
 }
 

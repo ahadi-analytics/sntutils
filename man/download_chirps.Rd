@@ -4,7 +4,14 @@
 \alias{download_chirps}
 \title{Download CHIRPS Raster Data from UCSB Archive}
 \usage{
-download_chirps(dataset, start, end = NULL, out_dir = ".", unzip = TRUE)
+download_chirps(
+  dataset,
+  start,
+  end = NULL,
+  out_dir = ".",
+  unzip = TRUE,
+  max_workers = 6L
+)
 }
 \arguments{
 \item{dataset}{Character. One of the dataset codes listed in
@@ -20,6 +27,8 @@ created if it does not exist.}
 
 \item{unzip}{Logical. If \code{TRUE}, the \code{.tif.gz} files will be unzipped after
 download.}
+
+\item{max_workers}{Integer. Maximum concurrent downloads. Defaults to \code{6}.}
 }
 \value{
 No return value. Side effects include downloading CHIRPS \code{.tif.gz}
