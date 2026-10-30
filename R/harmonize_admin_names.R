@@ -28,6 +28,36 @@
   invisible(NULL)
 }
 
+#' Project-relative path for display
+#'
+#' Returns the path relative to the project root when it sits inside the
+#' project, so console messages read as `03_output/logs/file.xlsx` instead
+#' of a long absolute path. Falls back to the input when `here` is not
+#' available or the file is outside the project tree.
+#'
+#' @param path A single file path.
+#'
+#' @return A character scalar suitable for display.
+#'
+#' @keywords internal
+#' @noRd
+.display_path <- function(path) {
+  if (is.null(path) || length(path) == 0 || is.na(path)) {
+    return(path)
+  }
+  root <- base::tryCatch(here::here(), error = function(e) NULL)
+  if (base::is.null(root)) {
+    return(base::as.character(path))
+  }
+  base::tryCatch(
+    {
+      rel <- base::as.character(fs::path_rel(path, start = root))
+      if (base::startsWith(rel, "..")) base::as.character(path) else rel
+    },
+    error = function(e) base::as.character(path)
+  )
+}
+
 #' Save Dataframe Using sntutils Write Function
 #'
 #' Prompts the user for confirmation before saving a dataframe to a file.
@@ -124,7 +154,9 @@ handle_file_save <- function(data_to_save, default_save_path = NULL) {
 
       # Save the merged cache using sntutils write()
       write(merged_cache, cache_path)
-      cli::cli_alert_success("File saved successfully to {cache_path}.")
+      cli::cli_alert_success(
+        "File saved successfully to {.file {(.display_path(cache_path))}}."
+      )
       break
     } else if (confirm_save == "n") {
       cli::cli_alert_info("File not saved. Proceeding without saving...")
@@ -1207,7 +1239,7 @@ export_unmatched_data <- function(target_todo, unmatched_export_path,
     tryCatch({
       write(unmatched_df, unmatched_export_path)
       cli::cli_alert_success(
-        "Unmatched data exported to: {.file {unmatched_export_path}}"
+        "Unmatched data exported to: {.file {(.display_path(unmatched_export_path))}}"
       )
 
       # Show summary of unmatched data
