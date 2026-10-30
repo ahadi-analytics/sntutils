@@ -177,6 +177,7 @@ check_chirps_available <- function(dataset_code = "africa_monthly") {
 #'   created if it does not exist.
 #' @param unzip Logical. If `TRUE`, the `.tif.gz` files will be unzipped after
 #'   download.
+#' @param max_workers Integer. Maximum concurrent downloads. Defaults to `6`.
 #'
 #' @return No return value. Side effects include downloading CHIRPS `.tif.gz`
 #'   and `.tif` files to the specified folder.
@@ -197,7 +198,8 @@ check_chirps_available <- function(dataset_code = "africa_monthly") {
 #'
 #' @export
 download_chirps <- function(dataset, start, end = NULL,
-                               out_dir = ".", unzip = TRUE) {
+                            out_dir = ".", unzip = TRUE,
+                            max_workers = 6L) {
   opts <- chirps_options()
   if (!dataset %in% opts$dataset) {
     cli::cli_abort(
@@ -220,156 +222,130 @@ download_chirps <- function(dataset, start, end = NULL,
   if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
   cli::cli_h1(paste0("Downloading CHIRPS: ", sel$label))
-  cli::cli_progress_bar("Downloading", total = length(dates))
-  cli::cli_text("")
 
-  for (i in seq_along(dates)) {
-    d <- dates[i]
+  # build list of (url, dest) pairs to download; handle skips/unzips inline
+  todo <- list()
+  add_todo <- function(url, dest) {
+    todo[[length(todo) + 1L]] <<- list(url = url, dest = dest)
+  }
+
+  subperiods <- if (freq == "monthly") list(NULL) else as.list(1:6)
+
+  for (d in dates) {
+    d <- as.Date(d, origin = "1970-01-01")
     year <- format(d, "%Y")
     month <- format(d, "%m")
 
-    if (freq == "monthly") {
-      orig_name <- sprintf("chirps-v2.0.%s.%s.tif.gz", year, month)
-      custom_name <- sprintf("%s_chirps-v2.0.%s.%s.tif.gz", dataset, year, month)
+    for (sp in subperiods) {
+      if (is.null(sp)) {
+        orig_name <- sprintf("chirps-v2.0.%s.%s.tif.gz", year, month)
+        custom_name <- sprintf(
+          "%s_chirps-v2.0.%s.%s.tif.gz", dataset, year, month)
+        tag <- sprintf("%s-%s", year, month)
+      } else {
+        orig_name <- sprintf(
+          "chirps-v2.0.%s.%s.%s.tif.gz", year, month, sp)
+        custom_name <- sprintf(
+          "%s_chirps-v2.0.%s.%s.%s.tif.gz", dataset, year, month, sp)
+        tag <- sprintf("%s-%s.%s", year, month, sp)
+      }
       url <- paste0(base_url, "/", orig_name)
       dest <- file.path(out_dir, custom_name)
-      tif  <- sub(".gz$", "", dest)
 
-      # Check for any existing CHIRPS file with this date (regardless of naming)
-      existing <- .find_chirps_variations(out_dir, year, month)
+      existing <- .find_chirps_variations(out_dir, year, month, sp)
 
-      # If not found, check for the cleaned filename version
+      # fallback: match against cleaned filenames already on disk
       if (is.null(existing)) {
-        # Get all CHIRPS files in directory and clean their names
-        all_files <- list.files(out_dir, pattern = "chirps.*\\.tif(\\.gz)?$",
-                                full.names = TRUE, ignore.case = TRUE)
+        all_files <- list.files(
+          out_dir, pattern = "chirps.*\\.tif(\\.gz)?$",
+          full.names = TRUE, ignore.case = TRUE)
         if (length(all_files) > 0) {
-          # Clean the names to see what they would become
           cleaned_names <- clean_filenames(all_files)
-          # Check if our target file would match any cleaned name
-          target_pattern <- sprintf("chirps.*v2.*%s\\.%s\\.(tif|tif\\.gz)$", year, month)
-          matching_cleaned <- grep(target_pattern, cleaned_names, value = TRUE)
-          if (length(matching_cleaned) > 0) {
-            # Find the original file that corresponds to this cleaned name
-            idx <- which(cleaned_names == matching_cleaned[1])
+          target_pattern <- if (is.null(sp)) {
+            sprintf(
+              "chirps.*v2.*%s\\.%s\\.(tif|tif\\.gz)$", year, month)
+          } else {
+            sprintf(
+              "chirps.*v2.*%s\\.%s\\.%s\\.(tif|tif\\.gz)$",
+              year, month, sp)
+          }
+          matching <- grep(target_pattern, cleaned_names, value = TRUE)
+          if (length(matching) > 0) {
+            idx <- which(cleaned_names == matching[1])
             if (length(idx) > 0 && file.exists(all_files[idx[1]])) {
-              file_type <- ifelse(grepl("\\.tif$", all_files[idx[1]]), "tif", "gz")
-              existing <- list(path = all_files[idx[1]], type = file_type)
+              file_type <- ifelse(
+                grepl("\\.tif$", all_files[idx[1]]), "tif", "gz")
+              existing <- list(
+                path = all_files[idx[1]], type = file_type)
             }
           }
         }
       }
 
       if (!is.null(existing)) {
-        if (existing$type == "tif") {
-          cli::cli_alert_info(
-            "Skipping {year}-{month}, found existing: {basename(existing$path)}"
-          )
-        } else if (existing$type == "gz" && unzip) {
-          # Check if we need to unzip
+        if (existing$type == "gz" && unzip) {
           tif_check <- sub("\\.gz$", "", existing$path)
           if (!file.exists(tif_check)) {
-            cli::cli_alert_info("Unzipping existing {basename(existing$path)}")
-            R.utils::gunzip(existing$path, overwrite = FALSE, remove = FALSE)
+            cli::cli_alert_info(
+              "Unzipping existing {basename(existing$path)}")
+            R.utils::gunzip(
+              existing$path, overwrite = FALSE, remove = FALSE)
           } else {
             cli::cli_alert_info(
-              "Skipping {year}-{month}, found existing: {basename(tif_check)}"
-            )
+              "Skipping {tag}, found existing: {basename(tif_check)}")
           }
         } else {
           cli::cli_alert_info(
-            "Skipping {year}-{month}, found existing: {basename(existing$path)}"
-          )
+            "Skipping {tag}, found existing: {basename(existing$path)}")
         }
       } else {
-        # No variations found, download the file
-        tryCatch({
-          curl::curl_download(url, dest, mode = "wb")
-          cli::cli_alert_success("Downloaded {custom_name}")
-          if (unzip && file.exists(dest)) {
-            R.utils::gunzip(dest, overwrite = FALSE)
-          }
-        }, error = function(e) {
-          cli::cli_alert_danger("Failed {custom_name}: {e$message}")
-        })
-      }
-
-    } else {
-      for (subperiod in 1:6) {
-        orig_name <- glue::glue(
-          "chirps-v2.0.{year}.{month}.{subperiod}.tif.gz")
-        custom_name <- glue::glue(
-          "{dataset}_chirps-v2.0.{year}.{month}.{subperiod}.tif.gz")
-        url <- glue::glue("{base_url}/{orig_name}")
-        dest <- file.path(out_dir, custom_name)
-        tif  <- sub(".gz$", "", dest)
-
-        # Check for any existing CHIRPS file with this date (regardless of naming)
-        existing <- .find_chirps_variations(out_dir, year, month, subperiod)
-
-        # If not found, check for the cleaned filename version
-        if (is.null(existing)) {
-          # Get all CHIRPS files in directory and clean their names
-          all_files <- list.files(out_dir, pattern = "chirps.*\\.tif(\\.gz)?$",
-                                  full.names = TRUE, ignore.case = TRUE)
-          if (length(all_files) > 0) {
-            # Clean the names to see what they would become
-            cleaned_names <- clean_filenames(all_files)
-            # Check if our target file would match any cleaned name
-            target_pattern <- sprintf("chirps.*v2.*%s\\.%s\\.%s\\.(tif|tif\\.gz)$",
-                                    year, month, subperiod)
-            matching_cleaned <- grep(target_pattern, cleaned_names, value = TRUE)
-            if (length(matching_cleaned) > 0) {
-              # Find the original file that corresponds to this cleaned name
-              idx <- which(cleaned_names == matching_cleaned[1])
-              if (length(idx) > 0 && file.exists(all_files[idx[1]])) {
-                file_type <- ifelse(grepl("\\.tif$", all_files[idx[1]]), "tif", "gz")
-                existing <- list(path = all_files[idx[1]], type = file_type)
-              }
-            }
-          }
-        }
-
-        if (!is.null(existing)) {
-          if (existing$type == "tif") {
-            cli::cli_alert_info(
-              "Skipping {year}-{month}.{subperiod}, found: {basename(existing$path)}"
-            )
-          } else if (existing$type == "gz" && unzip) {
-            # Check if we need to unzip
-            tif_check <- sub("\\.gz$", "", existing$path)
-            if (!file.exists(tif_check)) {
-              cli::cli_alert_info("Unzipping existing {basename(existing$path)}")
-              R.utils::gunzip(existing$path, overwrite = FALSE, remove = FALSE)
-            } else {
-              cli::cli_alert_info(
-                "Skipping {year}-{month}.{subperiod}, found: {basename(tif_check)}"
-              )
-            }
-          } else {
-            cli::cli_alert_info(
-              "Skipping {year}-{month}.{subperiod}, found: {basename(existing$path)}"
-            )
-          }
-        } else {
-          # No variations found, download the file
-          tryCatch({
-            curl::curl_download(url, dest, mode = "wb")
-            cli::cli_alert_success("Downloaded {custom_name}")
-            if (unzip && file.exists(dest)) {
-              R.utils::gunzip(dest, overwrite = FALSE)
-            }
-          }, error = function(e) {
-            cli::cli_alert_danger("Failed {custom_name}: {e$message}")
-          })
-        }
+        add_todo(url, dest)
       }
     }
-
-    cli::cli_progress_update()
   }
 
-  cli::cli_progress_done()
-  cli::cli_text("")
+  if (length(todo) == 0) {
+    cli::cli_alert_success("All CHIRPS files already present")
+    return(invisible(NULL))
+  }
+
+  urls <- vapply(todo, `[[`, character(1), "url")
+  dests <- vapply(todo, `[[`, character(1), "dest")
+
+  reqs <- lapply(urls, function(u) {
+    httr2::request(u) |>
+      httr2::req_error(body = function(resp) {
+        paste("HTTP", httr2::resp_status(resp))
+      })
+  })
+
+  resps <- httr2::req_perform_parallel(
+    reqs,
+    paths = dests,
+    max_active = max_workers,
+    on_error = "continue",
+    progress = sprintf(
+      "Downloading %d CHIRPS file(s)", length(urls)))
+
+  # report per-file success/failure, then unzip successful downloads
+  for (i in seq_along(resps)) {
+    r <- resps[[i]]
+    if (inherits(r, "error")) {
+      cli::cli_alert_danger(
+        "Failed {basename(dests[[i]])}: {conditionMessage(r)}")
+      next
+    }
+    cli::cli_alert_success("Downloaded {basename(dests[[i]])}")
+    if (unzip && file.exists(dests[[i]])) {
+      tryCatch(
+        R.utils::gunzip(dests[[i]], overwrite = FALSE),
+        error = function(e) {
+          cli::cli_alert_danger(
+            "Failed to unzip {basename(dests[[i]])}: {e$message}")
+        })
+    }
+  }
+
   cli::cli_alert_success("All CHIRPS files downloaded")
+  invisible(NULL)
 }
